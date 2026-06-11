@@ -314,8 +314,7 @@ body.sidebar-resizing {
   flex-wrap: wrap;
   align-items: center;
   gap: 16px;
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .header-brand-logo {
@@ -327,9 +326,8 @@ body.sidebar-resizing {
 
 .header-search {
   position: relative;
-  min-width: 210px;
+  flex: 1 1 210px;
   max-width: 280px;
-  flex: 1;
 }
 
 .header-search input {
@@ -368,8 +366,7 @@ body.sidebar-resizing {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  flex: 2;
-  min-width: 0;
+  flex: 2 1 auto;
 }
 
 .header-filter-select,
@@ -415,7 +412,7 @@ body.sidebar-resizing {
   align-items: center;
   justify-content: flex-end;
   gap: 14px;
-  min-width: 0;
+  flex: 0 0 auto;
 }
 
 .header-sync-status {
