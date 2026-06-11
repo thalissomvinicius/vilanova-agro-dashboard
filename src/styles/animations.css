@@ -1,0 +1,149 @@
+/* Keyframes */
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+  }
+  70% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+/* Classes */
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.slide-up {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Skeleton Loading State Components */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-secondary) 25%,
+    var(--bg-tertiary) 37%,
+    var(--bg-secondary) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-loading 1.4s ease infinite;
+  border-radius: var(--border-radius-sm);
+  color: transparent !important;
+  border-color: transparent !important;
+  pointer-events: none;
+}
+
+.skeleton-text {
+  height: 16px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.skeleton-text.short {
+  width: 60%;
+}
+
+.skeleton-text.heading {
+  height: 24px;
+  margin-bottom: 12px;
+}
+
+.skeleton-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--border-radius-full);
+}
+
+.skeleton-card {
+  height: 140px;
+  border-radius: var(--border-radius-md);
+}
+
+/* Hover micro-interactions for items */
+.hover-grow {
+  transition: transform var(--transition-fast) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-grow:hover {
+  transform: scale(1.02);
+}
+
+.hover-glow-green {
+  transition: all var(--transition-fast) ease;
+}
+
+.hover-glow-green:hover {
+  box-shadow: 0 0 15px rgba(35, 79, 42, 0.32);
+  border-color: var(--green-institutional);
+}
+
+.hover-glow-orange {
+  transition: all var(--transition-fast) ease;
+}
+
+.hover-glow-orange:hover {
+  box-shadow: 0 0 15px rgba(217, 140, 16, 0.35);
+  border-color: var(--orange-institutional);
+}
+
+/* Transition delays for lists */
+.list-item-0 { animation-delay: 0.05s; }
+.list-item-1 { animation-delay: 0.1s; }
+.list-item-2 { animation-delay: 0.15s; }
+.list-item-3 { animation-delay: 0.2s; }
+.list-item-4 { animation-delay: 0.25s; }
+.list-item-5 { animation-delay: 0.3s; }

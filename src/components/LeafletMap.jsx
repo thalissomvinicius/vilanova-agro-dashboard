@@ -1,0 +1,429 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import L from 'leaflet';
+import { Flame, Layers, Navigation } from 'lucide-react';
+import { FARMS } from '../utils/mockData';
+import { filterRecords, useCqoData } from '../utils/cqoData';
+
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerIconRetina from 'leaflet/dist/images/marker-icon-2x.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+const defaultIcon = L.icon({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIconRetina,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+L.Marker.prototype.options.icon = defaultIcon;
+
+const FARM_STYLES = {
+  'vila-nova': {
+    color: '#1F7A3A',
+    fill: '#1F7A3A',
+    label: 'Vila Nova',
+  },
+  'fe-em-deus': {
+    color: '#D98C10',
+    fill: '#D98C10',
+    label: 'Fe em Deus',
+  },
+  'nova-conceicao': {
+    color: '#2563EB',
+    fill: '#2563EB',
+    label: 'Nova Conceicao',
+  },
+  default: {
+    color: '#7C3AED',
+    fill: '#7C3AED',
+    label: 'Sem fazenda',
+  },
+};
+
+function farmStyle(farmId) {
+  return FARM_STYLES[farmId] || FARM_STYLES.default;
+}
+
+function recordWeight(record) {
+  const lines = Number(record?.totals?.linhas || record?.lines?.length || 1);
+  const observed = Number(record?.totals?.plantasObservadas || 0);
+  return Math.max(1, Math.min(10, lines + Math.floor(observed / 20)));
+}
+
+function pointInRing(point, ring) {
+  const [lat, lng] = point;
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+    const xi = ring[i][1];
+    const yi = ring[i][0];
+    const xj = ring[j][1];
+    const yj = ring[j][0];
+    const intersects = ((yi > lat) !== (yj > lat))
+      && (lng < ((xj - xi) * (lat - yi)) / ((yj - yi) || Number.EPSILON) + xi);
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+function pointInFeature(point, feature) {
+  const geometry = feature?.geometry;
+  if (!geometry) return false;
+  const polygons = geometry.type === 'Polygon'
+    ? [geometry.coordinates]
+    : geometry.type === 'MultiPolygon'
+      ? geometry.coordinates
+      : [];
+
+  return polygons.some((polygon) => {
+    const rings = polygon.map((ring) => ring.map(([lng, lat]) => [lat, lng]));
+    if (!rings.length || !pointInRing(point, rings[0])) return false;
+    return !rings.slice(1).some((hole) => pointInRing(point, hole));
+  });
+}
+
+function pointInsideFeatures(point, features) {
+  if (!features?.length) return true;
+  return features.some((feature) => pointInFeature(point, feature));
+}
+
+export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, dateFrom, dateTo }) {
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const layerGroupRef = useRef(null);
+  const [mapLayer, setMapLayer] = useState('polygon');
+  const [parcelGeoJson, setParcelGeoJson] = useState(null);
+  const { records } = useCqoData();
+
+  const filteredRecords = useMemo(() => filterRecords(records, {
+    farmFilter,
+    areaFilter,
+    periodFilter,
+    dateFrom,
+    dateTo,
+  }), [records, farmFilter, areaFilter, periodFilter, dateFrom, dateTo]);
+
+  const geoRecords = useMemo(() => filteredRecords.filter((record) => (
+    (record.gps && Number.isFinite(record.gps.lat) && Number.isFinite(record.gps.lng))
+    || record.gpsTrack?.some((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
+  )), [filteredRecords]);
+
+  const trackPoints = useMemo(() => geoRecords.flatMap((record) => {
+    const points = record.gpsTrack?.length ? record.gpsTrack : [record.gps];
+    return points
+      .filter((point) => point && Number.isFinite(point.lat) && Number.isFinite(point.lng))
+      .map((point, index) => ({
+        ...point,
+        index,
+        record,
+        weight: recordWeight(record),
+      }));
+  }), [geoRecords]);
+
+  const filteredParcelFeatures = useMemo(() => (
+    parcelGeoJson?.features?.filter((feature) => (
+      farmFilter === 'all' || feature.properties?.farmId === farmFilter
+    )) || []
+  ), [parcelGeoJson, farmFilter]);
+
+  const heatPoints = useMemo(() => trackPoints.filter((point) => (
+    pointInsideFeatures([point.lat, point.lng], filteredParcelFeatures)
+  )).map((point) => {
+    const accuracy = Number(point.accuracy);
+    const accuracyFactor = Number.isFinite(accuracy) ? Math.max(0.45, Math.min(1.25, 35 / Math.max(accuracy, 8))) : 0.8;
+    return {
+      ...point,
+      heatWeight: Math.max(0.45, Math.min(1.8, (point.weight / 6) * accuracyFactor)),
+    };
+  }), [trackPoints, filteredParcelFeatures]);
+
+  const geoStats = useMemo(() => {
+    const byFarm = geoRecords.reduce((acc, record) => {
+      const key = record.farmId || 'default';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    return {
+      total: geoRecords.length,
+      gpsPoints: trackPoints.length,
+      byFarm,
+      lineCount: geoRecords.reduce((sum, record) => sum + Number(record?.totals?.linhas || record?.lines?.length || 0), 0),
+    };
+  }, [geoRecords, trackPoints]);
+
+  useEffect(() => {
+    if (!mapContainerRef.current) return undefined;
+
+    if (!mapInstanceRef.current) {
+      const map = L.map(mapContainerRef.current, {
+        center: [-2.39, -48.15],
+        zoom: 12,
+        zoomControl: false,
+      });
+
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+      mapInstanceRef.current = map;
+      layerGroupRef.current = L.layerGroup().addTo(map);
+    }
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        layerGroupRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('/data/farm-parcels.geojson')
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((geojson) => {
+        if (mounted) setParcelGeoJson(geojson);
+      })
+      .catch(() => {
+        if (mounted) setParcelGeoJson(null);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const layers = layerGroupRef.current;
+    if (!map || !layers) return;
+
+    layers.clearLayers();
+    map.eachLayer((layer) => {
+      if (layer instanceof L.TileLayer) {
+        map.removeLayer(layer);
+      }
+    });
+
+    const tileUrl = theme === 'dark'
+      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+    L.tileLayer(tileUrl, {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      subdomains: 'abcd',
+      maxZoom: 20,
+    }).addTo(map);
+
+    const farmLayerBounds = [];
+
+    if (parcelGeoJson?.features?.length) {
+      const filteredParcels = {
+        ...parcelGeoJson,
+        features: filteredParcelFeatures,
+      };
+
+      L.geoJSON(filteredParcels, {
+        style: (feature) => {
+          const style = farmStyle(feature?.properties?.farmId);
+          return {
+          color: style.color,
+          fillColor: style.fill,
+          fillOpacity: mapLayer === 'polygon' ? 0.12 : 0.03,
+          weight: mapLayer === 'heat' ? 2 : 1.4,
+          opacity: 0.9,
+        };
+        },
+        onEachFeature: (feature, layer) => {
+          const props = feature.properties || {};
+          const style = farmStyle(props.farmId);
+          layer.bindPopup(`
+            <div style="font-family: Inter, Segoe UI, sans-serif; max-width: 220px;">
+              <strong style="color:${style.color};font-size:13px;">${props.farmName || 'Fazenda'}</strong><br/>
+              <span style="font-size:11px;">Parcela: <strong>${props.parcelId || props.recordNumber || '--'}</strong></span><br/>
+              <span style="font-size:11px;">Fonte: shapefile</span>
+            </div>
+          `);
+          if (layer.getBounds) farmLayerBounds.push(layer.getBounds());
+        },
+      }).addTo(layers);
+    } else {
+      FARMS.forEach((farm) => {
+        if (farm.id === 'all') return;
+        if (farmFilter !== 'all' && farmFilter !== farm.id) return;
+
+        const offset = 0.012;
+        const bounds = [
+          [farm.Lat - offset, farm.Lng - offset],
+          [farm.Lat - offset, farm.Lng + offset],
+          [farm.Lat + offset, farm.Lng + offset],
+          [farm.Lat + offset, farm.Lng - offset],
+        ];
+
+        const polygon = L.polygon(bounds, {
+          color: farmStyle(farm.id).color,
+          fillColor: farmStyle(farm.id).fill,
+          fillOpacity: mapLayer === 'polygon' ? 0.12 : 0.05,
+          weight: 2,
+          dashArray: '4, 4',
+        })
+          .addTo(layers)
+          .bindPopup(`
+            <div style="font-family: Inter, Segoe UI, sans-serif;">
+              <strong style="color: #234F2A; font-size: 14px;">${farm.name}</strong><br/>
+              <span>Area estimada</span>
+            </div>
+          `);
+        farmLayerBounds.push(polygon.getBounds());
+      });
+    }
+
+    geoRecords.forEach((record) => {
+      const style = farmStyle(record.farmId);
+      const markerPoint = record.gps || record.gpsTrack?.[0];
+      if (!markerPoint) return;
+      const pinIcon = L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div style="background-color:${style.fill};width:14px;height:14px;transform:rotate(45deg);border:2px solid white;box-shadow:0 3px 8px rgba(0,0,0,0.35);"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+      });
+
+      L.marker([markerPoint.lat, markerPoint.lng], { icon: pinIcon })
+        .addTo(layers)
+        .bindPopup(`
+          <div style="font-family: Inter, Segoe UI, sans-serif; max-width: 240px;">
+            <strong style="color:${style.color};font-size:12px;">Coleta #${record.id}</strong><br/>
+            <span style="font-size:11px;">Formulario: <strong>${record.form}</strong></span><br/>
+            <span style="font-size:11px;">Fazenda: <strong>${record.farm}</strong></span><br/>
+            <span style="font-size:11px;">Parcela: <strong>${record.parcel}</strong></span><br/>
+            <span style="font-size:11px;">Linhas avaliadas: <strong>${record.totals?.linhas || record.lines?.length || 0}</strong></span><br/>
+            <span style="font-size:11px;">Pontos da trilha: <strong>${record.gpsTrack?.length || 1}</strong></span><br/>
+            <span style="font-size:11px;">GPS: <strong>${markerPoint.label}</strong></span><br/>
+            <span style="font-size:11px;">Status: <strong>${record.status}</strong></span>
+          </div>
+        `);
+    });
+
+    if (mapLayer === 'heat') {
+      heatPoints.forEach((point) => {
+        const style = farmStyle(point.record.farmId);
+        const radius = 22 + point.heatWeight * 34;
+        L.circle([point.lat, point.lng], {
+          radius,
+          color: style.color,
+          fillColor: style.fill,
+          fillOpacity: Math.min(0.46, 0.16 + point.heatWeight * 0.13),
+          weight: 0.7,
+          opacity: 0.35,
+        }).addTo(layers);
+      });
+    }
+
+    if (mapLayer === 'route') {
+      geoRecords.forEach((record) => {
+        const routePoints = (record.gpsTrack || [])
+          .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
+          .map((point) => [point.lat, point.lng]);
+        if (routePoints.length >= 2) {
+          const style = farmStyle(record.farmId);
+          L.polyline(routePoints, {
+            color: style.color,
+            weight: 4,
+            opacity: 0.82,
+          }).addTo(layers);
+        }
+      });
+
+      Object.keys(FARM_STYLES).forEach((farmId) => {
+        if (farmId === 'default') return;
+        const routeRecords = geoRecords
+          .filter((record) => record.farmId === farmId)
+          .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+        const routePoints = routeRecords
+          .map((record) => record.gps || record.gpsTrack?.[0])
+          .filter(Boolean)
+          .map((point) => [point.lat, point.lng]);
+        if (routePoints.length >= 2) {
+          const style = farmStyle(farmId);
+          L.polyline(routePoints, {
+            color: style.color,
+            weight: 3,
+            opacity: 0.82,
+            dashArray: '6, 6',
+          }).addTo(layers);
+        }
+      });
+    }
+
+    if (trackPoints.length > 0) {
+      const bounds = L.latLngBounds(trackPoints.map((point) => [point.lat, point.lng]));
+      map.fitBounds(bounds.pad(0.18), { maxZoom: 16, animate: true });
+    } else if (farmLayerBounds.length > 0) {
+      const bounds = farmLayerBounds.reduce((acc, item) => acc.extend(item), L.latLngBounds([]));
+      map.fitBounds(bounds.pad(0.08), { maxZoom: 14, animate: true });
+    } else if (farmFilter !== 'all') {
+      const selectedFarm = FARMS.find((farm) => farm.id === farmFilter);
+      if (selectedFarm) {
+        map.panTo([selectedFarm.Lat, selectedFarm.Lng]);
+      }
+    }
+  }, [theme, farmFilter, areaFilter, mapLayer, geoRecords, trackPoints, heatPoints, parcelGeoJson, filteredParcelFeatures]);
+
+  return (
+    <div className="card" style={{ padding: '0', height: '100%', minHeight: '500px', position: 'relative', overflow: 'hidden' }}>
+      <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1 }} />
+
+      <div className="map-overlay-card" style={{ zIndex: 10 }}>
+        <h4 style={{ fontSize: '0.85rem', fontWeight: '700', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Camadas do mapa
+        </h4>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <button
+            onClick={() => setMapLayer('polygon')}
+            className={`btn ${mapLayer === 'polygon' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ height: '32px', fontSize: '0.75rem', justifyContent: 'flex-start' }}
+          >
+            <Layers size={14} />
+            <span>Areas e coletas</span>
+          </button>
+          <button
+            onClick={() => setMapLayer('heat')}
+            className={`btn ${mapLayer === 'heat' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ height: '32px', fontSize: '0.75rem', justifyContent: 'flex-start' }}
+          >
+            <Flame size={14} />
+            <span>Mapa de calor</span>
+          </button>
+          <button
+            onClick={() => setMapLayer('route')}
+            className={`btn ${mapLayer === 'route' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ height: '32px', fontSize: '0.75rem', justifyContent: 'flex-start' }}
+          >
+            <Navigation size={14} />
+            <span>Rotas</span>
+          </button>
+        </div>
+
+        <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.7rem', opacity: '0.8' }}>
+          <div style={{ marginBottom: '8px', fontWeight: 800 }}>
+            {geoStats.gpsPoints} pontos GPS / {heatPoints.length} no shapefile / {geoStats.total} coletas
+          </div>
+          {Object.entries(FARM_STYLES).filter(([id]) => id !== 'default').map(([id, style]) => (
+            <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+              <span style={{ width: '9px', height: '9px', borderRadius: '2px', backgroundColor: style.fill }} />
+              <span>{style.label}: {geoStats.byFarm[id] || 0}</span>
+            </div>
+          ))}
+          <div style={{ marginTop: '8px' }}>
+            <span>{parcelGeoJson?.features?.length ? 'Calor limitado ao shapefile filtrado' : 'Limites estimados'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
