@@ -27,6 +27,10 @@ export default function App() {
       return null;
     }
   });
+  
+  const [isAppLoading, setIsAppLoading] = useState(() => {
+    return !!localStorage.getItem('vilanova_dashboard_user');
+  });
 
   const [farmFilter, setFarmFilter] = useState('all');
   const [areaFilter, setAreaFilter] = useState('all');
@@ -38,6 +42,13 @@ export default function App() {
   const [lastSyncTime, setLastSyncTime] = useState(() => (
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   ));
+
+  useEffect(() => {
+    if (isAppLoading) {
+      const timer = setTimeout(() => setIsAppLoading(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isAppLoading]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -76,6 +87,7 @@ export default function App() {
 
   const handleLogin = (profile) => {
     localStorage.setItem('vilanova_dashboard_user', JSON.stringify(profile));
+    setIsAppLoading(true);
     setUser(profile);
   };
 
@@ -196,6 +208,19 @@ export default function App() {
 
   if (!user) {
     return <Login onLogin={handleLogin} />;
+  }
+
+  if (isAppLoading) {
+    return (
+      <div className="app-loading-screen">
+        <div className="app-loading-content fade-in">
+          <img src="/logo.png" alt="Vila Nova" className="app-loading-logo pulse-animation" />
+          <div className="spinner-modern"></div>
+          <h2>Autenticação confirmada</h2>
+          <p>Carregando base de dados do Supabase e sincronizando tabelas...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
