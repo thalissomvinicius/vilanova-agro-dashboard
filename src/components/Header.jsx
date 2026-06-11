@@ -46,70 +46,71 @@ export default function Header({
           />
         </div>
 
-        <div className="header-filters">
-          <select
-            className="header-filter-select"
-            value={farmFilter}
-            onChange={(event) => setFarmFilter(event.target.value)}
-            title="Selecionar fazenda"
-          >
-            {CQO_FARMS.map((farm) => (
-              <option key={farm.id} value={farm.id}>{farm.name}</option>
-            ))}
-          </select>
+      </div>
 
-          <select
-            className="header-filter-select"
-            value={areaFilter}
-            onChange={(event) => setAreaFilter(event.target.value)}
-            title="Selecionar formulario"
-          >
-            {CQO_AREAS.map((area) => (
-              <option key={area.id} value={area.id}>{area.name}</option>
-            ))}
-          </select>
+      <div className="header-filters">
+        <select
+          className="header-filter-select"
+          value={farmFilter}
+          onChange={(event) => setFarmFilter(event.target.value)}
+          title="Selecionar fazenda"
+        >
+          {CQO_FARMS.map((farm) => (
+            <option key={farm.id} value={farm.id}>{farm.name}</option>
+          ))}
+        </select>
 
-          <select
-            className="header-filter-select"
-            value={periodFilter}
-            onChange={(event) => {
-              setPeriodFilter(event.target.value);
-              if (event.target.value !== 'custom') {
-                setDateFrom('');
-                setDateTo('');
-              }
-            }}
-            title="Periodo"
-          >
-            <option value="today">Hoje</option>
-            <option value="week">Ultimos 7 dias</option>
-            <option value="month">Este mes</option>
-            <option value="custom">De data ate data</option>
-            <option value="season">Safra / historico</option>
-          </select>
+        <select
+          className="header-filter-select"
+          value={areaFilter}
+          onChange={(event) => setAreaFilter(event.target.value)}
+          title="Selecionar formulario"
+        >
+          {CQO_AREAS.map((area) => (
+            <option key={area.id} value={area.id}>{area.name}</option>
+          ))}
+        </select>
 
-          <input
-            className="header-date-input"
-            type="date"
-            value={dateFrom}
-            onChange={(event) => {
-              setDateFrom(event.target.value);
-              setPeriodFilter('custom');
-            }}
-            title="Data inicial"
-          />
+        <select
+          className="header-filter-select"
+          value={periodFilter}
+          onChange={(event) => {
+            setPeriodFilter(event.target.value);
+            if (event.target.value !== 'custom') {
+              setDateFrom('');
+              setDateTo('');
+            }
+          }}
+          title="Periodo"
+        >
+          <option value="today">Hoje</option>
+          <option value="week">Ultimos 7 dias</option>
+          <option value="month">Este mes</option>
+          <option value="custom">De data ate data</option>
+          <option value="season">Safra / historico</option>
+        </select>
 
-          <input
-            className="header-date-input"
-            type="date"
-            value={dateTo}
-            onChange={(event) => {
-              setDateTo(event.target.value);
-              setPeriodFilter('custom');
-            }}
-            title="Data final"
-          />
-        </div>
+        <input
+          className="header-date-input"
+          type="date"
+          value={dateFrom}
+          onChange={(event) => {
+            setDateFrom(event.target.value);
+            setPeriodFilter('custom');
+          }}
+          title="Data inicial"
+        />
+
+        <input
+          className="header-date-input"
+          type="date"
+          value={dateTo}
+          onChange={(event) => {
+            setDateTo(event.target.value);
+            setPeriodFilter('custom');
+          }}
+          title="Data final"
+        />
       </div>
 
       <div className="header-right">

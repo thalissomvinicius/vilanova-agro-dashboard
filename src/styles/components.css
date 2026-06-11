@@ -1242,8 +1242,9 @@
   font-weight: 700;
 }
 
-.wide-modal {
+.modal-content.wide-modal {
   width: min(1120px, calc(100vw - 48px));
+  max-width: 1120px;
   max-height: calc(100vh - 56px);
 }
 

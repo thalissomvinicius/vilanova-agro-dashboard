@@ -300,7 +300,7 @@ body.sidebar-resizing {
   padding: 12px 24px;
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   gap: 16px;
   box-shadow: var(--shadow-sm);
@@ -314,7 +314,8 @@ body.sidebar-resizing {
   flex-wrap: wrap;
   align-items: center;
   gap: 16px;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
+  order: 1;
 }
 
 .header-brand-logo {
@@ -366,7 +367,8 @@ body.sidebar-resizing {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  flex: 2 1 auto;
+  flex: 1 1 auto;
+  order: 2;
 }
 
 .header-filter-select,
@@ -414,6 +416,7 @@ body.sidebar-resizing {
   gap: 14px;
   flex: 0 0 auto;
   margin-left: auto;
+  order: 3;
 }
 
 .header-sync-status {
@@ -561,21 +564,17 @@ body.sidebar-resizing {
     padding: 10px 18px;
     height: auto;
     min-height: 76px;
-    grid-template-columns: 1fr;
-  }
-
-  .header-left {
-    grid-template-columns: auto minmax(220px, 1fr);
   }
 
   .header-filters {
-    grid-column: 1 / -1;
-    grid-template-columns: repeat(5, minmax(104px, 1fr));
+    order: 3;
+    width: 100%;
+    margin-top: 4px;
   }
 
   .header-right {
-    justify-content: space-between;
-    gap: 12px;
+    order: 2;
+    margin-left: auto;
   }
 
   .grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -695,7 +694,6 @@ body.sidebar-resizing {
 
   .header-filters {
     grid-column: auto;
-    grid-template-columns: 1fr;
   }
 
   .header-actions {
