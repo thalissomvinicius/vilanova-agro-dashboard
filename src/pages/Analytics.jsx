@@ -51,7 +51,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
           </div>
           <div>
             <span className="metric-label">Coletas recebidas</span>
-            <strong className="metric-value">{loading ? '--' : totals.total}</strong>
+            <strong className={`metric-value ${loading ? 'skeleton-text' : ''}`}>{loading ? '\u00A0' : totals.total}</strong>
           </div>
         </div>
 
@@ -61,7 +61,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
           </div>
           <div>
             <span className="metric-label">Taxa sincronizada</span>
-            <strong className="metric-value">{loading ? '--' : `${totals.syncRate}%`}</strong>
+            <strong className={`metric-value ${loading ? 'skeleton-text' : ''}`}>{loading ? '\u00A0' : `${totals.syncRate}%`}</strong>
           </div>
         </div>
 
@@ -71,7 +71,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
           </div>
           <div>
             <span className="metric-label">Perda corte</span>
-            <strong className="metric-value">{loading ? '--' : `${totals.perdaCorteRate}%`}</strong>
+            <strong className={`metric-value ${loading ? 'skeleton-text' : ''}`}>{loading ? '\u00A0' : `${totals.perdaCorteRate}%`}</strong>
           </div>
         </div>
 
@@ -81,7 +81,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
           </div>
           <div>
             <span className="metric-label">Registros com GPS</span>
-            <strong className="metric-value">{loading ? '--' : `${totals.gpsRate}%`}</strong>
+            <strong className={`metric-value ${loading ? 'skeleton-text' : ''}`}>{loading ? '\u00A0' : `${totals.gpsRate}%`}</strong>
           </div>
         </div>
       </div>
@@ -93,8 +93,8 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
           </div>
           <div>
             <span className="metric-label">Validados</span>
-            <strong className="metric-value">{loading ? '--' : `${totals.validationRate}%`}</strong>
-            <small className="metric-subtitle">{totals.aprovados} aprov. / {totals.reprovados} reprov.</small>
+            <strong className={`metric-value ${loading ? 'skeleton-text' : ''}`}>{loading ? '\u00A0' : `${totals.validationRate}%`}</strong>
+            <small className={`metric-subtitle ${loading ? 'skeleton-text skeleton-sm' : ''}`}>{loading ? '\u00A0' : `${totals.aprovados} aprov. / ${totals.reprovados} reprov.`}</small>
           </div>
         </div>
 
@@ -104,8 +104,8 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
           </div>
           <div>
             <span className="metric-label">Taxa de aprovacao</span>
-            <strong className="metric-value">{loading ? '--' : `${totals.approvalRate}%`}</strong>
-            <small className="metric-subtitle">{totals.pendentesValidacao} pendente(s) de analise</small>
+            <strong className={`metric-value ${loading ? 'skeleton-text' : ''}`}>{loading ? '\u00A0' : `${totals.approvalRate}%`}</strong>
+            <small className={`metric-subtitle ${loading ? 'skeleton-text skeleton-sm' : ''}`}>{loading ? '\u00A0' : `${totals.pendentesValidacao} pendente(s) de analise`}</small>
           </div>
         </div>
 
@@ -115,8 +115,8 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
           </div>
           <div>
             <span className="metric-label">Linhas avaliadas</span>
-            <strong className="metric-value">{loading ? '--' : totals.linhas}</strong>
-            <small className="metric-subtitle">{totals.gpsPoints} ponto(s) GPS capturados</small>
+            <strong className={`metric-value ${loading ? 'skeleton-text' : ''}`}>{loading ? '\u00A0' : totals.linhas}</strong>
+            <small className={`metric-subtitle ${loading ? 'skeleton-text skeleton-sm' : ''}`}>{loading ? '\u00A0' : `${totals.gpsPoints} ponto(s) GPS capturados`}</small>
           </div>
         </div>
 
@@ -126,7 +126,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
           </div>
           <div>
             <span className="metric-label">Plantas observadas</span>
-            <strong className="metric-value">{loading ? '--' : totals.plantasObservadas}</strong>
+            <strong className={`metric-value ${loading ? 'skeleton-text' : ''}`}>{loading ? '\u00A0' : totals.plantasObservadas}</strong>
             <small className="metric-subtitle">Base para perdas e carreamento</small>
           </div>
         </div>
@@ -145,11 +145,13 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
               type="bar"
               data={charts.byFarm}
               title="Coletas por fazenda"
+              loading={loading}
             />
             <CustomChart
               type="bar"
               data={charts.byEvaluator}
               title="Coletas por avaliador"
+              loading={loading}
             />
           </div>
 
@@ -158,12 +160,13 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
               type="line"
               data={charts.byDay}
               title="Evolucao diaria de coletas"
+              loading={loading}
             />
             <div className="card">
               <div className="card-header">
                 <div>
                   <h3 className="card-title">Distribuicao e qualidade</h3>
-                  <span className="card-subtitle">{source}</span>
+                  <span className={`card-subtitle ${loading ? 'skeleton-text skeleton-sm' : ''}`}>{loading ? '\u00A0' : source}</span>
                 </div>
               </div>
 
@@ -171,7 +174,9 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
                 {typeRows.map((row) => (
                   <div className="settings-row" key={row.label}>
                     <span>{row.label}</span>
-                    <strong style={{ color: row.color }}>{row.value}</strong>
+                    <strong style={{ color: loading ? 'transparent' : row.color }} className={loading ? 'skeleton-text' : ''}>
+                      {loading ? '\u00A0' : row.value}
+                    </strong>
                   </div>
                 ))}
               </div>
@@ -181,16 +186,18 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
                   <div className="quality-line" key={row.label}>
                     <div className="quality-line-top">
                       <span>{row.label}</span>
-                      <strong>{row.value}</strong>
+                      <strong className={loading ? 'skeleton-text' : ''}>{loading ? '\u00A0' : row.value}</strong>
                     </div>
-                    <div className="quality-track">
-                      <div
-                        className="quality-bar"
-                        style={{
-                          width: `${Math.max(4, (row.value / maxQuality) * 100)}%`,
-                          background: qualityColors[index],
-                        }}
-                      />
+                    <div className={`quality-track ${loading ? 'skeleton-chart' : ''}`} style={{ height: '8px', minHeight: '8px' }}>
+                      {!loading && (
+                        <div
+                          className="quality-bar"
+                          style={{
+                            width: `${Math.max(4, (row.value / maxQuality) * 100)}%`,
+                            background: qualityColors[index],
+                          }}
+                        />
+                      )}
                     </div>
                   </div>
                 ))}

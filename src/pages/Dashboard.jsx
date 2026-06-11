@@ -21,7 +21,7 @@ function formatNumber(value, digits = 0) {
   }).format(Number(value || 0));
 }
 
-function KpiCard({ title, value, footer, icon: Icon, tone = 'green' }) {
+function KpiCard({ title, value, footer, icon: Icon, tone = 'green', loading = false }) {
   return (
     <div className="card kpi-card">
       <div className="kpi-card-header">
@@ -32,24 +32,28 @@ function KpiCard({ title, value, footer, icon: Icon, tone = 'green' }) {
       </div>
       <div className="kpi-body">
         <div>
-          <span className="kpi-value">{value}</span>
+          <span className={`kpi-value ${loading ? 'skeleton-text' : ''}`}>
+            {loading ? '\u00A0' : value}
+          </span>
         </div>
       </div>
-      <span className="kpi-footer">{footer}</span>
+      <span className={`kpi-footer ${loading ? 'skeleton-text skeleton-sm' : ''}`}>
+        {loading ? '\u00A0' : footer}
+      </span>
     </div>
   );
 }
 
-function QualityLine({ label, value, max, color = 'var(--green-institutional)' }) {
+function QualityLine({ label, value, max, color = 'var(--green-institutional)', loading = false }) {
   const percent = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
   return (
     <div className="quality-line">
       <div className="quality-line-top">
         <span>{label}</span>
-        <strong>{formatNumber(value)}</strong>
+        <strong className={loading ? 'skeleton-text' : ''}>{loading ? '\u00A0' : formatNumber(value)}</strong>
       </div>
-      <div className="quality-track">
-        <div className="quality-bar" style={{ width: `${percent}%`, background: color }} />
+      <div className={`quality-track ${loading ? 'skeleton-chart' : ''}`} style={{ height: '8px', minHeight: '8px' }}>
+        {!loading && <div className="quality-bar" style={{ width: `${percent}%`, background: color }} />}
       </div>
     </div>
   );
@@ -95,6 +99,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
           footer={`${formatNumber(totals.linhas)} linhas avaliadas`}
           icon={ClipboardCheck}
           tone="green"
+          loading={loading}
         />
         <KpiCard
           title="CQO Corte"
@@ -102,6 +107,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
           footer={`${formatNumber(corteTotals.cachosObservados)} cachos observados`}
           icon={Tractor}
           tone="info"
+          loading={loading}
         />
         <KpiCard
           title="Carreamento"
@@ -109,6 +115,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
           footer={`${formatNumber(carreamentoTotals.cachoNaoCarreado)} cachos nao carreados`}
           icon={Rows3}
           tone="orange"
+          loading={loading}
         />
         <KpiCard
           title="Sync concluida"
@@ -116,6 +123,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
           footer={`${formatNumber(totals.sincronizados)} sincronizadas / ${formatNumber(totals.pendentes + totals.falhas)} pendentes`}
           icon={RefreshCcw}
           tone="green"
+          loading={loading}
         />
       </div>
 
@@ -126,6 +134,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
           footer={`${formatNumber(totals.gps)} registros com ponto`}
           icon={MapPin}
           tone="info"
+          loading={loading}
         />
         <KpiCard
           title="Plantas observadas"
@@ -133,6 +142,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
           footer="Base de calculo das perdas"
           icon={Sprout}
           tone="green"
+          loading={loading}
         />
         <KpiCard
           title="Perda no corte"
@@ -140,6 +150,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
           footer={`${formatNumber(totals.cachoEsquecido)} cachos esquecidos`}
           icon={AlertTriangle}
           tone="danger"
+          loading={loading}
         />
         <KpiCard
           title="Peso fruto solto"
@@ -147,6 +158,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
           footer="Soma dos pesos informados"
           icon={Scale}
           tone="orange"
+          loading={loading}
         />
       </div>
 
@@ -160,11 +172,11 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
             <FileSpreadsheet size={20} style={{ color: 'var(--orange-institutional)' }} />
           </div>
           <div className="quality-stack">
-            <QualityLine label="Cachos maduros" value={corteTotals.cachoMaduro} max={Math.max(corteTotals.cachosObservados, 1)} />
-            <QualityLine label="Cachos verdes" value={corteTotals.cachoVerde} max={Math.max(corteTotals.cachosObservados, 1)} color="var(--status-warning)" />
-            <QualityLine label="Cachos passados" value={corteTotals.cachoPassado} max={Math.max(corteTotals.cachosObservados, 1)} color="var(--status-danger)" />
-            <QualityLine label="Cachos esquecidos" value={corteTotals.cachoEsquecido} max={Math.max(corteTotals.cachosObservados, 1)} color="var(--orange-institutional)" />
-            <QualityLine label="Folha cortada indevida" value={corteTotals.folhaCortada} max={Math.max(corteTotals.plantasObservadas, 1)} color="var(--status-info)" />
+            <QualityLine loading={loading} label="Cachos maduros" value={corteTotals.cachoMaduro} max={Math.max(corteTotals.cachosObservados, 1)} />
+            <QualityLine loading={loading} label="Cachos verdes" value={corteTotals.cachoVerde} max={Math.max(corteTotals.cachosObservados, 1)} color="var(--status-warning)" />
+            <QualityLine loading={loading} label="Cachos passados" value={corteTotals.cachoPassado} max={Math.max(corteTotals.cachosObservados, 1)} color="var(--status-danger)" />
+            <QualityLine loading={loading} label="Cachos esquecidos" value={corteTotals.cachoEsquecido} max={Math.max(corteTotals.cachosObservados, 1)} color="var(--orange-institutional)" />
+            <QualityLine loading={loading} label="Folha cortada indevida" value={corteTotals.folhaCortada} max={Math.max(corteTotals.plantasObservadas, 1)} color="var(--status-info)" />
           </div>
         </div>
 
@@ -177,22 +189,22 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
             <CheckCircle2 size={20} style={{ color: 'var(--green-institutional)' }} />
           </div>
           <div className="quality-stack">
-            <QualityLine label="Cachos mal posicionados" value={carreamentoTotals.cachoMalPosicionado} max={Math.max(carreamentoTotals.plantasObservadas, 1)} />
-            <QualityLine label="Cachos nao carreados" value={carreamentoTotals.cachoNaoCarreado} max={Math.max(carreamentoTotals.plantasObservadas, 1)} color="var(--status-danger)" />
-            <QualityLine label="Plantas observadas" value={carreamentoTotals.plantasObservadas} max={Math.max(carreamentoTotals.plantasObservadas, 1)} color="var(--status-info)" />
-            <QualityLine label="Peso dos frutos" value={carreamentoTotals.pesoMedio} max={Math.max(carreamentoTotals.pesoMedio, 1)} color="var(--orange-institutional)" />
+            <QualityLine loading={loading} label="Cachos mal posicionados" value={carreamentoTotals.cachoMalPosicionado} max={Math.max(carreamentoTotals.plantasObservadas, 1)} />
+            <QualityLine loading={loading} label="Cachos nao carreados" value={carreamentoTotals.cachoNaoCarreado} max={Math.max(carreamentoTotals.plantasObservadas, 1)} color="var(--status-danger)" />
+            <QualityLine loading={loading} label="Plantas observadas" value={carreamentoTotals.plantasObservadas} max={Math.max(carreamentoTotals.plantasObservadas, 1)} color="var(--status-info)" />
+            <QualityLine loading={loading} label="Peso dos frutos" value={carreamentoTotals.pesoMedio} max={Math.max(carreamentoTotals.pesoMedio, 1)} color="var(--orange-institutional)" />
           </div>
         </div>
       </div>
 
       <div className="grid-container grid-cols-3">
-        <CustomChart type="bar" data={charts.byFarm} title="Coletas por fazenda" />
-        <CustomChart type="donut" data={charts.byForm} title="Participacao por formulario" />
-        <CustomChart type="bar" data={charts.byEvaluator} title="Coletas por avaliador" />
+        <CustomChart loading={loading} type="bar" data={charts.byFarm} title="Coletas por fazenda" />
+        <CustomChart loading={loading} type="donut" data={charts.byForm} title="Participacao por formulario" />
+        <CustomChart loading={loading} type="bar" data={charts.byEvaluator} title="Coletas por avaliador" />
       </div>
 
       <div className="grid-container grid-cols-7-5">
-        <CustomChart type="line" data={charts.byDay} title="Evolucao diaria das coletas" />
+        <CustomChart loading={loading} type="line" data={charts.byDay} title="Evolucao diaria das coletas" />
         <div className="card page-card">
           <div className="card-header table-card-header">
             <div>

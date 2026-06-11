@@ -1,13 +1,35 @@
 import React, { useState } from 'react';
 
-export default function CustomChart({ type = 'line', data = [], height = 220, title }) {
+export default function CustomChart({ type = 'line', data = [], height = 220, title, loading = false }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
+  if (loading) {
+    return (
+      <div className="card" style={{ height: 'auto' }}>
+        <div className="card-header" style={{ marginBottom: '10px' }}>
+          <h3 className="card-title" style={{ fontSize: '0.925rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-secondary)' }}>
+            <span className="skeleton-text" style={{ minWidth: '150px', height: '18px' }}>&nbsp;</span>
+          </h3>
+        </div>
+        <div style={{ position: 'relative', height }}>
+          <div className="skeleton-chart" />
+        </div>
+      </div>
+    );
+  }
+
   if (!data || data.length === 0) {
     return (
-      <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-        Nenhum dado disponivel
+      <div className="card" style={{ height: 'auto' }}>
+        <div className="card-header" style={{ marginBottom: '10px' }}>
+          <h3 className="card-title" style={{ fontSize: '0.925rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-secondary)' }}>
+            {title}
+          </h3>
+        </div>
+        <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+          Nenhum dado disponivel
+        </div>
       </div>
     );
   }
