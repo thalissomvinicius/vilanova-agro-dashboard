@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, BriefcaseBusiness, Search, UserCheck, Users } from 'lucide-react';
 import { loadHeadcountData, normalizeText } from '../utils/cqoData';
 
-function metric(label, value, Icon, tone = 'green') {
+function metric(label, value, Icon, tone = 'green', loading = false) {
   return (
     <div className="card collaborator-metric">
       <div className={`kpi-icon-wrapper kpi-icon-${tone}`}>
@@ -10,7 +10,7 @@ function metric(label, value, Icon, tone = 'green') {
       </div>
       <div>
         <span>{label}</span>
-        <strong>{value}</strong>
+        <strong className={loading ? 'skeleton-text' : ''}>{loading ? '\u00A0' : value}</strong>
       </div>
     </div>
   );
@@ -80,10 +80,10 @@ export default function Collaborators() {
       ) : null}
 
       <div className="grid-container grid-cols-4">
-        {metric('Total na base', loading ? '...' : rows.length, Users, 'info')}
-        {metric('Ativos', loading ? '...' : active, UserCheck, 'green')}
-        {metric('Departamentos', loading ? '...' : departments, BriefcaseBusiness, 'orange')}
-        {metric('Filtro atual', filtered.length, Search, 'info')}
+        {metric('Total na base', rows.length, Users, 'info', loading)}
+        {metric('Ativos', active, UserCheck, 'green', loading)}
+        {metric('Departamentos', departments, BriefcaseBusiness, 'orange', loading)}
+        {metric('Filtro atual', filtered.length, Search, 'info', loading)}
       </div>
 
       <div className="card page-card">
@@ -115,7 +115,18 @@ export default function Collaborators() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length ? filtered.slice(0, 500).map((row) => (
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={`skeleton-${i}`}>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                  </tr>
+                ))
+              ) : filtered.length ? filtered.slice(0, 500).map((row) => (
                 <tr key={row.matricula}>
                   <td style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{row.matricula}</td>
                   <td>{row.nome}</td>
@@ -127,7 +138,7 @@ export default function Collaborators() {
               )) : (
                 <tr>
                   <td colSpan="6" className="empty-table-cell">
-                    {loading ? 'Carregando colaboradores...' : 'Nenhum colaborador encontrado.'}
+                    Nenhum colaborador encontrado.
                   </td>
                 </tr>
               )}

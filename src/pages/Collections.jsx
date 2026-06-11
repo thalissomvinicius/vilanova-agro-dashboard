@@ -156,7 +156,37 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, date
               </tr>
             </thead>
             <tbody>
-              {filteredRecords.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={`skeleton-${i}`}>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td>
+                      <div className="stack-cell">
+                        <strong className="skeleton-text skeleton-sm" />
+                        <span className="skeleton-text skeleton-sm" />
+                      </div>
+                    </td>
+                    <td><span className="skeleton-text" /></td>
+                    <td>
+                      <div className="stack-cell">
+                        <strong className="skeleton-text skeleton-sm" />
+                        <span className="skeleton-text skeleton-sm" />
+                      </div>
+                    </td>
+                    <td>
+                      <div className="stack-cell">
+                        <strong className="skeleton-text skeleton-sm" />
+                        <span className="skeleton-text skeleton-sm" />
+                      </div>
+                    </td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                  </tr>
+                ))
+              ) : filteredRecords.length === 0 ? (
                 <tr>
                   <td colSpan="10" className="empty-table-cell">
                     Nenhuma coleta encontrada para os filtros atuais.

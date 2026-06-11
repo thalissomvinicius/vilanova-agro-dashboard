@@ -16,7 +16,7 @@ function formatNumber(value, digits = 0) {
   }).format(Number(value || 0));
 }
 
-function InventoryMetric({ title, value, footer, icon: Icon, tone = 'green' }) {
+function InventoryMetric({ title, value, footer, icon: Icon, tone = 'green', loading = false }) {
   return (
     <div className="card kpi-card">
       <div className="kpi-card-header">
@@ -26,9 +26,13 @@ function InventoryMetric({ title, value, footer, icon: Icon, tone = 'green' }) {
         </div>
       </div>
       <div className="kpi-body">
-        <span className="kpi-value">{value}</span>
+        <span className={`kpi-value ${loading ? 'skeleton-text' : ''}`}>
+          {loading ? '\u00A0' : value}
+        </span>
       </div>
-      <span className="kpi-footer">{footer}</span>
+      <span className={`kpi-footer ${loading ? 'skeleton-text skeleton-sm' : ''}`}>
+        {loading ? '\u00A0' : footer}
+      </span>
     </div>
   );
 }
@@ -107,6 +111,7 @@ export default function Inventory({ farmFilter, searchTerm }) {
           footer={`${formatNumber(totals.blocks.length)} blocos no filtro`}
           icon={Rows3}
           tone="green"
+          loading={loading}
         />
         <InventoryMetric
           title="Area inventariada"
@@ -114,6 +119,7 @@ export default function Inventory({ farmFilter, searchTerm }) {
           footer={`${formatNumber(totals.years.length)} ano(s) de plantio`}
           icon={MapPin}
           tone="info"
+          loading={loading}
         />
         <InventoryMetric
           title="Plantas"
@@ -121,6 +127,7 @@ export default function Inventory({ farmFilter, searchTerm }) {
           footer={`${formatNumber(totals.averagePlantsPerHa, 1)} plantas/ha media`}
           icon={Sprout}
           tone="green"
+          loading={loading}
         />
         <InventoryMetric
           title="Cultivares"
@@ -128,12 +135,13 @@ export default function Inventory({ farmFilter, searchTerm }) {
           footer={`${formatNumber(totals.corrected)} linhas corrigidas por area x densidade`}
           icon={FileSpreadsheet}
           tone="orange"
+          loading={loading}
         />
       </div>
 
       <div className="grid-container grid-cols-2">
-        <CustomChart type="bar" data={totals.byFarm} title="Parcelas por fazenda" />
-        <CustomChart type="bar" data={totals.byYear} title="Parcelas por ano de plantio" />
+        <CustomChart loading={loading} type="bar" data={totals.byFarm} title="Parcelas por fazenda" />
+        <CustomChart loading={loading} type="bar" data={totals.byYear} title="Parcelas por ano de plantio" />
       </div>
 
       <div className="card page-card">
@@ -160,7 +168,31 @@ export default function Inventory({ farmFilter, searchTerm }) {
               </tr>
             </thead>
             <tbody>
-              {records.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={`skeleton-${i}`}>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td>
+                      <div className="stack-cell">
+                        <strong className="skeleton-text skeleton-sm" />
+                        <span className="skeleton-text skeleton-sm" />
+                      </div>
+                    </td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
+                    <td>
+                      <div className="stack-cell">
+                        <strong className="skeleton-text skeleton-sm" />
+                        <span className="skeleton-text skeleton-sm" />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : records.length === 0 ? (
                 <tr>
                   <td colSpan="9" className="empty-table-cell">
                     Nenhuma parcela encontrada para os filtros atuais.

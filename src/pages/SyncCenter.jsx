@@ -9,7 +9,7 @@ function formatDateTime(value) {
   return date.toLocaleString('pt-BR');
 }
 
-function SyncMetric({ title, value, subtitle, icon: Icon, tone = 'green' }) {
+function SyncMetric({ title, value, subtitle, icon: Icon, tone = 'green', loading = false }) {
   return (
     <div className="card metric-card">
       <div className={`kpi-icon-wrapper kpi-icon-${tone}`}>
@@ -17,9 +17,9 @@ function SyncMetric({ title, value, subtitle, icon: Icon, tone = 'green' }) {
       </div>
       <div>
         <span className="metric-label">{title}</span>
-        <strong className="metric-value">{value}</strong>
+        <strong className={`metric-value ${loading ? 'skeleton-text' : ''}`}>{loading ? '\u00A0' : value}</strong>
         {subtitle ? (
-          <span className="metric-subtitle">{subtitle}</span>
+          <span className={`metric-subtitle ${loading ? 'skeleton-text skeleton-sm' : ''}`}>{loading ? '\u00A0' : subtitle}</span>
         ) : null}
       </div>
     </div>
@@ -67,6 +67,7 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
           subtitle="Leitura direta do Supabase"
           icon={Server}
           tone="info"
+          loading={loading}
         />
         <SyncMetric
           title="Coletas recebidas"
@@ -74,6 +75,7 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
           subtitle="Total no banco online"
           icon={Database}
           tone="green"
+          loading={loading}
         />
         <SyncMetric
           title="Sincronizadas"
@@ -81,6 +83,7 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
           subtitle={`${pending} pendentes / ${failed} falhas`}
           icon={CheckCircle2}
           tone="green"
+          loading={loading}
         />
         <SyncMetric
           title="Ultima coleta"
@@ -88,6 +91,7 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
           subtitle="Baseado em criado_em"
           icon={Clock}
           tone="orange"
+          loading={loading}
         />
       </div>
 
@@ -99,20 +103,34 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
           </div>
         </div>
         <div className="compact-list">
-          {records.slice(0, 10).map((record) => (
-            <div className="compact-row" key={record.id}>
-              <div>
-                <strong>{record.form}</strong>
-                <span>{record.farm} / Parcela {record.parcel}</span>
+          {loading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div className="compact-row" key={`skeleton-${i}`}>
+                <div>
+                  <strong className="skeleton-text skeleton-sm" />
+                  <span className="skeleton-text skeleton-sm" />
+                </div>
+                <div>
+                  <strong className="skeleton-text skeleton-sm" />
+                  <span className="skeleton-text skeleton-sm" />
+                </div>
               </div>
-              <div>
-                <strong>{record.status}</strong>
-                <span>{record.date} {record.time}</span>
-              </div>
-            </div>
-          ))}
-          {!records.length && (
+            ))
+          ) : records.length === 0 ? (
             <div className="empty-panel">Nenhuma coleta real recebida no Supabase ainda.</div>
+          ) : (
+            records.slice(0, 10).map((record) => (
+              <div className="compact-row" key={record.id}>
+                <div>
+                  <strong>{record.form}</strong>
+                  <span>{record.farm} / Parcela {record.parcel}</span>
+                </div>
+                <div>
+                  <strong>{record.status}</strong>
+                  <span>{record.date} {record.time}</span>
+                </div>
+              </div>
+            ))
           )}
         </div>
       </div>
