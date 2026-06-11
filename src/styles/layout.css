@@ -294,12 +294,13 @@ body.sidebar-resizing {
 
 /* Header Styling */
 .app-header {
-  height: 76px;
+  min-height: 76px;
   background-color: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
-  padding: 0 24px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 12px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: center;
   gap: 16px;
   box-shadow: var(--shadow-sm);
@@ -309,10 +310,11 @@ body.sidebar-resizing {
 }
 
 .header-left {
-  display: grid;
-  grid-template-columns: auto minmax(210px, 280px) minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 16px;
+  flex: 1;
   min-width: 0;
 }
 
@@ -325,8 +327,9 @@ body.sidebar-resizing {
 
 .header-search {
   position: relative;
-  width: 100%;
-  min-width: 0;
+  min-width: 210px;
+  max-width: 280px;
+  flex: 1;
 }
 
 .header-search input {
@@ -361,17 +364,18 @@ body.sidebar-resizing {
 }
 
 .header-filters {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(112px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  flex: 2;
   min-width: 0;
 }
 
 .header-filter-select,
 .header-date-input {
-  width: 100%;
-  min-width: 0;
+  flex: 1;
+  min-width: 110px;
   height: 40px;
   padding: 0 32px 0 12px;
   border-radius: var(--border-radius-md);
@@ -407,6 +411,7 @@ body.sidebar-resizing {
 
 .header-right {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 14px;

@@ -100,8 +100,9 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, date
   };
 
   return (
-    <div className="fade-in page-shell">
-      <div className="dashboard-page-header">
+    <>
+      <div className="fade-in page-shell">
+        <div className="dashboard-page-header">
         <div>
           <span className="page-eyebrow">Auditoria de dados</span>
           <h2>Central de Coletas CQO</h2>
@@ -218,6 +219,8 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, date
             </tbody>
           </table>
         </div>
+      </div>
+
       </div>
 
       {selectedRecord && (
@@ -374,6 +377,6 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, date
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
