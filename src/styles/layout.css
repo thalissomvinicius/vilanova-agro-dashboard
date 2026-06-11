@@ -413,6 +413,7 @@ body.sidebar-resizing {
   justify-content: flex-end;
   gap: 14px;
   flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .header-sync-status {
