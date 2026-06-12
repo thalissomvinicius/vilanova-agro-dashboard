@@ -25,6 +25,26 @@ const carreamentoColumns = [
   'peso_medio',
 ];
 
+const columnLabels = {
+  linha: 'Linha',
+  numero_plantas_linha: 'Plantas',
+  numero_plantas_observadas: 'Plantas Obs',
+  numero_cachos_observados_papel: 'Cachos Obs',
+  cacho_esquecido_ciclo: 'Esquecido',
+  cacho_verde: 'Verde',
+  cacho_maduro: 'Maduro',
+  cacho_passado: 'Passado',
+  folha_mamando: 'F. Mamando',
+  cacho_talo_comprido: 'Talo Comp.',
+  folha_cortada_indevida: 'F. Cortada',
+  cacho_mal_posicionado: 'Mal Pos.',
+  cacho_estrela: 'Estrela',
+  cacho_brocado: 'Brocado',
+  cacho_avermelhado: 'Avermelhado',
+  cacho_nao_carreado: 'Não Carr.',
+  peso_medio: 'Peso (kg)',
+};
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -76,8 +96,8 @@ function htmlFor(record) {
   const columns = isCarreamento ? carreamentoColumns : corteColumns;
   const key = isCarreamento ? 'linhas_carreamento' : 'linhas_corte';
   const title = isCarreamento
-    ? 'Controle de Qualidade Agricola: Perdas/ Frutos Soltos e Carreamento'
-    : 'Controle de Qualidade Agricola: Corte';
+    ? 'Controle de Qualidade Agrícola: Perdas / Frutos Soltos e Carreamento'
+    : 'Controle de Qualidade Agrícola: Corte';
 
   return `
     <html>
@@ -86,33 +106,39 @@ function htmlFor(record) {
         <style>
           @page{size:A4 ${isCarreamento ? 'portrait' : 'landscape'};margin:8mm}
           body{font-family:Arial,sans-serif;font-size:10px;color:#000}
-          .page{border:2px solid #000}
+          .page{border:2px solid #000;padding:5px}
           .title{text-align:center;font-size:14px;font-weight:bold;padding:6px}
-          .info{display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid #000;padding:5px;font-weight:bold}
-          .line{border-bottom:1px solid #000;min-width:110px;display:inline-block}
-          table{width:100%;border-collapse:collapse;table-layout:fixed}
-          th,td{border:1px solid #000;text-align:center;padding:3px;word-break:break-word}
-          th{font-weight:bold;background:#efefef}.total{text-align:left;font-weight:bold}
-          .footer td{text-align:left;height:34px;vertical-align:top}
+          .info-table{width:100%;border-collapse:collapse;margin:10px 0;table-layout:auto;}
+          .info-table td{border:none;text-align:left;padding:4px;font-weight:bold;font-size:10px;}
+          .line{border-bottom:1px solid #000;min-width:110px;display:inline-block;padding-bottom:2px}
+          table{width:100%;border-collapse:collapse;table-layout:auto}
+          th,td{border:1px solid #000;text-align:center;padding:5px 3px;word-break:break-word}
+          th{font-weight:bold;background:#efefef;font-size:9px}
+          .total{text-align:left;font-weight:bold}
+          .footer td{text-align:left;height:34px;vertical-align:top;padding:8px}
         </style>
       </head>
       <body>
         <div class="page">
           <div class="title">${title}</div>
-          <div class="info">
-            <span>Fazenda: <span class="line">${escapeHtml(values.nome_fazenda)}</span></span>
-            <span>Parcela: <span class="line">${escapeHtml(values.parcela)}</span></span>
-            <span>Data: ${escapeHtml(formatDate(values.data_avaliacao))}</span>
-            <span>Ciclo: <span class="line">${escapeHtml(values.ciclo_mes)}</span></span>
-            <span>Avaliador: <span class="line">${escapeHtml(values.matricula_avaliador)}</span></span>
-            <span>Fiscal: <span class="line">${escapeHtml(values.fiscal_resp)}</span></span>
-          </div>
+          <table class="info-table">
+            <tr>
+              <td>Fazenda: <span class="line">${escapeHtml(values.nome_fazenda)}</span></td>
+              <td>Parcela: <span class="line">${escapeHtml(values.parcela)}</span></td>
+              <td>Data: <span class="line">${escapeHtml(formatDate(values.data_avaliacao))}</span></td>
+            </tr>
+            <tr>
+              <td>Ciclo: <span class="line">${escapeHtml(values.ciclo_mes)}</span></td>
+              <td>Avaliador: <span class="line">${escapeHtml(values.matricula_avaliador)}</span></td>
+              <td>Fiscal: <span class="line">${escapeHtml(values.fiscal_resp)}</span></td>
+            </tr>
+          </table>
           <table>
-            <thead><tr>${columns.map((column) => `<th>${escapeHtml(column.replaceAll('_', ' '))}</th>`).join('')}</tr></thead>
+            <thead><tr>${columns.map((column) => `<th>${escapeHtml(columnLabels[column] || column.replaceAll('_', ' '))}</th>`).join('')}</tr></thead>
             <tbody>${tableRows(values, key, columns, isCarreamento ? 11 : 10)}</tbody>
             <tfoot>
               <tr>${totals(values, key, columns)}</tr>
-              <tr class="footer"><td colspan="${columns.length}">Observacao: ${escapeHtml(values.observacao)}</td></tr>
+              <tr class="footer"><td colspan="${columns.length}">Observação: ${escapeHtml(values.observacao)}</td></tr>
             </tfoot>
           </table>
         </div>
@@ -138,7 +164,7 @@ export function exportDashboardRecord(record, format) {
   const name = `${record.type}-${record.id}`;
 
   if (format === 'excel') {
-    downloadWebFile(html, `${name}.xls`, 'application/vnd.ms-excel;charset=utf-8');
+    downloadWebFile('\ufeff' + html, `${name}.xls`, 'application/vnd.ms-excel;charset=utf-8');
     return;
   }
 
