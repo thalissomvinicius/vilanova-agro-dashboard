@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Bell, LogOut, Moon, RefreshCw, Search, Sun } from 'lucide-react';
 import { CQO_AREAS, CQO_FARMS } from '../utils/cqoData';
 
+import { useCqoData } from '../utils/cqoData';
+
 export default function Header({
   farmFilter,
   setFarmFilter,
@@ -11,6 +13,8 @@ export default function Header({
   setPeriodFilter,
   cycleFilter,
   setCycleFilter,
+  evaluatorFilter,
+  setEvaluatorFilter,
   dateFrom,
   setDateFrom,
   dateTo,
@@ -26,6 +30,17 @@ export default function Header({
   onLogout,
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
+  const { records } = useCqoData();
+
+  const evaluators = React.useMemo(() => {
+    const evals = new Set();
+    records.forEach(r => {
+      if (r.evaluator && r.evaluator !== 'Sem avaliador') {
+        evals.add(r.evaluator);
+      }
+    });
+    return Array.from(evals).sort();
+  }, [records]);
 
   const notifications = [
     { id: 1, text: 'Dashboard preparado para ler coletas CQO do Supabase.', time: 'Agora' },
@@ -86,6 +101,18 @@ export default function Header({
           <option value="4">Ciclo 4</option>
           <option value="5">Ciclo 5</option>
           <option value="6">Ciclo 6</option>
+        </select>
+
+        <select
+          className="header-filter-select"
+          value={evaluatorFilter}
+          onChange={(event) => setEvaluatorFilter(event.target.value)}
+          title="Selecionar avaliador"
+        >
+          <option value="all">Todos os avaliadores</option>
+          {evaluators.map((ev) => (
+            <option key={ev} value={ev}>{ev}</option>
+          ))}
         </select>
 
         <select

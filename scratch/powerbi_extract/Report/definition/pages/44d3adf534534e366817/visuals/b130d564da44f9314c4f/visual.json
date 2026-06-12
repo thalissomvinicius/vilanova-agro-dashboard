@@ -1,0 +1,190 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "name": "b130d564da44f9314c4f",
+  "position": {
+    "x": 15.555555555555555,
+    "y": 206.66666666666666,
+    "z": 0,
+    "height": 135.55555555555554,
+    "width": 1067.7777777777778,
+    "tabOrder": 0
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dimFazendas"
+                    }
+                  },
+                  "Property": "nomeFazenda"
+                }
+              },
+              "queryRef": "dimFazendas.nomeFazenda",
+              "nativeQueryRef": "nomeFazenda"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "facDig_corte"
+                    }
+                  },
+                  "Property": "Perdas corte (t)"
+                }
+              },
+              "queryRef": "facDig_corte.t perdidas corte",
+              "nativeQueryRef": "t perdidas corte"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "facDig_carreamento"
+                    }
+                  },
+                  "Property": "Perdas Carreamento (t)"
+                }
+              },
+              "queryRef": "facDig_carreamento.t perdidas carreamento",
+              "nativeQueryRef": "t perdidas carreamento"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "facBalança"
+                    }
+                  },
+                  "Property": "peso_ciclo2"
+                }
+              },
+              "queryRef": "facBalança.peso_ciclo2",
+              "nativeQueryRef": "peso_ciclo2"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "facBalança"
+                    }
+                  },
+                  "Property": "peso_ciclo1"
+                }
+              },
+              "queryRef": "facBalança.peso_ciclo1",
+              "nativeQueryRef": "peso_ciclo1"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "facDig_carreamento"
+                    }
+                  },
+                  "Property": "perdas CNC ciclo1"
+                }
+              },
+              "queryRef": "facDig_carreamento.perdas CNC ciclo1",
+              "nativeQueryRef": "perdas CNC ciclo1"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "facDig_carreamento"
+                    }
+                  },
+                  "Property": "perdas CNC ciclo2"
+                }
+              },
+              "queryRef": "facDig_carreamento.perdas CNC ciclo2",
+              "nativeQueryRef": "perdas CNC ciclo2"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "facDig_corte"
+                    }
+                  },
+                  "Property": "perdas CE ciclo1"
+                }
+              },
+              "queryRef": "facDig_corte.perdas CE ciclo1",
+              "nativeQueryRef": "perdas CE ciclo1"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "facDig_corte"
+                    }
+                  },
+                  "Property": "perdas CE ciclo2"
+                }
+              },
+              "queryRef": "facDig_corte.perdas CE ciclo2",
+              "nativeQueryRef": "perdas CE ciclo2"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "facDig_corte"
+                  }
+                },
+                "Property": "Perdas corte (t)"
+              }
+            },
+            "direction": "Descending"
+          }
+        ]
+      }
+    },
+    "objects": {
+      "columnWidth": [
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "128D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "dimFazendas.nomeFazenda"
+          }
+        }
+      ],
+      "columnHeaders": [
+        {
+          "properties": {}
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

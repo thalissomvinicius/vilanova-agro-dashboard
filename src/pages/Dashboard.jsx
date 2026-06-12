@@ -59,12 +59,13 @@ function QualityLine({ label, value, max, color = 'var(--green-institutional)', 
   );
 }
 
-export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo, searchTerm }) {
+export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, dateFrom, dateTo, searchTerm }) {
   const { loading, records, totals, charts, source, error } = useCqoDashboard({
     farmFilter,
     areaFilter,
     periodFilter,
     cycleFilter,
+    evaluatorFilter,
     dateFrom,
     dateTo,
     searchTerm,

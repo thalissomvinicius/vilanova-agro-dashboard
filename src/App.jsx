@@ -37,6 +37,7 @@ export default function App() {
   const [areaFilter, setAreaFilter] = useState('all');
   const [periodFilter, setPeriodFilter] = useState('today');
   const [cycleFilter, setCycleFilter] = useState('all');
+  const [evaluatorFilter, setEvaluatorFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -123,6 +124,7 @@ export default function App() {
             areaFilter={areaFilter}
             periodFilter={periodFilter}
             cycleFilter={cycleFilter}
+            evaluatorFilter={evaluatorFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
             searchTerm={searchTerm}
@@ -137,6 +139,7 @@ export default function App() {
             areaFilter={areaFilter}
             periodFilter={periodFilter}
             cycleFilter={cycleFilter}
+            evaluatorFilter={evaluatorFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
             searchTerm={searchTerm}
@@ -156,6 +159,7 @@ export default function App() {
             areaFilter={areaFilter}
             periodFilter={periodFilter}
             cycleFilter={cycleFilter}
+            evaluatorFilter={evaluatorFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
           />
@@ -198,6 +202,7 @@ export default function App() {
                 areaFilter={areaFilter}
                 periodFilter={periodFilter}
                 cycleFilter={cycleFilter}
+                evaluatorFilter={evaluatorFilter}
                 dateFrom={dateFrom}
                 dateTo={dateTo}
               />
@@ -258,6 +263,8 @@ export default function App() {
           setPeriodFilter={setPeriodFilter}
           cycleFilter={cycleFilter}
           setCycleFilter={setCycleFilter}
+          evaluatorFilter={evaluatorFilter}
+          setEvaluatorFilter={setEvaluatorFilter}
           dateFrom={dateFrom}
           setDateFrom={setDateFrom}
           dateTo={dateTo}

@@ -10,7 +10,7 @@ function getSkipLabel(idx, total) {
   return !indices.includes(idx);
 }
 
-export default function CustomChart({ type = 'line', data = [], height = 280, title, loading = false }) {
+export default function CustomChart({ type = 'line', data = [], height = 280, title, loading = false, targetValue = null, targetLabel = 'Meta' }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
@@ -159,6 +159,31 @@ export default function CustomChart({ type = 'line', data = [], height = 280, ti
               textAnchor="middle"
             >
               {data[hoveredIdx].label}: {data[hoveredIdx].value}
+            </text>
+          </g>
+        )}
+
+        {/* Target Line */}
+        {targetValue !== null && (
+          <g>
+            <line
+              x1={padding.left}
+              y1={padding.top + graphHeight - (targetValue / maxVal) * graphHeight}
+              x2={width - padding.right}
+              y2={padding.top + graphHeight - (targetValue / maxVal) * graphHeight}
+              stroke="var(--status-danger)"
+              strokeWidth="1.5"
+              strokeDasharray="4 4"
+            />
+            <text
+              x={width - padding.right - 5}
+              y={padding.top + graphHeight - (targetValue / maxVal) * graphHeight - 5}
+              textAnchor="end"
+              fill="var(--status-danger)"
+              fontSize="9"
+              fontWeight="bold"
+            >
+              {targetLabel}: {targetValue}
             </text>
           </g>
         )}
@@ -313,6 +338,31 @@ export default function CustomChart({ type = 'line', data = [], height = 280, ti
               textAnchor="middle"
             >
               {data[hoveredIdx].label}: {data[hoveredIdx].value}
+            </text>
+          </g>
+        )}
+
+        {/* Target Line */}
+        {targetValue !== null && (
+          <g>
+            <line
+              x1={padding.left}
+              y1={padding.top + graphHeight - (targetValue / maxVal) * graphHeight}
+              x2={width - padding.right}
+              y2={padding.top + graphHeight - (targetValue / maxVal) * graphHeight}
+              stroke="var(--status-danger)"
+              strokeWidth="1.5"
+              strokeDasharray="4 4"
+            />
+            <text
+              x={width - padding.right - 5}
+              y={padding.top + graphHeight - (targetValue / maxVal) * graphHeight - 5}
+              textAnchor="end"
+              fill="var(--status-danger)"
+              fontSize="9"
+              fontWeight="bold"
+            >
+              {targetLabel}: {targetValue}
             </text>
           </g>
         )}

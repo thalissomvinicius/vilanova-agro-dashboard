@@ -240,11 +240,11 @@ function EmptyState({ areaFilter }) {
 }
 
 // ─── Analytics Page ────────────────────────────────────────────────────────────
-export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo }) {
+export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, dateFrom, dateTo }) {
   const { loading, error, records: allRecords, source } = useCqoData();
   const [activeTab, setActiveTab] = useState('geral');
 
-  const filtered = filterRecords(allRecords, { farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo });
+  const filtered = filterRecords(allRecords, { farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, dateFrom, dateTo });
   const corteRecords = filtered.filter((r) => r.type === 'corte');
   const carreamentoRecords = filtered.filter((r) => r.type === 'carreamento');
 
@@ -415,8 +415,14 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
           </div>
 
           {/* Charts */}
-          <CustomChart loading={loading} type="line" data={chartsGeral.byDay} title="Evolução diária da Nota CQO" />
-          <div className="grid-container grid-cols-2">
+          {/* Charts */}
+          <div className="grid-container grid-cols-2" style={{ marginBottom: '16px' }}>
+            <CustomChart loading={loading} type="line" data={chartsGeral.byWeek} title="Evolução Semanal da Nota CQO" />
+            <CustomChart loading={loading} type="line" data={chartsGeral.ytdLoss} title="Evolução Acumulada de Perdas (YTD Toneladas)" />
+          </div>
+
+          <div className="grid-container grid-cols-3">
+            <CustomChart loading={loading} type="bar" data={chartsGeral.byCycle} title="Comparativo por Ciclo (Nota CQO)" />
             <CustomChart loading={loading} type="bar" data={chartsGeral.byFarm} title="Nota CQO por Fazenda" />
             <CustomChart loading={loading} type="bar" data={chartsGeral.byEvaluator} title="Nota CQO por Avaliador" />
           </div>
@@ -575,7 +581,17 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
           </div>
 
           {/* Charts */}
-          <CustomChart loading={loading} type="line" data={chartsCorte.byDay} title="Evolução diária — Nota CQO Corte" />
+          <div className="grid-container grid-cols-2" style={{ marginBottom: '16px' }}>
+            <CustomChart loading={loading} type="line" data={chartsCorte.byDay} title="Evolução diária — Nota CQO Corte" />
+            <CustomChart
+              loading={loading}
+              type="bar"
+              data={chartsCorte.lossRateByWeek}
+              title="Perda no Corte por Semana (%)"
+              targetValue={2.0}
+              targetLabel="Limite Tolerável"
+            />
+          </div>
           <div className="grid-container grid-cols-2">
             <CustomChart loading={loading} type="bar" data={chartsCorte.byFarm} title="Nota CQO Corte por Fazenda" />
             <CustomChart loading={loading} type="bar" data={chartsCorte.byEvaluator} title="Nota CQO Corte por Avaliador" />

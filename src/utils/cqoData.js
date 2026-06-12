@@ -586,12 +586,13 @@ function isWithinPeriod(record, periodFilter, dateFrom = '', dateTo = '') {
   return true;
 }
 
-export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all', periodFilter = 'all', cycleFilter = 'all', dateFrom = '', dateTo = '', searchTerm = '', statusFilter = 'all' } = {}) {
+export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all', periodFilter = 'all', cycleFilter = 'all', evaluatorFilter = 'all', dateFrom = '', dateTo = '', searchTerm = '', statusFilter = 'all' } = {}) {
   const search = normalizeText(searchTerm);
   return records.filter((record) => {
     const farmOk = farmFilter === 'all' || record.farmId === farmFilter;
     const areaOk = areaFilter === 'all' || record.type === areaFilter;
     const cycleOk = cycleFilter === 'all' || String(record.cycle) === String(cycleFilter);
+    const evaluatorOk = evaluatorFilter === 'all' || record.evaluator === evaluatorFilter;
     const statusOk = statusFilter === 'all' || normalizeText(record.status) === normalizeText(statusFilter);
     const periodOk = isWithinPeriod(record, periodFilter, dateFrom, dateTo);
     const haystack = normalizeText([
@@ -605,7 +606,7 @@ export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all',
       record.fiscal,
     ].join(' '));
     const searchOk = !search || haystack.includes(search);
-    return farmOk && areaOk && cycleOk && statusOk && periodOk && searchOk;
+    return farmOk && areaOk && cycleOk && evaluatorOk && statusOk && periodOk && searchOk;
   });
 }
 
@@ -737,6 +738,17 @@ export function buildCharts(records) {
   const byFarm = new Map();
   const byEvaluator = new Map();
   const byDay = new Map();
+  const byWeek = new Map();
+  const byCycle = new Map();
+
+  // Helper to get week number
+  const getWeekNumber = (d) => {
+    const date = new Date(d);
+    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+    return `Sem ${weekNo}`;
+  };
 
   records.forEach((record) => {
     // Farm
@@ -751,22 +763,62 @@ export function buildCharts(records) {
     // Day
     if (!byDay.has(record.date)) byDay.set(record.date, []);
     byDay.get(record.date).push(record);
+
+    // Week
+    const week = getWeekNumber(record.createdAt || record.date);
+    if (!byWeek.has(week)) byWeek.set(week, []);
+    byWeek.get(week).push(record);
+
+    // Cycle
+    if (!byCycle.has(String(record.cycle))) byCycle.set(String(record.cycle), []);
+    byCycle.get(String(record.cycle)).push(record);
   });
 
   const getScore = (recs) => aggregateRecords(recs).generalScore;
+  const getLossTon = (recs) => aggregateRecords(recs).lostFrutosTon;
 
   const mapToChart = (map, fill = '#D98C10') => Array.from(map.entries())
     .map(([label, recs]) => ({ label: label.length > 18 ? `${label.slice(0, 18)}...` : label, value: getScore(recs), fill }))
     .sort((a, b) => b.value - a.value);
 
+  const mapToBarChartByLabel = (map, fill = '#D98C10') => Array.from(map.entries())
+    .sort(([a], [b]) => String(a).localeCompare(String(b)))
+    .map(([label, recs]) => ({ label, value: getScore(recs), fill }));
+
   const byDayData = Array.from(byDay.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([label, recs]) => ({ label, value: getScore(recs) }));
+
+  const byWeekData = Array.from(byWeek.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([label, recs]) => ({ label, value: getScore(recs) }));
+
+  // YTD Calculation (Losses accumulated)
+  let accumulatedLoss = 0;
+  const ytdLossData = Array.from(byWeek.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([label, recs]) => {
+      accumulatedLoss += getLossTon(recs);
+      return { label, value: Number(accumulatedLoss.toFixed(2)) };
+    });
+
+  const getLossRate = (recs) => {
+    const totals = aggregateRecords(recs);
+    return Number(totals.perdaCorteRate);
+  };
+
+  const lossRateByWeekData = Array.from(byWeek.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([label, recs]) => ({ label, value: getLossRate(recs) }));
 
   return {
     byFarm: mapToChart(byFarm, '#234F2A'),
     byEvaluator: mapToChart(byEvaluator, '#F2B544').slice(0, 10),
     byDay: byDayData,
+    byWeek: byWeekData,
+    byCycle: mapToBarChartByLabel(byCycle, '#F59E0B'),
+    ytdLoss: ytdLossData,
+    lossRateByWeek: lossRateByWeekData,
   };
 }
 

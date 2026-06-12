@@ -1,0 +1,155 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "name": "8c9ab0e1d14f390c5647",
+  "position": {
+    "x": 230.32745591939545,
+    "y": 336.42317380352642,
+    "z": 5000,
+    "height": 361.8136020151133,
+    "width": 603.9294710327456,
+    "tabOrder": 5000
+  },
+  "visual": {
+    "visualType": "pivotTable",
+    "query": {
+      "queryState": {
+        "Rows": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dimCalendar"
+                    }
+                  },
+                  "Property": "Mês"
+                }
+              },
+              "queryRef": "dimCalendar.Mês",
+              "nativeQueryRef": "Soma de Mês",
+              "active": true
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dimCalendar"
+                    }
+                  },
+                  "Property": "Semana do Mês"
+                }
+              },
+              "queryRef": "dimCalendar.Semana do Mês",
+              "nativeQueryRef": "Soma de Semana do Mês",
+              "active": true
+            }
+          ]
+        },
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Aggregation": {
+                  "Expression": {
+                    "Column": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "Meta_Corte_Carreamento"
+                        }
+                      },
+                      "Property": "Corte"
+                    }
+                  },
+                  "Function": 3
+                }
+              },
+              "queryRef": "Avg(Meta_Corte_Carreamento.Corte)",
+              "nativeQueryRef": "Mínimo de Corte"
+            },
+            {
+              "field": {
+                "Aggregation": {
+                  "Expression": {
+                    "Column": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "Meta_Corte_Carreamento"
+                        }
+                      },
+                      "Property": "Carreamento"
+                    }
+                  },
+                  "Function": 3
+                }
+              },
+              "queryRef": "Sum(Meta_Corte_Carreamento.Carreamento)",
+              "nativeQueryRef": "Mínimo de Carreamento"
+            }
+          ]
+        }
+      }
+    },
+    "expansionStates": [
+      {
+        "roles": [
+          "Rows"
+        ],
+        "levels": [
+          {
+            "queryRefs": [
+              "dimCalendar.Mês"
+            ],
+            "isCollapsed": true,
+            "identityKeys": [
+              {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dimCalendar"
+                    }
+                  },
+                  "Property": "Mês"
+                }
+              }
+            ],
+            "isPinned": true
+          },
+          {
+            "queryRefs": [
+              "dimCalendar.Semana do Mês"
+            ],
+            "isCollapsed": true,
+            "isPinned": true
+          }
+        ],
+        "root": {
+          "children": [
+            {
+              "identityValues": [
+                {
+                  "Literal": {
+                    "Value": "2L"
+                  }
+                }
+              ],
+              "isToggled": true
+            },
+            {
+              "identityValues": [
+                {
+                  "Literal": {
+                    "Value": "1L"
+                  }
+                }
+              ],
+              "isToggled": true
+            }
+          ]
+        }
+      }
+    ],
+    "drillFilterOtherVisuals": true
+  }
+}
