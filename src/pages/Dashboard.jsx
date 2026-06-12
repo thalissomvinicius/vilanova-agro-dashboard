@@ -198,10 +198,9 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
         </div>
       </div>
 
-      <div className="grid-container grid-cols-1">
-        <CustomChart loading={loading} type="bar" data={charts.byFarm} title="Coletas por fazenda" />
-        <CustomChart loading={loading} type="donut" data={charts.byForm} title="Participação por formulário" />
-        <CustomChart loading={loading} type="bar" data={charts.byEvaluator} title="Coletas por avaliador" />
+      <div className="grid-container grid-cols-2">
+        <CustomChart loading={loading} type="bar" data={charts.byFarm} title="Nota CQO por fazenda" />
+        <CustomChart loading={loading} type="bar" data={charts.byEvaluator} title="Nota CQO por avaliador" />
       </div>
 
       <div className="grid-container grid-cols-1">

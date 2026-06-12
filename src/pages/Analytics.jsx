@@ -414,13 +414,12 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
             />
           </div>
 
-          {/* Charts — one per row */}
-          <CustomChart loading={loading} type="line" data={chartsGeral.byDay} title="Evolução diária de coletas" />
-          <CustomChart loading={loading} type="bar" data={chartsGeral.byFarm} title="Coletas por fazenda" />
-          {areaFilter === 'all' && (
-            <CustomChart loading={loading} type="donut" data={chartsGeral.byForm} title="Participação por formulário" />
-          )}
-          <CustomChart loading={loading} type="bar" data={chartsGeral.byEvaluator} title="Coletas por avaliador" />
+          {/* Charts */}
+          <CustomChart loading={loading} type="line" data={chartsGeral.byDay} title="Evolução diária da Nota CQO" />
+          <div className="grid-container grid-cols-2">
+            <CustomChart loading={loading} type="bar" data={chartsGeral.byFarm} title="Nota CQO por Fazenda" />
+            <CustomChart loading={loading} type="bar" data={chartsGeral.byEvaluator} title="Nota CQO por Avaliador" />
+          </div>
 
           {/* Ranking avaliadores */}
           <SectionHeader eyebrow="Performance Individual" title="Ranking de Avaliadores de Campo" color="var(--green-institutional)" />
@@ -575,10 +574,12 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
             </div>
           </div>
 
-          {/* Charts — one per row */}
-          <CustomChart loading={loading} type="line" data={chartsCorte.byDay} title="Evolução diária — CQO Corte" />
-          <CustomChart loading={loading} type="bar" data={chartsCorte.byFarm} title="Cortes por fazenda" />
-          <CustomChart loading={loading} type="bar" data={chartsCorte.byEvaluator} title="Cortes por avaliador" />
+          {/* Charts */}
+          <CustomChart loading={loading} type="line" data={chartsCorte.byDay} title="Evolução diária — Nota CQO Corte" />
+          <div className="grid-container grid-cols-2">
+            <CustomChart loading={loading} type="bar" data={chartsCorte.byFarm} title="Nota CQO Corte por Fazenda" />
+            <CustomChart loading={loading} type="bar" data={chartsCorte.byEvaluator} title="Nota CQO Corte por Avaliador" />
+          </div>
 
           {/* Status resumo */}
           <div className="card">
@@ -758,10 +759,12 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
             </div>
           </div>
 
-          {/* Charts — one per row */}
-          <CustomChart loading={loading} type="line" data={chartsCarreamento.byDay} title="Evolução diária — CQO Carreamento" />
-          <CustomChart loading={loading} type="bar" data={chartsCarreamento.byFarm} title="Carreamentos por fazenda" />
-          <CustomChart loading={loading} type="bar" data={chartsCarreamento.byEvaluator} title="Carreamentos por avaliador" />
+          {/* Charts */}
+          <CustomChart loading={loading} type="line" data={chartsCarreamento.byDay} title="Evolução diária — Nota CQO Carreamento" />
+          <div className="grid-container grid-cols-2">
+            <CustomChart loading={loading} type="bar" data={chartsCarreamento.byFarm} title="Nota CQO Carreamento por Fazenda" />
+            <CustomChart loading={loading} type="bar" data={chartsCarreamento.byEvaluator} title="Nota CQO Carreamento por Avaliador" />
+          </div>
 
           {/* Ranking */}
           <SectionHeader eyebrow="Performance Individual" title="Ranking de Avaliadores — Carreamento" color="var(--orange-institutional)" />

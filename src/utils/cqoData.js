@@ -735,34 +735,37 @@ function formatEvaluatorName(name) {
 
 export function buildCharts(records) {
   const byFarm = new Map();
-  const byForm = new Map();
   const byEvaluator = new Map();
   const byDay = new Map();
 
   records.forEach((record) => {
-    byFarm.set(record.farm, (byFarm.get(record.farm) || 0) + 1);
-    byForm.set(record.form, (byForm.get(record.form) || 0) + 1);
+    // Farm
+    if (!byFarm.has(record.farm)) byFarm.set(record.farm, []);
+    byFarm.get(record.farm).push(record);
+
+    // Evaluator
     const evalName = formatEvaluatorName(record.evaluator);
-    byEvaluator.set(evalName, (byEvaluator.get(evalName) || 0) + 1);
-    byDay.set(record.date, (byDay.get(record.date) || 0) + 1);
+    if (!byEvaluator.has(evalName)) byEvaluator.set(evalName, []);
+    byEvaluator.get(evalName).push(record);
+
+    // Day
+    if (!byDay.has(record.date)) byDay.set(record.date, []);
+    byDay.get(record.date).push(record);
   });
 
+  const getScore = (recs) => aggregateRecords(recs).generalScore;
+
   const mapToChart = (map, fill = '#D98C10') => Array.from(map.entries())
-    .map(([label, value]) => ({ label: label.length > 18 ? `${label.slice(0, 18)}...` : label, value, fill }))
+    .map(([label, recs]) => ({ label: label.length > 18 ? `${label.slice(0, 18)}...` : label, value: getScore(recs), fill }))
     .sort((a, b) => b.value - a.value);
 
   const byDayData = Array.from(byDay.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([label, value]) => ({ label, value }));
-
-  if (byDayData.length === 1) {
-    byDayData.unshift({ label: 'Anterior', value: 0 });
-  }
+    .map(([label, recs]) => ({ label, value: getScore(recs) }));
 
   return {
     byFarm: mapToChart(byFarm, '#234F2A'),
-    byForm: mapToChart(byForm, '#D98C10'),
-    byEvaluator: mapToChart(byEvaluator, '#F2B544').slice(0, 8),
+    byEvaluator: mapToChart(byEvaluator, '#F2B544').slice(0, 10),
     byDay: byDayData,
   };
 }
