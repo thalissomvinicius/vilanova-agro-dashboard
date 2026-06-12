@@ -9,6 +9,8 @@ export default function Header({
   setAreaFilter,
   periodFilter,
   setPeriodFilter,
+  cycleFilter,
+  setCycleFilter,
   dateFrom,
   setDateFrom,
   dateTo,
