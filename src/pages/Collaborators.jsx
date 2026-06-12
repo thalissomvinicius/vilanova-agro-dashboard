@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, BriefcaseBusiness, Search, UserCheck, Users } from 'lucide-react';
-import { loadHeadcountData, normalizeText } from '../utils/cqoData';
+import { AlertCircle, BriefcaseBusiness, Search, UserCheck, Users, Key, Lock, Loader2, Check } from 'lucide-react';
+import { loadHeadcountData, normalizeText, updateCollaborator } from '../utils/cqoData';
 
 function metric(label, value, Icon, tone = 'green', loading = false) {
   return (
@@ -22,6 +22,46 @@ export default function Collaborators() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('ATIVO');
+
+  // Edit states
+  const [editingCollab, setEditingCollab] = useState(null);
+  const [editStatus, setEditStatus] = useState('ATIVO');
+  const [editSenha, setEditSenha] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const handleSave = () => {
+    setSaving(true);
+    setSaveError('');
+    setSaveSuccess(false);
+
+    updateCollaborator({
+      matricula: editingCollab.matricula,
+      status: editStatus,
+      senha: editSenha,
+    })
+      .then(() => {
+        setRows((prev) =>
+          prev.map((row) =>
+            row.matricula === editingCollab.matricula
+              ? { ...row, status: editStatus, senha: editSenha }
+              : row
+          )
+        );
+        setSaveSuccess(true);
+        setTimeout(() => {
+          setEditingCollab(null);
+          setSaveSuccess(false);
+        }, 1500);
+      })
+      .catch((err) => {
+        setSaveError(err.message || 'Erro ao salvar alterações.');
+      })
+      .finally(() => {
+        setSaving(false);
+      });
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -112,12 +152,14 @@ export default function Collaborators() {
                 <th>Departamento</th>
                 <th>Gestor</th>
                 <th>Status</th>
+                <th style={{ width: '80px', textAlign: 'center' }}>Ações</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={`skeleton-${i}`}>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
                     <td><span className="skeleton-text skeleton-sm" /></td>
                     <td><span className="skeleton-text skeleton-sm" /></td>
                     <td><span className="skeleton-text skeleton-sm" /></td>
@@ -133,11 +175,38 @@ export default function Collaborators() {
                   <td>{row.cargo || '--'}</td>
                   <td>{row.departamento || '--'}</td>
                   <td>{row.gestor || '--'}</td>
-                  <td><span className={row.status === 'ATIVO' ? 'badge badge-success' : 'badge badge-warning'}>{row.status || '--'}</span></td>
+                  <td>
+                    <span className={row.status === 'ATIVO' ? 'badge badge-success' : 'badge badge-warning'}>
+                      {row.status || '--'}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <button
+                      className="btn btn-secondary btn-icon"
+                      onClick={() => {
+                        setEditingCollab(row);
+                        setEditStatus(row.status || 'ATIVO');
+                        setEditSenha(row.senha || '');
+                        setSaveError('');
+                        setSaveSuccess(false);
+                      }}
+                      title="Configurar acesso e senha"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '28px',
+                        height: '28px',
+                        padding: 0,
+                      }}
+                    >
+                      <Key size={13} />
+                    </button>
+                  </td>
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan="6" className="empty-table-cell">
+                  <td colSpan="7" className="empty-table-cell">
                     Nenhum colaborador encontrado.
                   </td>
                 </tr>
@@ -146,6 +215,118 @@ export default function Collaborators() {
           </table>
         </div>
       </div>
+
+      {editingCollab && (
+        <div className="modal-overlay" onClick={() => setEditingCollab(null)}>
+          <div className="modal-content" onClick={(event) => event.stopPropagation()} style={{ maxWidth: '420px' }}>
+            <div className="modal-header">
+              <h3>
+                <Key size={18} style={{ color: 'var(--green-institutional)', marginRight: '6px' }} />
+                Configurar Acesso
+              </h3>
+              <button className="modal-close" onClick={() => setEditingCollab(null)}>&times;</button>
+            </div>
+
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px 0 0 0' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>Colaborador</span>
+                <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{editingCollab.nome}</strong>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block', marginTop: '2px' }}>
+                  Matrícula: <strong>{editingCollab.matricula}</strong> | Cargo: {editingCollab.cargo || '--'}
+                </span>
+              </div>
+
+              {/* Status Select */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Permissão de Acesso</label>
+                <select
+                  className="header-filter-select"
+                  style={{ width: '100%', margin: 0 }}
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                >
+                  <option value="ATIVO">Habilitado (Ativo)</option>
+                  <option value="INATIVO">Bloqueado (Inativo)</option>
+                </select>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                  Colaboradores inativos não conseguem realizar login no aplicativo móvel ou no dashboard.
+                </span>
+              </div>
+
+              {/* Senha Input */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Senha de Acesso</label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <Lock size={14} style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px 8px 32px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: 'var(--bg-primary)',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.85rem',
+                      outline: 'none',
+                    }}
+                    placeholder="Definir senha de acesso"
+                    value={editSenha}
+                    onChange={(e) => setEditSenha(e.target.value)}
+                  />
+                </div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                  Digite a senha numérica ou de texto que o colaborador usará para autenticar.
+                </span>
+              </div>
+
+              {/* Error and Success Indicators */}
+              {saveError && (
+                <div className="warning-strip" style={{ margin: 0, padding: '8px 12px' }}>
+                  <AlertCircle size={14} />
+                  <span style={{ fontSize: '0.75rem' }}>{saveError}</span>
+                </div>
+              )}
+
+              {saveSuccess && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--status-success)', fontSize: '0.78rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', padding: '8px 12px', borderRadius: '6px' }}>
+                  <Check size={14} />
+                  <span>Configurações salvas com sucesso!</span>
+                </div>
+              )}
+
+              {/* Footer Actions */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setEditingCollab(null)}
+                  disabled={saving}
+                  style={{ fontSize: '0.8rem', padding: '6px 14px', cursor: 'pointer' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSave}
+                  disabled={saving}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 14px', cursor: 'pointer' }}
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 size={12} className="spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    'Salvar Alterações'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

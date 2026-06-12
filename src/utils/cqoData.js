@@ -317,8 +317,33 @@ export async function authenticateDashboardUser(matricula, senha) {
 export async function loadHeadcountData() {
   return fetchSupabaseTable(
     'headcount_colaboradores',
-    'select=matricula,nome,departamento,cargo,gestor,status,reference_date,updated_at&order=nome.asc&limit=3000'
+    'select=matricula,nome,departamento,cargo,gestor,status,senha,reference_date,updated_at&order=nome.asc&limit=3000'
   );
+}
+
+export async function updateCollaborator({ matricula, status, senha }) {
+  const body = {};
+  if (status !== undefined) body.status = status;
+  if (senha !== undefined) body.senha = senha;
+  body.updated_at = new Date().toISOString();
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/headcount_colaboradores?matricula=eq.${encodeURIComponent(matricula)}`, {
+    method: 'PATCH',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  return response.json();
 }
 
 export async function updateResponseReviewStatus(responseId, status) {
