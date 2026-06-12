@@ -197,13 +197,13 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
         </div>
       </div>
 
-      <div className="grid-container grid-cols-3">
+      <div className="grid-container grid-cols-1">
         <CustomChart loading={loading} type="bar" data={charts.byFarm} title="Coletas por fazenda" />
         <CustomChart loading={loading} type="donut" data={charts.byForm} title="Participação por formulário" />
         <CustomChart loading={loading} type="bar" data={charts.byEvaluator} title="Coletas por avaliador" />
       </div>
 
-      <div className="grid-container grid-cols-7-5">
+      <div className="grid-container grid-cols-1">
         <CustomChart loading={loading} type="line" data={charts.byDay} title="Evolução diária das coletas" />
         <div className="card page-card">
           <div className="card-header table-card-header">

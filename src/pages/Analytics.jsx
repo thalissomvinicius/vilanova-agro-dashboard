@@ -299,13 +299,13 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             />
           </div>
 
-          <div className={`grid-container ${areaFilter === 'all' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <div className="grid-container grid-cols-1">
             <CustomChart loading={loading} type="bar" data={chartsGeral.byFarm} title="Coletas por fazenda" />
             {areaFilter === 'all' && (
               <CustomChart loading={loading} type="donut" data={chartsGeral.byForm} title="Participação por formulário" />
             )}
           </div>
-          <div className="grid-container grid-cols-2">
+          <div className="grid-container grid-cols-1">
             <CustomChart loading={loading} type="line" data={chartsGeral.byDay} title="Evolução diária de coletas" />
             <CustomChart loading={loading} type="bar" data={chartsGeral.byEvaluator} title="Coletas por avaliador" />
           </div>
@@ -493,11 +493,11 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             </div>
           </div>
 
-          <div className="grid-container grid-cols-2">
+          <div className="grid-container grid-cols-1">
             <CustomChart loading={loading} type="bar" data={chartsCorte.byFarm} title="Cortes por fazenda" />
             <CustomChart loading={loading} type="bar" data={chartsCorte.byEvaluator} title="Cortes por avaliador" />
           </div>
-          <div className="grid-container grid-cols-2">
+          <div className="grid-container grid-cols-1">
              <CustomChart loading={loading} type="line" data={chartsCorte.byDay} title="Evolução diária — CQO Corte" />
             <div className="card">
               <div className="card-header">
@@ -676,7 +676,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             </div>
           </div>
 
-          <div className="grid-container grid-cols-2">
+          <div className="grid-container grid-cols-1">
             <CustomChart loading={loading} type="bar" data={chartsCarreamento.byFarm} title="Carreamentos por fazenda" />
             <CustomChart loading={loading} type="bar" data={chartsCarreamento.byEvaluator} title="Carreamentos por avaliador" />
           </div>
