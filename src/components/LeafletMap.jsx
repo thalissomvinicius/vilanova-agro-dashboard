@@ -2,7 +2,13 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { Flame, Layers, Navigation } from 'lucide-react';
 import { FARMS } from '../utils/mockData';
-import { filterRecords, useCqoData } from '../utils/cqoData';
+import { filterRecords, useCqoData, aggregateRecords } from '../utils/cqoData';
+
+function getScoreColor(score) {
+  if (score >= 90) return '#22C55E';
+  if (score >= 75) return '#F59E0B';
+  return '#EF4444';
+}
 
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerIconRetina from 'leaflet/dist/images/marker-icon-2x.png';
@@ -132,14 +138,16 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     )) || []
   ), [parcelGeoJson, farmFilter]);
 
-  const heatPoints = useMemo(() => trackPoints.filter((point) => (
-    pointInsideFeatures([point.lat, point.lng], filteredParcelFeatures)
-  )).map((point) => {
-    const accuracy = Number(point.accuracy);
-    const accuracyFactor = Number.isFinite(accuracy) ? Math.max(0.45, Math.min(1.25, 35 / Math.max(accuracy, 8))) : 0.8;
+  const heatPoints = useMemo(() => trackPoints.filter((point) => {
+    if (!pointInsideFeatures([point.lat, point.lng], filteredParcelFeatures)) return false;
+    const perdidos = (point.record?.totals?.cachoEsquecido || 0) + (point.record?.totals?.cachoNaoCarreado || 0);
+    return perdidos > 0;
+  }).map((point) => {
+    const perdidos = (point.record?.totals?.cachoEsquecido || 0) + (point.record?.totals?.cachoNaoCarreado || 0);
+    const heatWeight = Math.max(0.4, Math.min(3.0, perdidos / 3));
     return {
       ...point,
-      heatWeight: Math.max(0.45, Math.min(1.8, (point.weight / 6) * accuracyFactor)),
+      heatWeight,
     };
   }), [trackPoints, filteredParcelFeatures]);
 
@@ -233,22 +241,54 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
 
       L.geoJSON(filteredParcels, {
         style: (feature) => {
-          const style = farmStyle(feature?.properties?.farmId);
+          const props = feature?.properties || {};
+          const style = farmStyle(props.farmId);
+          let fillColor = style.fill;
+          let fillOpacity = mapLayer === 'polygon' ? 0.12 : 0.03;
+          let weight = mapLayer === 'heat' ? 2 : 1.4;
+
+          if (mapLayer === 'polygon' && props.parcelId) {
+            const parcelRecords = filteredRecords.filter((r) => 
+               String(r.parcel).toLowerCase() === String(props.parcelId).toLowerCase() &&
+               r.farmId === props.farmId
+            );
+            if (parcelRecords.length > 0) {
+              const totals = aggregateRecords(parcelRecords);
+              fillColor = getScoreColor(totals.generalScore);
+              fillOpacity = 0.55;
+              weight = 2;
+            }
+          }
+
           return {
-          color: style.color,
-          fillColor: style.fill,
-          fillOpacity: mapLayer === 'polygon' ? 0.12 : 0.03,
-          weight: mapLayer === 'heat' ? 2 : 1.4,
-          opacity: 0.9,
-        };
+            color: style.color,
+            fillColor,
+            fillOpacity,
+            weight,
+            opacity: 0.9,
+          };
         },
         onEachFeature: (feature, layer) => {
           const props = feature.properties || {};
           const style = farmStyle(props.farmId);
+          
+          let scoreText = '';
+          if (mapLayer === 'polygon' && props.parcelId) {
+            const parcelRecords = filteredRecords.filter((r) => 
+               String(r.parcel).toLowerCase() === String(props.parcelId).toLowerCase() &&
+               r.farmId === props.farmId
+            );
+            if (parcelRecords.length > 0) {
+              const totals = aggregateRecords(parcelRecords);
+              scoreText = `<span style="font-size:11px;">Nota CQO: <strong style="color:${getScoreColor(totals.generalScore)}">${totals.generalScore}</strong></span><br/>`;
+            }
+          }
+
           layer.bindPopup(`
             <div style="font-family: Inter, Segoe UI, sans-serif; max-width: 220px;">
               <strong style="color:${style.color};font-size:13px;">${props.farmName || 'Fazenda'}</strong><br/>
               <span style="font-size:11px;">Parcela: <strong>${props.parcelId || props.recordNumber || '--'}</strong></span><br/>
+              ${scoreText}
               <span style="font-size:11px;">Fonte: shapefile</span>
             </div>
           `);
@@ -376,7 +416,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
         map.panTo([selectedFarm.Lat, selectedFarm.Lng]);
       }
     }
-  }, [theme, farmFilter, areaFilter, mapLayer, geoRecords, trackPoints, heatPoints, parcelGeoJson, filteredParcelFeatures]);
+  }, [theme, farmFilter, areaFilter, mapLayer, geoRecords, trackPoints, heatPoints, parcelGeoJson, filteredParcelFeatures, filteredRecords]);
 
   return (
     <div className="card" style={{ padding: '0', height: '100%', minHeight: '500px', position: 'relative', overflow: 'hidden' }}>
@@ -393,7 +433,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             style={{ height: '32px', fontSize: '0.75rem', justifyContent: 'flex-start' }}
           >
             <Layers size={14} />
-            <span>Áreas e coletas</span>
+            <span>Qualidade (Semáforo)</span>
           </button>
           <button
             onClick={() => setMapLayer('heat')}
@@ -401,7 +441,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             style={{ height: '32px', fontSize: '0.75rem', justifyContent: 'flex-start' }}
           >
             <Flame size={14} />
-            <span>Mapa de calor</span>
+            <span>Focos de Perda (Calor)</span>
           </button>
         </div>
 
