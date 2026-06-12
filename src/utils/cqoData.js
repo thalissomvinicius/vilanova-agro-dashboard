@@ -217,14 +217,41 @@ export function normalizeResponse(row, headcount = []) {
     }
 
     // Normalizar as linhas do relatório
-    const isCarreamento = formType(row.formulario_id, data) === 'carreamento';
-    if (isCarreamento) {
-      if (!Array.isArray(data.linhas_carreamento) && Array.isArray(legacy.linhas_raw)) {
-        data.linhas_carreamento = legacy.linhas_raw;
-      }
-    } else {
-      if (!Array.isArray(data.linhas_corte) && Array.isArray(legacy.linhas_raw)) {
-        data.linhas_corte = legacy.linhas_raw;
+    if (Array.isArray(legacy.linhas_raw)) {
+      const normalizedLines = legacy.linhas_raw.map(line => {
+        const newLine = { ...line };
+        // Mapeamento de chaves legadas (PascalCase) para o padrão snake_case
+        if (newLine.numero_plantas_linha === undefined) newLine.numero_plantas_linha = line.NumeroPlantasLinha;
+        if (newLine.numero_plantas_observadas === undefined) newLine.numero_plantas_observadas = line.NumeroPlantasObservadas || line.numero_na_linha;
+        if (newLine.numero_cachos_observados_papel === undefined) newLine.numero_cachos_observados_papel = line.NumeroCachosAvaliados || line.numero_cacho_observado;
+        if (newLine.cacho_esquecido_ciclo === undefined) newLine.cacho_esquecido_ciclo = line.CachoEsquecido || line.cacho_esquecido;
+        if (newLine.cacho_verde === undefined) newLine.cacho_verde = line.CachoVerde;
+        if (newLine.cacho_maduro === undefined) newLine.cacho_maduro = line.CachoMaduro;
+        if (newLine.cacho_passado === undefined) newLine.cacho_passado = line.CachoPassado;
+        if (newLine.folha_mamando === undefined) newLine.folha_mamando = line.FolhaMamando;
+        if (newLine.cacho_talo_comprido === undefined) newLine.cacho_talo_comprido = line.TaloComprido;
+        if (newLine.folha_cortada_indevida === undefined) newLine.folha_cortada_indevida = line.FolhaCortada;
+        if (newLine.cacho_mal_posicionado === undefined) newLine.cacho_mal_posicionado = line.CachoMalPosicionado;
+        if (newLine.cacho_estrela === undefined) newLine.cacho_estrela = line.CachoEstrela || line.cachos_estrela;
+        if (newLine.cacho_brocado === undefined) newLine.cacho_brocado = line.CachoBrocado || line.cachos_brocados;
+        if (newLine.cacho_avermelhado === undefined) newLine.cacho_avermelhado = line.CachoAvermelhado || line.cachos_avermelhados;
+        
+        // Carreamento
+        if (newLine.cacho_nao_carreado === undefined) newLine.cacho_nao_carreado = line.CachoNaoCarreado;
+        if (newLine.peso_medio === undefined) newLine.peso_medio = line.PesoMedio || line.pesoMedio;
+        
+        return newLine;
+      });
+
+      const isCarreamento = formType(row.formulario_id, data) === 'carreamento';
+      if (isCarreamento) {
+        if (!Array.isArray(data.linhas_carreamento)) {
+          data.linhas_carreamento = normalizedLines;
+        }
+      } else {
+        if (!Array.isArray(data.linhas_corte)) {
+          data.linhas_corte = normalizedLines;
+        }
       }
     }
   }

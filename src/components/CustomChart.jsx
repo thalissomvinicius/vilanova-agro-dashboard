@@ -10,7 +10,7 @@ function getSkipLabel(idx, total) {
   return !indices.includes(idx);
 }
 
-export default function CustomChart({ type = 'line', data = [], height = 220, title, loading = false }) {
+export default function CustomChart({ type = 'line', data = [], height = 280, title, loading = false }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
@@ -168,6 +168,19 @@ export default function CustomChart({ type = 'line', data = [], height = 220, ti
 
   // Chart type 2: LINE / AREA CHART
   const renderLineChart = () => {
+    // Guard: single data point — render a single dot centered
+    if (data.length <= 1) {
+      const item = data[0] || { label: '—', value: 0 };
+      return (
+        <svg className="chart-svg" viewBox={`0 0 ${width} ${height}`} width="100%" height={height}>
+          <circle cx={width / 2} cy={height / 2} r="6" fill="var(--orange-institutional)" />
+          <text x={width / 2} y={height / 2 + 20} textAnchor="middle" className="chart-axis-text">
+            {item.label}: {item.value}
+          </text>
+        </svg>
+      );
+    }
+
     const maxVal = Math.max(...data.map(d => d.value), 10);
     const stepX = graphWidth / (data.length - 1);
 
@@ -414,6 +427,92 @@ export default function CustomChart({ type = 'line', data = [], height = 220, ti
     );
   };
 
+  // Chart type 4: GAUGE (Semi-circular score meter)
+  const renderGauge = () => {
+    const score = Number(data[0]?.value ?? 0);
+    const label = data[0]?.label ?? '';
+    const maxScore = 100;
+
+    // Gauge arc parameters
+    const cx = 140;
+    const cy = 130;
+    const r = 90;
+    const startAngle = -210; // degrees from 3 o'clock, going to -210 = bottom-left arc start
+    const sweepDeg = 240;   // 240° sweep for the gauge
+
+    function polarToCart(angleDeg, radius) {
+      const rad = (angleDeg * Math.PI) / 180;
+      return {
+        x: cx + radius * Math.cos(rad),
+        y: cy + radius * Math.sin(rad),
+      };
+    }
+
+    function arcPath(startDeg, endDeg, radius, innerRadius) {
+      const s = polarToCart(startDeg, radius);
+      const e = polarToCart(endDeg, radius);
+      const si = polarToCart(startDeg, innerRadius);
+      const ei = polarToCart(endDeg, innerRadius);
+      const large = Math.abs(endDeg - startDeg) > 180 ? 1 : 0;
+      return `M ${s.x} ${s.y} A ${radius} ${radius} 0 ${large} 1 ${e.x} ${e.y} L ${ei.x} ${ei.y} A ${innerRadius} ${innerRadius} 0 ${large} 0 ${si.x} ${si.y} Z`;
+    }
+
+    const track = arcPath(startAngle, startAngle + sweepDeg, r, r - 18);
+    const fillDeg = (score / maxScore) * sweepDeg;
+    const fillPath = fillDeg > 0 ? arcPath(startAngle, startAngle + fillDeg, r, r - 18) : '';
+
+    const scoreColor = score >= 90
+      ? '#22C55E'
+      : score >= 75
+      ? '#F59E0B'
+      : '#EF4444';
+
+    // Needle
+    const needleAngleDeg = startAngle + fillDeg;
+    const needleTip = polarToCart(needleAngleDeg, r - 6);
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0' }}>
+        <svg viewBox="0 0 280 170" width="100%" style={{ maxWidth: 280, overflow: 'visible' }}>
+          {/* Track */}
+          <path d={track} fill="var(--bg-secondary)" />
+
+          {/* Fill */}
+          {fillPath && (
+            <path d={fillPath} fill={scoreColor} style={{ transition: 'all 0.6s ease' }} />
+          )}
+
+          {/* Needle dot */}
+          <circle cx={needleTip.x} cy={needleTip.y} r="5" fill={scoreColor} />
+
+          {/* Score value */}
+          <text x={cx} y={cy + 10} textAnchor="middle" fill={scoreColor} fontSize="34" fontWeight="800">
+            {score}
+          </text>
+          <text x={cx} y={cy + 28} textAnchor="middle" fill="var(--text-muted)" fontSize="11">
+            / 100
+          </text>
+
+          {/* Zone labels */}
+          <text x={polarToCart(startAngle, r + 14).x} y={polarToCart(startAngle, r + 14).y + 4} textAnchor="middle" fill="var(--text-muted)" fontSize="8">0</text>
+          <text x={polarToCart(startAngle + sweepDeg, r + 14).x} y={polarToCart(startAngle + sweepDeg, r + 14).y + 4} textAnchor="middle" fill="var(--text-muted)" fontSize="8">100</text>
+          <text x={polarToCart(startAngle + sweepDeg * 0.5, r + 18).x} y={polarToCart(startAngle + sweepDeg * 0.5, r + 18).y + 4} textAnchor="middle" fill="var(--text-muted)" fontSize="8">50</text>
+
+          {/* Status badge */}
+          <rect x={cx - 44} y={cy + 38} width="88" height="20" rx="10"
+            fill={score >= 90 ? 'rgba(34,197,94,0.15)' : score >= 75 ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)'}
+          />
+          <text x={cx} y={cy + 52} textAnchor="middle" fill={scoreColor} fontSize="9" fontWeight="700">
+            {score >= 90 ? '✓ Excelente' : score >= 75 ? '~ Atenção' : '✗ Crítico'}
+          </text>
+        </svg>
+        {label && (
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: 2 }}>{label}</span>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="card" style={{ height: 'auto' }}>
       <div className="card-header" style={{ marginBottom: '10px' }}>
@@ -425,6 +524,7 @@ export default function CustomChart({ type = 'line', data = [], height = 220, ti
         {type === 'bar' && renderBarChart()}
         {type === 'line' && renderLineChart()}
         {type === 'donut' && renderDonutChart()}
+        {type === 'gauge' && renderGauge()}
       </div>
     </div>
   );

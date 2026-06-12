@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Award,
@@ -14,10 +14,11 @@ import {
   TrendingDown,
   TrendingUp,
   Truck,
+  Users,
   Weight,
 } from 'lucide-react';
 import CustomChart from '../components/CustomChart';
-import { aggregateRecords, buildCharts, filterRecords, useCqoData } from '../utils/cqoData';
+import { aggregateRecords, buildCharts, filterRecords, normalizeText, useCqoData } from '../utils/cqoData';
 
 function fmt(value, digits = 0) {
   return new Intl.NumberFormat('pt-BR', {
@@ -31,6 +32,7 @@ function pct(num, den) {
   return `${((num / den) * 100).toFixed(1).replace('.', ',')}%`;
 }
 
+// ─── KpiCard ─────────────────────────────────────────────────────────────────
 function KpiCard({ title, value, subtitle, icon: Icon, tone = 'green', loading = false, trend = null }) {
   const toneMap = {
     green: 'kpi-icon-green',
@@ -65,6 +67,7 @@ function KpiCard({ title, value, subtitle, icon: Icon, tone = 'green', loading =
   );
 }
 
+// ─── SectionHeader ────────────────────────────────────────────────────────────
 function SectionHeader({ eyebrow, title, color = 'var(--green-institutional)' }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '28px 0 14px' }}>
@@ -77,6 +80,7 @@ function SectionHeader({ eyebrow, title, color = 'var(--green-institutional)' })
   );
 }
 
+// ─── QualityBar ───────────────────────────────────────────────────────────────
 function QualityBar({ label, value, max, color, loading = false }) {
   const pctVal = max > 0 ? Math.min(100, (value / max) * 100) : 0;
   return (
@@ -94,6 +98,7 @@ function QualityBar({ label, value, max, color, loading = false }) {
   );
 }
 
+// ─── StatusBadgeRow ───────────────────────────────────────────────────────────
 function StatusBadgeRow({ label, value, total, color, loading }) {
   const p = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
   return (
@@ -111,6 +116,130 @@ function StatusBadgeRow({ label, value, total, color, loading }) {
   );
 }
 
+// ─── AlertFarol ───────────────────────────────────────────────────────────────
+function AlertFarol({ label, meta, value, danger, warning = false }) {
+  const numVal = Number(value);
+  const isAlert = numVal > danger;
+  const isWarn = !isAlert && warning !== false && numVal > warning;
+  const color = isAlert ? 'var(--status-danger)' : isWarn ? 'var(--status-warning)' : 'var(--status-success)';
+  const borderColor = isAlert ? 'var(--status-danger)' : isWarn ? 'var(--status-warning)' : 'var(--status-success)';
+  const label2 = isAlert ? 'Fora da Meta 🔴' : isWarn ? 'Atenção 🟡' : 'Conforme 🟢';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', borderLeft: `5px solid ${borderColor}` }}>
+      <div>
+        <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--text-primary)' }}>{label}</strong>
+        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{meta}</span>
+      </div>
+      <div style={{ textAlign: 'right' }}>
+        <strong style={{ fontSize: '1rem', color }}>{String(value).replace('.', ',')}%</strong>
+        <span style={{ fontSize: '0.68rem', display: 'block', color: 'var(--text-muted)' }}>{label2}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── RankingAvaliadores ────────────────────────────────────────────────────────
+function RankingAvaliadores({ records, loading }) {
+  const ranking = useMemo(() => {
+    const map = new Map();
+    records.forEach((r) => {
+      const key = r.evaluator || r.evaluatorMatricula || 'Desconhecido';
+      if (!map.has(key)) {
+        map.set(key, { nome: key, total: 0, aprovados: 0, comGps: 0 });
+      }
+      const entry = map.get(key);
+      entry.total += 1;
+      if (r.status === 'Aprovado') entry.aprovados += 1;
+      if (r.gps) entry.comGps += 1;
+    });
+    return Array.from(map.values())
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 8);
+  }, [records]);
+
+  if (loading) {
+    return (
+      <div className="card">
+        <div className="card-header">
+          <h3 className="card-title">Ranking de Avaliadores</h3>
+          <span className="card-subtitle">Performance individual de campo</span>
+        </div>
+        <div className="skeleton-chart" style={{ height: 160 }} />
+      </div>
+    );
+  }
+
+  if (ranking.length === 0) {
+    return null;
+  }
+
+  const maxTotal = ranking[0]?.total || 1;
+
+  return (
+    <div className="card">
+      <div className="card-header" style={{ marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Users size={16} color="var(--green-institutional)" />
+          <div>
+            <h3 className="card-title">Ranking de Avaliadores</h3>
+            <span className="card-subtitle">Performance individual de campo no período selecionado</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Table header */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px 80px 80px', gap: 8, padding: '4px 8px', borderBottom: '2px solid var(--border-color)', marginBottom: 6 }}>
+        <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Avaliador</span>
+        <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', textAlign: 'center' }}>Coletas</span>
+        <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', textAlign: 'center' }}>Aprovação</span>
+        <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', textAlign: 'center' }}>GPS</span>
+      </div>
+
+      {ranking.map((item, idx) => {
+        const barPct = (item.total / maxTotal) * 100;
+        const aprPct = item.total > 0 ? ((item.aprovados / item.total) * 100).toFixed(0) : 0;
+        const gpsPct = item.total > 0 ? ((item.comGps / item.total) * 100).toFixed(0) : 0;
+        const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}º`;
+        return (
+          <div key={item.nome} style={{ display: 'grid', gridTemplateColumns: '1fr 60px 80px 80px', gap: 8, padding: '6px 8px', alignItems: 'center', borderBottom: '1px solid var(--border-color)', borderRadius: 6 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{medal} {item.nome}</span>
+              </div>
+              <div style={{ height: 5, background: 'var(--bg-secondary)', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${barPct}%`, background: idx === 0 ? 'var(--green-institutional)' : 'var(--orange-institutional)', borderRadius: 3, transition: 'width 0.5s ease' }} />
+              </div>
+            </div>
+            <span style={{ textAlign: 'center', fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>{item.total}</span>
+            <span style={{ textAlign: 'center', fontSize: '0.82rem', fontWeight: 600, color: Number(aprPct) >= 80 ? 'var(--status-success)' : Number(aprPct) >= 50 ? 'var(--status-warning)' : 'var(--text-muted)' }}>{aprPct}%</span>
+            <span style={{ textAlign: 'center', fontSize: '0.82rem', fontWeight: 600, color: Number(gpsPct) >= 80 ? 'var(--status-info)' : 'var(--text-muted)' }}>{gpsPct}%</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── EmptyState ───────────────────────────────────────────────────────────────
+function EmptyState({ areaFilter }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', gap: 16, color: 'var(--text-muted)' }}>
+      <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <ClipboardCheck size={32} color="var(--text-muted)" />
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Nenhuma coleta no período</h3>
+        <p style={{ margin: '6px 0 0', fontSize: '0.87rem' }}>
+          {areaFilter !== 'all'
+            ? 'Tente ampliar o período ou trocar o filtro de formulário.'
+            : 'Nenhuma ficha foi sincronizada no intervalo selecionado.'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Analytics Page ────────────────────────────────────────────────────────────
 export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFrom, dateTo }) {
   const { loading, error, records: allRecords, source } = useCqoData();
   const [activeTab, setActiveTab] = useState('geral');
@@ -127,19 +256,19 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
   const chartsCorte = buildCharts(corteRecords);
   const chartsCarreamento = buildCharts(carreamentoRecords);
 
-  // Corte-specific computed indicators
+  // Corte computed
   const taxaPerda = totalsCorte.cachosObservados > 0
     ? ((totalsCorte.cachoEsquecido / totalsCorte.cachosObservados) * 100).toFixed(1)
-    : '0,0';
+    : '0.0';
   const taxaMaturacao = totalsCorte.cachosObservados > 0
     ? ((totalsCorte.cachoMaduro / totalsCorte.cachosObservados) * 100).toFixed(1)
-    : '0,0';
+    : '0.0';
   const taxaVerde = totalsCorte.cachosObservados > 0
     ? ((totalsCorte.cachoVerde / totalsCorte.cachosObservados) * 100).toFixed(1)
-    : '0,0';
+    : '0.0';
   const taxaPassado = totalsCorte.cachosObservados > 0
     ? ((totalsCorte.cachoPassado / totalsCorte.cachosObservados) * 100).toFixed(1)
-    : '0,0';
+    : '0.0';
   const mediaLinhasCorte = corteRecords.length > 0
     ? (totalsCorte.linhas / corteRecords.length).toFixed(1)
     : '0';
@@ -147,14 +276,14 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
     ? (totalsCorte.plantasObservadas / totalsCorte.linhas).toFixed(1)
     : '0';
 
-  // Carreamento-specific
+  // Carreamento computed
   const taxaMalPos = totalsCarreamento.plantasObservadas > 0
     ? ((totalsCarreamento.cachoMalPosicionado / totalsCarreamento.plantasObservadas) * 100).toFixed(1)
-    : '0,0';
+    : '0.0';
   const taxaNaoCarreado = totalsCarreamento.plantasObservadas > 0
     ? ((totalsCarreamento.cachoNaoCarreado / totalsCarreamento.plantasObservadas) * 100).toFixed(1)
-    : '0,0';
-  const mediaPeso = carreamentoRecords.length > 0
+    : '0.0';
+  const mediaPesoFicha = carreamentoRecords.length > 0
     ? (totalsCarreamento.pesoMedio / carreamentoRecords.length).toFixed(1)
     : '0';
 
@@ -165,6 +294,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
   ];
 
   const currentTab = availableTabs.some((t) => t.id === activeTab) ? activeTab : 'geral';
+  const hasData = !loading && filtered.length > 0;
 
   return (
     <div className="fade-in page-shell">
@@ -212,47 +342,38 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
         ))}
       </div>
 
+      {/* Empty state */}
+      {!loading && filtered.length === 0 && <EmptyState areaFilter={areaFilter} />}
+
       {/* ============ VISÃO GERAL ============ */}
-      {currentTab === 'geral' && (
+      {currentTab === 'geral' && (loading || filtered.length > 0) && (
         <>
           <SectionHeader eyebrow="Indicadores de Conformidade" title="Avaliação Geral da Qualidade Operacional" color="var(--green-institutional)" />
-          <div className={`grid-container ${areaFilter === 'all' ? 'grid-cols-4' : 'grid-cols-3'}`}>
-            <KpiCard
+
+          {/* Gauge scores */}
+          <div className={`grid-container ${areaFilter === 'all' ? 'grid-cols-3' : 'grid-cols-2'}`} style={{ marginBottom: 4 }}>
+            <CustomChart
+              type="gauge"
               title="Nota Geral CQO"
-              value={`${totalsGeral.generalScore} / 100`}
-              subtitle="Média consolidada de qualidade"
-              icon={Award}
-              tone={totalsGeral.generalScore >= 90 ? 'green' : totalsGeral.generalScore >= 80 ? 'warning' : 'danger'}
+              data={[{ label: 'Média consolidada de qualidade', value: totalsGeral.generalScore }]}
               loading={loading}
             />
             {areaFilter !== 'carreamento' && (
-              <KpiCard
+              <CustomChart
+                type="gauge"
                 title="Nota CQO Corte"
-                value={`${totalsGeral.corteScore} / 100`}
-                subtitle={`${fmt(totalsGeral.corte)} coletas de colheita`}
-                icon={Scissors}
-                tone={totalsGeral.corteScore >= 90 ? 'green' : totalsGeral.corteScore >= 80 ? 'warning' : 'danger'}
+                data={[{ label: `${fmt(totalsGeral.corte)} coletas de colheita`, value: totalsGeral.corteScore }]}
                 loading={loading}
               />
             )}
             {areaFilter !== 'corte' && (
-              <KpiCard
+              <CustomChart
+                type="gauge"
                 title="Nota CQO Carreamento"
-                value={`${totalsGeral.carreamentoScore} / 100`}
-                subtitle={`${fmt(totalsGeral.carreamento)} coletas de transporte`}
-                icon={Truck}
-                tone={totalsGeral.carreamentoScore >= 90 ? 'green' : totalsGeral.carreamentoScore >= 80 ? 'warning' : 'danger'}
+                data={[{ label: `${fmt(totalsGeral.carreamento)} coletas de transporte`, value: totalsGeral.carreamentoScore }]}
                 loading={loading}
               />
             )}
-            <KpiCard
-              title="Taxa de Sincronização"
-              value={`${totalsGeral.syncRate}%`}
-              subtitle={`${fmt(totalsGeral.sincronizados)} coletas concluídas`}
-              icon={TrendingUp}
-              tone="info"
-              loading={loading}
-            />
           </div>
 
           <SectionHeader eyebrow="Volumes e Amostragem" title="Escopo do Monitoramento de Campo" color="var(--orange-institutional)" />
@@ -270,13 +391,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             <KpiCard
               title={areaFilter === 'corte' ? "Cachos Perdidos (Corte)" : areaFilter === 'carreamento' ? "Cachos Perdidos (Logística)" : "Cachos Perdidos (Corte/Logística)"}
               value={`${fmt(totalsGeral.lostCachosQty)} cachos`}
-              subtitle={
-                areaFilter === 'corte'
-                  ? 'Apenas cachos esquecidos'
-                  : areaFilter === 'carreamento'
-                  ? 'Apenas cachos não carreados'
-                  : 'Esquecidos ou não carreados'
-              }
+              subtitle={areaFilter === 'corte' ? 'Apenas cachos esquecidos' : areaFilter === 'carreamento' ? 'Apenas cachos não carreados' : 'Esquecidos ou não carreados'}
               icon={AlertTriangle}
               tone="danger"
               loading={loading}
@@ -299,40 +414,37 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             />
           </div>
 
-          <div className="grid-container grid-cols-1">
-            <CustomChart loading={loading} type="bar" data={chartsGeral.byFarm} title="Coletas por fazenda" />
-            {areaFilter === 'all' && (
-              <CustomChart loading={loading} type="donut" data={chartsGeral.byForm} title="Participação por formulário" />
-            )}
-          </div>
-          <div className="grid-container grid-cols-1">
-            <CustomChart loading={loading} type="line" data={chartsGeral.byDay} title="Evolução diária de coletas" />
-            <CustomChart loading={loading} type="bar" data={chartsGeral.byEvaluator} title="Coletas por avaliador" />
-          </div>
+          {/* Charts — one per row */}
+          <CustomChart loading={loading} type="line" data={chartsGeral.byDay} title="Evolução diária de coletas" />
+          <CustomChart loading={loading} type="bar" data={chartsGeral.byFarm} title="Coletas por fazenda" />
+          {areaFilter === 'all' && (
+            <CustomChart loading={loading} type="donut" data={chartsGeral.byForm} title="Participação por formulário" />
+          )}
+          <CustomChart loading={loading} type="bar" data={chartsGeral.byEvaluator} title="Coletas por avaliador" />
+
+          {/* Ranking avaliadores */}
+          <SectionHeader eyebrow="Performance Individual" title="Ranking de Avaliadores de Campo" color="var(--green-institutional)" />
+          <RankingAvaliadores records={filtered} loading={loading} />
         </>
       )}
 
       {/* ============ CQO CORTE ============ */}
-      {currentTab === 'corte' && (
+      {currentTab === 'corte' && (loading || corteRecords.length > 0) && (
         <>
           <SectionHeader eyebrow="Formulário CQO Corte" title="Indicadores de qualidade no corte" color="var(--green-institutional)" />
 
-          {/* KPIs volumétricos com Nota de Qualidade */}
-          <div className="grid-container grid-cols-4">
-            <KpiCard
+          {/* Gauge da Nota */}
+          <div className="grid-container grid-cols-3">
+            <CustomChart
+              type="gauge"
               title="Nota CQO Corte"
-              value={`${totalsCorte.corteScore} / 100`}
-              subtitle="Score geral de qualidade no corte"
-              icon={Award}
-              tone={totalsCorte.corteScore >= 90 ? 'green' : totalsCorte.corteScore >= 80 ? 'warning' : 'danger'}
+              data={[{ label: 'Score geral de qualidade no corte', value: totalsCorte.corteScore }]}
               loading={loading}
             />
             <KpiCard title="Fichas de corte" value={fmt(corteRecords.length)} subtitle={`${mediaLinhasCorte} linhas por ficha (média)`} icon={Scissors} tone="green" loading={loading} />
             <KpiCard title="Plantas observadas" value={fmt(totalsCorte.plantasObservadas)} subtitle={`${mediaPlantasPorLinha} plantas/linha (média)`} icon={Sprout} tone="green" loading={loading} />
-            <KpiCard title="Cachos observados" value={fmt(totalsCorte.cachosObservados)} subtitle="Total registrado nas linhas" icon={ClipboardCheck} tone="orange" loading={loading} />
           </div>
 
-          {/* KPIs de qualidade */}
           <SectionHeader eyebrow="Qualidade dos cachos" title="Maturação e perdas no corte" color="var(--orange-institutional)" />
           <div className="grid-container grid-cols-4" style={{ marginBottom: '18px' }}>
             <KpiCard
@@ -348,7 +460,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
               value={`${taxaPerda.replace('.', ',')}%`}
               subtitle={`${fmt(totalsCorte.cachoEsquecido)} cachos esquecidos`}
               icon={AlertTriangle}
-              tone={Number(totalsCorte.perdaCorteRate) > 1.5 ? 'danger' : 'green'}
+              tone={Number(taxaPerda) > 1.5 ? 'danger' : 'green'}
               loading={loading}
             />
             <KpiCard
@@ -369,9 +481,8 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             />
           </div>
 
-          {/* Farol de Alertas e Fitossanitário */}
+          {/* Farol e Fitossanitário */}
           <div className="grid-container grid-cols-2" style={{ marginBottom: '24px' }}>
-            {/* Card 1: Farol de Alertas */}
             <div className="card" style={{ padding: '16px' }}>
               <div className="card-header" style={{ marginBottom: 14 }}>
                 <div>
@@ -380,57 +491,28 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {/* Farol 1: Cachos Esquecidos */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', borderLeft: `5px solid ${Number(totalsCorte.perdaCorteRate) > 1.5 ? 'var(--status-danger)' : 'var(--status-success)'}` }}>
-                  <div>
-                    <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--text-primary)' }}>Perda no Corte (Cachos Esquecidos)</strong>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Meta: &lt; 1,5% de perda</span>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <strong style={{ fontSize: '1rem', color: Number(totalsCorte.perdaCorteRate) > 1.5 ? 'var(--status-danger)' : 'var(--status-success)' }}>
-                      {totalsCorte.perdaCorteRate.replace('.', ',')}%
-                    </strong>
-                    <span style={{ fontSize: '0.68rem', display: 'block', color: 'var(--text-muted)' }}>
-                      {Number(totalsCorte.perdaCorteRate) > 1.5 ? 'Fora da Meta 🔴' : 'Conforme 🟢'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Farol 2: Cachos Verdes */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', borderLeft: `5px solid ${totalsCorte.cachoVerdeRate > 3.0 ? 'var(--status-danger)' : 'var(--status-success)'}` }}>
-                  <div>
-                    <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--text-primary)' }}>Colheita de Cachos Verdes</strong>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Meta: &lt; 3,0% de verdes</span>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <strong style={{ fontSize: '1rem', color: totalsCorte.cachoVerdeRate > 3.0 ? 'var(--status-danger)' : 'var(--status-success)' }}>
-                      {totalsCorte.cachoVerdeRate.toFixed(1).replace('.', ',')}%
-                    </strong>
-                    <span style={{ fontSize: '0.68rem', display: 'block', color: 'var(--text-muted)' }}>
-                      {totalsCorte.cachoVerdeRate > 3.0 ? 'Fora da Meta 🔴' : 'Conforme 🟢'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Farol 3: Talo Comprido */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', borderLeft: `5px solid ${totalsCorte.taloCompridoRate > 5.0 ? 'var(--status-warning)' : 'var(--status-success)'}` }}>
-                  <div>
-                    <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--text-primary)' }}>Incidência de Talo Comprido</strong>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Meta: &lt; 5,0% das plantas</span>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <strong style={{ fontSize: '1rem', color: totalsCorte.taloCompridoRate > 5.0 ? 'var(--status-warning)' : 'var(--status-success)' }}>
-                      {totalsCorte.taloCompridoRate.toFixed(1).replace('.', ',')}%
-                    </strong>
-                    <span style={{ fontSize: '0.68rem', display: 'block', color: 'var(--text-muted)' }}>
-                      {totalsCorte.taloCompridoRate > 5.0 ? 'Atenção 🟡' : 'Conforme 🟢'}
-                    </span>
-                  </div>
-                </div>
+                <AlertFarol
+                  label="Perda no Corte (Cachos Esquecidos)"
+                  meta="Meta: < 1,5% de perda"
+                  value={taxaPerda}
+                  danger={1.5}
+                />
+                <AlertFarol
+                  label="Colheita de Cachos Verdes"
+                  meta="Meta: < 3,0% de verdes"
+                  value={totalsCorte.cachoVerdeRate.toFixed(1)}
+                  danger={3.0}
+                />
+                <AlertFarol
+                  label="Incidência de Talo Comprido"
+                  meta="Meta: < 5,0% das plantas"
+                  value={totalsCorte.taloCompridoRate.toFixed(1)}
+                  danger={5.0}
+                  warning={3.0}
+                />
               </div>
             </div>
 
-            {/* Card 2: Monitoramento Fitossanitário */}
             <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div className="card-header" style={{ marginBottom: 10 }}>
                 <div>
@@ -454,12 +536,12 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             </div>
           </div>
 
-          {/* Detalhe qualitativo */}
+          {/* Qualitative detail */}
           <div className="grid-container grid-cols-2">
             <div className="card">
               <div className="card-header">
                 <div>
-                   <h3 className="card-title">Distribuição dos cachos no corte</h3>
+                  <h3 className="card-title">Distribuição dos cachos no corte</h3>
                   <span className="card-subtitle">Proporção de cada categoria sobre o total observado</span>
                 </div>
               </div>
@@ -477,7 +559,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             <div className="card">
               <div className="card-header">
                 <div>
-                   <h3 className="card-title">Falhas e ocorrências no corte</h3>
+                  <h3 className="card-title">Falhas e ocorrências no corte</h3>
                   <span className="card-subtitle">Irregularidades técnicas por categoria</span>
                 </div>
               </div>
@@ -493,48 +575,68 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             </div>
           </div>
 
-          <div className="grid-container grid-cols-1">
-            <CustomChart loading={loading} type="bar" data={chartsCorte.byFarm} title="Cortes por fazenda" />
-            <CustomChart loading={loading} type="bar" data={chartsCorte.byEvaluator} title="Cortes por avaliador" />
-          </div>
-          <div className="grid-container grid-cols-1">
-             <CustomChart loading={loading} type="line" data={chartsCorte.byDay} title="Evolução diária — CQO Corte" />
-            <div className="card">
-              <div className="card-header">
-                <div>
-                  <h3 className="card-title">Resumo de status — CQO Corte</h3>
-                  <span className="card-subtitle">Distribuição dos registros por status de transmissão</span>
-                </div>
-              </div>
-              <div style={{ padding: '4px 0' }}>
-                 <StatusBadgeRow label="Sincronizados" value={corteRecords.filter((r) => r.status === 'Sincronizado').length} total={corteRecords.length} color="var(--status-success)" loading={loading} />
-                <StatusBadgeRow label="Aprovados" value={corteRecords.filter((r) => r.status === 'Aprovado').length} total={corteRecords.length} color="var(--status-success)" loading={loading} />
-                <StatusBadgeRow label="Reprovados" value={corteRecords.filter((r) => r.status === 'Reprovado').length} total={corteRecords.length} color="var(--status-danger)" loading={loading} />
-                <StatusBadgeRow label="Pendente validação" value={corteRecords.filter((r) => r.status === 'Pendente validação').length} total={corteRecords.length} color="var(--status-warning)" loading={loading} />
-                <StatusBadgeRow label="Falha de sincronização" value={corteRecords.filter((r) => r.status === 'Falha').length} total={corteRecords.length} color="var(--status-danger)" loading={loading} />
+          {/* Charts — one per row */}
+          <CustomChart loading={loading} type="line" data={chartsCorte.byDay} title="Evolução diária — CQO Corte" />
+          <CustomChart loading={loading} type="bar" data={chartsCorte.byFarm} title="Cortes por fazenda" />
+          <CustomChart loading={loading} type="bar" data={chartsCorte.byEvaluator} title="Cortes por avaliador" />
+
+          {/* Status resumo */}
+          <div className="card">
+            <div className="card-header">
+              <div>
+                <h3 className="card-title">Resumo de status — CQO Corte</h3>
+                <span className="card-subtitle">Distribuição dos registros por status de transmissão</span>
               </div>
             </div>
+            <div style={{ padding: '4px 0' }}>
+              <StatusBadgeRow label="Sincronizados" value={corteRecords.filter((r) => r.status === 'Sincronizado').length} total={corteRecords.length} color="var(--status-success)" loading={loading} />
+              <StatusBadgeRow label="Aprovados" value={corteRecords.filter((r) => r.status === 'Aprovado').length} total={corteRecords.length} color="var(--status-success)" loading={loading} />
+              <StatusBadgeRow label="Reprovados" value={corteRecords.filter((r) => r.status === 'Reprovado').length} total={corteRecords.length} color="var(--status-danger)" loading={loading} />
+              <StatusBadgeRow label="Pendente validação" value={corteRecords.filter((r) => r.status === 'Pendente validação').length} total={corteRecords.length} color="var(--status-warning)" loading={loading} />
+              <StatusBadgeRow label="Falha de sincronização" value={corteRecords.filter((r) => r.status === 'Falha').length} total={corteRecords.length} color="var(--status-danger)" loading={loading} />
+            </div>
           </div>
+
+          {/* Ranking */}
+          <SectionHeader eyebrow="Performance Individual" title="Ranking de Avaliadores — Corte" color="var(--green-institutional)" />
+          <RankingAvaliadores records={corteRecords} loading={loading} />
         </>
       )}
 
       {/* ============ CQO CARREAMENTO ============ */}
-      {currentTab === 'carreamento' && (
+      {currentTab === 'carreamento' && (loading || carreamentoRecords.length > 0) && (
         <>
           <SectionHeader eyebrow="Formulário CQO Carreamento e Fruto Solto" title="Indicadores de transporte e rastreio" color="var(--orange-institutional)" />
 
-          <div className="grid-container grid-cols-4">
-            <KpiCard
+          {/* Gauge + KPIs */}
+          <div className="grid-container grid-cols-3">
+            <CustomChart
+              type="gauge"
               title="Nota CQO Carreamento"
-              value={`${totalsCarreamento.carreamentoScore} / 100`}
-              subtitle="Score geral de qualidade do carreamento"
-              icon={Award}
-              tone={totalsCarreamento.carreamentoScore >= 90 ? 'green' : totalsCarreamento.carreamentoScore >= 80 ? 'warning' : 'danger'}
+              data={[{ label: 'Score geral de qualidade do carreamento', value: totalsCarreamento.carreamentoScore }]}
               loading={loading}
             />
             <KpiCard title="Fichas carreamento" value={fmt(carreamentoRecords.length)} subtitle={`${fmt(totalsCarreamento.linhas)} linhas registradas`} icon={Truck} tone="orange" loading={loading} />
             <KpiCard title="Plantas observadas" value={fmt(totalsCarreamento.plantasObservadas)} subtitle="Base de cálculo por linha" icon={Sprout} tone="green" loading={loading} />
-            <KpiCard title="Peso total frutos" value={`${fmt(totalsCarreamento.pesoMedio, 1)} kg`} subtitle={`Média de ${mediaPeso} kg/ficha`} icon={Weight} tone="info" loading={loading} />
+          </div>
+
+          <div className="grid-container grid-cols-2" style={{ marginTop: 12 }}>
+            <KpiCard
+              title="Acúmulo de Peso Observado"
+              value={`${fmt(totalsCarreamento.pesoMedio, 1)} kg`}
+              subtitle={`Média de ${mediaPesoFicha} kg/ficha`}
+              icon={Weight}
+              tone="info"
+              loading={loading}
+            />
+            <KpiCard
+              title="Taxa de Sincronização"
+              value={pct(carreamentoRecords.filter((r) => r.status === 'Sincronizado').length, carreamentoRecords.length)}
+              subtitle={`${carreamentoRecords.filter((r) => r.status === 'Sincronizado').length} fichas concluídas`}
+              icon={TrendingUp}
+              tone="info"
+              loading={loading}
+            />
           </div>
 
           <SectionHeader eyebrow="Irregularidades de transporte" title="Perdas e falhas no carreamento" color="var(--orange-institutional)" />
@@ -573,9 +675,8 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             />
           </div>
 
-          {/* Farol de Alertas e Desperdício Físico */}
+          {/* Farol logístico */}
           <div className="grid-container grid-cols-2" style={{ marginBottom: '24px' }}>
-            {/* Card 1: Farol de Alertas Logísticos */}
             <div className="card" style={{ padding: '16px' }}>
               <div className="card-header" style={{ marginBottom: 14 }}>
                 <div>
@@ -584,41 +685,22 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {/* Farol 1: Cachos Não Carreados */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', borderLeft: `5px solid ${totalsCarreamento.cachoNaoCarreadoRate > 2.0 ? 'var(--status-danger)' : 'var(--status-success)'}` }}>
-                  <div>
-                    <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--text-primary)' }}>Perda Logística (Cachos Não Carreados)</strong>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Meta: &lt; 2,0% de perda</span>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <strong style={{ fontSize: '1rem', color: totalsCarreamento.cachoNaoCarreadoRate > 2.0 ? 'var(--status-danger)' : 'var(--status-success)' }}>
-                      {totalsCarreamento.cachoNaoCarreadoRate.toFixed(1).replace('.', ',')}%
-                    </strong>
-                    <span style={{ fontSize: '0.68rem', display: 'block', color: 'var(--text-muted)' }}>
-                      {totalsCarreamento.cachoNaoCarreadoRate > 2.0 ? 'Fora da Meta 🔴' : 'Conforme 🟢'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Farol 2: Cachos Mal Posicionados */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', borderLeft: `5px solid ${totalsCarreamento.cachoMalPosicionadoRate > 5.0 ? 'var(--status-danger)' : 'var(--status-success)'}` }}>
-                  <div>
-                    <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--text-primary)' }}>Cachos Mal Posicionados na Linha</strong>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Meta: &lt; 5,0% de desvio</span>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <strong style={{ fontSize: '1rem', color: totalsCarreamento.cachoMalPosicionadoRate > 5.0 ? 'var(--status-danger)' : 'var(--status-success)' }}>
-                      {totalsCarreamento.cachoMalPosicionadoRate.toFixed(1).replace('.', ',')}%
-                    </strong>
-                    <span style={{ fontSize: '0.68rem', display: 'block', color: 'var(--text-muted)' }}>
-                      {totalsCarreamento.cachoMalPosicionadoRate > 5.0 ? 'Fora da Meta 🔴' : 'Conforme 🟢'}
-                    </span>
-                  </div>
-                </div>
+                <AlertFarol
+                  label="Perda Logística (Cachos Não Carreados)"
+                  meta="Meta: < 2,0% de perda"
+                  value={taxaNaoCarreado}
+                  danger={2.0}
+                />
+                <AlertFarol
+                  label="Cachos Mal Posicionados na Linha"
+                  meta="Meta: < 5,0% de desvio"
+                  value={taxaMalPos}
+                  danger={5.0}
+                  warning={3.0}
+                />
               </div>
             </div>
 
-            {/* Card 2: Desperdício Logístico no Campo */}
             <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div className="card-header" style={{ marginBottom: 10 }}>
                 <div>
@@ -651,7 +733,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
                 </div>
               </div>
               <div className="quality-stack">
-                 <QualityBar label="Plantas observadas" value={totalsCarreamento.plantasObservadas} max={Math.max(totalsCarreamento.plantasObservadas, 1)} color="var(--green-institutional)" loading={loading} />
+                <QualityBar label="Plantas observadas" value={totalsCarreamento.plantasObservadas} max={Math.max(totalsCarreamento.plantasObservadas, 1)} color="var(--green-institutional)" loading={loading} />
                 <QualityBar label="Cachos mal posicionados" value={totalsCarreamento.cachoMalPosicionado} max={Math.max(totalsCarreamento.plantasObservadas, 1)} color="var(--status-warning)" loading={loading} />
                 <QualityBar label="Cachos não carreados" value={totalsCarreamento.cachoNaoCarreado} max={Math.max(totalsCarreamento.plantasObservadas, 1)} color="var(--status-danger)" loading={loading} />
               </div>
@@ -661,11 +743,11 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
               <div className="card-header">
                 <div>
                   <h3 className="card-title">Status e rastreabilidade</h3>
-                   <span className="card-subtitle">Distribuição por status de transmissão</span>
+                  <span className="card-subtitle">Distribuição por status de transmissão</span>
                 </div>
               </div>
               <div style={{ padding: '4px 0' }}>
-                 <StatusBadgeRow label="Sincronizados" value={carreamentoRecords.filter((r) => r.status === 'Sincronizado').length} total={carreamentoRecords.length} color="var(--status-success)" loading={loading} />
+                <StatusBadgeRow label="Sincronizados" value={carreamentoRecords.filter((r) => r.status === 'Sincronizado').length} total={carreamentoRecords.length} color="var(--status-success)" loading={loading} />
                 <StatusBadgeRow label="Aprovados" value={carreamentoRecords.filter((r) => r.status === 'Aprovado').length} total={carreamentoRecords.length} color="var(--status-success)" loading={loading} />
                 <StatusBadgeRow label="Reprovados" value={carreamentoRecords.filter((r) => r.status === 'Reprovado').length} total={carreamentoRecords.length} color="var(--status-danger)" loading={loading} />
                 <StatusBadgeRow label="Pendente validação" value={carreamentoRecords.filter((r) => r.status === 'Pendente validação').length} total={carreamentoRecords.length} color="var(--status-warning)" loading={loading} />
@@ -676,11 +758,14 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             </div>
           </div>
 
-          <div className="grid-container grid-cols-1">
-            <CustomChart loading={loading} type="bar" data={chartsCarreamento.byFarm} title="Carreamentos por fazenda" />
-            <CustomChart loading={loading} type="bar" data={chartsCarreamento.byEvaluator} title="Carreamentos por avaliador" />
-          </div>
+          {/* Charts — one per row */}
           <CustomChart loading={loading} type="line" data={chartsCarreamento.byDay} title="Evolução diária — CQO Carreamento" />
+          <CustomChart loading={loading} type="bar" data={chartsCarreamento.byFarm} title="Carreamentos por fazenda" />
+          <CustomChart loading={loading} type="bar" data={chartsCarreamento.byEvaluator} title="Carreamentos por avaliador" />
+
+          {/* Ranking */}
+          <SectionHeader eyebrow="Performance Individual" title="Ranking de Avaliadores — Carreamento" color="var(--orange-institutional)" />
+          <RankingAvaliadores records={carreamentoRecords} loading={loading} />
         </>
       )}
     </div>
