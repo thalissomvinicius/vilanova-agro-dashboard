@@ -36,6 +36,7 @@ export default function App() {
   const [farmFilter, setFarmFilter] = useState('all');
   const [areaFilter, setAreaFilter] = useState('all');
   const [periodFilter, setPeriodFilter] = useState('today');
+  const [cycleFilter, setCycleFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -121,6 +122,7 @@ export default function App() {
             farmFilter={farmFilter}
             areaFilter={areaFilter}
             periodFilter={periodFilter}
+            cycleFilter={cycleFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
             searchTerm={searchTerm}
@@ -134,6 +136,7 @@ export default function App() {
             farmFilter={farmFilter}
             areaFilter={areaFilter}
             periodFilter={periodFilter}
+            cycleFilter={cycleFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
             searchTerm={searchTerm}
@@ -152,6 +155,7 @@ export default function App() {
             farmFilter={farmFilter}
             areaFilter={areaFilter}
             periodFilter={periodFilter}
+            cycleFilter={cycleFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
           />
@@ -193,6 +197,7 @@ export default function App() {
                 farmFilter={farmFilter}
                 areaFilter={areaFilter}
                 periodFilter={periodFilter}
+                cycleFilter={cycleFilter}
                 dateFrom={dateFrom}
                 dateTo={dateTo}
               />
@@ -251,6 +256,8 @@ export default function App() {
           setAreaFilter={setAreaFilter}
           periodFilter={periodFilter}
           setPeriodFilter={setPeriodFilter}
+          cycleFilter={cycleFilter}
+          setCycleFilter={setCycleFilter}
           dateFrom={dateFrom}
           setDateFrom={setDateFrom}
           dateTo={dateTo}

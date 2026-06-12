@@ -89,7 +89,7 @@ function pointInsideFeatures(point, features) {
   return features.some((feature) => pointInFeature(point, feature));
 }
 
-export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, dateFrom, dateTo }) {
+export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const layerGroupRef = useRef(null);
@@ -101,9 +101,10 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     farmFilter,
     areaFilter,
     periodFilter,
+    cycleFilter,
     dateFrom,
     dateTo,
-  }), [records, farmFilter, areaFilter, periodFilter, dateFrom, dateTo]);
+  }), [records, farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo]);
 
   const geoRecords = useMemo(() => filteredRecords.filter((record) => (
     (record.gps && Number.isFinite(record.gps.lat) && Number.isFinite(record.gps.lng))

@@ -56,7 +56,7 @@ function lineColumns(record) {
   ];
 }
 
-export default function Collections({ farmFilter, areaFilter, periodFilter, dateFrom, dateTo, searchTerm }) {
+export default function Collections({ farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo, searchTerm }) {
   const { loading, records, source, error } = useCqoData();
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -74,6 +74,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, date
     searchTerm,
     statusFilter,
     periodFilter,
+    cycleFilter,
     dateFrom,
     dateTo,
   });

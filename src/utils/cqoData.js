@@ -577,7 +577,7 @@ function isWithinPeriod(record, periodFilter, dateFrom = '', dateTo = '') {
     const to = parseDateBoundary(dateTo, true);
     return (!from || created >= from) && (!to || created <= to);
   }
-  if (periodFilter === 'season') return true;
+  if (periodFilter === 'season' || periodFilter === 'all') return true;
   const now = new Date();
   const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
   if (periodFilter === 'today') return created.toDateString() === now.toDateString();
@@ -586,24 +586,26 @@ function isWithinPeriod(record, periodFilter, dateFrom = '', dateTo = '') {
   return true;
 }
 
-export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all', periodFilter = 'season', dateFrom = '', dateTo = '', searchTerm = '', statusFilter = 'all' } = {}) {
+export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all', periodFilter = 'all', cycleFilter = 'all', dateFrom = '', dateTo = '', searchTerm = '', statusFilter = 'all' } = {}) {
   const search = normalizeText(searchTerm);
   return records.filter((record) => {
     const farmOk = farmFilter === 'all' || record.farmId === farmFilter;
     const areaOk = areaFilter === 'all' || record.type === areaFilter;
+    const cycleOk = cycleFilter === 'all' || String(record.cycle) === String(cycleFilter);
     const statusOk = statusFilter === 'all' || normalizeText(record.status) === normalizeText(statusFilter);
     const periodOk = isWithinPeriod(record, periodFilter, dateFrom, dateTo);
     const haystack = normalizeText([
       record.id,
       record.farm,
       record.parcel,
+      record.cycle,
       record.form,
       record.evaluator,
       record.evaluatorMatricula,
       record.fiscal,
     ].join(' '));
     const searchOk = !search || haystack.includes(search);
-    return farmOk && areaOk && statusOk && periodOk && searchOk;
+    return farmOk && areaOk && cycleOk && statusOk && periodOk && searchOk;
   });
 }
 

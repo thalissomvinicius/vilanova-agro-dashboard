@@ -73,6 +73,21 @@ export default function Header({
 
         <select
           className="header-filter-select"
+          value={cycleFilter}
+          onChange={(event) => setCycleFilter(event.target.value)}
+          title="Selecionar ciclo"
+        >
+          <option value="all">Todos os ciclos</option>
+          <option value="1">Ciclo 1</option>
+          <option value="2">Ciclo 2</option>
+          <option value="3">Ciclo 3</option>
+          <option value="4">Ciclo 4</option>
+          <option value="5">Ciclo 5</option>
+          <option value="6">Ciclo 6</option>
+        </select>
+
+        <select
+          className="header-filter-select"
           value={periodFilter}
           onChange={(event) => {
             setPeriodFilter(event.target.value);
@@ -81,13 +96,13 @@ export default function Header({
               setDateTo('');
             }
           }}
-          title="Período"
+          title="Período pré-definido"
         >
           <option value="today">Hoje</option>
           <option value="week">Últimos 7 dias</option>
           <option value="month">Este mês</option>
-          <option value="custom">De data até data</option>
-          <option value="season">Safra / histórico</option>
+          <option value="all">Todos os tempos</option>
+          <option value="custom" hidden>Personalizado</option>
         </select>
 
         <input

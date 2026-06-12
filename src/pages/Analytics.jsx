@@ -240,11 +240,11 @@ function EmptyState({ areaFilter }) {
 }
 
 // ─── Analytics Page ────────────────────────────────────────────────────────────
-export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFrom, dateTo }) {
+export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo }) {
   const { loading, error, records: allRecords, source } = useCqoData();
   const [activeTab, setActiveTab] = useState('geral');
 
-  const filtered = filterRecords(allRecords, { farmFilter, areaFilter, periodFilter, dateFrom, dateTo });
+  const filtered = filterRecords(allRecords, { farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo });
   const corteRecords = filtered.filter((r) => r.type === 'corte');
   const carreamentoRecords = filtered.filter((r) => r.type === 'carreamento');
 
