@@ -473,7 +473,7 @@ export default function CustomChart({ type = 'line', data = [], height = 280, ti
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0' }}>
-        <svg viewBox="0 0 280 170" width="100%" style={{ maxWidth: 280, overflow: 'visible' }}>
+        <svg viewBox="0 0 280 190" width="100%" style={{ maxWidth: 280 }}>
           {/* Track */}
           <path d={track} fill="var(--bg-secondary)" />
 
