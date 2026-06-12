@@ -11,6 +11,7 @@ import Inventory from './pages/Inventory';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import LeafletMap from './components/LeafletMap';
+import { refreshCqoData } from './utils/cqoData';
 
 export default function App() {
   const [activePage, setActivePage] = useState('dashboard');
@@ -99,14 +100,16 @@ export default function App() {
 
   const triggerManualSync = () => {
     setIsSyncing(true);
-    setTimeout(() => {
-      setIsSyncing(false);
-      setLastSyncTime(new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      }));
-    }, 3000);
+    refreshCqoData()
+      .catch((err) => console.error("Manual sync failed:", err))
+      .finally(() => {
+        setIsSyncing(false);
+        setLastSyncTime(new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        }));
+      });
   };
 
   const renderActivePage = () => {

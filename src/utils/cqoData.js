@@ -452,27 +452,83 @@ function sampleData(error = '') {
   };
 }
 
+let cachedData = null;
+let activePromise = null;
+const listeners = new Set();
+
+export function clearCqoCache() {
+  cachedData = null;
+  activePromise = null;
+}
+
+export function refreshCqoData() {
+  clearCqoCache();
+
+  // Notificar todos os listeners ativos de que estamos recarregando
+  listeners.forEach((listener) =>
+    listener({
+      loading: true,
+      records: [],
+      headcount: [],
+      source: 'Atualizando...',
+      error: '',
+    })
+  );
+
+  activePromise = loadSupabaseData()
+    .then((data) => {
+      cachedData = data;
+      activePromise = null;
+      listeners.forEach((listener) => listener({ ...data, loading: false }));
+      return data;
+    })
+    .catch((error) => {
+      activePromise = null;
+      const failedData = sampleData(error.message);
+      listeners.forEach((listener) => listener({ ...failedData, loading: false }));
+      throw error;
+    });
+
+  return activePromise;
+}
+
 export function useCqoData() {
-  const [state, setState] = useState({
-    loading: true,
-    records: [],
-    headcount: [],
-    source: 'Carregando',
-    error: '',
+  const [state, setState] = useState(() => {
+    if (cachedData) {
+      return {
+        loading: false,
+        ...cachedData,
+      };
+    }
+    return {
+      loading: true,
+      records: [],
+      headcount: [],
+      source: 'Carregando',
+      error: '',
+    };
   });
 
   useEffect(() => {
-    let mounted = true;
-    loadSupabaseData()
-      .then((data) => {
-        if (mounted) setState({ ...data, loading: false });
-      })
-      .catch((error) => {
-        if (mounted) setState({ ...sampleData(error.message), loading: false });
-      });
+    listeners.add(setState);
+
+    // Se o cache não estiver pronto e nenhuma busca estiver ativa, inicia a busca
+    if (!cachedData && !activePromise) {
+      activePromise = loadSupabaseData()
+        .then((data) => {
+          cachedData = data;
+          activePromise = null;
+          listeners.forEach((listener) => listener({ ...data, loading: false }));
+        })
+        .catch((error) => {
+          activePromise = null;
+          const failedData = sampleData(error.message);
+          listeners.forEach((listener) => listener({ ...failedData, loading: false }));
+        });
+    }
 
     return () => {
-      mounted = false;
+      listeners.delete(setState);
     };
   }, []);
 
