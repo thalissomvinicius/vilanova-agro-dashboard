@@ -158,11 +158,13 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
     ? (totalsCarreamento.pesoMedio / carreamentoRecords.length).toFixed(1)
     : '0';
 
-  const tabs = [
+  const availableTabs = [
     { id: 'geral', label: 'Visão Geral' },
-    { id: 'corte', label: 'CQO Corte' },
-    { id: 'carreamento', label: 'CQO Carreamento' },
+    ...(areaFilter !== 'carreamento' ? [{ id: 'corte', label: 'CQO Corte' }] : []),
+    ...(areaFilter !== 'corte' ? [{ id: 'carreamento', label: 'CQO Carreamento' }] : []),
   ];
+
+  const currentTab = availableTabs.some((t) => t.id === activeTab) ? activeTab : 'geral';
 
   return (
     <div className="fade-in page-shell">
@@ -187,7 +189,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
 
       {/* Tab Navigation */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid var(--border-color)', paddingBottom: 0 }}>
-        {tabs.map((tab) => (
+        {availableTabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
@@ -197,9 +199,9 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
               border: 'none',
               background: 'none',
               cursor: 'pointer',
-              fontWeight: activeTab === tab.id ? 700 : 500,
-              color: activeTab === tab.id ? 'var(--green-institutional)' : 'var(--text-secondary)',
-              borderBottom: activeTab === tab.id ? '2px solid var(--green-institutional)' : '2px solid transparent',
+              fontWeight: currentTab === tab.id ? 700 : 500,
+              color: currentTab === tab.id ? 'var(--green-institutional)' : 'var(--text-secondary)',
+              borderBottom: currentTab === tab.id ? '2px solid var(--green-institutional)' : '2px solid transparent',
               marginBottom: -2,
               fontSize: '0.9rem',
               transition: 'all 0.18s ease',
@@ -211,10 +213,10 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
       </div>
 
       {/* ============ VISÃO GERAL ============ */}
-      {activeTab === 'geral' && (
+      {currentTab === 'geral' && (
         <>
           <SectionHeader eyebrow="Indicadores de Conformidade" title="Avaliação Geral da Qualidade Operacional" color="var(--green-institutional)" />
-          <div className="grid-container grid-cols-4">
+          <div className={`grid-container ${areaFilter === 'all' ? 'grid-cols-4' : 'grid-cols-3'}`}>
             <KpiCard
               title="Nota Geral CQO"
               value={`${totalsGeral.generalScore} / 100`}
@@ -223,22 +225,26 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
               tone={totalsGeral.generalScore >= 90 ? 'green' : totalsGeral.generalScore >= 80 ? 'warning' : 'danger'}
               loading={loading}
             />
-            <KpiCard
-              title="Nota CQO Corte"
-              value={`${totalsGeral.corteScore} / 100`}
-              subtitle={`${fmt(totalsGeral.corte)} coletas de colheita`}
-              icon={Scissors}
-              tone={totalsGeral.corteScore >= 90 ? 'green' : totalsGeral.corteScore >= 80 ? 'warning' : 'danger'}
-              loading={loading}
-            />
-            <KpiCard
-              title="Nota CQO Carreamento"
-              value={`${totalsGeral.carreamentoScore} / 100`}
-              subtitle={`${fmt(totalsGeral.carreamento)} coletas de transporte`}
-              icon={Truck}
-              tone={totalsGeral.carreamentoScore >= 90 ? 'green' : totalsGeral.carreamentoScore >= 80 ? 'warning' : 'danger'}
-              loading={loading}
-            />
+            {areaFilter !== 'carreamento' && (
+              <KpiCard
+                title="Nota CQO Corte"
+                value={`${totalsGeral.corteScore} / 100`}
+                subtitle={`${fmt(totalsGeral.corte)} coletas de colheita`}
+                icon={Scissors}
+                tone={totalsGeral.corteScore >= 90 ? 'green' : totalsGeral.corteScore >= 80 ? 'warning' : 'danger'}
+                loading={loading}
+              />
+            )}
+            {areaFilter !== 'corte' && (
+              <KpiCard
+                title="Nota CQO Carreamento"
+                value={`${totalsGeral.carreamentoScore} / 100`}
+                subtitle={`${fmt(totalsGeral.carreamento)} coletas de transporte`}
+                icon={Truck}
+                tone={totalsGeral.carreamentoScore >= 90 ? 'green' : totalsGeral.carreamentoScore >= 80 ? 'warning' : 'danger'}
+                loading={loading}
+              />
+            )}
             <KpiCard
               title="Taxa de Sincronização"
               value={`${totalsGeral.syncRate}%`}
@@ -250,9 +256,11 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
           </div>
 
           <SectionHeader eyebrow="Volumes e Amostragem" title="Escopo do Monitoramento de Campo" color="var(--orange-institutional)" />
-          <div className="grid-container grid-cols-4">
+          <div className={`grid-container ${areaFilter === 'carreamento' ? 'grid-cols-3' : 'grid-cols-4'}`}>
             <KpiCard title="Coletas Recebidas" value={fmt(totalsGeral.total)} subtitle="Total de fichas no banco de dados" icon={ClipboardCheck} tone="green" loading={loading} />
-            <KpiCard title="Cachos Observados" value={fmt(totalsGeral.cachosObservados)} subtitle="Cachos auditados nas linhas" icon={CheckCircle2} tone="info" loading={loading} />
+            {areaFilter !== 'carreamento' && (
+              <KpiCard title="Cachos Observados" value={fmt(totalsGeral.cachosObservados)} subtitle="Cachos auditados nas linhas" icon={CheckCircle2} tone="info" loading={loading} />
+            )}
             <KpiCard title="Linhas Avaliadas" value={fmt(totalsGeral.linhas)} subtitle={`${fmt(totalsGeral.gpsPoints)} pontos GPS no trajeto`} icon={Rows3} tone="orange" loading={loading} />
             <KpiCard title="Plantas Observadas" value={fmt(totalsGeral.plantasObservadas)} subtitle="Base para cálculo de perdas" icon={Sprout} tone="green" loading={loading} />
           </div>
@@ -260,9 +268,15 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
           <SectionHeader eyebrow="Desperdício de Matéria-Prima" title="Estimativa Física de Perdas no Campo" color="var(--status-danger)" />
           <div className="grid-container grid-cols-3" style={{ marginBottom: '24px' }}>
             <KpiCard
-              title="Cachos Perdidos (Corte/Logística)"
+              title={areaFilter === 'corte' ? "Cachos Perdidos (Corte)" : areaFilter === 'carreamento' ? "Cachos Perdidos (Logística)" : "Cachos Perdidos (Corte/Logística)"}
               value={`${fmt(totalsGeral.lostCachosQty)} cachos`}
-              subtitle="Esquecidos ou não carreados"
+              subtitle={
+                areaFilter === 'corte'
+                  ? 'Apenas cachos esquecidos'
+                  : areaFilter === 'carreamento'
+                  ? 'Apenas cachos não carreados'
+                  : 'Esquecidos ou não carreados'
+              }
               icon={AlertTriangle}
               tone="danger"
               loading={loading}
@@ -285,9 +299,11 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             />
           </div>
 
-          <div className="grid-container grid-cols-2">
+          <div className={`grid-container ${areaFilter === 'all' ? 'grid-cols-2' : 'grid-cols-1'}`}>
             <CustomChart loading={loading} type="bar" data={chartsGeral.byFarm} title="Coletas por fazenda" />
-            <CustomChart loading={loading} type="donut" data={chartsGeral.byForm} title="Participação por formulário" />
+            {areaFilter === 'all' && (
+              <CustomChart loading={loading} type="donut" data={chartsGeral.byForm} title="Participação por formulário" />
+            )}
           </div>
           <div className="grid-container grid-cols-2">
             <CustomChart loading={loading} type="line" data={chartsGeral.byDay} title="Evolução diária de coletas" />
@@ -297,7 +313,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
       )}
 
       {/* ============ CQO CORTE ============ */}
-      {activeTab === 'corte' && (
+      {currentTab === 'corte' && (
         <>
           <SectionHeader eyebrow="Formulário CQO Corte" title="Indicadores de qualidade no corte" color="var(--green-institutional)" />
 
@@ -503,7 +519,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
       )}
 
       {/* ============ CQO CARREAMENTO ============ */}
-      {activeTab === 'carreamento' && (
+      {currentTab === 'carreamento' && (
         <>
           <SectionHeader eyebrow="Formulário CQO Carreamento e Fruto Solto" title="Indicadores de transporte e rastreio" color="var(--orange-institutional)" />
 
