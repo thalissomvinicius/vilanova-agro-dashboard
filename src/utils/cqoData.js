@@ -10,13 +10,13 @@ export const SUPABASE_CONFIG = {
 
 export const CQO_FARMS = [
   { id: 'all', name: 'Todas as Fazendas' },
-  { id: 'fe-em-deus', name: 'Fe em Deus' },
-  { id: 'nova-conceicao', name: 'Nova Conceicao' },
+  { id: 'fe-em-deus', name: 'Fé em Deus' },
+  { id: 'nova-conceicao', name: 'Nova Conceição' },
   { id: 'vila-nova', name: 'Vila Nova' },
 ];
 
 export const CQO_AREAS = [
-  { id: 'all', name: 'Todos os formularios' },
+  { id: 'all', name: 'Todos os formulários' },
   { id: 'corte', name: 'CQO Corte' },
   { id: 'carreamento', name: 'CQO Carreamento' },
 ];
@@ -172,7 +172,7 @@ function formType(formularioId, data) {
 function statusLabel(status) {
   const normalized = normalizeText(status);
   if (normalized === 'sincronizado' || normalized === 'sync') return 'Sincronizado';
-  if (normalized === 'pendente-validacao') return 'Pendente validacao';
+  if (normalized === 'pendente-validacao') return 'Pendente validação';
   if (normalized === 'aprovado') return 'Aprovado';
   if (normalized === 'reprovado') return 'Reprovado';
   if (normalized === 'erro' || normalized === 'falha') return 'Falha';
@@ -478,7 +478,7 @@ export function aggregateRecords(records) {
     acc.gps += record.gps ? 1 : 0;
     acc.gpsPoints += record.gpsTrack?.length || 0;
     if (record.status === 'Sincronizado') acc.sincronizados += 1;
-    if (record.status === 'Pendente validacao') acc.pendentesValidacao += 1;
+    if (record.status === 'Pendente validação') acc.pendentesValidacao += 1;
     if (record.status === 'Aprovado') acc.aprovados += 1;
     if (record.status === 'Reprovado') acc.reprovados += 1;
     if (record.status === 'Pendente') acc.pendentes += 1;

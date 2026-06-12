@@ -18,7 +18,7 @@ import { exportDashboardRecord } from '../utils/reportExporter';
 function statusBadge(status) {
   if (status === 'Aprovado') return 'badge-success';
   if (status === 'Reprovado') return 'badge-danger';
-  if (status === 'Pendente validacao') return 'badge-warning';
+  if (status === 'Pendente validação') return 'badge-warning';
   if (status === 'Sincronizado') return 'badge-success';
   if (status === 'Falha') return 'badge-danger';
   return 'badge-warning';
@@ -37,7 +37,7 @@ function lineColumns(record) {
       ['linha', 'Linha'],
       ['numero_plantas_linha', 'Plantas linha'],
       ['cacho_mal_posicionado', 'Mal posicionado'],
-      ['cacho_nao_carreado', 'Nao carreado'],
+      ['cacho_nao_carreado', 'Não carreado'],
       ['numero_plantas_observadas', 'Plantas observadas'],
       ['peso_medio', 'Peso frutos'],
     ];
@@ -93,7 +93,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, date
       setReviewOverrides((prev) => ({ ...prev, [selectedRecord.id]: label }));
       setSelectedRecord((prev) => (prev ? { ...prev, status: label } : prev));
     } catch (reviewError) {
-      window.alert(`Nao foi possivel atualizar a validacao: ${reviewError.message}`);
+      window.alert(`Não foi possível atualizar a validação: ${reviewError.message}`);
     } finally {
       setIsReviewing(false);
     }
@@ -118,7 +118,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, date
           >
             <option value="all">Todos os status</option>
             <option value="Sincronizado">Sincronizado</option>
-            <option value="Pendente validacao">Pendente validacao</option>
+            <option value="Pendente validação">Pendente validação</option>
             <option value="Aprovado">Aprovado</option>
             <option value="Reprovado">Reprovado</option>
             <option value="Pendente">Pendente</option>
@@ -145,14 +145,14 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, date
               <tr>
                 <th>Ficha</th>
                 <th>Data / Hora</th>
-                <th>Formulario</th>
+                <th>Formulário</th>
                 <th>Fazenda / Parcela</th>
                 <th>Avaliador</th>
                 <th>Status</th>
                 <th>GPS</th>
                 <th>Acomp.</th>
                 <th>Linhas</th>
-                <th style={{ textAlign: 'center' }}>Acao</th>
+                <th style={{ textAlign: 'center' }}>Ação</th>
               </tr>
             </thead>
             <tbody>
@@ -229,7 +229,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, date
                       {record.acompanhamento?.teve === 'sim' ? (
                         <span className="badge badge-info">Sim</span>
                       ) : (
-                        <span className="muted-cell">Nao</span>
+                        <span className="muted-cell">Não</span>
                       )}
                     </td>
                     <td>{formatNumber(record.lines.length)}</td>
@@ -271,14 +271,14 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, date
                   <div>
                     <span>Avaliador</span>
                     <strong>{selectedRecord.evaluator}</strong>
-                    <small>Matricula {selectedRecord.evaluatorMatricula || '--'}</small>
+                    <small>Matrícula {selectedRecord.evaluatorMatricula || '--'}</small>
                   </div>
                 </div>
                 <div className="detail-item">
                   <Calendar size={16} />
                   <div>
                     <span>Data / hora</span>
-                    <strong>{selectedRecord.date} as {selectedRecord.time}</strong>
+                    <strong>{selectedRecord.date} às {selectedRecord.time}</strong>
                     <small>Status: {selectedRecord.status}</small>
                   </div>
                 </div>
@@ -293,7 +293,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, date
                 <div className="detail-item">
                   <Rows3 size={16} />
                   <div>
-                    <span>Formulario</span>
+                    <span>Formulário</span>
                     <strong>{selectedRecord.form}</strong>
                     <small>{selectedRecord.lines.length} linha(s) digitada(s)</small>
                   </div>
@@ -335,19 +335,19 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, date
               <div className="detail-footer-grid">
                 <div>
                   <span className="footer-label">GPS</span>
-                  <strong>{selectedRecord.gps?.label || 'Nao capturado'}</strong>
+                  <strong>{selectedRecord.gps?.label || 'Não capturado'}</strong>
                 </div>
                 <div>
                   <span className="footer-label">Acompanhamento</span>
                   <strong>
                     {selectedRecord.acompanhamento?.teve === 'sim'
                       ? `${selectedRecord.acompanhamento.matricula || '--'} - ${selectedRecord.acompanhamento.nome || 'Sem nome'}`
-                      : 'Nao houve'}
+                      : 'Não houve'}
                   </strong>
                 </div>
                 <div>
-                  <span className="footer-label">Observacao</span>
-                  <strong>{selectedRecord.observation || 'Sem observacao'}</strong>
+                  <span className="footer-label">Observação</span>
+                  <strong>{selectedRecord.observation || 'Sem observação'}</strong>
                 </div>
               </div>
 
@@ -356,7 +356,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, date
                   <div className="card-header" style={{ marginBottom: 10 }}>
                     <div>
                       <h3 className="card-title">Imagens geolocalizadas</h3>
-                      <span className="card-subtitle">Evidencias enviadas pelo app com coordenadas da captura.</span>
+                      <span className="card-subtitle">Evidências enviadas pelo app com coordenadas da captura.</span>
                     </div>
                   </div>
                   <div className="evidence-grid">
@@ -382,7 +382,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, date
             <div className="modal-footer">
               <span style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: selectedRecord.status === 'Sincronizado' ? 'var(--status-success)' : 'var(--status-warning)' }}>
                 {selectedRecord.status === 'Sincronizado' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-                Transmissao: {selectedRecord.status}
+                Transmissão: {selectedRecord.status}
               </span>
               <button onClick={() => exportDashboardRecord(selectedRecord, 'pdf')} className="btn btn-secondary">
                 <Download size={14} />

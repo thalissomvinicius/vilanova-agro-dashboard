@@ -60,10 +60,10 @@ export default function Inventory({ farmFilter, searchTerm }) {
     <div className="fade-in page-shell">
       <div className="dashboard-page-header">
         <div>
-          <span className="page-eyebrow">Inventario agricola</span>
-          <h2>Inventario de Parcelas das Fazendas</h2>
+          <span className="page-eyebrow">Inventário agrícola</span>
+          <h2>Inventário de Parcelas das Fazendas</h2>
           <p>
-            Base historica importada dos Excel de inventario para consulta por fazenda, ano de plantio, bloco, parcela e cultivar.
+            Base histórica importada dos Excel de inventário para consulta por fazenda, ano de plantio, bloco, parcela e cultivar.
           </p>
         </div>
         <div className="page-actions">
@@ -100,7 +100,7 @@ export default function Inventory({ farmFilter, searchTerm }) {
       {error ? (
         <div className="warning-strip">
           <AlertCircle size={16} />
-          <span>Nao foi possivel carregar o inventario: {error}</span>
+          <span>Não foi possível carregar o inventário: {error}</span>
         </div>
       ) : null}
 
@@ -114,7 +114,7 @@ export default function Inventory({ farmFilter, searchTerm }) {
           loading={loading}
         />
         <InventoryMetric
-          title="Area inventariada"
+          title="Área inventariada"
           value={`${formatNumber(totals.areaHa, 2)} ha`}
           footer={`${formatNumber(totals.years.length)} ano(s) de plantio`}
           icon={MapPin}
@@ -124,7 +124,7 @@ export default function Inventory({ farmFilter, searchTerm }) {
         <InventoryMetric
           title="Plantas"
           value={formatNumber(totals.plants)}
-          footer={`${formatNumber(totals.averagePlantsPerHa, 1)} plantas/ha media`}
+          footer={`${formatNumber(totals.averagePlantsPerHa, 1)} plantas/ha média`}
           icon={Sprout}
           tone="green"
           loading={loading}
@@ -132,7 +132,7 @@ export default function Inventory({ farmFilter, searchTerm }) {
         <InventoryMetric
           title="Cultivares"
           value={formatNumber(totals.cultivars.length)}
-          footer={`${formatNumber(totals.corrected)} linhas corrigidas por area x densidade`}
+          footer={`${formatNumber(totals.corrected)} linhas corrigidas por área x densidade`}
           icon={FileSpreadsheet}
           tone="orange"
           loading={loading}
@@ -162,7 +162,7 @@ export default function Inventory({ farmFilter, searchTerm }) {
                 <th>Parcela</th>
                 <th>Plantas</th>
                 <th>Plantas/ha</th>
-                <th>Area</th>
+                <th>Área</th>
                 <th>Cultivar</th>
                 <th>Origem</th>
               </tr>

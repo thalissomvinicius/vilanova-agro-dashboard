@@ -36,7 +36,7 @@ export default function Login({ onLogin }) {
       const profile = await authenticateDashboardUser(matricula, senha);
       onLogin(profile);
     } catch (err) {
-      setError(err.message || 'Nao foi possivel entrar.');
+      setError(err.message || 'Não foi possível entrar.');
     } finally {
       setLoading(false);
     }
@@ -49,13 +49,13 @@ export default function Login({ onLogin }) {
           <img src="/logo.png" alt="Vila Nova Agroindustrial" />
           <div>
             <span>Vila Nova</span>
-            <strong>Qualidade Agricola</strong>
+            <strong>Qualidade Agrícola</strong>
           </div>
         </div>
 
         <div className="login-copy">
           <span className="page-eyebrow">Painel CQO Online</span>
-          <h1>Controle de qualidade agricola com dados sincronizados.</h1>
+          <h1>Controle de qualidade agrícola com dados sincronizados.</h1>
           <p>
             Central para acompanhar coletas de corte, carreamento e fruto solto recebidas do aplicativo em campo.
           </p>
@@ -64,7 +64,7 @@ export default function Login({ onLogin }) {
         <div className="login-preview">
           <div className="login-preview-header">
             <div>
-              <span>Operacao conectada</span>
+              <span>Operação conectada</span>
               <strong>Supabase / Android</strong>
             </div>
             <div className="login-live-pill">
@@ -99,7 +99,7 @@ export default function Login({ onLogin }) {
           </div>
           <div>
             <LockKeyhole size={18} />
-            <span>Matricula autorizada</span>
+            <span>Matrícula autorizada</span>
           </div>
         </div>
       </div>
@@ -112,11 +112,11 @@ export default function Login({ onLogin }) {
             </div>
             <span className="page-eyebrow">Acesso ao dashboard</span>
             <h2>Entrar na central</h2>
-            <p>Use sua matricula e senha do headcount online para acessar o painel.</p>
+            <p>Use sua matrícula e senha do headcount online para acessar o painel.</p>
           </div>
 
           <label className="auth-field">
-            <span>Matricula</span>
+            <span>Matrícula</span>
             <div>
               <UserRound size={18} />
               <input

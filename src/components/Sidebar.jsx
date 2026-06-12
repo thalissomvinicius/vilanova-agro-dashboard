@@ -17,13 +17,13 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard CQO', icon: LayoutDashboard },
     { id: 'coletas', label: 'Coletas recebidas', icon: Tractor },
-    { id: 'inventario', label: 'Inventario parcelas', icon: FileSpreadsheet },
-    { id: 'formularios', label: 'Modelos de formularios', icon: ClipboardList },
+    { id: 'inventario', label: 'Inventário parcelas', icon: FileSpreadsheet },
+    { id: 'formularios', label: 'Modelos de formulários', icon: ClipboardList },
     { id: 'mapa', label: 'Mapa GPS', icon: Map },
     { id: 'bi', label: 'Indicadores', icon: BarChart3 },
-    { id: 'sync', label: 'Sincronizacoes', icon: RefreshCw },
+    { id: 'sync', label: 'Sincronizações', icon: RefreshCw },
     { id: 'colaboradores', label: 'Colaboradores', icon: Users },
-    { id: 'config', label: 'Configuracoes', icon: Settings },
+    { id: 'config', label: 'Configurações', icon: Settings },
   ];
 
   const handleItemClick = (item) => {
@@ -41,7 +41,7 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
         </div>
         <div className="sidebar-brand-info">
           <h1 className="sidebar-brand-name">Vila Nova</h1>
-          <p className="sidebar-brand-sub">Qualidade Agricola</p>
+          <p className="sidebar-brand-sub">Qualidade Agrícola</p>
         </div>
         <button
           type="button"

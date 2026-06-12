@@ -168,7 +168,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
       <div className="page-header">
         <div className="page-title-block">
           <span className="page-eyebrow">Indicadores CQO</span>
-          <h2>Painel de Indicadores por Tipo de Formulario</h2>
+          <h2>Painel de Indicadores por Tipo de Formulário</h2>
           <p>Dados calculados em tempo real a partir das respostas sincronizadas pelo aplicativo Android.</p>
         </div>
         <div className="source-card compact">
@@ -214,24 +214,24 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
         <>
           <SectionHeader eyebrow="Resumo consolidado" title="Todos os formulários CQO" />
           <div className="grid-container grid-cols-4">
-            <KpiCard title="Total de coletas" value={fmt(totalsGeral.total)} subtitle={`${fmt(totalsGeral.corte)} corte · ${fmt(totalsGeral.carreamento)} carreamento`} icon={ClipboardCheck} tone="green" loading={loading} />
-            <KpiCard title="Taxa de sync" value={`${totalsGeral.syncRate}%`} subtitle={`${fmt(totalsGeral.sincronizados)} sincronizados com sucesso`} icon={TrendingUp} tone="info" loading={loading} />
+           <KpiCard title="Total de coletas" value={fmt(totalsGeral.total)} subtitle={`${fmt(totalsGeral.corte)} corte · ${fmt(totalsGeral.carreamento)} carreamento`} icon={ClipboardCheck} tone="green" loading={loading} />
+            <KpiCard title="Taxa de sincronização" value={`${totalsGeral.syncRate}%`} subtitle={`${fmt(totalsGeral.sincronizados)} sincronizados com sucesso`} icon={TrendingUp} tone="info" loading={loading} />
             <KpiCard title="GPS capturado" value={`${totalsGeral.gpsRate}%`} subtitle={`${fmt(totalsGeral.gps)} registros geolocalizados`} icon={MapPin} tone="green" loading={loading} />
-            <KpiCard title="Taxa aprovacao" value={`${totalsGeral.approvalRate}%`} subtitle={`${fmt(totalsGeral.aprovados)} aprov. · ${fmt(totalsGeral.reprovados)} reprov.`} icon={ThumbsUp} tone="green" loading={loading} />
+            <KpiCard title="Taxa de aprovação" value={`${totalsGeral.approvalRate}%`} subtitle={`${fmt(totalsGeral.aprovados)} aprov. · ${fmt(totalsGeral.reprovados)} reprov.`} icon={ThumbsUp} tone="green" loading={loading} />
           </div>
           <div className="grid-container grid-cols-4">
             <KpiCard title="Linhas avaliadas" value={fmt(totalsGeral.linhas)} subtitle={`${fmt(totalsGeral.gpsPoints)} pontos GPS no trajeto`} icon={Rows3} tone="orange" loading={loading} />
-            <KpiCard title="Plantas observadas" value={fmt(totalsGeral.plantasObservadas)} subtitle="Base de calculo para perdas" icon={Sprout} tone="green" loading={loading} />
-            <KpiCard title="Pendentes validacao" value={fmt(totalsGeral.pendentesValidacao)} subtitle={`${fmt(totalsGeral.pendentes)} pendentes sync`} icon={CheckCircle2} tone="warning" loading={loading} />
-            <KpiCard title="Falhas de sync" value={fmt(totalsGeral.falhas)} subtitle="Erros de transmissao" icon={AlertTriangle} tone="danger" loading={loading} />
+            <KpiCard title="Plantas observadas" value={fmt(totalsGeral.plantasObservadas)} subtitle="Base de cálculo para perdas" icon={Sprout} tone="green" loading={loading} />
+            <KpiCard title="Pendentes de validação" value={fmt(totalsGeral.pendentesValidacao)} subtitle={`${fmt(totalsGeral.pendentes)} pendentes de sincronização`} icon={CheckCircle2} tone="warning" loading={loading} />
+            <KpiCard title="Falhas de sincronização" value={fmt(totalsGeral.falhas)} subtitle="Erros de transmissão" icon={AlertTriangle} tone="danger" loading={loading} />
           </div>
 
           <div className="grid-container grid-cols-2">
             <CustomChart loading={loading} type="bar" data={chartsGeral.byFarm} title="Coletas por fazenda" />
-            <CustomChart loading={loading} type="donut" data={chartsGeral.byForm} title="Participacao por formulario" />
+             <CustomChart loading={loading} type="donut" data={chartsGeral.byForm} title="Participação por formulário" />
           </div>
           <div className="grid-container grid-cols-2">
-            <CustomChart loading={loading} type="line" data={chartsGeral.byDay} title="Evolucao diaria de coletas" />
+            <CustomChart loading={loading} type="line" data={chartsGeral.byDay} title="Evolução diária de coletas" />
             <CustomChart loading={loading} type="bar" data={chartsGeral.byEvaluator} title="Coletas por avaliador" />
           </div>
         </>
@@ -244,17 +244,17 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
 
           {/* KPIs volumétricos */}
           <div className="grid-container grid-cols-4">
-            <KpiCard title="Fichas de corte" value={fmt(corteRecords.length)} subtitle={`${mediaLinhasCorte} linhas por ficha (media)`} icon={Scissors} tone="green" loading={loading} />
-            <KpiCard title="Linhas avaliadas" value={fmt(totalsCorte.linhas)} subtitle={`${mediaPlantasPorLinha} plantas/linha (media)`} icon={Rows3} tone="info" loading={loading} />
-            <KpiCard title="Plantas observadas" value={fmt(totalsCorte.plantasObservadas)} subtitle="Base de calculo de perdas" icon={Sprout} tone="green" loading={loading} />
+             <KpiCard title="Fichas de corte" value={fmt(corteRecords.length)} subtitle={`${mediaLinhasCorte} linhas por ficha (média)`} icon={Scissors} tone="green" loading={loading} />
+            <KpiCard title="Linhas avaliadas" value={fmt(totalsCorte.linhas)} subtitle={`${mediaPlantasPorLinha} plantas/linha (média)`} icon={Rows3} tone="info" loading={loading} />
+            <KpiCard title="Plantas observadas" value={fmt(totalsCorte.plantasObservadas)} subtitle="Base de cálculo de perdas" icon={Sprout} tone="green" loading={loading} />
             <KpiCard title="Cachos observados" value={fmt(totalsCorte.cachosObservados)} subtitle="Total registrado nas linhas" icon={ClipboardCheck} tone="orange" loading={loading} />
           </div>
 
           {/* KPIs de qualidade */}
           <SectionHeader eyebrow="Qualidade dos cachos" title="Maturação e perdas no corte" color="var(--orange-institutional)" />
           <div className="grid-container grid-cols-4">
-            <KpiCard
-              title="Taxa de maturacao"
+             <KpiCard
+              title="Taxa de maturação"
               value={`${taxaMaturacao.replace('.', ',')}%`}
               subtitle={`${fmt(totalsCorte.cachoMaduro)} cachos maduros`}
               icon={ThumbsUp}
@@ -292,8 +292,8 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             <div className="card">
               <div className="card-header">
                 <div>
-                  <h3 className="card-title">Distribuicao dos cachos no corte</h3>
-                  <span className="card-subtitle">Proporcao de cada categoria sobre o total observado</span>
+                   <h3 className="card-title">Distribuição dos cachos no corte</h3>
+                  <span className="card-subtitle">Proporção de cada categoria sobre o total observado</span>
                 </div>
               </div>
               <div className="quality-stack">
@@ -310,8 +310,8 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             <div className="card">
               <div className="card-header">
                 <div>
-                  <h3 className="card-title">Falhas e ocorrencias no corte</h3>
-                  <span className="card-subtitle">Irregularidades tecnicas por categoria</span>
+                   <h3 className="card-title">Falhas e ocorrências no corte</h3>
+                  <span className="card-subtitle">Irregularidades técnicas por categoria</span>
                 </div>
               </div>
               <div style={{ padding: '4px 0' }}>
@@ -331,20 +331,20 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             <CustomChart loading={loading} type="bar" data={chartsCorte.byEvaluator} title="Cortes por avaliador" />
           </div>
           <div className="grid-container grid-cols-2">
-            <CustomChart loading={loading} type="line" data={chartsCorte.byDay} title="Evolucao diaria — CQO Corte" />
+             <CustomChart loading={loading} type="line" data={chartsCorte.byDay} title="Evolução diária — CQO Corte" />
             <div className="card">
               <div className="card-header">
                 <div>
                   <h3 className="card-title">Resumo de status — CQO Corte</h3>
-                  <span className="card-subtitle">Distribuicao dos registros por status de transmissao</span>
+                  <span className="card-subtitle">Distribuição dos registros por status de transmissão</span>
                 </div>
               </div>
               <div style={{ padding: '4px 0' }}>
-                <StatusBadgeRow label="Sincronizados" value={corteRecords.filter((r) => r.status === 'Sincronizado').length} total={corteRecords.length} color="var(--status-success)" loading={loading} />
+                 <StatusBadgeRow label="Sincronizados" value={corteRecords.filter((r) => r.status === 'Sincronizado').length} total={corteRecords.length} color="var(--status-success)" loading={loading} />
                 <StatusBadgeRow label="Aprovados" value={corteRecords.filter((r) => r.status === 'Aprovado').length} total={corteRecords.length} color="var(--status-success)" loading={loading} />
                 <StatusBadgeRow label="Reprovados" value={corteRecords.filter((r) => r.status === 'Reprovado').length} total={corteRecords.length} color="var(--status-danger)" loading={loading} />
-                <StatusBadgeRow label="Pendente validacao" value={corteRecords.filter((r) => r.status === 'Pendente validacao').length} total={corteRecords.length} color="var(--status-warning)" loading={loading} />
-                <StatusBadgeRow label="Falha de sync" value={corteRecords.filter((r) => r.status === 'Falha').length} total={corteRecords.length} color="var(--status-danger)" loading={loading} />
+                <StatusBadgeRow label="Pendente validação" value={corteRecords.filter((r) => r.status === 'Pendente validação').length} total={corteRecords.length} color="var(--status-warning)" loading={loading} />
+                <StatusBadgeRow label="Falha de sincronização" value={corteRecords.filter((r) => r.status === 'Falha').length} total={corteRecords.length} color="var(--status-danger)" loading={loading} />
               </div>
             </div>
           </div>
@@ -357,9 +357,9 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
           <SectionHeader eyebrow="Formulário CQO Carreamento e Fruto Solto" title="Indicadores de transporte e rastreio" color="var(--orange-institutional)" />
 
           <div className="grid-container grid-cols-4">
-            <KpiCard title="Fichas carreamento" value={fmt(carreamentoRecords.length)} subtitle={`${fmt(totalsCarreamento.linhas)} linhas registradas`} icon={Truck} tone="orange" loading={loading} />
-            <KpiCard title="Plantas observadas" value={fmt(totalsCarreamento.plantasObservadas)} subtitle="Base de calculo por linha" icon={Sprout} tone="green" loading={loading} />
-            <KpiCard title="Peso total frutos" value={`${fmt(totalsCarreamento.pesoMedio, 1)} kg`} subtitle={`Media de ${mediaPeso} kg/ficha`} icon={Weight} tone="info" loading={loading} />
+             <KpiCard title="Fichas carreamento" value={fmt(carreamentoRecords.length)} subtitle={`${fmt(totalsCarreamento.linhas)} linhas registradas`} icon={Truck} tone="orange" loading={loading} />
+            <KpiCard title="Plantas observadas" value={fmt(totalsCarreamento.plantasObservadas)} subtitle="Base de cálculo por linha" icon={Sprout} tone="green" loading={loading} />
+            <KpiCard title="Peso total frutos" value={`${fmt(totalsCarreamento.pesoMedio, 1)} kg`} subtitle={`Média de ${mediaPeso} kg/ficha`} icon={Weight} tone="info" loading={loading} />
             <KpiCard title="GPS capturado" value={pct(carreamentoRecords.filter((r) => r.gps).length, carreamentoRecords.length)} subtitle={`${carreamentoRecords.filter((r) => r.gps).length} fichas geolocalizadas`} icon={MapPin} tone="green" loading={loading} />
           </div>
 
@@ -374,7 +374,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
               loading={loading}
             />
             <KpiCard
-              title="Nao carreados"
+               title="Não carreados"
               value={`${taxaNaoCarreado.replace('.', ',')}%`}
               subtitle={`${fmt(totalsCarreamento.cachoNaoCarreado)} cachos`}
               icon={ThumbsDown}
@@ -390,7 +390,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
               loading={loading}
             />
             <KpiCard
-              title="Aprovacao"
+               title="Aprovação"
               value={pct(carreamentoRecords.filter((r) => r.status === 'Aprovado').length, carreamentoRecords.length)}
               subtitle={`${carreamentoRecords.filter((r) => r.status === 'Aprovado').length} fichas aprovadas`}
               icon={ThumbsUp}
@@ -404,13 +404,13 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
               <div className="card-header">
                 <div>
                   <h3 className="card-title">Indicadores por linha — Carreamento</h3>
-                  <span className="card-subtitle">Proporcao sobre total de plantas observadas</span>
+                  <span className="card-subtitle">Proporção sobre total de plantas observadas</span>
                 </div>
               </div>
               <div className="quality-stack">
-                <QualityBar label="Plantas observadas" value={totalsCarreamento.plantasObservadas} max={Math.max(totalsCarreamento.plantasObservadas, 1)} color="var(--green-institutional)" loading={loading} />
+                 <QualityBar label="Plantas observadas" value={totalsCarreamento.plantasObservadas} max={Math.max(totalsCarreamento.plantasObservadas, 1)} color="var(--green-institutional)" loading={loading} />
                 <QualityBar label="Cachos mal posicionados" value={totalsCarreamento.cachoMalPosicionado} max={Math.max(totalsCarreamento.plantasObservadas, 1)} color="var(--status-warning)" loading={loading} />
-                <QualityBar label="Cachos nao carreados" value={totalsCarreamento.cachoNaoCarreado} max={Math.max(totalsCarreamento.plantasObservadas, 1)} color="var(--status-danger)" loading={loading} />
+                <QualityBar label="Cachos não carreados" value={totalsCarreamento.cachoNaoCarreado} max={Math.max(totalsCarreamento.plantasObservadas, 1)} color="var(--status-danger)" loading={loading} />
               </div>
             </div>
 
@@ -418,15 +418,15 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
               <div className="card-header">
                 <div>
                   <h3 className="card-title">Status e rastreabilidade</h3>
-                  <span className="card-subtitle">Distribuicao por status de transmissao</span>
+                   <span className="card-subtitle">Distribuição por status de transmissão</span>
                 </div>
               </div>
               <div style={{ padding: '4px 0' }}>
-                <StatusBadgeRow label="Sincronizados" value={carreamentoRecords.filter((r) => r.status === 'Sincronizado').length} total={carreamentoRecords.length} color="var(--status-success)" loading={loading} />
+                 <StatusBadgeRow label="Sincronizados" value={carreamentoRecords.filter((r) => r.status === 'Sincronizado').length} total={carreamentoRecords.length} color="var(--status-success)" loading={loading} />
                 <StatusBadgeRow label="Aprovados" value={carreamentoRecords.filter((r) => r.status === 'Aprovado').length} total={carreamentoRecords.length} color="var(--status-success)" loading={loading} />
                 <StatusBadgeRow label="Reprovados" value={carreamentoRecords.filter((r) => r.status === 'Reprovado').length} total={carreamentoRecords.length} color="var(--status-danger)" loading={loading} />
-                <StatusBadgeRow label="Pendente validacao" value={carreamentoRecords.filter((r) => r.status === 'Pendente validacao').length} total={carreamentoRecords.length} color="var(--status-warning)" loading={loading} />
-                <StatusBadgeRow label="Falha de sync" value={carreamentoRecords.filter((r) => r.status === 'Falha').length} total={carreamentoRecords.length} color="var(--status-danger)" loading={loading} />
+                <StatusBadgeRow label="Pendente validação" value={carreamentoRecords.filter((r) => r.status === 'Pendente validação').length} total={carreamentoRecords.length} color="var(--status-warning)" loading={loading} />
+                <StatusBadgeRow label="Falha de sincronização" value={carreamentoRecords.filter((r) => r.status === 'Falha').length} total={carreamentoRecords.length} color="var(--status-danger)" loading={loading} />
                 <StatusBadgeRow label="Com GPS" value={carreamentoRecords.filter((r) => r.gps).length} total={carreamentoRecords.length} color="var(--status-info)" loading={loading} />
                 <StatusBadgeRow label="Com acompanhamento" value={carreamentoRecords.filter((r) => r.acompanhamento?.teve === 'sim').length} total={carreamentoRecords.length} color="var(--status-info)" loading={loading} />
               </div>
@@ -437,7 +437,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
             <CustomChart loading={loading} type="bar" data={chartsCarreamento.byFarm} title="Carreamentos por fazenda" />
             <CustomChart loading={loading} type="bar" data={chartsCarreamento.byEvaluator} title="Carreamentos por avaliador" />
           </div>
-          <CustomChart loading={loading} type="line" data={chartsCarreamento.byDay} title="Evolucao diaria — CQO Carreamento" />
+          <CustomChart loading={loading} type="line" data={chartsCarreamento.byDay} title="Evolução diária — CQO Carreamento" />
         </>
       )}
     </div>

@@ -66,9 +66,9 @@ export default function Collaborators() {
     <div className="fade-in page-shell">
       <div className="dashboard-page-header">
         <div>
-          <span className="page-eyebrow">Gestao operacional</span>
+          <span className="page-eyebrow">Gestão operacional</span>
           <h2>Colaboradores</h2>
-          <p>Consulta da base de headcount usada pelo app e pelo dashboard para autenticar matriculas e identificar avaliadores.</p>
+          <p>Consulta da base de headcount usada pelo app e pelo dashboard para autenticar matrículas e identificar avaliadores.</p>
         </div>
       </div>
 
@@ -93,7 +93,7 @@ export default function Collaborators() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por nome, matricula, cargo ou gestor"
+              placeholder="Buscar por nome, matrícula, cargo ou gestor"
             />
           </div>
           <select className="header-filter-select" value={status} onChange={(event) => setStatus(event.target.value)}>
@@ -106,7 +106,7 @@ export default function Collaborators() {
           <table className="custom-table dense-table">
             <thead>
               <tr>
-                <th>Matricula</th>
+                <th>Matrícula</th>
                 <th>Nome</th>
                 <th>Cargo</th>
                 <th>Departamento</th>

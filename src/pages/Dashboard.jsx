@@ -79,16 +79,16 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
     <div className="fade-in page-shell">
       <div className="dashboard-page-header">
         <div>
-          <span className="page-eyebrow">Qualidade Agricola / CQO</span>
+          <span className="page-eyebrow">Qualidade Agrícola / CQO</span>
           <h2>Dashboard de Corte, Carreamento e Fruto Solto</h2>
           <p>
-            Visao gerencial das coletas reais enviadas pelo app Android para o Supabase.
+            Visão gerencial das coletas reais enviadas pelo app Android para o Supabase.
           </p>
         </div>
         <div className="source-card">
           <span>Fonte atual</span>
           <strong>{loading ? 'Carregando...' : source}</strong>
-          {error ? <small>{error}</small> : <small>{lastRecord ? `Ultimo registro: ${lastRecord.date} ${lastRecord.time}` : 'Sem registros'}</small>}
+          {error ? <small>{error}</small> : <small>{lastRecord ? `Último registro: ${lastRecord.date} ${lastRecord.time}` : 'Sem registros'}</small>}
         </div>
       </div>
 
@@ -112,13 +112,13 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
         <KpiCard
           title="Carreamento"
           value={formatNumber(totals.carreamento)}
-          footer={`${formatNumber(carreamentoTotals.cachoNaoCarreado)} cachos nao carreados`}
+          footer={`${formatNumber(carreamentoTotals.cachoNaoCarreado)} cachos não carreados`}
           icon={Rows3}
           tone="orange"
           loading={loading}
         />
         <KpiCard
-          title="Sync concluida"
+          title="Sincronização concluída"
           value={`${totals.syncRate}%`}
           footer={`${formatNumber(totals.sincronizados)} sincronizadas / ${formatNumber(totals.pendentes + totals.falhas)} pendentes`}
           icon={RefreshCcw}
@@ -139,7 +139,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
         <KpiCard
           title="Plantas observadas"
           value={formatNumber(totals.plantasObservadas)}
-          footer="Base de calculo das perdas"
+          footer="Base de cálculo das perdas"
           icon={Sprout}
           tone="green"
           loading={loading}
@@ -167,7 +167,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
           <div className="card-header">
             <div>
               <h3 className="card-title">CQO Corte destrinchado</h3>
-              <span className="card-subtitle">Maturacao, perdas e falhas observadas no corte.</span>
+              <span className="card-subtitle">Maturação, perdas e falhas observadas no corte.</span>
             </div>
             <FileSpreadsheet size={20} style={{ color: 'var(--orange-institutional)' }} />
           </div>
@@ -190,7 +190,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
           </div>
           <div className="quality-stack">
             <QualityLine loading={loading} label="Cachos mal posicionados" value={carreamentoTotals.cachoMalPosicionado} max={Math.max(carreamentoTotals.plantasObservadas, 1)} />
-            <QualityLine loading={loading} label="Cachos nao carreados" value={carreamentoTotals.cachoNaoCarreado} max={Math.max(carreamentoTotals.plantasObservadas, 1)} color="var(--status-danger)" />
+            <QualityLine loading={loading} label="Cachos não carreados" value={carreamentoTotals.cachoNaoCarreado} max={Math.max(carreamentoTotals.plantasObservadas, 1)} color="var(--status-danger)" />
             <QualityLine loading={loading} label="Plantas observadas" value={carreamentoTotals.plantasObservadas} max={Math.max(carreamentoTotals.plantasObservadas, 1)} color="var(--status-info)" />
             <QualityLine loading={loading} label="Peso dos frutos" value={carreamentoTotals.pesoMedio} max={Math.max(carreamentoTotals.pesoMedio, 1)} color="var(--orange-institutional)" />
           </div>
@@ -199,17 +199,17 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, dateFr
 
       <div className="grid-container grid-cols-3">
         <CustomChart loading={loading} type="bar" data={charts.byFarm} title="Coletas por fazenda" />
-        <CustomChart loading={loading} type="donut" data={charts.byForm} title="Participacao por formulario" />
+        <CustomChart loading={loading} type="donut" data={charts.byForm} title="Participação por formulário" />
         <CustomChart loading={loading} type="bar" data={charts.byEvaluator} title="Coletas por avaliador" />
       </div>
 
       <div className="grid-container grid-cols-7-5">
-        <CustomChart loading={loading} type="line" data={charts.byDay} title="Evolucao diaria das coletas" />
+        <CustomChart loading={loading} type="line" data={charts.byDay} title="Evolução diária das coletas" />
         <div className="card page-card">
           <div className="card-header table-card-header">
             <div>
-              <h3 className="card-title">Ultimos registros</h3>
-              <span className="card-subtitle">Auditoria rapida do que chegou ao painel.</span>
+              <h3 className="card-title">Últimos registros</h3>
+              <span className="card-subtitle">Auditoria rápida do que chegou ao painel.</span>
             </div>
           </div>
           <div className="compact-list">

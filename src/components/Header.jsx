@@ -27,8 +27,8 @@ export default function Header({
 
   const notifications = [
     { id: 1, text: 'Dashboard preparado para ler coletas CQO do Supabase.', time: 'Agora' },
-    { id: 2, text: 'Filtros alinhados aos formularios Corte e Carreamento.', time: 'Hoje' },
-    { id: 3, text: 'GPS e acompanhamento serao exibidos por registro.', time: 'Hoje' },
+    { id: 2, text: 'Filtros alinhados aos formulários Corte e Carreamento.', time: 'Hoje' },
+    { id: 3, text: 'GPS e acompanhamento serão exibidos por registro.', time: 'Hoje' },
   ];
 
   return (
@@ -40,7 +40,7 @@ export default function Header({
           <Search />
           <input
             type="text"
-            placeholder="Buscar por fazenda, matricula, parcela ou fiscal"
+            placeholder="Buscar por fazenda, matrícula, parcela ou fiscal"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
           />
@@ -64,7 +64,7 @@ export default function Header({
           className="header-filter-select"
           value={areaFilter}
           onChange={(event) => setAreaFilter(event.target.value)}
-          title="Selecionar formulario"
+          title="Selecionar formulário"
         >
           {CQO_AREAS.map((area) => (
             <option key={area.id} value={area.id}>{area.name}</option>
@@ -81,13 +81,13 @@ export default function Header({
               setDateTo('');
             }
           }}
-          title="Periodo"
+          title="Período"
         >
           <option value="today">Hoje</option>
-          <option value="week">Ultimos 7 dias</option>
-          <option value="month">Este mes</option>
-          <option value="custom">De data ate data</option>
-          <option value="season">Safra / historico</option>
+          <option value="week">Últimos 7 dias</option>
+          <option value="month">Este mês</option>
+          <option value="custom">De data até data</option>
+          <option value="season">Safra / histórico</option>
         </select>
 
         <input
@@ -178,7 +178,7 @@ export default function Header({
 
         <div className="header-user">
           <div className="header-user-info">
-            <span style={{ fontSize: '0.825rem', fontWeight: '700', color: 'var(--text-primary)' }}>{user?.nome || 'Qualidade Agricola'}</span>
+            <span style={{ fontSize: '0.825rem', fontWeight: '700', color: 'var(--text-primary)' }}>{user?.nome || 'Qualidade Agrícola'}</span>
             <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>{user?.matricula ? `Mat. ${user.matricula}` : 'CQO Corte e Carreamento'}</span>
           </div>
           <button className="header-btn" onClick={onLogout} title="Sair">

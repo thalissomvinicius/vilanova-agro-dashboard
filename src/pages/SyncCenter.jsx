@@ -37,8 +37,8 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
     <div className="fade-in page-shell">
       <div className="page-header">
         <div className="page-title-block">
-          <span className="page-eyebrow">Sincronizacao online</span>
-          <h2>Central de Sincronizacao</h2>
+          <span className="page-eyebrow">Sincronização online</span>
+          <h2>Central de Sincronização</h2>
           <p>Monitoramento das coletas recebidas do app Android no Supabase.</p>
         </div>
         <div className="page-actions">
@@ -86,7 +86,7 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
           loading={loading}
         />
         <SyncMetric
-          title="Ultima coleta"
+          title="Última coleta"
           value={formatDateTime(lastRecord?.createdAt)}
           subtitle="Baseado em criado_em"
           icon={Clock}
@@ -98,8 +98,8 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
       <div className="card page-card">
         <div className="card-header table-card-header">
           <div>
-            <h3 className="card-title">Ultimas transmissoes recebidas</h3>
-            <span className="card-subtitle">Esta lista fica vazia ate o app sincronizar a primeira coleta real.</span>
+            <h3 className="card-title">Últimas transmissões recebidas</h3>
+            <span className="card-subtitle">Esta lista fica vazia até o app sincronizar a primeira coleta real.</span>
           </div>
         </div>
         <div className="compact-list">
