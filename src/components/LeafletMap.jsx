@@ -247,9 +247,14 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           let fillOpacity = mapLayer === 'polygon' ? 0.12 : 0.03;
           let weight = mapLayer === 'heat' ? 2 : 1.4;
 
-          if (mapLayer === 'polygon' && props.parcelId) {
+          let shapeParcel = props.IDE || props.ide || props.parcela || props.parcelId || '';
+          if (shapeParcel && props.farmId && shapeParcel.startsWith(props.farmId + '-')) {
+            shapeParcel = shapeParcel.replace(props.farmId + '-', '');
+          }
+
+          if (mapLayer === 'polygon' && shapeParcel) {
             const parcelRecords = filteredRecords.filter((r) => 
-               String(r.parcel).toLowerCase() === String(props.parcelId).toLowerCase() &&
+               String(r.parcel).toLowerCase() === String(shapeParcel).toLowerCase() &&
                r.farmId === props.farmId
             );
             if (parcelRecords.length > 0) {
@@ -272,10 +277,15 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           const props = feature.properties || {};
           const style = farmStyle(props.farmId);
           
+          let shapeParcel = props.IDE || props.ide || props.parcela || props.parcelId || '';
+          if (shapeParcel && props.farmId && shapeParcel.startsWith(props.farmId + '-')) {
+            shapeParcel = shapeParcel.replace(props.farmId + '-', '');
+          }
+          
           let scoreText = '';
-          if (mapLayer === 'polygon' && props.parcelId) {
+          if (mapLayer === 'polygon' && shapeParcel) {
             const parcelRecords = filteredRecords.filter((r) => 
-               String(r.parcel).toLowerCase() === String(props.parcelId).toLowerCase() &&
+               String(r.parcel).toLowerCase() === String(shapeParcel).toLowerCase() &&
                r.farmId === props.farmId
             );
             if (parcelRecords.length > 0) {
@@ -287,7 +297,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           layer.bindPopup(`
             <div style="font-family: Inter, Segoe UI, sans-serif; max-width: 220px;">
               <strong style="color:${style.color};font-size:13px;">${props.farmName || 'Fazenda'}</strong><br/>
-              <span style="font-size:11px;">Parcela: <strong>${props.parcelId || props.recordNumber || '--'}</strong></span><br/>
+              <span style="font-size:11px;">Parcela: <strong>${shapeParcel || '--'}</strong></span><br/>
               ${scoreText}
               <span style="font-size:11px;">Fonte: shapefile</span>
             </div>
