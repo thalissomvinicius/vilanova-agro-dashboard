@@ -519,21 +519,28 @@ export default function CustomChart({ type = 'line', data = [], height = 280, ti
 
     // Needle
     const needleAngleDeg = startAngle + fillDeg;
-    const needleTip = polarToCart(needleAngleDeg, r - 6);
+    const needleTip = polarToCart(needleAngleDeg, r - 9);
+    const startPoint = polarToCart(startAngle, r - 9);
+    const endPointTrack = polarToCart(startAngle + sweepDeg, r - 9);
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0' }}>
         <svg viewBox="0 0 280 190" width="100%" style={{ maxWidth: 280 }}>
-          {/* Track */}
+          {/* Track with rounded caps */}
+          <circle cx={startPoint.x} cy={startPoint.y} r="9" fill="var(--bg-secondary)" />
+          <circle cx={endPointTrack.x} cy={endPointTrack.y} r="9" fill="var(--bg-secondary)" />
           <path d={track} fill="var(--bg-secondary)" />
 
           {/* Fill */}
           {fillPath && (
-            <path d={fillPath} fill={scoreColor} style={{ transition: 'all 0.6s ease' }} />
+            <g>
+              <circle cx={startPoint.x} cy={startPoint.y} r="9" fill={scoreColor} style={{ transition: 'all 0.6s ease' }} />
+              <path d={fillPath} fill={scoreColor} style={{ transition: 'all 0.6s ease' }} />
+            </g>
           )}
 
-          {/* Needle dot */}
-          <circle cx={needleTip.x} cy={needleTip.y} r="5" fill={scoreColor} />
+          {/* Needle dot (rounds the end of the fill) */}
+          <circle cx={needleTip.x} cy={needleTip.y} r="9" fill={scoreColor} style={{ transition: 'all 0.6s ease' }} />
 
           {/* Score value */}
           <text x={cx} y={cy + 10} textAnchor="middle" fill={scoreColor} fontSize="34" fontWeight="800">
@@ -544,9 +551,9 @@ export default function CustomChart({ type = 'line', data = [], height = 280, ti
           </text>
 
           {/* Zone labels */}
-          <text x={polarToCart(startAngle, r + 14).x} y={polarToCart(startAngle, r + 14).y + 4} textAnchor="middle" fill="var(--text-muted)" fontSize="8">0</text>
-          <text x={polarToCart(startAngle + sweepDeg, r + 14).x} y={polarToCart(startAngle + sweepDeg, r + 14).y + 4} textAnchor="middle" fill="var(--text-muted)" fontSize="8">100</text>
-          <text x={polarToCart(startAngle + sweepDeg * 0.5, r + 18).x} y={polarToCart(startAngle + sweepDeg * 0.5, r + 18).y + 4} textAnchor="middle" fill="var(--text-muted)" fontSize="8">50</text>
+          <text x={polarToCart(startAngle, r + 24).x} y={polarToCart(startAngle, r + 24).y + 4} textAnchor="middle" fill="var(--text-muted)" fontSize="9" fontWeight="600">0</text>
+          <text x={polarToCart(startAngle + sweepDeg, r + 24).x} y={polarToCart(startAngle + sweepDeg, r + 24).y + 4} textAnchor="middle" fill="var(--text-muted)" fontSize="9" fontWeight="600">100</text>
+          <text x={polarToCart(startAngle + sweepDeg * 0.5, r + 24).x} y={polarToCart(startAngle + sweepDeg * 0.5, r + 24).y + 4} textAnchor="middle" fill="var(--text-muted)" fontSize="9" fontWeight="600">50</text>
 
           {/* Status badge */}
           <rect x={cx - 44} y={cy + 38} width="88" height="20" rx="10"
