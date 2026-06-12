@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
 
+function getSkipLabel(idx, total) {
+  if (total <= 8) return false;
+  const count = Math.min(6, total);
+  const indices = [];
+  for (let i = 0; i < count; i++) {
+    indices.push(Math.round((i * (total - 1)) / (count - 1)));
+  }
+  return !indices.includes(idx);
+}
+
 export default function CustomChart({ type = 'line', data = [], height = 220, title, loading = false }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -36,7 +46,7 @@ export default function CustomChart({ type = 'line', data = [], height = 220, ti
 
   // Dimension helpers
   const width = 500;
-  const padding = { top: 30, right: 30, bottom: 40, left: 50 };
+  const padding = { top: 30, right: 30, bottom: 52, left: 50 };
   const graphWidth = width - padding.left - padding.right;
   const graphHeight = height - padding.top - padding.bottom;
 
@@ -45,6 +55,7 @@ export default function CustomChart({ type = 'line', data = [], height = 220, ti
     const maxVal = Math.max(...data.map(d => d.value), 10);
     const barWidth = Math.max(15, (graphWidth / data.length) - 20);
     const stepX = graphWidth / data.length;
+    const shouldRotate = data.length > 4;
 
     return (
       <svg className="chart-svg" viewBox={`0 0 ${width} ${height}`} width="100%" height={height}>
@@ -115,10 +126,11 @@ export default function CustomChart({ type = 'line', data = [], height = 220, ti
               {/* Label */}
               <text
                 x={x + barWidth / 2}
-                y={height - padding.bottom + 18}
-                textAnchor="middle"
+                y={height - padding.bottom + 14}
+                textAnchor={shouldRotate ? 'end' : 'middle'}
+                transform={shouldRotate ? `rotate(-25, ${x + barWidth / 2}, ${height - padding.bottom + 14})` : undefined}
                 className="chart-axis-text"
-                style={{ fontSize: '9px' }}
+                style={{ fontSize: shouldRotate ? '8px' : '9px' }}
               >
                 {item.label}
               </text>
@@ -253,14 +265,17 @@ export default function CustomChart({ type = 'line', data = [], height = 220, ti
             />
 
             {/* Label */}
-            <text
-              x={p.x}
-              y={height - padding.bottom + 18}
-              textAnchor="middle"
-              className="chart-axis-text"
-            >
-              {data[idx].label}
-            </text>
+            {!getSkipLabel(idx, points.length) && (
+              <text
+                x={p.x}
+                y={height - padding.bottom + 18}
+                textAnchor="middle"
+                className="chart-axis-text"
+                style={{ fontSize: '9px' }}
+              >
+                {data[idx].label}
+              </text>
+            )}
           </g>
         ))}
 

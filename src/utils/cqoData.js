@@ -566,6 +566,25 @@ export function aggregateRecords(records) {
   return totals;
 }
 
+function formatEvaluatorName(name) {
+  if (!name || typeof name !== 'string') return name;
+  if (name === 'Sem avaliador') return name;
+  if (/^\d+$/.test(name)) return name;
+
+  const parts = name.split(' ').filter(Boolean);
+  if (parts.length <= 1) return name;
+
+  const first = parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase();
+  const last = parts[parts.length - 1].charAt(0).toUpperCase() + parts[parts.length - 1].slice(1).toLowerCase();
+
+  if (['de', 'da', 'do', 'dos', 'das'].includes(last.toLowerCase()) && parts.length > 2) {
+    const secondLast = parts[parts.length - 2].charAt(0).toUpperCase() + parts[parts.length - 2].slice(1).toLowerCase();
+    return `${first} ${secondLast}`;
+  }
+
+  return `${first} ${last}`;
+}
+
 export function buildCharts(records) {
   const byFarm = new Map();
   const byForm = new Map();
@@ -575,7 +594,8 @@ export function buildCharts(records) {
   records.forEach((record) => {
     byFarm.set(record.farm, (byFarm.get(record.farm) || 0) + 1);
     byForm.set(record.form, (byForm.get(record.form) || 0) + 1);
-    byEvaluator.set(record.evaluator, (byEvaluator.get(record.evaluator) || 0) + 1);
+    const evalName = formatEvaluatorName(record.evaluator);
+    byEvaluator.set(evalName, (byEvaluator.get(evalName) || 0) + 1);
     byDay.set(record.date, (byDay.get(record.date) || 0) + 1);
   });
 
