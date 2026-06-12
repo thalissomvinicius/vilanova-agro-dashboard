@@ -285,7 +285,7 @@ body.sidebar-resizing {
 }
 
 .sidebar-is-collapsed .sidebar-resize-handle {
-  cursor: pointer;
+  display: none;
 }
 
 /* Content Panel Wrapper */
