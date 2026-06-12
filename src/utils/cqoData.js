@@ -191,6 +191,44 @@ function formatDateTime(value) {
 
 export function normalizeResponse(row, headcount = []) {
   const data = parseJson(row.dados_json);
+
+  // Normalizar a estrutura de dados de legado (Android) para o padrão
+  if (data.mapeamento_legado) {
+    const legacy = data.mapeamento_legado;
+    if (legacy.campos_digitados) {
+      const cd = legacy.campos_digitados;
+      if (data.nome_fazenda === undefined) data.nome_fazenda = cd.NomeFazenda;
+      if (data.parcela === undefined) data.parcela = cd.Parcela;
+      if (data.ciclo_mes === undefined) data.ciclo_mes = cd.ciclo_mes;
+      if (data.fiscal_resp === undefined) data.fiscal_resp = cd["Fiscal Resp"] || cd.FiscalResp;
+      if (data.observacao === undefined) data.observacao = cd.Observacao;
+      if (data.matricula_avaliador === undefined) data.matricula_avaliador = cd.MatriculaAvaliadores || cd.MatriculaDigitador;
+      if (data.acompanhamento === undefined) data.acompanhamento = cd.Acompanhamento;
+
+      // Converter DataAvaliacao de "DD/MM/YYYY" para "YYYY-MM-DD"
+      if (data.data_avaliacao === undefined && cd.DataAvaliacao) {
+        const parts = String(cd.DataAvaliacao).split('/');
+        if (parts.length === 3) {
+          data.data_avaliacao = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        } else {
+          data.data_avaliacao = cd.DataAvaliacao;
+        }
+      }
+    }
+
+    // Normalizar as linhas do relatório
+    const isCarreamento = formType(row.formulario_id, data) === 'carreamento';
+    if (isCarreamento) {
+      if (!Array.isArray(data.linhas_carreamento) && Array.isArray(legacy.linhas_raw)) {
+        data.linhas_carreamento = legacy.linhas_raw;
+      }
+    } else {
+      if (!Array.isArray(data.linhas_corte) && Array.isArray(legacy.linhas_raw)) {
+        data.linhas_corte = legacy.linhas_raw;
+      }
+    }
+  }
+
   const type = formType(row.formulario_id, data);
   const lines = type === 'carreamento'
     ? (Array.isArray(data.linhas_carreamento) ? data.linhas_carreamento : [])

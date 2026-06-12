@@ -58,31 +58,21 @@ function numberValue(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function formatDate(value) {
-  if (!value) return '____/____/______';
-  const [year, month, day] = String(value).split('-');
-  return year && month && day ? `${day}/${month}/${year}` : value;
-}
-
 function formatTotal(value) {
   if (!value) return '';
   return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value);
 }
 
-function rowsFrom(values, key) {
-  return Array.isArray(values?.[key]) ? values[key] : [];
-}
-
-function tableRows(values, key, columns, targetRows) {
-  const rows = rowsFrom(values, key).slice(0, targetRows);
+function tableRows(lines, columns, targetRows) {
+  const rows = [...(lines || [])].slice(0, targetRows);
   while (rows.length < targetRows) rows.push({});
   return rows.map((row) => `
     <tr>${columns.map((column) => `<td>${escapeHtml(row[column])}</td>`).join('')}</tr>
   `).join('');
 }
 
-function totals(values, key, columns) {
-  const rows = rowsFrom(values, key);
+function totals(lines, columns) {
+  const rows = lines || [];
   return columns.map((column, index) => {
     if (index === 0) return '<td class="total">Total</td>';
     const total = rows.reduce((sum, row) => sum + numberValue(row[column]), 0);
@@ -91,13 +81,15 @@ function totals(values, key, columns) {
 }
 
 function htmlFor(record) {
-  const values = record.raw || {};
   const isCarreamento = record.type === 'carreamento';
   const columns = isCarreamento ? carreamentoColumns : corteColumns;
-  const key = isCarreamento ? 'linhas_carreamento' : 'linhas_corte';
   const title = isCarreamento
     ? 'Controle de Qualidade Agrícola: Perdas / Frutos Soltos e Carreamento'
     : 'Controle de Qualidade Agrícola: Corte';
+
+  // Calcular colspan para alinhar perfeitamente no Excel
+  const colSpanVal = Math.floor(columns.length / 3);
+  const colSpanRemainder = columns.length % 3;
 
   return `
     <html>
@@ -109,8 +101,9 @@ function htmlFor(record) {
           .page{border:2px solid #000;padding:5px}
           .title{text-align:center;font-size:14px;font-weight:bold;padding:6px}
           .info-table{width:100%;border-collapse:collapse;margin:10px 0;table-layout:auto;}
-          .info-table td{border:none;text-align:left;padding:4px;font-weight:bold;font-size:10px;}
-          .line{border-bottom:1px solid #000;min-width:110px;display:inline-block;padding-bottom:2px}
+          .info-table td{border:none;text-align:left;padding:4px;font-size:10px;}
+          .info-label{font-weight:bold;color:#444;}
+          .info-value{font-weight:bold;color:#000;}
           table{width:100%;border-collapse:collapse;table-layout:auto}
           th,td{border:1px solid #000;text-align:center;padding:5px 3px;word-break:break-word}
           th{font-weight:bold;background:#efefef;font-size:9px}
@@ -123,22 +116,22 @@ function htmlFor(record) {
           <div class="title">${title}</div>
           <table class="info-table">
             <tr>
-              <td>Fazenda: <span class="line">${escapeHtml(values.nome_fazenda)}</span></td>
-              <td>Parcela: <span class="line">${escapeHtml(values.parcela)}</span></td>
-              <td>Data: <span class="line">${escapeHtml(formatDate(values.data_avaliacao))}</span></td>
+              <td colspan="${colSpanVal}"><span class="info-label">Fazenda:</span> <span class="info-value">${escapeHtml(record.farm)}</span></td>
+              <td colspan="${colSpanVal}"><span class="info-label">Parcela:</span> <span class="info-value">${escapeHtml(record.parcel)}</span></td>
+              <td colspan="${colSpanVal + colSpanRemainder}"><span class="info-label">Data:</span> <span class="info-value">${escapeHtml(record.date)}</span></td>
             </tr>
             <tr>
-              <td>Ciclo: <span class="line">${escapeHtml(values.ciclo_mes)}</span></td>
-              <td>Avaliador: <span class="line">${escapeHtml(values.matricula_avaliador)}</span></td>
-              <td>Fiscal: <span class="line">${escapeHtml(values.fiscal_resp)}</span></td>
+              <td colspan="${colSpanVal}"><span class="info-label">Ciclo:</span> <span class="info-value">${escapeHtml(record.cycle)}</span></td>
+              <td colspan="${colSpanVal}"><span class="info-label">Avaliador:</span> <span class="info-value">${escapeHtml(record.evaluator)} ${record.evaluatorMatricula ? `(${escapeHtml(record.evaluatorMatricula)})` : ''}</span></td>
+              <td colspan="${colSpanVal + colSpanRemainder}"><span class="info-label">Fiscal:</span> <span class="info-value">${escapeHtml(record.fiscal)}</span></td>
             </tr>
           </table>
           <table>
             <thead><tr>${columns.map((column) => `<th>${escapeHtml(columnLabels[column] || column.replaceAll('_', ' '))}</th>`).join('')}</tr></thead>
-            <tbody>${tableRows(values, key, columns, isCarreamento ? 11 : 10)}</tbody>
+            <tbody>${tableRows(record.lines, columns, isCarreamento ? 11 : 10)}</tbody>
             <tfoot>
-              <tr>${totals(values, key, columns)}</tr>
-              <tr class="footer"><td colspan="${columns.length}">Observação: ${escapeHtml(values.observacao)}</td></tr>
+              <tr>${totals(record.lines, columns)}</tr>
+              <tr class="footer"><td colspan="${columns.length}"><span class="info-label">Observação:</span> <span class="info-value">${escapeHtml(record.observation)}</span></td></tr>
             </tfoot>
           </table>
         </div>
