@@ -247,7 +247,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           let fillOpacity = mapLayer === 'polygon' ? 0.12 : 0.03;
           let weight = mapLayer === 'heat' ? 2 : 1.4;
 
-          let shapeParcel = props.IDE || props.ide || props.parcela || props.parcelId || '';
+          let shapeParcel = props.ID_PARCELA || props.IDE || props.ide || props.parcela || props.parcelId || '';
           if (shapeParcel && props.farmId && shapeParcel.startsWith(props.farmId + '-')) {
             shapeParcel = shapeParcel.replace(props.farmId + '-', '');
           }
@@ -277,7 +277,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           const props = feature.properties || {};
           const style = farmStyle(props.farmId);
           
-          let shapeParcel = props.IDE || props.ide || props.parcela || props.parcelId || '';
+          let shapeParcel = props.ID_PARCELA || props.IDE || props.ide || props.parcela || props.parcelId || '';
           if (shapeParcel && props.farmId && shapeParcel.startsWith(props.farmId + '-')) {
             shapeParcel = shapeParcel.replace(props.farmId + '-', '');
           }
