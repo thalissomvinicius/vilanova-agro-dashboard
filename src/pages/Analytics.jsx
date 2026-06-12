@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   AlertTriangle,
+  Award,
   CheckCircle2,
   ClipboardCheck,
   Leaf,
@@ -212,23 +213,81 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
       {/* ============ VISÃO GERAL ============ */}
       {activeTab === 'geral' && (
         <>
-          <SectionHeader eyebrow="Resumo consolidado" title="Todos os formulários CQO" />
+          <SectionHeader eyebrow="Indicadores de Conformidade" title="Avaliação Geral da Qualidade Operacional" color="var(--green-institutional)" />
           <div className="grid-container grid-cols-4">
-           <KpiCard title="Total de coletas" value={fmt(totalsGeral.total)} subtitle={`${fmt(totalsGeral.corte)} corte · ${fmt(totalsGeral.carreamento)} carreamento`} icon={ClipboardCheck} tone="green" loading={loading} />
-            <KpiCard title="Taxa de sincronização" value={`${totalsGeral.syncRate}%`} subtitle={`${fmt(totalsGeral.sincronizados)} sincronizados com sucesso`} icon={TrendingUp} tone="info" loading={loading} />
-            <KpiCard title="GPS capturado" value={`${totalsGeral.gpsRate}%`} subtitle={`${fmt(totalsGeral.gps)} registros geolocalizados`} icon={MapPin} tone="green" loading={loading} />
-            <KpiCard title="Taxa de aprovação" value={`${totalsGeral.approvalRate}%`} subtitle={`${fmt(totalsGeral.aprovados)} aprov. · ${fmt(totalsGeral.reprovados)} reprov.`} icon={ThumbsUp} tone="green" loading={loading} />
+            <KpiCard
+              title="Nota Geral CQO"
+              value={`${totalsGeral.generalScore} / 100`}
+              subtitle="Média consolidada de qualidade"
+              icon={Award}
+              tone={totalsGeral.generalScore >= 90 ? 'green' : totalsGeral.generalScore >= 80 ? 'warning' : 'danger'}
+              loading={loading}
+            />
+            <KpiCard
+              title="Nota CQO Corte"
+              value={`${totalsGeral.corteScore} / 100`}
+              subtitle={`${fmt(totalsGeral.corte)} coletas de colheita`}
+              icon={Scissors}
+              tone={totalsGeral.corteScore >= 90 ? 'green' : totalsGeral.corteScore >= 80 ? 'warning' : 'danger'}
+              loading={loading}
+            />
+            <KpiCard
+              title="Nota CQO Carreamento"
+              value={`${totalsGeral.carreamentoScore} / 100`}
+              subtitle={`${fmt(totalsGeral.carreamento)} coletas de transporte`}
+              icon={Truck}
+              tone={totalsGeral.carreamentoScore >= 90 ? 'green' : totalsGeral.carreamentoScore >= 80 ? 'warning' : 'danger'}
+              loading={loading}
+            />
+            <KpiCard
+              title="Taxa de Sincronização"
+              value={`${totalsGeral.syncRate}%`}
+              subtitle={`${fmt(totalsGeral.sincronizados)} coletas concluídas`}
+              icon={TrendingUp}
+              tone="info"
+              loading={loading}
+            />
           </div>
+
+          <SectionHeader eyebrow="Volumes e Amostragem" title="Escopo do Monitoramento de Campo" color="var(--orange-institutional)" />
           <div className="grid-container grid-cols-4">
-            <KpiCard title="Linhas avaliadas" value={fmt(totalsGeral.linhas)} subtitle={`${fmt(totalsGeral.gpsPoints)} pontos GPS no trajeto`} icon={Rows3} tone="orange" loading={loading} />
-            <KpiCard title="Plantas observadas" value={fmt(totalsGeral.plantasObservadas)} subtitle="Base de cálculo para perdas" icon={Sprout} tone="green" loading={loading} />
-            <KpiCard title="Pendentes de validação" value={fmt(totalsGeral.pendentesValidacao)} subtitle={`${fmt(totalsGeral.pendentes)} pendentes de sincronização`} icon={CheckCircle2} tone="warning" loading={loading} />
-            <KpiCard title="Falhas de sincronização" value={fmt(totalsGeral.falhas)} subtitle="Erros de transmissão" icon={AlertTriangle} tone="danger" loading={loading} />
+            <KpiCard title="Coletas Recebidas" value={fmt(totalsGeral.total)} subtitle="Total de fichas no banco de dados" icon={ClipboardCheck} tone="green" loading={loading} />
+            <KpiCard title="Cachos Observados" value={fmt(totalsGeral.cachosObservados)} subtitle="Cachos auditados nas linhas" icon={CheckCircle2} tone="info" loading={loading} />
+            <KpiCard title="Linhas Avaliadas" value={fmt(totalsGeral.linhas)} subtitle={`${fmt(totalsGeral.gpsPoints)} pontos GPS no trajeto`} icon={Rows3} tone="orange" loading={loading} />
+            <KpiCard title="Plantas Observadas" value={fmt(totalsGeral.plantasObservadas)} subtitle="Base para cálculo de perdas" icon={Sprout} tone="green" loading={loading} />
+          </div>
+
+          <SectionHeader eyebrow="Desperdício de Matéria-Prima" title="Estimativa Física de Perdas no Campo" color="var(--status-danger)" />
+          <div className="grid-container grid-cols-3" style={{ marginBottom: '24px' }}>
+            <KpiCard
+              title="Cachos Perdidos (Corte/Logística)"
+              value={`${fmt(totalsGeral.lostCachosQty)} cachos`}
+              subtitle="Esquecidos ou não carreados"
+              icon={AlertTriangle}
+              tone="danger"
+              loading={loading}
+            />
+            <KpiCard
+              title="Massa de Frutos Perdida"
+              value={`${fmt(totalsGeral.lostFrutosTon, 2)} Toneladas`}
+              subtitle="Estimativa física acumulada (20kg/cacho)"
+              icon={Weight}
+              tone="danger"
+              loading={loading}
+            />
+            <KpiCard
+              title="Óleo de Palma (CPO) Perdido"
+              value={`${fmt(totalsGeral.lostOilTon, 2)} Ton. de Óleo`}
+              subtitle="Rendimento médio estimado de 20%"
+              icon={Leaf}
+              tone="danger"
+              loading={loading}
+            />
           </div>
 
           <div className="grid-container grid-cols-2">
             <CustomChart loading={loading} type="bar" data={chartsGeral.byFarm} title="Coletas por fazenda" />
-             <CustomChart loading={loading} type="donut" data={chartsGeral.byForm} title="Participação por formulário" />
+            <CustomChart loading={loading} type="donut" data={chartsGeral.byForm} title="Participação por formulário" />
           </div>
           <div className="grid-container grid-cols-2">
             <CustomChart loading={loading} type="line" data={chartsGeral.byDay} title="Evolução diária de coletas" />
@@ -242,18 +301,25 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
         <>
           <SectionHeader eyebrow="Formulário CQO Corte" title="Indicadores de qualidade no corte" color="var(--green-institutional)" />
 
-          {/* KPIs volumétricos */}
+          {/* KPIs volumétricos com Nota de Qualidade */}
           <div className="grid-container grid-cols-4">
-             <KpiCard title="Fichas de corte" value={fmt(corteRecords.length)} subtitle={`${mediaLinhasCorte} linhas por ficha (média)`} icon={Scissors} tone="green" loading={loading} />
-            <KpiCard title="Linhas avaliadas" value={fmt(totalsCorte.linhas)} subtitle={`${mediaPlantasPorLinha} plantas/linha (média)`} icon={Rows3} tone="info" loading={loading} />
-            <KpiCard title="Plantas observadas" value={fmt(totalsCorte.plantasObservadas)} subtitle="Base de cálculo de perdas" icon={Sprout} tone="green" loading={loading} />
+            <KpiCard
+              title="Nota CQO Corte"
+              value={`${totalsCorte.corteScore} / 100`}
+              subtitle="Score geral de qualidade no corte"
+              icon={Award}
+              tone={totalsCorte.corteScore >= 90 ? 'green' : totalsCorte.corteScore >= 80 ? 'warning' : 'danger'}
+              loading={loading}
+            />
+            <KpiCard title="Fichas de corte" value={fmt(corteRecords.length)} subtitle={`${mediaLinhasCorte} linhas por ficha (média)`} icon={Scissors} tone="green" loading={loading} />
+            <KpiCard title="Plantas observadas" value={fmt(totalsCorte.plantasObservadas)} subtitle={`${mediaPlantasPorLinha} plantas/linha (média)`} icon={Sprout} tone="green" loading={loading} />
             <KpiCard title="Cachos observados" value={fmt(totalsCorte.cachosObservados)} subtitle="Total registrado nas linhas" icon={ClipboardCheck} tone="orange" loading={loading} />
           </div>
 
           {/* KPIs de qualidade */}
           <SectionHeader eyebrow="Qualidade dos cachos" title="Maturação e perdas no corte" color="var(--orange-institutional)" />
-          <div className="grid-container grid-cols-4">
-             <KpiCard
+          <div className="grid-container grid-cols-4" style={{ marginBottom: '18px' }}>
+            <KpiCard
               title="Taxa de maturação"
               value={`${taxaMaturacao.replace('.', ',')}%`}
               subtitle={`${fmt(totalsCorte.cachoMaduro)} cachos maduros`}
@@ -266,25 +332,110 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
               value={`${taxaPerda.replace('.', ',')}%`}
               subtitle={`${fmt(totalsCorte.cachoEsquecido)} cachos esquecidos`}
               icon={AlertTriangle}
-              tone="danger"
+              tone={Number(totalsCorte.perdaCorteRate) > 1.5 ? 'danger' : 'green'}
               loading={loading}
             />
             <KpiCard
               title="Cachos verdes"
-              value={`${taxaVerde.replace('.', ',')}%`}
-              subtitle={`${fmt(totalsCorte.cachoVerde)} unidades`}
+              value={`${totalsCorte.cachoVerdeRate.toFixed(1).replace('.', ',')}%`}
+              subtitle={`${fmt(totalsCorte.cachoVerde)} unidades colhidas`}
               icon={Leaf}
-              tone="warning"
+              tone={totalsCorte.cachoVerdeRate > 3.0 ? 'danger' : 'warning'}
               loading={loading}
             />
             <KpiCard
               title="Cachos passados"
-              value={`${taxaPassado.replace('.', ',')}%`}
-              subtitle={`${fmt(totalsCorte.cachoPassado)} unidades`}
+              value={`${totalsCorte.cachoPassadoRate.toFixed(1).replace('.', ',')}%`}
+              subtitle={`${fmt(totalsCorte.cachoPassado)} unidades colhidas`}
               icon={TrendingDown}
-              tone="danger"
+              tone={totalsCorte.cachoPassadoRate > 5.0 ? 'danger' : 'warning'}
               loading={loading}
             />
+          </div>
+
+          {/* Farol de Alertas e Fitossanitário */}
+          <div className="grid-container grid-cols-2" style={{ marginBottom: '24px' }}>
+            {/* Card 1: Farol de Alertas */}
+            <div className="card" style={{ padding: '16px' }}>
+              <div className="card-header" style={{ marginBottom: 14 }}>
+                <div>
+                  <h3 className="card-title">Farol de Alertas e Tolerâncias</h3>
+                  <span className="card-subtitle">Limites estabelecidos pelo controle de qualidade</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* Farol 1: Cachos Esquecidos */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', borderLeft: `5px solid ${Number(totalsCorte.perdaCorteRate) > 1.5 ? 'var(--status-danger)' : 'var(--status-success)'}` }}>
+                  <div>
+                    <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--text-primary)' }}>Perda no Corte (Cachos Esquecidos)</strong>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Meta: &lt; 1,5% de perda</span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <strong style={{ fontSize: '1rem', color: Number(totalsCorte.perdaCorteRate) > 1.5 ? 'var(--status-danger)' : 'var(--status-success)' }}>
+                      {totalsCorte.perdaCorteRate.replace('.', ',')}%
+                    </strong>
+                    <span style={{ fontSize: '0.68rem', display: 'block', color: 'var(--text-muted)' }}>
+                      {Number(totalsCorte.perdaCorteRate) > 1.5 ? 'Fora da Meta 🔴' : 'Conforme 🟢'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Farol 2: Cachos Verdes */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', borderLeft: `5px solid ${totalsCorte.cachoVerdeRate > 3.0 ? 'var(--status-danger)' : 'var(--status-success)'}` }}>
+                  <div>
+                    <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--text-primary)' }}>Colheita de Cachos Verdes</strong>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Meta: &lt; 3,0% de verdes</span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <strong style={{ fontSize: '1rem', color: totalsCorte.cachoVerdeRate > 3.0 ? 'var(--status-danger)' : 'var(--status-success)' }}>
+                      {totalsCorte.cachoVerdeRate.toFixed(1).replace('.', ',')}%
+                    </strong>
+                    <span style={{ fontSize: '0.68rem', display: 'block', color: 'var(--text-muted)' }}>
+                      {totalsCorte.cachoVerdeRate > 3.0 ? 'Fora da Meta 🔴' : 'Conforme 🟢'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Farol 3: Talo Comprido */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', borderLeft: `5px solid ${totalsCorte.taloCompridoRate > 5.0 ? 'var(--status-warning)' : 'var(--status-success)'}` }}>
+                  <div>
+                    <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--text-primary)' }}>Incidência de Talo Comprido</strong>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Meta: &lt; 5,0% das plantas</span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <strong style={{ fontSize: '1rem', color: totalsCorte.taloCompridoRate > 5.0 ? 'var(--status-warning)' : 'var(--status-success)' }}>
+                      {totalsCorte.taloCompridoRate.toFixed(1).replace('.', ',')}%
+                    </strong>
+                    <span style={{ fontSize: '0.68rem', display: 'block', color: 'var(--text-muted)' }}>
+                      {totalsCorte.taloCompridoRate > 5.0 ? 'Atenção 🟡' : 'Conforme 🟢'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Monitoramento Fitossanitário */}
+            <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div className="card-header" style={{ marginBottom: 10 }}>
+                <div>
+                  <h3 className="card-title">Monitoramento Fitossanitário (Pragas)</h3>
+                  <span className="card-subtitle">Incidência de ataque de broca na colheita (cachos brocados)</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, margin: 'auto' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Taxa de Infestação por Broca</span>
+                <strong style={{ fontSize: '2.2rem', color: totalsCorte.pragasRate > 1.0 ? 'var(--status-danger)' : 'var(--status-success)' }}>
+                  {totalsCorte.pragasRate.toFixed(1).replace('.', ',')}%
+                </strong>
+                <span className={`badge ${totalsCorte.pragasRate > 1.0 ? 'badge-danger' : 'badge-success'}`} style={{ fontSize: '0.75rem', padding: '4px 12px', borderRadius: '4px' }}>
+                  {totalsCorte.pragasRate > 1.0 ? 'Risco Fitossanitário Alto ⚠️' : 'Sob Controle 🟢'}
+                </span>
+              </div>
+              <div style={{ width: '100%', borderTop: '1px solid var(--border-color)', paddingTop: 10, marginTop: 10, display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                <span>Quantidade afetada:</span>
+                <strong>{fmt(totalsCorte.cachoBrocado)} cachos brocados</strong>
+              </div>
+            </div>
           </div>
 
           {/* Detalhe qualitativo */}
@@ -357,28 +508,35 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
           <SectionHeader eyebrow="Formulário CQO Carreamento e Fruto Solto" title="Indicadores de transporte e rastreio" color="var(--orange-institutional)" />
 
           <div className="grid-container grid-cols-4">
-             <KpiCard title="Fichas carreamento" value={fmt(carreamentoRecords.length)} subtitle={`${fmt(totalsCarreamento.linhas)} linhas registradas`} icon={Truck} tone="orange" loading={loading} />
+            <KpiCard
+              title="Nota CQO Carreamento"
+              value={`${totalsCarreamento.carreamentoScore} / 100`}
+              subtitle="Score geral de qualidade do carreamento"
+              icon={Award}
+              tone={totalsCarreamento.carreamentoScore >= 90 ? 'green' : totalsCarreamento.carreamentoScore >= 80 ? 'warning' : 'danger'}
+              loading={loading}
+            />
+            <KpiCard title="Fichas carreamento" value={fmt(carreamentoRecords.length)} subtitle={`${fmt(totalsCarreamento.linhas)} linhas registradas`} icon={Truck} tone="orange" loading={loading} />
             <KpiCard title="Plantas observadas" value={fmt(totalsCarreamento.plantasObservadas)} subtitle="Base de cálculo por linha" icon={Sprout} tone="green" loading={loading} />
             <KpiCard title="Peso total frutos" value={`${fmt(totalsCarreamento.pesoMedio, 1)} kg`} subtitle={`Média de ${mediaPeso} kg/ficha`} icon={Weight} tone="info" loading={loading} />
-            <KpiCard title="GPS capturado" value={pct(carreamentoRecords.filter((r) => r.gps).length, carreamentoRecords.length)} subtitle={`${carreamentoRecords.filter((r) => r.gps).length} fichas geolocalizadas`} icon={MapPin} tone="green" loading={loading} />
           </div>
 
           <SectionHeader eyebrow="Irregularidades de transporte" title="Perdas e falhas no carreamento" color="var(--orange-institutional)" />
-          <div className="grid-container grid-cols-4">
+          <div className="grid-container grid-cols-4" style={{ marginBottom: '18px' }}>
             <KpiCard
               title="Mal posicionados"
               value={`${taxaMalPos.replace('.', ',')}%`}
               subtitle={`${fmt(totalsCarreamento.cachoMalPosicionado)} cachos`}
               icon={AlertTriangle}
-              tone="warning"
+              tone={totalsCarreamento.cachoMalPosicionadoRate > 5.0 ? 'danger' : 'warning'}
               loading={loading}
             />
             <KpiCard
-               title="Não carreados"
+              title="Não carreados"
               value={`${taxaNaoCarreado.replace('.', ',')}%`}
               subtitle={`${fmt(totalsCarreamento.cachoNaoCarreado)} cachos`}
               icon={ThumbsDown}
-              tone="danger"
+              tone={totalsCarreamento.cachoNaoCarreadoRate > 2.0 ? 'danger' : 'green'}
               loading={loading}
             />
             <KpiCard
@@ -390,13 +548,82 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, dateFr
               loading={loading}
             />
             <KpiCard
-               title="Aprovação"
+              title="Aprovação"
               value={pct(carreamentoRecords.filter((r) => r.status === 'Aprovado').length, carreamentoRecords.length)}
               subtitle={`${carreamentoRecords.filter((r) => r.status === 'Aprovado').length} fichas aprovadas`}
               icon={ThumbsUp}
               tone="green"
               loading={loading}
             />
+          </div>
+
+          {/* Farol de Alertas e Desperdício Físico */}
+          <div className="grid-container grid-cols-2" style={{ marginBottom: '24px' }}>
+            {/* Card 1: Farol de Alertas Logísticos */}
+            <div className="card" style={{ padding: '16px' }}>
+              <div className="card-header" style={{ marginBottom: 14 }}>
+                <div>
+                  <h3 className="card-title">Farol de Alertas e Tolerâncias Logísticas</h3>
+                  <span className="card-subtitle">Limites estabelecidos pelo controle de qualidade de transporte</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* Farol 1: Cachos Não Carreados */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', borderLeft: `5px solid ${totalsCarreamento.cachoNaoCarreadoRate > 2.0 ? 'var(--status-danger)' : 'var(--status-success)'}` }}>
+                  <div>
+                    <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--text-primary)' }}>Perda Logística (Cachos Não Carreados)</strong>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Meta: &lt; 2,0% de perda</span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <strong style={{ fontSize: '1rem', color: totalsCarreamento.cachoNaoCarreadoRate > 2.0 ? 'var(--status-danger)' : 'var(--status-success)' }}>
+                      {totalsCarreamento.cachoNaoCarreadoRate.toFixed(1).replace('.', ',')}%
+                    </strong>
+                    <span style={{ fontSize: '0.68rem', display: 'block', color: 'var(--text-muted)' }}>
+                      {totalsCarreamento.cachoNaoCarreadoRate > 2.0 ? 'Fora da Meta 🔴' : 'Conforme 🟢'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Farol 2: Cachos Mal Posicionados */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', borderLeft: `5px solid ${totalsCarreamento.cachoMalPosicionadoRate > 5.0 ? 'var(--status-danger)' : 'var(--status-success)'}` }}>
+                  <div>
+                    <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--text-primary)' }}>Cachos Mal Posicionados na Linha</strong>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Meta: &lt; 5,0% de desvio</span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <strong style={{ fontSize: '1rem', color: totalsCarreamento.cachoMalPosicionadoRate > 5.0 ? 'var(--status-danger)' : 'var(--status-success)' }}>
+                      {totalsCarreamento.cachoMalPosicionadoRate.toFixed(1).replace('.', ',')}%
+                    </strong>
+                    <span style={{ fontSize: '0.68rem', display: 'block', color: 'var(--text-muted)' }}>
+                      {totalsCarreamento.cachoMalPosicionadoRate > 5.0 ? 'Fora da Meta 🔴' : 'Conforme 🟢'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Desperdício Logístico no Campo */}
+            <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div className="card-header" style={{ marginBottom: 10 }}>
+                <div>
+                  <h3 className="card-title">Desperdício Físico Estimado (Logística)</h3>
+                  <span className="card-subtitle">Estimativa de perdas físicas apenas por cachos não carreados</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, margin: 'auto' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Frutos Deixados no Campo</span>
+                <strong style={{ fontSize: '2.2rem', color: totalsCarreamento.cachoNaoCarreado > 0 ? 'var(--status-danger)' : 'var(--status-success)' }}>
+                  {fmt((totalsCarreamento.cachoNaoCarreado * 20) / 1000, 2)} Ton.
+                </strong>
+                <span className={`badge ${totalsCarreamento.cachoNaoCarreado > 0 ? 'badge-danger' : 'badge-success'}`} style={{ fontSize: '0.75rem', padding: '4px 12px', borderRadius: '4px' }}>
+                  {totalsCarreamento.cachoNaoCarreado > 0 ? 'Perda de Matéria-Prima ⚠️' : 'Eficiência Total 🟢'}
+                </span>
+              </div>
+              <div style={{ width: '100%', borderTop: '1px solid var(--border-color)', paddingTop: 10, marginTop: 10, display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                <span>Cachos não carreados:</span>
+                <strong>{fmt(totalsCarreamento.cachoNaoCarreado)} cachos</strong>
+              </div>
+            </div>
           </div>
 
           <div className="grid-container grid-cols-2">

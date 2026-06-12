@@ -477,6 +477,15 @@ export function aggregateRecords(records) {
     acc.pesoMedio += record.totals.pesoMedio || 0;
     acc.gps += record.gps ? 1 : 0;
     acc.gpsPoints += record.gpsTrack?.length || 0;
+    
+    // Novos acumulados adicionados para corrigir a agregação global
+    acc.cachoBrocado += record.totals.cachoBrocado || 0;
+    acc.taloComprido += record.totals.taloComprido || 0;
+    acc.folhaCortada += record.totals.folhaCortada || 0;
+    acc.folhaMamando += record.totals.folhaMamando || 0;
+    acc.cachoEstrela += record.totals.cachoEstrela || 0;
+    acc.cachoAvermelhado += record.totals.cachoAvermelhado || 0;
+
     if (record.status === 'Sincronizado') acc.sincronizados += 1;
     if (record.status === 'Pendente validação') acc.pendentesValidacao += 1;
     if (record.status === 'Aprovado') acc.aprovados += 1;
@@ -506,6 +515,13 @@ export function aggregateRecords(records) {
     reprovados: 0,
     pendentes: 0,
     falhas: 0,
+    // Inicialização dos novos campos
+    cachoBrocado: 0,
+    taloComprido: 0,
+    folhaCortada: 0,
+    folhaMamando: 0,
+    cachoEstrela: 0,
+    cachoAvermelhado: 0,
   });
 
   totals.syncRate = totals.total ? Math.round((totals.sincronizados / totals.total) * 100) : 0;
@@ -514,6 +530,39 @@ export function aggregateRecords(records) {
   totals.gpsRate = totals.total ? Math.round((totals.gps / totals.total) * 100) : 0;
   totals.perdaCorteRate = totals.cachosObservados ? ((totals.cachoEsquecido / totals.cachosObservados) * 100).toFixed(1) : '0.0';
   totals.mediaPesoFrutos = totals.carreamento ? (totals.pesoMedio / totals.carreamento).toFixed(1) : '0.0';
+
+  // --- Novos Cálculos de Qualidade Operacional ---
+  
+  // Taxas individuais de qualidade do Corte
+  totals.cachoVerdeRate = totals.cachosObservados ? (totals.cachoVerde / totals.cachosObservados) * 100 : 0;
+  totals.cachoPassadoRate = totals.cachosObservados ? (totals.cachoPassado / totals.cachosObservados) * 100 : 0;
+  totals.taloCompridoRate = totals.plantasObservadas ? (totals.taloComprido / totals.plantasObservadas) * 100 : 0;
+  totals.folhaCortadaRate = totals.plantasObservadas ? (totals.folhaCortada / totals.plantasObservadas) * 100 : 0;
+  totals.pragasRate = totals.cachosObservados ? (totals.cachoBrocado / totals.cachosObservados) * 100 : 0;
+
+  // Nota de Qualidade do Corte (Score 0-100)
+  const cLoss = (Number(totals.perdaCorteRate) * 12) + (totals.cachoVerdeRate * 8) + (totals.cachoPassadoRate * 4) + (totals.taloCompridoRate * 3) + (totals.folhaCortadaRate * 3);
+  totals.corteScore = totals.corte > 0 ? Math.max(0, Math.min(100, Math.round(100 - cLoss))) : 100;
+
+  // Taxas individuais de qualidade do Carreamento
+  totals.cachoNaoCarreadoRate = totals.plantasObservadas ? (totals.cachoNaoCarreado / totals.plantasObservadas) * 100 : 0;
+  totals.cachoMalPosicionadoRate = totals.plantasObservadas ? (totals.cachoMalPosicionado / totals.plantasObservadas) * 100 : 0;
+
+  // Nota de Qualidade do Carreamento (Score 0-100)
+  const carLoss = (totals.cachoNaoCarreadoRate * 15) + (totals.cachoMalPosicionadoRate * 6);
+  totals.carreamentoScore = totals.carreamento > 0 ? Math.max(0, Math.min(100, Math.round(100 - carLoss))) : 100;
+
+  // Nota Geral de Qualidade CQO (Média simples dos formulários ativos)
+  let validScores = [];
+  if (totals.corte > 0) validScores.push(totals.corteScore);
+  if (totals.carreamento > 0) validScores.push(totals.carreamentoScore);
+  totals.generalScore = validScores.length ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : 100;
+
+  // Estimativa de Perdas (Volume de Frutos e Óleo de Palma)
+  totals.lostCachosQty = totals.cachoEsquecido + totals.cachoNaoCarreado;
+  totals.lostFrutosTon = (totals.lostCachosQty * 20) / 1000; // 20kg por cacho
+  totals.lostOilTon = totals.lostFrutosTon * 0.20; // 20% de rendimento de CPO
+
   return totals;
 }
 
