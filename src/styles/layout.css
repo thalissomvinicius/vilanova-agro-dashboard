@@ -62,34 +62,41 @@ body.sidebar-resizing {
 }
 
 .sidebar-collapse-btn {
-  width: 30px;
-  height: 30px;
-  margin-left: auto;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
+  position: absolute;
+  right: -12px;
+  top: 33px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-sidebar);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: var(--text-sidebar);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  flex-shrink: 0;
+  z-index: 105;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all var(--transition-fast);
 }
 
 .sidebar-collapse-btn:hover {
+  background-color: var(--orange-institutional);
   color: var(--white);
-  border-color: rgba(217, 140, 16, 0.6);
+  border-color: var(--orange-institutional);
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .sidebar-collapse-btn svg {
-  width: 17px;
-  height: 17px;
+  width: 14px;
+  height: 14px;
 }
 
 .sidebar-logo-container {
   width: 40px;
   height: 40px;
-  border-radius: var(--border-radius-md);
+  border-radius: 50%;
   background: var(--white);
   display: flex;
   align-items: center;
@@ -99,8 +106,8 @@ body.sidebar-resizing {
 }
 
 .sidebar-logo {
-  max-width: 34px;
-  max-height: 34px;
+  max-width: 26px;
+  max-height: 26px;
   object-fit: contain;
 }
 
@@ -234,12 +241,11 @@ body.sidebar-resizing {
 }
 
 .app-sidebar.collapsed .sidebar-collapse-btn {
-  position: absolute;
-  right: -15px;
-  top: 30px;
-  z-index: 3;
+  right: -12px;
+  top: 33px;
+  z-index: 105;
   background: var(--bg-sidebar);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .app-sidebar.collapsed .sidebar-menu-item {

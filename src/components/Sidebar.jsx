@@ -37,7 +37,7 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
     >
       <div className="sidebar-brand">
         <div className="sidebar-logo-container">
-          <img src="/logo.png" alt="Vila Nova Agroindustrial" className="sidebar-logo" />
+          <img src={collapsed ? "/favicon.svg" : "/logo.png"} alt="Vila Nova Agroindustrial" className="sidebar-logo" />
         </div>
         <div className="sidebar-brand-info">
           <h1 className="sidebar-brand-name">Vila Nova</h1>
