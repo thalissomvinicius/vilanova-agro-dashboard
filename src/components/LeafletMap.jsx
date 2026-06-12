@@ -106,10 +106,13 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     dateTo,
   }), [records, farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo]);
 
-  const geoRecords = useMemo(() => filteredRecords.filter((record) => (
-    (record.gps && Number.isFinite(record.gps.lat) && Number.isFinite(record.gps.lng))
-    || record.gpsTrack?.some((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
-  )), [filteredRecords]);
+  const geoRecords = useMemo(() => filteredRecords.filter((record) => {
+    if (record.raw?.mapeamento_legado || record.evaluatorMatricula === 'HISTORICO') return false;
+    return (
+      (record.gps && Number.isFinite(record.gps.lat) && Number.isFinite(record.gps.lng))
+      || record.gpsTrack?.some((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
+    );
+  }), [filteredRecords]);
 
   const trackPoints = useMemo(() => geoRecords.flatMap((record) => {
     const points = record.gpsTrack?.length ? record.gpsTrack : [record.gps];
