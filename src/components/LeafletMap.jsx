@@ -123,7 +123,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   const trackPoints = useMemo(() => geoRecords.flatMap((record) => {
     const points = record.gpsTrack?.length ? record.gpsTrack : [record.gps];
     return points
-      .filter((point) => point && Number.isFinite(point.lat) && Number.isFinite(point.lng))
+      .filter((point) => point && Number.isFinite(point.lat) && Number.isFinite(point.lng) && Math.abs(point.lat) > 0.1 && Math.abs(point.lng) > 0.1)
       .map((point, index) => ({
         ...point,
         index,
@@ -139,7 +139,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   ), [parcelGeoJson, farmFilter]);
 
   const heatPoints = useMemo(() => trackPoints.filter((point) => {
-    if (!pointInsideFeatures([point.lat, point.lng], filteredParcelFeatures)) return false;
+    if (farmFilter !== 'all' && point.record.farmId !== farmFilter) return false;
     const perdidos = (point.record?.totals?.cachoEsquecido || 0) + (point.record?.totals?.cachoNaoCarreado || 0);
     return perdidos > 0;
   }).map((point) => {
@@ -149,7 +149,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       ...point,
       heatWeight,
     };
-  }), [trackPoints, filteredParcelFeatures]);
+  }), [trackPoints, farmFilter]);
 
   const geoStats = useMemo(() => {
     const byFarm = geoRecords.reduce((acc, record) => {
@@ -262,6 +262,10 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
               fillColor = getScoreColor(totals.generalScore);
               fillOpacity = 0.55;
               weight = 2;
+            } else {
+              fillColor = '#CBD5E1'; // Neutral gray for un-evaluated parcels
+              fillOpacity = 0.15;
+              weight = 1;
             }
           }
 
@@ -457,7 +461,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
 
         <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.7rem', opacity: '0.8' }}>
           <div style={{ marginBottom: '8px', fontWeight: 800 }}>
-            {geoStats.gpsPoints} pontos GPS / {heatPoints.length} no shapefile / {geoStats.total} coletas
+            {geoStats.gpsPoints} pontos GPS / {geoStats.total} coletas
           </div>
           {Object.entries(FARM_STYLES).filter(([id]) => id !== 'default').map(([id, style]) => (
             <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
