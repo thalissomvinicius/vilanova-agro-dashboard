@@ -143,7 +143,7 @@ export default function Collaborators() {
         </div>
 
         <div className="table-wrapper">
-          <table className="custom-table dense-table">
+          <table className="custom-table dense-table" style={{ minWidth: 'auto' }}>
             <thead>
               <tr>
                 <th>Matrícula</th>
