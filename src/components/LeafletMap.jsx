@@ -393,7 +393,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             style={{ height: '32px', fontSize: '0.75rem', justifyContent: 'flex-start' }}
           >
             <Layers size={14} />
-            <span>Areas e coletas</span>
+            <span>Áreas e coletas</span>
           </button>
           <button
             onClick={() => setMapLayer('heat')}
@@ -402,14 +402,6 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           >
             <Flame size={14} />
             <span>Mapa de calor</span>
-          </button>
-          <button
-            onClick={() => setMapLayer('route')}
-            className={`btn ${mapLayer === 'route' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ height: '32px', fontSize: '0.75rem', justifyContent: 'flex-start' }}
-          >
-            <Navigation size={14} />
-            <span>Rotas</span>
           </button>
         </div>
 
