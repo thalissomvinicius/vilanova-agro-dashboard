@@ -40,7 +40,7 @@ body.sidebar-resizing {
 /* Sidebar Styling */
 .app-sidebar {
   height: 100%;
-  background-color: var(--bg-sidebar);
+  background: linear-gradient(180deg, var(--green-dark) 0%, var(--green-institutional) 100%);
   border-right: 1px solid var(--border-sidebar);
   display: flex;
   flex-direction: column;
@@ -163,6 +163,9 @@ body.sidebar-resizing {
   transition: all var(--transition-fast);
   cursor: pointer;
   border: 1px solid transparent;
+  background: transparent;
+  width: 100%;
+  text-align: left;
 }
 
 .sidebar-menu-item:hover {
@@ -172,9 +175,9 @@ body.sidebar-resizing {
 }
 
 .sidebar-menu-item.active {
-  background: linear-gradient(90deg, rgba(217, 140, 16, 0.2) 0%, rgba(242, 181, 68, 0.08) 100%);
+  background: linear-gradient(90deg, rgba(232, 145, 0, 0.12) 0%, transparent 100%);
   color: var(--orange-institutional);
-  border-left: 4px solid var(--orange-institutional);
+  border-left: 3px solid var(--orange-institutional);
   font-weight: 600;
 }
 
@@ -300,10 +303,10 @@ body.sidebar-resizing {
 
 /* Header Styling */
 .app-header {
-  min-height: 76px;
+  min-height: 64px;
   background-color: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
-  padding: 12px 24px;
+  padding: 8px 24px;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-start;
@@ -567,9 +570,9 @@ body.sidebar-resizing {
 /* Responsive adjustments */
 @media (max-width: 1440px) {
   .app-header {
-    padding: 10px 18px;
+    padding: 8px 18px;
     height: auto;
-    min-height: 76px;
+    min-height: 64px;
   }
 
   .header-filters {

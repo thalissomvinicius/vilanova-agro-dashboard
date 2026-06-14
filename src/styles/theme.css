@@ -2,94 +2,95 @@
 
 :root {
   /* Brand Colors - Vila Nova Agroindustrial */
-  --green-institutional: #234F2A;
-  --green-dark: #1B3D20;
-  --orange-institutional: #D98C10;
-  --orange-highlight: #F2B544;
-  --orange-dark: #B36F00;
+  --green-institutional: #174D2B;
+  --green-dark: #0F351F;
+  --green-medium: #256B3A;
+  --orange-institutional: #E89100;
+  --orange-highlight: #F5A623;
+  --orange-soft: #FFF4E0;
   --white: #FFFFFF;
-  --gray-light: #F8F8F5;
-  --gray-dark: #1F2937;
+  --gray-light: #F7F8F3;
+  --gray-dark: #182230;
 
   /* Typography */
   --font-family: 'Inter', 'Segoe UI', sans-serif;
 
   /* Theme: Light (Default) */
-  --bg-primary: #F8F8F5;
+  --bg-primary: #F7F8F3;
   --bg-secondary: #FFFFFF;
-  --bg-tertiary: #F3F4F0;
-  --bg-sidebar: #234F2A;
+  --bg-tertiary: #F0F2EB;
+  --bg-sidebar: #0F351F;
   --bg-card: #FFFFFF;
   --bg-input: #FFFFFF;
 
-  --text-primary: #1F2937;
-  --text-secondary: #6B7280;
-  --text-muted: #6B7280;
+  --text-primary: #182230;
+  --text-secondary: #667085;
+  --text-muted: #8E98A8;
   --text-white: #FFFFFF;
-  --text-sidebar: #EAF2EA;
-  --text-sidebar-active: #D98C10;
+  --text-sidebar: #D1E0D6;
+  --text-sidebar-active: #E89100;
 
-  --border-color: #E5E7E0;
-  --border-sidebar: rgba(255, 255, 255, 0.1);
-  --border-focus: #D98C10;
+  --border-color: #E4E7EC;
+  --border-sidebar: rgba(255, 255, 255, 0.08);
+  --border-focus: #E89100;
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
-  --shadow-premium: 0 10px 30px -5px rgba(35, 79, 42, 0.08), 0 5px 15px -5px rgba(217, 140, 16, 0.08);
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.04), 0 1px 2px rgba(16, 24, 40, 0.02);
+  --shadow-md: 0 4px 8px -2px rgba(16, 24, 40, 0.05), 0 2px 4px -2px rgba(16, 24, 40, 0.03);
+  --shadow-lg: 0 12px 24px -4px rgba(16, 24, 40, 0.06), 0 8px 16px -4px rgba(16, 24, 40, 0.04);
+  --shadow-premium: 0 20px 40px -8px rgba(23, 77, 43, 0.08), 0 10px 20px -8px rgba(232, 145, 0, 0.06);
 
   /* Status Colors */
   --status-success: #22C55E;
-  --status-success-bg: rgba(34, 197, 94, 0.1);
+  --status-success-bg: rgba(34, 197, 94, 0.12);
   --status-warning: #F59E0B;
-  --status-warning-bg: rgba(245, 158, 11, 0.1);
+  --status-warning-bg: rgba(245, 158, 11, 0.12);
   --status-danger: #EF4444;
-  --status-danger-bg: rgba(239, 68, 68, 0.1);
+  --status-danger-bg: rgba(239, 68, 68, 0.12);
   --status-info: #3B82F6;
-  --status-info-bg: rgba(59, 130, 246, 0.1);
+  --status-info-bg: rgba(59, 130, 246, 0.12);
 
   /* Scrollbar & Misc */
-  --scrollbar-track: #F3F4F0;
-  --scrollbar-thumb: #D6D8CF;
-  --scrollbar-thumb-hover: #D98C10;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #D0D5DD;
+  --scrollbar-thumb-hover: #E89100;
 
-  --border-radius-sm: 6px;
+  --border-radius-sm: 8px;
   --border-radius-md: 12px;
-  --border-radius-lg: 18px;
+  --border-radius-lg: 16px;
   --border-radius-full: 9999px;
 
   --transition-fast: 0.15s ease;
-  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 0.5s ease;
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.4s ease;
 }
 
 [data-theme='dark'] {
   /* Theme: Dark Mode Override */
-  --bg-primary: #111711;
-  --bg-secondary: #172017;
-  --bg-tertiary: #1F2A20;
-  --bg-sidebar: #1B3D20;
-  --bg-card: #121815;
-  --bg-input: #1B2420;
+  --bg-primary: #10161A;
+  --bg-secondary: #182230;
+  --bg-tertiary: #1F2937;
+  --bg-sidebar: #0F351F;
+  --bg-card: #182230;
+  --bg-input: #1F2937;
 
-  --text-primary: #F8FAFC;
-  --text-secondary: #E2E8F0;
-  --text-muted: #94A3B8;
+  --text-primary: #F7F8F3;
+  --text-secondary: #D0D5DD;
+  --text-muted: #8E98A8;
 
-  --border-color: #202D26;
-  --border-focus: #D98C10;
+  --border-color: #344054;
+  --border-focus: #E89100;
 
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
-  --shadow-premium: 0 15px 35px -5px rgba(0, 0, 0, 0.5), 0 0 20px -2px rgba(217, 140, 16, 0.16);
+  --shadow-premium: 0 15px 35px -5px rgba(0, 0, 0, 0.5), 0 0 20px -2px rgba(232, 145, 0, 0.16);
 
-  --status-success-bg: rgba(16, 185, 129, 0.15);
+  --status-success-bg: rgba(34, 197, 94, 0.15);
   --status-warning-bg: rgba(245, 158, 11, 0.15);
   --status-danger-bg: rgba(239, 68, 68, 0.15);
   --status-info-bg: rgba(59, 130, 246, 0.15);
 
-  --scrollbar-track: #121815;
-  --scrollbar-thumb: #2D3A33;
-  --scrollbar-thumb-hover: #D98C10;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #344054;
+  --scrollbar-thumb-hover: #E89100;
 }

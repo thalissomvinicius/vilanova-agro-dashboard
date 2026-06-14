@@ -414,7 +414,7 @@ export default function CustomChart({ type = 'line', data = [], height = 280, ti
             `;
 
             const isHovered = hoveredIdx === idx;
-            const fallbackColors = ['#D98C10', '#F2B544', '#B36F00', '#234F2A'];
+            const fallbackColors = ['var(--orange-institutional)', 'var(--orange-highlight)', 'var(--green-institutional)', 'var(--green-medium)'];
             const color = item.fill || fallbackColors[idx % fallbackColors.length];
 
             return (
@@ -462,7 +462,7 @@ export default function CustomChart({ type = 'line', data = [], height = 280, ti
                     width: '10px',
                     height: '10px',
                     borderRadius: '2px',
-                    backgroundColor: hoveredIdx === idx ? 'var(--orange-highlight)' : (item.fill || ['#D98C10', '#F2B544', '#B36F00', '#234F2A'][idx % 4])
+                    backgroundColor: hoveredIdx === idx ? 'var(--orange-highlight)' : (item.fill || ['var(--orange-institutional)', 'var(--orange-highlight)', 'var(--green-institutional)', 'var(--green-medium)'][idx % 4])
                   }}
                 />
                 <span style={{ color: 'var(--text-secondary)', fontWeight: '500' }}>{item.label}</span>

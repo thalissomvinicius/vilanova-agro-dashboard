@@ -459,7 +459,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           </button>
         </div>
 
-        <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.7rem', opacity: '0.8' }}>
+        <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--border-color)', fontSize: '0.7rem', opacity: '0.8' }}>
           <div style={{ marginBottom: '8px', fontWeight: 800 }}>
             {geoStats.gpsPoints} pontos GPS / {geoStats.total} coletas
           </div>

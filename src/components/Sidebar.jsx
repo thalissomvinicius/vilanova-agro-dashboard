@@ -63,13 +63,6 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
               key={item.id}
               onClick={() => handleItemClick(item)}
               className={`sidebar-menu-item ${isActive ? 'active' : ''}`}
-              style={{
-                background: 'none',
-                border: 'none',
-                textAlign: 'left',
-                width: '100%',
-                cursor: 'pointer',
-              }}
               title={item.label}
               aria-label={item.label}
             >
