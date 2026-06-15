@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import FormBuilder from './pages/FormBuilder';
 import Collections from './pages/Collections';
 import Analytics from './pages/Analytics';
+import QualidadeOperacional from './pages/QualidadeOperacional';
 import SyncCenter from './pages/SyncCenter';
 import Collaborators from './pages/Collaborators';
 import Inventory from './pages/Inventory';
@@ -162,6 +163,19 @@ export default function App() {
             evaluatorFilter={evaluatorFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
+          />
+        );
+      case 'qualidade-operacional':
+        return (
+          <QualidadeOperacional
+            farmFilter={farmFilter}
+            areaFilter={areaFilter}
+            periodFilter={periodFilter}
+            cycleFilter={cycleFilter}
+            evaluatorFilter={evaluatorFilter}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            searchTerm={searchTerm}
           />
         );
       case 'sync':
