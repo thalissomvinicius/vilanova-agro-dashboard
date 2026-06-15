@@ -179,9 +179,11 @@ export function buildQualidadeOperacional(records) {
 
   const byFarm = new Map();
   const byMonth = new Map();
+  const byParcela = new Map();
   losses.forEach(({ record, loss }) => {
     pushBucket(byFarm, record.farm || 'Sem fazenda', record, loss);
     pushBucket(byMonth, monthKey(record), record, loss);
+    pushBucket(byParcela, record.parcel || 'Sem parcela', record, loss);
   });
 
   const farmRows = Array.from(byFarm.values())
@@ -200,6 +202,25 @@ export function buildQualidadeOperacional(records) {
       ...bucket,
       totalPct: safePct(bucket.perdasT, bucket.producedTon),
     }));
+
+  const parcelaRows = Array.from(byParcela.values())
+    .map((bucket) => {
+      const agg = aggregateRecords(bucket.records);
+      const baseQualidade = Math.max(agg.cachosObservados, 0);
+      const basePlantas = Math.max(agg.plantasObservadas, 0);
+      return {
+        label: bucket.label,
+        recordsCount: bucket.records.length,
+        perdasT: bucket.perdasT,
+        taloCompridoPct: safePct(agg.taloComprido, basePlantas),
+        cachoVerdePct: safePct(agg.cachoVerde, baseQualidade),
+        cachoPassadoPct: safePct(agg.cachoPassado, baseQualidade),
+        folhaMamandoPct: safePct(agg.folhaMamando, basePlantas),
+        folhaMamando: agg.folhaMamando,
+        cachoBrocadoPct: safePct(agg.cachoBrocado, baseQualidade),
+      };
+    })
+    .sort((a, b) => b.perdasT - a.perdasT);
 
   let perdasYtd = 0;
   let pesoYtd = 0;
@@ -248,5 +269,6 @@ export function buildQualidadeOperacional(records) {
       perdasPctMensal: monthlyChart,
     },
     farmRows,
+    parcelaRows,
   };
 }

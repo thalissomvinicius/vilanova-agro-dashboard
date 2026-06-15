@@ -96,6 +96,123 @@ function FormulaCard({ title, lines }) {
   );
 }
 
+function MaturationBar({ verde, maduro, passado, loading }) {
+  if (loading) return <div className="skeleton-chart" style={{ height: 24, borderRadius: 12 }}></div>;
+  const total = verde + maduro + passado || 1;
+  const vPct = (verde / total) * 100;
+  const mPct = (maduro / total) * 100;
+  const pPct = (passado / total) * 100;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingBottom: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 500 }}>
+        <span style={{ color: 'var(--status-danger)' }}>Verde {verde.toFixed(1)}%</span>
+        <span style={{ color: 'var(--status-success)' }}>Maduro {maduro.toFixed(1)}%</span>
+        <span style={{ color: '#B45309' }}>Passado {passado.toFixed(1)}%</span>
+      </div>
+      <div style={{ display: 'flex', height: '24px', borderRadius: '12px', overflow: 'hidden', backgroundColor: 'var(--surface-hover)' }}>
+        <div style={{ width: `${vPct}%`, backgroundColor: 'var(--status-danger)', transition: 'width 0.5s' }} title="Verde" />
+        <div style={{ width: `${mPct}%`, backgroundColor: 'var(--status-success)', transition: 'width 0.5s' }} title="Maduro" />
+        <div style={{ width: `${pPct}%`, backgroundColor: '#B45309', transition: 'width 0.5s' }} title="Passado" />
+      </div>
+    </div>
+  );
+}
+
+function LossWaterfall({ totals, loading }) {
+  if (loading) return <div className="skeleton-chart" style={{ height: 120 }}></div>;
+  const max = totals.producedTon + totals.perdasT || 1;
+  const renderRow = (label, val, color) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }} key={label}>
+      <div style={{ width: '130px', fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-secondary)' }}>{label}</div>
+      <div style={{ flex: 1, backgroundColor: 'var(--surface-hover)', height: '16px', borderRadius: '8px', overflow: 'hidden' }}>
+        <div style={{ width: `${(val / max) * 100}%`, backgroundColor: color, height: '100%', borderRadius: '8px', transition: 'width 0.5s' }} />
+      </div>
+      <div style={{ width: '70px', textAlign: 'right', fontSize: '0.85rem', fontWeight: 600 }}>{fmt(val, 1)} t</div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', marginTop: '10px' }}>
+      {renderRow('Produção Bruta', totals.producedTon + totals.perdasT, 'var(--status-info)')}
+      {renderRow('Perda (Corte)', totals.corteT, 'var(--status-danger)')}
+      {renderRow('Perda (Carream.)', totals.carreamentoT, 'var(--orange-highlight)')}
+      {renderRow('Entregue (Real)', totals.producedTon, 'var(--status-success)')}
+    </div>
+  );
+}
+
+function FolhaMamandoAlert({ count, pct, loading }) {
+  if (loading) return <div className="skeleton-chart" style={{ height: 80 }}></div>;
+  return (
+    <div className="card" style={{ borderLeft: '4px solid var(--orange-highlight)', backgroundColor: 'var(--surface-hover)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px' }}>
+        <div style={{ padding: '10px', backgroundColor: 'var(--orange-highlight)', borderRadius: '50%', color: '#fff', display: 'flex' }}>
+          <AlertTriangle size={24} />
+        </div>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--orange-highlight)' }}>Alerta: Folha Mamando</h3>
+          <div style={{ display: 'flex', gap: '16px', marginTop: '4px' }}>
+            <span style={{ fontSize: '0.85rem' }}><strong>{fmt(count)}</strong> folhas cortadas</span>
+            <span style={{ fontSize: '0.85rem' }}><strong>{pct.toFixed(1)}%</strong> das plantas</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RiskMatrix({ parcelas, loading }) {
+  if (loading) return <div className="skeleton-chart" style={{ height: 200 }}></div>;
+  if (!parcelas || parcelas.length === 0) return <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>Nenhum dado</div>;
+
+  const getCellColor = (val, meta) => {
+    if (val <= meta) return 'transparent';
+    if (val <= meta * 1.5) return 'rgba(254, 240, 138, 0.2)'; // light yellow
+    if (val <= meta * 2) return 'rgba(254, 215, 170, 0.3)'; // light orange
+    return 'rgba(254, 202, 202, 0.4)'; // light red
+  };
+
+  return (
+    <div className="card" style={{ overflowX: 'auto', padding: 0 }}>
+      <div className="card-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)' }}>
+        <div>
+          <h3 className="card-title">Matriz de Risco por Parcela (Top 10)</h3>
+          <span className="card-subtitle">Mapeamento de anomalias que excedem o limite de controle.</span>
+        </div>
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+        <thead>
+          <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', backgroundColor: 'var(--surface-hover)' }}>
+            <th style={{ padding: '12px 16px', textAlign: 'left' }}>Parcela</th>
+            <th style={{ padding: '12px 16px', textAlign: 'center' }}>Coletas</th>
+            <th style={{ padding: '12px 16px', textAlign: 'right' }}>Perdas</th>
+            <th style={{ padding: '12px 16px', textAlign: 'right' }}>Verde</th>
+            <th style={{ padding: '12px 16px', textAlign: 'right' }}>Passado</th>
+            <th style={{ padding: '12px 16px', textAlign: 'right' }}>F. Mamando</th>
+            <th style={{ padding: '12px 16px', textAlign: 'right' }}>Talo</th>
+            <th style={{ padding: '12px 16px', textAlign: 'right' }}>Brocado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {parcelas.slice(0, 10).map((p, idx) => (
+            <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
+              <td style={{ padding: '12px 16px', fontWeight: 500 }}>{p.label}</td>
+              <td style={{ padding: '12px 16px', textAlign: 'center' }}>{p.recordsCount}</td>
+              <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--status-danger)' }}>{fmt(p.perdasT, 1)} t</td>
+              <td style={{ padding: '12px 16px', textAlign: 'right', backgroundColor: getCellColor(p.cachoVerdePct, 8) }}>{p.cachoVerdePct.toFixed(1)}%</td>
+              <td style={{ padding: '12px 16px', textAlign: 'right', backgroundColor: getCellColor(p.cachoPassadoPct, 5) }}>{p.cachoPassadoPct.toFixed(1)}%</td>
+              <td style={{ padding: '12px 16px', textAlign: 'right', backgroundColor: getCellColor(p.folhaMamandoPct, 2) }}>{p.folhaMamandoPct.toFixed(1)}%</td>
+              <td style={{ padding: '12px 16px', textAlign: 'right', backgroundColor: getCellColor(p.taloCompridoPct, 3) }}>{p.taloCompridoPct.toFixed(1)}%</td>
+              <td style={{ padding: '12px 16px', textAlign: 'right', backgroundColor: getCellColor(p.cachoBrocadoPct, 5) }}>{p.cachoBrocadoPct.toFixed(1)}%</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function QualidadeOperacional({
   farmFilter,
   areaFilter,
@@ -122,6 +239,9 @@ export default function QualidadeOperacional({
   const lossPctLabel = model.hasProductionBase ? pct(model.lossRates.totalPct) : 'N/D';
   const cortePctLabel = model.hasProductionBase ? pct(model.lossRates.cortePct) : 'N/D';
   const carreamentoPctLabel = model.hasProductionBase ? pct(model.lossRates.carreamentoPct) : 'N/D';
+
+  const fMamandoPct = (model.allTotals.folhaMamando / Math.max(model.allTotals.plantasObservadas, 1)) * 100 || 0;
+  const cBrocadoPct = (model.corteTotals.cachoBrocado / Math.max(model.corteTotals.cachosObservados, 1)) * 100 || 0;
 
   return (
     <div className="fade-in page-shell">
@@ -191,60 +311,54 @@ export default function QualidadeOperacional({
           <div className="card-header">
             <div>
               <h3 className="card-title">Qualidade Agricola</h3>
-              <span className="card-subtitle">Percentuais sobre os cachos observados no CQO Corte.</span>
+              <span className="card-subtitle">Raio-X de Maturação e Anomalias no CQO Corte.</span>
             </div>
             <Leaf size={20} style={{ color: 'var(--green-institutional)' }} />
           </div>
-          <div className="grid-container grid-cols-3" style={{ marginBottom: 0 }}>
-            <QualityMetric loading={loading} label="Cacho maduro" value={model.quality.cachoMaduroPct} meta="quanto maior, melhor" />
-            <QualityMetric loading={loading} label="Cacho verde" value={model.quality.cachoVerdePct} meta={8} goodWhen="low" />
-            <QualityMetric loading={loading} label="Cacho passado" value={model.quality.cachoPassadoPct} meta={5} goodWhen="low" />
+          <MaturationBar verde={model.quality.cachoVerdePct} maduro={model.quality.cachoMaduroPct} passado={model.quality.cachoPassadoPct} loading={loading} />
+          <div className="grid-container grid-cols-2" style={{ marginBottom: 0, gap: '12px' }}>
             <QualityMetric loading={loading} label="Avermelhado" value={model.quality.cachoAvermelhadoPct} meta={5} goodWhen="low" />
             <QualityMetric loading={loading} label="Cacho estrela" value={model.quality.cachoEstrelaPct} meta={3} goodWhen="low" />
             <QualityMetric loading={loading} label="Talo comprido" value={model.quality.taloCompridoPct} meta={3} goodWhen="low" />
+            <QualityMetric loading={loading} label="Cacho brocado" value={cBrocadoPct} meta={5} goodWhen="low" />
           </div>
         </div>
 
         <div className="card">
           <div className="card-header">
             <div>
-              <h3 className="card-title">Metas de Perdas</h3>
-              <span className="card-subtitle">Limites identificados em Limite Perdas.xlsx.</span>
+              <h3 className="card-title">Diagrama de Perdas</h3>
+              <span className="card-subtitle">Impacto de quebras estimadas na produção bruta.</span>
             </div>
             <Target size={20} style={{ color: 'var(--orange-institutional)' }} />
           </div>
-          <div className="quality-stack">
-            <QualityMetric loading={loading} label="Perda corte" value={model.hasProductionBase ? model.lossRates.cortePct : null} meta={QUALITY_LOSS_LIMITS.cortePct} goodWhen="low" />
-            <QualityMetric loading={loading} label="Perda carreamento" value={model.hasProductionBase ? model.lossRates.carreamentoPct : null} meta={QUALITY_LOSS_LIMITS.carreamentoPct} goodWhen="low" />
-            <QualityMetric loading={loading} label="Perda total" value={model.hasProductionBase ? model.lossRates.totalPct : null} meta={QUALITY_LOSS_LIMITS.totalPct} goodWhen="low" />
-            <QualityMetric loading={loading} label="Projecao -20%" value={model.projection} meta="media mensal projetada" goodWhen="low" />
-          </div>
+          <LossWaterfall totals={model.totals} loading={loading} />
         </div>
 
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <h3 className="card-title">Base de Calculo</h3>
-              <span className="card-subtitle">Variaveis que sustentam as formulas do BI.</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <FolhaMamandoAlert count={model.allTotals.folhaMamando || 0} pct={fMamandoPct} loading={loading} />
+          
+          <div className="card" style={{ flex: 1 }}>
+            <div className="card-header">
+              <div>
+                <h3 className="card-title">Base de Calculo</h3>
+                <span className="card-subtitle">Variaveis que sustentam o BI.</span>
+              </div>
+              <Sprout size={20} style={{ color: 'var(--status-info)' }} />
             </div>
-            <Sprout size={20} style={{ color: 'var(--status-info)' }} />
-          </div>
-          <div className="compact-list">
-            <div className="compact-row">
-              <div><strong>Plantas observadas</strong><span>Corte + carreamento</span></div>
-              <div><strong>{fmt(model.allTotals.plantasObservadas)}</strong><span>plantas</span></div>
-            </div>
-            <div className="compact-row">
-              <div><strong>Cachos observados</strong><span>Base de qualidade</span></div>
-              <div><strong>{fmt(model.corteTotals.cachosObservados)}</strong><span>cachos</span></div>
-            </div>
-            <div className="compact-row">
-              <div><strong>Cachos esquecidos</strong><span>CQO Corte</span></div>
-              <div><strong>{fmt(model.corteTotals.cachoEsquecido)}</strong><span>campo</span></div>
-            </div>
-            <div className="compact-row">
-              <div><strong>Cachos nao carreados</strong><span>CQO Carreamento</span></div>
-              <div><strong>{fmt(model.carreamentoTotals.cachoNaoCarreado)}</strong><span>campo</span></div>
+            <div className="compact-list">
+              <div className="compact-row">
+                <div><strong>Cachos observados</strong></div>
+                <div><strong>{fmt(model.corteTotals.cachosObservados)}</strong></div>
+              </div>
+              <div className="compact-row">
+                <div><strong>Esquecidos (Corte)</strong></div>
+                <div><strong>{fmt(model.corteTotals.cachoEsquecido)}</strong></div>
+              </div>
+              <div className="compact-row">
+                <div><strong>Nao carreados (Carream.)</strong></div>
+                <div><strong>{fmt(model.carreamentoTotals.cachoNaoCarreado)}</strong></div>
+              </div>
             </div>
           </div>
         </div>
@@ -288,7 +402,9 @@ export default function QualidadeOperacional({
         />
       </div>
 
-      <div className="card">
+      <RiskMatrix parcelas={model.parcelaRows} loading={loading} />
+
+      <div className="card" style={{ marginTop: '20px' }}>
         <div className="card-header table-card-header">
           <div>
             <h3 className="card-title">Detalhe por Fazenda</h3>
