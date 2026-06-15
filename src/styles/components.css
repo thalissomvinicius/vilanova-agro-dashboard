@@ -255,12 +255,19 @@
   opacity: 0.8;
 }
 
-/* Custom Table Styles */
 .table-wrapper {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 280px);
   width: 100%;
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
+}
+
+.table-wrapper thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .custom-table {

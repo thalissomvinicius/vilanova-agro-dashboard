@@ -11,9 +11,10 @@ import {
   Search,
   ThumbsDown,
   ThumbsUp,
+  Trash2,
   User,
 } from 'lucide-react';
-import { filterRecords, updateResponseReviewStatus, useCqoData } from '../utils/cqoData';
+import { filterRecords, updateResponseReviewStatus, deleteResponseRecord, useCqoData } from '../utils/cqoData';
 import { exportDashboardRecord } from '../utils/reportExporter';
 
 function statusBadge(status) {
@@ -63,12 +64,16 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchFicha, setSearchFicha] = useState('');
   const [reviewOverrides, setReviewOverrides] = useState({});
+  const [deletedRecords, setDeletedRecords] = useState(new Set());
   const [isReviewing, setIsReviewing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const displayRecords = records.map((record) => ({
-    ...record,
-    status: reviewOverrides[record.id] || record.status,
-  }));
+  const displayRecords = records
+    .filter(record => !deletedRecords.has(record.id))
+    .map((record) => ({
+      ...record,
+      status: reviewOverrides[record.id] || record.status,
+    }));
 
   const filteredRecords = filterRecords(displayRecords, {
     farmFilter,
@@ -105,6 +110,22 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
       window.alert(`Não foi possível atualizar a validação: ${reviewError.message}`);
     } finally {
       setIsReviewing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedRecord) return;
+    if (!window.confirm(`Tem certeza que deseja excluir a ficha ${selectedRecord.id}? Esta ação não pode ser desfeita e removerá os dados permanentemente do Supabase.`)) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteResponseRecord(selectedRecord.id);
+      setDeletedRecords(prev => new Set(prev).add(selectedRecord.id));
+      setSelectedRecord(null);
+    } catch (error) {
+      window.alert(`Não foi possível excluir a ficha: ${error.message}`);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -456,11 +477,15 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 <Download size={14} />
                 Excel
               </button>
-              <button onClick={() => handleReview('reprovado')} className="btn btn-danger" disabled={isReviewing}>
+              <button onClick={handleDelete} className="btn btn-secondary" style={{ color: 'var(--status-danger)', borderColor: 'var(--status-danger)' }} disabled={isDeleting}>
+                <Trash2 size={14} />
+                Excluir
+              </button>
+              <button onClick={() => handleReview('reprovado')} className="btn btn-danger" disabled={isReviewing || isDeleting}>
                 <ThumbsDown size={14} />
                 Reprovar
               </button>
-              <button onClick={() => handleReview('aprovado')} className="btn btn-primary" disabled={isReviewing}>
+              <button onClick={() => handleReview('aprovado')} className="btn btn-primary" disabled={isReviewing || isDeleting}>
                 <ThumbsUp size={14} />
                 Aprovar
               </button>

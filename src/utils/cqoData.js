@@ -528,6 +528,25 @@ export async function updateResponseReviewStatus(responseId, status) {
   return response.json();
 }
 
+export async function deleteResponseRecord(responseId) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/mobile_respostas?id=eq.${encodeURIComponent(responseId)}`, {
+    method: 'DELETE',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+
 async function fetchFirstAvailableTable(candidates, query) {
   const errors = [];
 
