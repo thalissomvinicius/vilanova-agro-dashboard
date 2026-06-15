@@ -266,6 +266,10 @@ export function buildQualidadeOperacional(records) {
       cachoAvermelhadoPct: safePct(agg.cachoAvermelhado, base),
       taloCompridoPct: safePct(agg.taloComprido, Math.max(agg.plantasObservadas, 0)),
       cachoEstrelaPct: safePct(agg.cachoEstrela, base),
+      corteT: bucket.corteT,
+      carreamentoT: bucket.carreamentoT,
+      cortePct: safePct(bucket.corteT, bucket.producedTon),
+      carreamentoPct: safePct(bucket.carreamentoT, bucket.producedTon),
     };
   };
 
