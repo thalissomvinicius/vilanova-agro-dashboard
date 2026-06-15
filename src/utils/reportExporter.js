@@ -74,9 +74,9 @@ function tableRows(lines, columns, targetRows) {
 function totals(lines, columns) {
   const rows = lines || [];
   return columns.map((column, index) => {
-    if (index === 0) return '<td class="total">Total</td>';
+    if (index === 0) return '<td class="total">Total Geral</td>';
     const total = rows.reduce((sum, row) => sum + numberValue(row[column]), 0);
-    return `<td>${formatTotal(total)}</td>`;
+    return `<td class="total-val">${formatTotal(total)}</td>`;
   }).join('');
 }
 
@@ -95,20 +95,22 @@ function htmlFor(record) {
     <html>
       <head>
         <meta charset="utf-8" />
+        <title>Ficha ${record.id}</title>
         <style>
-          @page{size:A4 ${isCarreamento ? 'portrait' : 'landscape'};margin:8mm}
-          body{font-family:Arial,sans-serif;font-size:10px;color:#000}
-          .page{border:2px solid #000;padding:5px}
-          .title{text-align:center;font-size:14px;font-weight:bold;padding:6px;border:none;background:#fff;}
-          table{width:100%;border-collapse:collapse;table-layout:auto;margin:10px 0;}
-          th,td{border:1px solid #000;text-align:center;padding:5px 3px;word-break:break-word}
-          th{font-weight:bold;background:#efefef;font-size:9px}
-          .header-info td{border:none;text-align:left;padding:4px;font-size:10px;}
-          .info-label{font-weight:bold;color:#444;}
-          .info-value{font-weight:bold;color:#000;}
-          .spacer-row td{border:none;height:10px;}
-          .total{text-align:left;font-weight:bold}
-          .footer td{text-align:left;height:34px;vertical-align:top;padding:8px}
+          @page { size: A4 ${isCarreamento ? 'portrait' : 'landscape'}; margin: 12mm; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10px; color: #1f2937; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .page { border: none; padding: 0; background: #ffffff; }
+          .title { text-align: left; font-size: 16px; font-weight: 800; padding: 14px 16px; border: none; background: var(--green-institutional, #234F2A); color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; }
+          table { width: 100%; border-collapse: collapse; table-layout: auto; margin: 0 0 16px 0; }
+          th, td { border: 1px solid #e5e7eb; text-align: center; padding: 8px 6px; word-break: break-word; }
+          th { font-weight: 700; background: #f3f4f6; color: #374151; font-size: 9px; text-transform: uppercase; border-bottom: 2px solid #d1d5db; }
+          .header-info td { border: 1px solid #e5e7eb; text-align: left; padding: 10px 14px; background: #f9fafb; vertical-align: top; }
+          .info-label { font-weight: 700; color: #6b7280; font-size: 8px; text-transform: uppercase; display: block; margin-bottom: 4px; letter-spacing: 0.5px; }
+          .info-value { font-weight: 700; color: #111827; font-size: 12px; }
+          .spacer-row td { border: none; height: 16px; background: #ffffff; }
+          .total { text-align: right; font-weight: 800; background: #f3f4f6; color: #111827; padding-right: 12px; text-transform: uppercase; font-size: 9px; }
+          .total-val { font-weight: 800; background: #f3f4f6; color: #111827; }
+          .footer td { text-align: left; padding: 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-top: 2px solid #d1d5db; color: #374151; font-size: 11px; }
         </style>
       </head>
       <body>
@@ -119,14 +121,32 @@ function htmlFor(record) {
                 <th colspan="${columns.length}" class="title">${title}</th>
               </tr>
               <tr class="header-info">
-                <td colspan="${colSpanVal}"><span class="info-label">Fazenda:</span> <span class="info-value">${escapeHtml(record.farm)}</span></td>
-                <td colspan="${colSpanVal}"><span class="info-label">Parcela:</span> <span class="info-value">${escapeHtml(record.parcel)}</span></td>
-                <td colspan="${colSpanVal + colSpanRemainder}"><span class="info-label">Data:</span> <span class="info-value">${escapeHtml(record.date)}</span></td>
+                <td colspan="${colSpanVal}">
+                  <span class="info-label">Fazenda</span>
+                  <span class="info-value">${escapeHtml(record.farm)}</span>
+                </td>
+                <td colspan="${colSpanVal}">
+                  <span class="info-label">Parcela</span>
+                  <span class="info-value">${escapeHtml(record.parcel)}</span>
+                </td>
+                <td colspan="${colSpanVal + colSpanRemainder}">
+                  <span class="info-label">Data e Hora</span>
+                  <span class="info-value">${escapeHtml(record.date)} ${escapeHtml(record.time || '')}</span>
+                </td>
               </tr>
               <tr class="header-info">
-                <td colspan="${colSpanVal}"><span class="info-label">Ciclo:</span> <span class="info-value">${escapeHtml(record.cycle)}</span></td>
-                <td colspan="${colSpanVal}"><span class="info-label">Avaliador:</span> <span class="info-value">${escapeHtml(record.evaluator)} ${record.evaluatorMatricula ? `(${escapeHtml(record.evaluatorMatricula)})` : ''}</span></td>
-                <td colspan="${colSpanVal + colSpanRemainder}"><span class="info-label">Fiscal:</span> <span class="info-value">${escapeHtml(record.fiscal)}</span></td>
+                <td colspan="${colSpanVal}">
+                  <span class="info-label">Ciclo</span>
+                  <span class="info-value">${escapeHtml(record.cycle)}</span>
+                </td>
+                <td colspan="${colSpanVal}">
+                  <span class="info-label">Avaliador</span>
+                  <span class="info-value">${escapeHtml(record.evaluator)} ${record.evaluatorMatricula ? `(Mat. ${escapeHtml(record.evaluatorMatricula)})` : ''}</span>
+                </td>
+                <td colspan="${colSpanVal + colSpanRemainder}">
+                  <span class="info-label">Ficha (ID)</span>
+                  <span class="info-value">${escapeHtml(record.id)}</span>
+                </td>
               </tr>
               <tr class="spacer-row"><td colspan="${columns.length}"></td></tr>
               <tr>${columns.map((column) => `<th>${escapeHtml(columnLabels[column] || column.replaceAll('_', ' '))}</th>`).join('')}</tr>
@@ -134,7 +154,13 @@ function htmlFor(record) {
             <tbody>${tableRows(record.lines, columns, isCarreamento ? 11 : 10)}</tbody>
             <tfoot>
               <tr>${totals(record.lines, columns)}</tr>
-              <tr class="footer"><td colspan="${columns.length}"><span class="info-label">Observação:</span> <span class="info-value">${escapeHtml(record.observation)}</span></td></tr>
+              <tr class="spacer-row"><td colspan="${columns.length}"></td></tr>
+              <tr class="footer">
+                <td colspan="${columns.length}">
+                  <span class="info-label">Observação / Justificativa</span>
+                  <span class="info-value" style="font-weight: normal; font-size: 11px;">${escapeHtml(record.observation) || 'Nenhuma observação registrada.'}</span>
+                </td>
+              </tr>
             </tfoot>
           </table>
         </div>
