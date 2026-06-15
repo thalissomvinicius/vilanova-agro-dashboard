@@ -530,7 +530,7 @@ export async function updateResponseReviewStatus(responseId, status) {
 
 export async function deleteResponseRecord(responseId) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/mobile_respostas?id=eq.${encodeURIComponent(responseId)}`, {
-    method: 'DELETE',
+    method: 'PATCH',
     headers: {
       apikey: SUPABASE_ANON_KEY,
       Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -538,6 +538,10 @@ export async function deleteResponseRecord(responseId) {
       'Content-Type': 'application/json',
       Prefer: 'return=representation',
     },
+    body: JSON.stringify({
+      status: 'excluido',
+      updated_at: new Date().toISOString(),
+    }),
   });
 
   if (!response.ok) {
@@ -574,7 +578,7 @@ async function loadSupabaseData() {
   const [responseResult, headcount, gpsRows] = await Promise.all([
     fetchFirstAvailableTable(
       ['mobile_respostas', 'respostas'],
-      'select=id,formulario_id,usuario_id,dados_json,status,criado_em,enviado_em,erro_msg,tentativas&order=criado_em.desc&limit=1000'
+      'select=id,formulario_id,usuario_id,dados_json,status,criado_em,enviado_em,erro_msg,tentativas&status=neq.excluido&order=criado_em.desc&limit=1000'
     ),
     fetchSupabaseTable(
       'headcount_colaboradores',
