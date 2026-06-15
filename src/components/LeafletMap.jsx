@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import { Flame, Layers, Navigation } from 'lucide-react';
+import { Flame, Layers } from 'lucide-react';
 import { FARMS } from '../utils/mockData';
 import { filterRecords, useCqoData, aggregateRecords } from '../utils/cqoData';
 
@@ -59,42 +59,6 @@ function recordWeight(record) {
   return Math.max(1, Math.min(10, lines + Math.floor(observed / 20)));
 }
 
-function pointInRing(point, ring) {
-  const [lat, lng] = point;
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
-    const xi = ring[i][1];
-    const yi = ring[i][0];
-    const xj = ring[j][1];
-    const yj = ring[j][0];
-    const intersects = ((yi > lat) !== (yj > lat))
-      && (lng < ((xj - xi) * (lat - yi)) / ((yj - yi) || Number.EPSILON) + xi);
-    if (intersects) inside = !inside;
-  }
-  return inside;
-}
-
-function pointInFeature(point, feature) {
-  const geometry = feature?.geometry;
-  if (!geometry) return false;
-  const polygons = geometry.type === 'Polygon'
-    ? [geometry.coordinates]
-    : geometry.type === 'MultiPolygon'
-      ? geometry.coordinates
-      : [];
-
-  return polygons.some((polygon) => {
-    const rings = polygon.map((ring) => ring.map(([lng, lat]) => [lat, lng]));
-    if (!rings.length || !pointInRing(point, rings[0])) return false;
-    return !rings.slice(1).some((hole) => pointInRing(point, hole));
-  });
-}
-
-function pointInsideFeatures(point, features) {
-  if (!features?.length) return true;
-  return features.some((feature) => pointInFeature(point, feature));
-}
-
 export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -117,6 +81,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     return (
       (record.gps && Number.isFinite(record.gps.lat) && Number.isFinite(record.gps.lng))
       || record.gpsTrack?.some((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
+      || record.gpsOccurrences?.some((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
     );
   }), [filteredRecords]);
 
@@ -132,24 +97,42 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       }));
   }), [geoRecords]);
 
+  const occurrencePoints = useMemo(() => geoRecords.flatMap((record) => (
+    (record.gpsOccurrences?.length ? record.gpsOccurrences : [])
+      .filter((point) => point && Number.isFinite(point.lat) && Number.isFinite(point.lng) && Math.abs(point.lat) > 0.1 && Math.abs(point.lng) > 0.1)
+      .map((point, index) => ({
+        ...point,
+        index,
+        record,
+        weight: Math.max(1, Number(point.quantity || 1)),
+      }))
+  )), [geoRecords]);
+
   const filteredParcelFeatures = useMemo(() => (
     parcelGeoJson?.features?.filter((feature) => (
       farmFilter === 'all' || feature.properties?.farmId === farmFilter
     )) || []
   ), [parcelGeoJson, farmFilter]);
 
-  const heatPoints = useMemo(() => trackPoints.filter((point) => {
-    if (farmFilter !== 'all' && point.record.farmId !== farmFilter) return false;
-    const perdidos = (point.record?.totals?.cachoEsquecido || 0) + (point.record?.totals?.cachoNaoCarreado || 0);
-    return perdidos > 0;
+  const heatPoints = useMemo(() => {
+    const sourcePoints = occurrencePoints.length ? occurrencePoints : trackPoints;
+    return sourcePoints.filter((point) => {
+      if (farmFilter !== 'all' && point.record.farmId !== farmFilter) return false;
+      const perdidos = occurrencePoints.length
+        ? Number(point.weight || 1)
+        : (point.record?.totals?.cachoEsquecido || 0) + (point.record?.totals?.cachoNaoCarreado || 0);
+      return perdidos > 0;
   }).map((point) => {
-    const perdidos = (point.record?.totals?.cachoEsquecido || 0) + (point.record?.totals?.cachoNaoCarreado || 0);
+    const perdidos = occurrencePoints.length
+      ? Number(point.weight || 1)
+      : (point.record?.totals?.cachoEsquecido || 0) + (point.record?.totals?.cachoNaoCarreado || 0);
     const heatWeight = Math.max(0.4, Math.min(3.0, perdidos / 3));
     return {
       ...point,
       heatWeight,
     };
-  }), [trackPoints, farmFilter]);
+    });
+  }, [occurrencePoints, trackPoints, farmFilter]);
 
   const geoStats = useMemo(() => {
     const byFarm = geoRecords.reduce((acc, record) => {
@@ -161,10 +144,11 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     return {
       total: geoRecords.length,
       gpsPoints: trackPoints.length,
+      occurrencePoints: occurrencePoints.length,
       byFarm,
       lineCount: geoRecords.reduce((sum, record) => sum + Number(record?.totals?.linhas || record?.lines?.length || 0), 0),
     };
-  }, [geoRecords, trackPoints]);
+  }, [geoRecords, trackPoints, occurrencePoints]);
 
   useEffect(() => {
     if (!mapContainerRef.current) return undefined;
@@ -360,6 +344,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             <span style="font-size:11px;">Fazenda: <strong>${record.farm}</strong></span><br/>
             <span style="font-size:11px;">Parcela: <strong>${record.parcel}</strong></span><br/>
             <span style="font-size:11px;">Linhas avaliadas: <strong>${record.totals?.linhas || record.lines?.length || 0}</strong></span><br/>
+            <span style="font-size:11px;">Ocorrencias GPS: <strong>${record.gpsOccurrences?.length || 0}</strong></span><br/>
             <span style="font-size:11px;">Pontos da trilha: <strong>${record.gpsTrack?.length || 1}</strong></span><br/>
             <span style="font-size:11px;">GPS: <strong>${markerPoint.label}</strong></span><br/>
             <span style="font-size:11px;">Status: <strong>${record.status}</strong></span>
@@ -461,7 +446,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
 
         <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--border-color)', fontSize: '0.7rem', opacity: '0.8' }}>
           <div style={{ marginBottom: '8px', fontWeight: 800 }}>
-            {geoStats.gpsPoints} pontos GPS / {geoStats.total} coletas
+            {geoStats.occurrencePoints} ocorrencias / {geoStats.gpsPoints} pontos GPS / {geoStats.total} coletas
           </div>
           {Object.entries(FARM_STYLES).filter(([id]) => id !== 'default').map(([id, style]) => (
             <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
@@ -470,7 +455,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             </div>
           ))}
           <div style={{ marginTop: '8px' }}>
-            <span>{parcelGeoJson?.features?.length ? 'Calor limitado ao shapefile filtrado' : 'Limites estimados'}</span>
+            <span>{occurrencePoints.length ? 'Calor por ocorrencia georreferenciada' : 'Calor estimado pela trilha'}</span>
           </div>
         </div>
       </div>

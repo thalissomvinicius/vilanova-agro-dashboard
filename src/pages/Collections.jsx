@@ -222,7 +222,12 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                     </td>
                     <td>
                       {record.gps ? (
-                        <span className="gps-chip"><MapPin size={12} /> {record.gps.label}</span>
+                        <span className="gps-chip">
+                          <MapPin size={12} />
+                          {record.gpsOccurrences?.length
+                            ? `${record.gpsOccurrences.length} ocorrencia(s)`
+                            : record.gps.label}
+                        </span>
                       ) : (
                         <span className="muted-cell">Sem ponto</span>
                       )}
@@ -338,6 +343,11 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 <div>
                   <span className="footer-label">GPS</span>
                   <strong>{selectedRecord.gps?.label || 'Não capturado'}</strong>
+                  <small>
+                    {selectedRecord.gpsOccurrences?.length
+                      ? `${selectedRecord.gpsOccurrences.length} ocorrencia(s) georreferenciada(s)`
+                      : `${selectedRecord.gpsTrack?.length || 0} ponto(s) de trilha`}
+                  </small>
                 </div>
                 <div>
                   <span className="footer-label">Acompanhamento</span>
@@ -352,6 +362,41 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                   <strong>{selectedRecord.observation || 'Sem observação'}</strong>
                 </div>
               </div>
+
+              {selectedRecord.gpsOccurrences?.length ? (
+                <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 18 }}>
+                  <div className="card-header" style={{ padding: '14px 16px', marginBottom: 0 }}>
+                    <div>
+                      <h3 className="card-title">Ocorrencias georreferenciadas</h3>
+                      <span className="card-subtitle">Pontos capturados no momento do registro da linha.</span>
+                    </div>
+                  </div>
+                  <div className="table-wrapper">
+                    <table className="custom-table dense-table">
+                      <thead>
+                        <tr>
+                          <th>Tipo</th>
+                          <th>Linha</th>
+                          <th>Coordenada</th>
+                          <th>Precisao</th>
+                          <th>Capturado em</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedRecord.gpsOccurrences.map((point, index) => (
+                          <tr key={`${selectedRecord.id}_gps_occ_${index}`}>
+                            <td>{point.title || point.fieldId}</td>
+                            <td>{point.line || '--'}</td>
+                            <td>{point.label}</td>
+                            <td>{Number.isFinite(point.accuracy) ? `${Math.round(point.accuracy)}m` : '--'}</td>
+                            <td>{point.capturedAt ? new Date(point.capturedAt).toLocaleString('pt-BR') : '--'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
 
               {selectedPhotos.length ? (
                 <div className="evidence-section">
