@@ -219,22 +219,22 @@ function QualityScorecard({ label, pctValue, meta, loading }) {
   if (label === 'Cacho Maduro %') {
     const isMaduroGood = pctValue >= meta;
     return (
-      <div className="card" style={{ padding: '16px', textAlign: 'center', borderTop: isMaduroGood ? '4px solid var(--status-success)' : '4px solid var(--status-warning)' }}>
-        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>{label}</div>
-        <div style={{ fontSize: '1.8rem', fontWeight: 700, color: isMaduroGood ? 'var(--status-success)' : 'var(--text-primary)' }}>
+      <div className="card" style={{ padding: '8px 12px', textAlign: 'center', borderTop: isMaduroGood ? '4px solid var(--status-success)' : '4px solid var(--status-warning)', margin: 0 }}>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>{label}</div>
+        <div style={{ fontSize: '1.4rem', fontWeight: 700, color: isMaduroGood ? 'var(--status-success)' : 'var(--text-primary)', lineHeight: 1.1 }}>
           {pctValue.toFixed(2)}%
         </div>
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Meta: {meta.toFixed(2)}%</div>
+        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>Meta: {meta.toFixed(2)}%</div>
       </div>
     );
   }
   return (
-    <div className="card" style={{ padding: '16px', textAlign: 'center', borderTop: isGood ? '4px solid var(--status-success)' : '4px solid var(--status-danger)' }}>
-      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>{label}</div>
-      <div style={{ fontSize: '1.8rem', fontWeight: 700, color: isGood ? 'var(--status-success)' : 'var(--status-danger)' }}>
+    <div className="card" style={{ padding: '8px 12px', textAlign: 'center', borderTop: isGood ? '4px solid var(--status-success)' : '4px solid var(--status-danger)', margin: 0 }}>
+      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>{label}</div>
+      <div style={{ fontSize: '1.4rem', fontWeight: 700, color: isGood ? 'var(--status-success)' : 'var(--status-danger)', lineHeight: 1.1 }}>
         {pctValue.toFixed(2)}%
       </div>
-      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Meta: {meta.toFixed(2)}%</div>
+      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>Meta: {meta.toFixed(2)}%</div>
     </div>
   );
 }
@@ -243,11 +243,11 @@ function StackedBarHorizontal({ data, title, loading }) {
   if (loading) return <div className="skeleton-chart" style={{ height: 200 }}></div>;
   if (!data || data.length === 0) return null;
   return (
-    <div className="card">
-      <div className="card-header">
-        <h3 className="card-title">{title}</h3>
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', flex: 1, margin: 0 }}>
+      <div className="card-header" style={{ padding: '8px 12px', minHeight: 'auto' }}>
+        <h3 className="card-title" style={{ fontSize: '0.9rem' }}>{title}</h3>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '10px 0' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '8px 12px', flex: 1 }}>
         {data.slice(0, 10).map((row, idx) => {
           const total = row.cachoMaduroPct + row.cachoVerdePct + row.cachoPassadoPct + row.cachoAvermelhadoPct || 1;
           const wMaduro = (row.cachoMaduroPct / total) * 100;
@@ -284,11 +284,11 @@ function StackedBarVertical({ data, title, loading, hideLabels = false }) {
   if (loading) return <div className="skeleton-chart" style={{ height: 200 }}></div>;
   if (!data || data.length === 0) return null;
   return (
-    <div className="card" style={{ flex: 1 }}>
-      <div className="card-header">
-        <h3 className="card-title">{title}</h3>
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', flex: 1, margin: 0 }}>
+      <div className="card-header" style={{ padding: '8px 12px', minHeight: 'auto' }}>
+        <h3 className="card-title" style={{ fontSize: '0.9rem' }}>{title}</h3>
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: '220px', padding: '10px 0', borderBottom: '1px solid var(--border-color)', overflowX: 'auto' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', flex: 1, padding: '8px 12px', borderBottom: '1px solid var(--border-color)', overflowX: 'auto' }}>
         {data.slice(-20).map((row, idx) => {
           const total = row.cachoMaduroPct + row.cachoVerdePct + row.cachoPassadoPct + row.cachoAvermelhadoPct || 1;
           const hMaduro = (row.cachoMaduroPct / total) * 100;
@@ -321,13 +321,13 @@ function EvaluatorRanking({ data, loading }) {
   if (loading) return <div className="skeleton-chart" style={{ height: 200 }}></div>;
   if (!data || data.length === 0) return null;
   return (
-    <div className="card">
-      <div className="card-header">
-        <h3 className="card-title">Avaliadores</h3>
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', flex: 1, margin: 0 }}>
+      <div className="card-header" style={{ padding: '8px 12px', minHeight: 'auto' }}>
+        <h3 className="card-title" style={{ fontSize: '0.9rem' }}>Avaliadores</h3>
       </div>
-      <div className="compact-list">
+      <div className="compact-list" style={{ padding: '0 8px', gap: '4px' }}>
         {data.slice(0, 8).map((row, idx) => (
-          <div className="compact-row" key={idx} style={{ alignItems: 'center', padding: '12px 0' }}>
+          <div className="compact-row" key={idx} style={{ alignItems: 'center', padding: '4px 0' }}>
             <div style={{ flex: 1 }}>
               <strong style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{row.label}</strong>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -348,16 +348,16 @@ function EvaluatorRanking({ data, loading }) {
 }
 
 function YtdScorecard({ label, value, meta, metaLabel, loading, isDanger = false, isWarning = false }) {
-  if (loading) return <div className="skeleton-chart" style={{ height: 80, borderRadius: 8 }}></div>;
+  if (loading) return <div className="skeleton-chart" style={{ height: 60, borderRadius: 8 }}></div>;
   const borderColor = isDanger ? 'var(--status-danger)' : isWarning ? 'var(--status-warning)' : 'var(--text-muted)';
   return (
-    <div className="card" style={{ padding: '16px', borderLeft: `4px solid ${borderColor}`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>{label}</div>
-      <div style={{ fontSize: '1.6rem', fontWeight: 700, color: isDanger ? 'var(--status-danger)' : 'var(--text-primary)' }}>
+    <div className="card" style={{ padding: '8px 12px', borderLeft: `4px solid ${borderColor}`, display: 'flex', flexDirection: 'column', justifyContent: 'center', margin: 0 }}>
+      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>{label}</div>
+      <div style={{ fontSize: '1.4rem', fontWeight: 700, color: isDanger ? 'var(--status-danger)' : 'var(--text-primary)', lineHeight: 1.1 }}>
         {value}
       </div>
       {meta && (
-        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>
           Meta: {meta} {metaLabel}
         </div>
       )}
@@ -370,9 +370,9 @@ function LossesHorizontalBar({ data, title, loading }) {
   if (!data || data.length === 0) return null;
   const max = Math.max(...data.map(d => d.totalPct), 0.1);
   return (
-    <div className="card">
-      <div className="card-header"><h3 className="card-title">{title}</h3></div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '10px 0' }}>
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', flex: 1, margin: 0 }}>
+      <div className="card-header" style={{ padding: '8px 12px', minHeight: 'auto' }}><h3 className="card-title" style={{ fontSize: '0.9rem' }}>{title}</h3></div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '8px 12px', flex: 1 }}>
         {data.slice(0, 10).map((row, idx) => {
           const w = (row.totalPct / max) * 100;
           return (
@@ -397,9 +397,9 @@ function LossesVerticalBar({ data, title, loading }) {
   if (!data || data.length === 0) return null;
   const max = Math.max(...data.map(d => d.perdasT), 1);
   return (
-    <div className="card">
-      <div className="card-header"><h3 className="card-title">{title}</h3></div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '200px', padding: '10px 0', borderBottom: '1px solid var(--border-color)' }}>
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', flex: 1, margin: 0 }}>
+      <div className="card-header" style={{ padding: '8px 12px', minHeight: 'auto' }}><h3 className="card-title" style={{ fontSize: '0.9rem' }}>{title}</h3></div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', flex: 1, padding: '8px 12px', borderBottom: '1px solid var(--border-color)' }}>
         {data.slice(0, 10).map((row, idx) => {
           const h = (row.perdasT / max) * 100;
           return (
@@ -443,18 +443,18 @@ function LossesMultiLineChart({ data, loading }) {
   const yCarrLimit = pad.top + gh - (0.40 / maxVal) * gh; // Meta 0.40%
 
   return (
-    <div className="card">
-      <div className="card-header" style={{ borderBottom: 'none' }}>
-        <h3 className="card-title">Perdas por Semana/mês</h3>
-        <div style={{ display: 'flex', gap: '16px', fontSize: '0.75rem', flexWrap: 'wrap', marginTop: '4px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 12, height: 3, backgroundColor: '#F88A4E' }}/> Perda corte %</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 12, height: 3, backgroundColor: '#0EA5E9' }}/> Perda carream. %</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 12, height: 3, backgroundColor: '#F88A4E', borderTop: '2px dashed #F88A4E', opacity: 0.5 }}/> Limite Corte (1.0%)</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 12, height: 3, backgroundColor: '#0EA5E9', borderTop: '2px dashed #0EA5E9', opacity: 0.5 }}/> Limite Carream. (0.4%)</span>
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', flex: 1, margin: 0 }}>
+      <div className="card-header" style={{ borderBottom: 'none', padding: '8px 12px', minHeight: 'auto' }}>
+        <h3 className="card-title" style={{ fontSize: '0.9rem' }}>Perdas por Semana/mês</h3>
+        <div style={{ display: 'flex', gap: '12px', fontSize: '0.65rem', flexWrap: 'wrap', marginTop: '2px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 10, height: 3, backgroundColor: '#F88A4E' }}/> Corte %</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 10, height: 3, backgroundColor: '#0EA5E9' }}/> Carream. %</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 10, height: 3, backgroundColor: '#F88A4E', borderTop: '2px dashed #F88A4E', opacity: 0.5 }}/> Meta (1.0%)</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 10, height: 3, backgroundColor: '#0EA5E9', borderTop: '2px dashed #0EA5E9', opacity: 0.5 }}/> Meta (0.4%)</span>
         </div>
       </div>
-      <div style={{ overflowX: 'auto', padding: '0 10px' }}>
-        <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', minWidth: '600px' }}>
+      <div style={{ flex: 1, overflowX: 'auto', padding: '0 8px' }}>
+        <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ width: '100%', height: '100%', minHeight: '150px' }}>
           {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => {
             const y = pad.top + gh * (1 - ratio);
             return (
@@ -723,14 +723,209 @@ export default function QualidadeOperacional({
                   )}
                 </tbody>
               </table>
+const perdasPctYtd = pesoYtd > 0 ? (perdasYtd / pesoYtd) * 100 : 0;
+  const hasBase = model.hasProductionBase;
+
+  return (
+    <div className="fade-in page-shell">
+      <div className="page-header" style={{ marginBottom: '10px' }}>
+        <div className="page-title-block">
+          <span className="page-eyebrow">BI Qualidade Operacional</span>
+          <h2>Qualidade Agricola e Perdas</h2>
+          <p>Visões dinâmicas dos indicadores de campo. Escolha uma aba abaixo para explorar.</p>
+        </div>
+        <div className="source-card compact">
+          <span>Fonte</span>
+          <strong className={loading ? 'skeleton-text skeleton-sm' : ''}>{loading ? '\u00A0' : source}</strong>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--border-color)', marginBottom: '20px' }}>
+        <button 
+          onClick={() => setActiveTab('geral')} 
+          style={{ padding: '10px 16px', borderBottom: activeTab === 'geral' ? '2px solid var(--green-institutional)' : '2px solid transparent', backgroundColor: 'transparent', fontWeight: activeTab === 'geral' ? 600 : 400, color: activeTab === 'geral' ? 'var(--green-institutional)' : 'var(--text-secondary)', cursor: 'pointer' }}>
+          Visão Geral (Misto)
+        </button>
+        <button 
+          onClick={() => setActiveTab('qualidade')} 
+          style={{ padding: '10px 16px', borderBottom: activeTab === 'qualidade' ? '2px solid var(--green-institutional)' : '2px solid transparent', backgroundColor: 'transparent', fontWeight: activeTab === 'qualidade' ? 600 : 400, color: activeTab === 'qualidade' ? 'var(--green-institutional)' : 'var(--text-secondary)', cursor: 'pointer' }}>
+          Qualidade Agrícola (Power BI)
+        </button>
+        <button 
+          onClick={() => setActiveTab('perdas')} 
+          style={{ padding: '10px 16px', borderBottom: activeTab === 'perdas' ? '2px solid var(--orange-institutional)' : '2px solid transparent', backgroundColor: 'transparent', fontWeight: activeTab === 'perdas' ? 600 : 400, color: activeTab === 'perdas' ? 'var(--orange-institutional)' : 'var(--text-secondary)', cursor: 'pointer' }}>
+          Perdas Agrícolas (Power BI)
+        </button>
+      </div>
+
+      {error && (
+        <div className="warning-strip">
+          <AlertTriangle size={16} />
+          <span>Falha ao carregar dados: {error}</span>
+        </div>
+      )}
+
+      {!model.hasProductionBase && !loading && filtered.length > 0 && (
+        <div className="warning-strip">
+          <AlertTriangle size={16} />
+          <span>Percentuais de perdas dependem da base de balanca/producao. As toneladas ja sao estimadas; os percentuais aparecem como N/D ate essa fonte entrar no payload.</span>
+        </div>
+      )}
+          {activeTab === 'geral' && (
+        <div className="fade-in">
+          <div className="grid-container grid-cols-4">
+            <KpiCard
+              title="Perdas t"
+              value={`${fmt(model.totals.perdasT, 2)} t`}
+              subtitle={`${fmt(model.totals.estimatedCachos)} cachos estimados`}
+              icon={Scale}
+              tone="danger"
+              loading={loading}
+            />
+            <KpiCard
+              title="Perdas %"
+              value={lossPctLabel}
+              subtitle={`limite geral ${pct(QUALITY_LOSS_LIMITS.totalPct)}`}
+              icon={Gauge}
+              tone={model.hasProductionBase && model.lossRates.totalPct > QUALITY_LOSS_LIMITS.totalPct ? 'danger' : 'green'}
+              loading={loading}
+            />
+            <KpiCard
+              title="Peso t YTD"
+              value={`${fmt(model.totals.producedTon, 1)} t`}
+              subtitle="base de balanca/producao recebida"
+              icon={Truck}
+              tone="info"
+              loading={loading}
+            />
+            <KpiCard
+              title="Coletas"
+              value={fmt(model.allTotals.total)}
+              subtitle={`${fmt(model.corteRecords.length)} corte / ${fmt(model.carreamentoRecords.length)} carreamento`}
+              icon={ClipboardCheck}
+              tone="green"
+              loading={loading}
+            />
+          </div>
+
+          <div className="grid-container grid-cols-3">
+            <div className="card">
+              <div className="card-header">
+                <div>
+                  <h3 className="card-title">Qualidade Agricola</h3>
+                  <span className="card-subtitle">Raio-X de Maturação e Anomalias no CQO Corte.</span>
+                </div>
+                <Leaf size={20} style={{ color: 'var(--green-institutional)' }} />
+              </div>
+              <MaturationBar verde={model.quality.cachoVerdePct} maduro={model.quality.cachoMaduroPct} passado={model.quality.cachoPassadoPct} loading={loading} />
+              <div className="grid-container grid-cols-2" style={{ marginBottom: 0, gap: '12px' }}>
+                <QualityMetric loading={loading} label="Avermelhado" value={model.quality.cachoAvermelhadoPct} meta={5} goodWhen="low" />
+                <QualityMetric loading={loading} label="Cacho estrela" value={model.quality.cachoEstrelaPct} meta={3} goodWhen="low" />
+                <QualityMetric loading={loading} label="Talo comprido" value={model.quality.taloCompridoPct} meta={3} goodWhen="low" />
+                <QualityMetric loading={loading} label="Cacho brocado" value={cBrocadoPct} meta={5} goodWhen="low" />
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="card-header">
+                <div>
+                  <h3 className="card-title">Diagrama de Perdas</h3>
+                  <span className="card-subtitle">Impacto de quebras estimadas na produção bruta.</span>
+                </div>
+                <Target size={20} style={{ color: 'var(--orange-institutional)' }} />
+              </div>
+              <LossWaterfall totals={model.totals} loading={loading} />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <FolhaMamandoAlert count={model.allTotals.folhaMamando || 0} pct={fMamandoPct} loading={loading} />
+              
+              <div className="card" style={{ flex: 1 }}>
+                <div className="card-header">
+                  <div>
+                    <h3 className="card-title">Base de Calculo</h3>
+                    <span className="card-subtitle">Variaveis que sustentam o BI.</span>
+                  </div>
+                  <Sprout size={20} style={{ color: 'var(--status-info)' }} />
+                </div>
+                <div className="compact-list">
+                  <div className="compact-row">
+                    <div><strong>Cachos observados</strong></div>
+                    <div><strong>{fmt(model.corteTotals.cachosObservados)}</strong></div>
+                  </div>
+                  <div className="compact-row">
+                    <div><strong>Esquecidos (Corte)</strong></div>
+                    <div><strong>{fmt(model.corteTotals.cachoEsquecido)}</strong></div>
+                  </div>
+                  <div className="compact-row">
+                    <div><strong>Nao carreados (Carream.)</strong></div>
+                    <div><strong>{fmt(model.carreamentoTotals.cachoNaoCarreado)}</strong></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid-container grid-cols-3">
+            <KpiCard title="Perdas corte t" value={`${fmt(model.totals.corteT, 2)} t`} subtitle={cortePctLabel} icon={Tractor} tone="danger" loading={loading} />
+            <KpiCard title="Perdas carreamento t" value={`${fmt(model.totals.carreamentoT, 2)} t`} subtitle={carreamentoPctLabel} icon={Truck} tone="orange" loading={loading} />
+            <KpiCard title="Perdas t YTD" value={`${fmt(perdasYtd, 2)} t`} subtitle={`Peso YTD ${fmt(pesoYtd, 1)} t`} icon={BarChart3} tone="info" loading={loading} />
+          </div>
+
+          <RiskMatrix parcelas={model.parcelaRows} loading={loading} />
+
+          <div className="card" style={{ marginTop: '20px' }}>
+            <div className="card-header table-card-header">
+              <div>
+                <h3 className="card-title">Detalhe por Fazenda</h3>
+                <span className="card-subtitle">Comparativo de perdas, producao e qualidade com os filtros ativos.</span>
+              </div>
+              <CheckCircle2 size={20} style={{ color: 'var(--green-institutional)' }} />
+            </div>
+            <div className="table-wrapper">
+              <table className="custom-table dense-table">
+                <thead>
+                  <tr>
+                    <th>Fazenda</th>
+                    <th>Coletas</th>
+                    <th>Corte t</th>
+                    <th>Carreamento t</th>
+                    <th>Perdas t</th>
+                    <th>Perdas %</th>
+                    <th>Cacho maduro %</th>
+                    <th>Cacho verde %</th>
+                    <th>Talo comprido %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {model.farmRows.map((row) => (
+                    <tr key={row.label}>
+                      <td><strong>{row.label}</strong></td>
+                      <td>{fmt(row.records.length)}</td>
+                      <td>{fmt(row.corteT, 2)}</td>
+                      <td>{fmt(row.carreamentoT, 2)}</td>
+                      <td>{fmt(row.perdasT, 2)}</td>
+                      <td>{row.producedTon > 0 ? pct(row.totalPct) : 'N/D'}</td>
+                      <td>{pct(row.qualidade.cachosObservados ? (row.qualidade.cachoMaduro / row.qualidade.cachosObservados) * 100 : 0)}</td>
+                      <td>{pct(row.qualidade.cachosObservados ? (row.qualidade.cachoVerde / row.qualidade.cachosObservados) * 100 : 0)}</td>
+                      <td>{pct(row.qualidade.cachosObservados ? (row.qualidade.taloComprido / row.qualidade.cachosObservados) * 100 : 0)}</td>
+                    </tr>
+                  ))}
+                  {!loading && model.farmRows.length === 0 && (
+                    <tr>
+                      <td colSpan="9" className="empty-table-cell">Nenhuma coleta encontrada para os filtros atuais.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
       )}
 
       {activeTab === 'qualidade' && (
-        <div className="fade-in">
-          <div className="grid-container" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+        <div className="fade-in" style={{ height: 'calc(100vh - 160px)', display: 'flex', flexDirection: 'column', gap: '8px', overflow: 'hidden' }}>
+          <div className="grid-container" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', margin: 0, gap: '8px' }}>
             <QualityScorecard loading={loading} label="Cacho Maduro %" pctValue={model.quality.cachoMaduroPct} meta={85} />
             <QualityScorecard loading={loading} label="Cacho passado %" pctValue={model.quality.cachoPassadoPct} meta={10} />
             <QualityScorecard loading={loading} label="Cacho verde %" pctValue={model.quality.cachoVerdePct} meta={1} />
@@ -739,25 +934,24 @@ export default function QualidadeOperacional({
             <QualityScorecard loading={loading} label="Cacho Estrela %" pctValue={model.quality.cachoEstrelaPct} meta={2} />
           </div>
 
-          <div className="grid-container grid-cols-2">
+          <div className="grid-container grid-cols-2" style={{ margin: 0, gap: '8px', flex: 1, minHeight: 0 }}>
             <StackedBarHorizontal loading={loading} title="Qualidade por Fazenda" data={model.farmRows} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
               <StackedBarVertical loading={loading} title="Qualidade por Semana" data={model.weekRows} />
               <EvaluatorRanking loading={loading} data={model.evaluatorRows} />
             </div>
           </div>
 
-          <div style={{ marginTop: '20px' }}>
+          <div style={{ height: '180px', flexShrink: 0 }}>
             <StackedBarVertical loading={loading} title="Qualidade por Dia / Fazenda / Parcela (Timeline Geral)" data={model.dayRows} hideLabels={true} />
           </div>
         </div>
       )}
 
       {activeTab === 'perdas' && (
-        <div className="fade-in">
-          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-            {/* Coluna Esquerda: Scorecards YTD */}
-            <div style={{ width: '220px', display: 'flex', flexDirection: 'column', gap: '16px', flexShrink: 0 }}>
+        <div className="fade-in" style={{ height: 'calc(100vh - 160px)', display: 'flex', gap: '8px', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', gap: '8px', flex: 1, minHeight: 0 }}>
+            <div style={{ width: '180px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, overflowY: 'auto', paddingRight: '4px' }}>
               <YtdScorecard loading={loading} label="Peso t YTD" value={fmt(pesoYtd, 1)} />
               <YtdScorecard loading={loading} label="Perdas % YTD" value={pct(perdasPctYtd, 2)} />
               <YtdScorecard loading={loading} label="Perdas t YTD" value={fmt(perdasYtd, 2)} />
@@ -788,14 +982,15 @@ export default function QualidadeOperacional({
               <YtdScorecard loading={loading} label="Perdas Carreamento (t)" value={fmt(model.totals.carreamentoT, 2)} />
             </div>
 
-            {/* Coluna Direita: Gráficos de Perdas */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px', minWidth: '0' }}>
-              <div className="grid-container grid-cols-2" style={{ margin: 0 }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '0', minHeight: 0 }}>
+              <div className="grid-container grid-cols-2" style={{ margin: 0, gap: '8px', flex: 1, minHeight: 0 }}>
                 <LossesHorizontalBar loading={loading} title="Perdas por Fazenda (%)" data={model.farmRows} />
                 <LossesVerticalBar loading={loading} title="Perdas Por Fazenda (t)" data={model.farmRows} />
               </div>
               
-              <LossesMultiLineChart loading={loading} data={model.weekRows} />
+              <div style={{ flex: 1.5, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                <LossesMultiLineChart loading={loading} data={model.weekRows} />
+              </div>
             </div>
           </div>
         </div>
