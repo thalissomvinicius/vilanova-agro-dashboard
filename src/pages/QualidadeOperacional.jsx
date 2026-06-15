@@ -213,6 +213,140 @@ function RiskMatrix({ parcelas, loading }) {
   );
 }
 
+function QualityScorecard({ label, pctValue, meta, loading }) {
+  if (loading) return <div className="skeleton-chart" style={{ height: 80, borderRadius: 8 }}></div>;
+  const isGood = pctValue <= meta;
+  if (label === 'Cacho Maduro %') {
+    const isMaduroGood = pctValue >= meta;
+    return (
+      <div className="card" style={{ padding: '16px', textAlign: 'center', borderTop: isMaduroGood ? '4px solid var(--status-success)' : '4px solid var(--status-warning)' }}>
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>{label}</div>
+        <div style={{ fontSize: '1.8rem', fontWeight: 700, color: isMaduroGood ? 'var(--status-success)' : 'var(--text-primary)' }}>
+          {pctValue.toFixed(2)}%
+        </div>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Meta: {meta.toFixed(2)}%</div>
+      </div>
+    );
+  }
+  return (
+    <div className="card" style={{ padding: '16px', textAlign: 'center', borderTop: isGood ? '4px solid var(--status-success)' : '4px solid var(--status-danger)' }}>
+      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>{label}</div>
+      <div style={{ fontSize: '1.8rem', fontWeight: 700, color: isGood ? 'var(--status-success)' : 'var(--status-danger)' }}>
+        {pctValue.toFixed(2)}%
+      </div>
+      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Meta: {meta.toFixed(2)}%</div>
+    </div>
+  );
+}
+
+function StackedBarHorizontal({ data, title, loading }) {
+  if (loading) return <div className="skeleton-chart" style={{ height: 200 }}></div>;
+  if (!data || data.length === 0) return null;
+  return (
+    <div className="card">
+      <div className="card-header">
+        <h3 className="card-title">{title}</h3>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '10px 0' }}>
+        {data.slice(0, 10).map((row, idx) => {
+          const total = row.cachoMaduroPct + row.cachoVerdePct + row.cachoPassadoPct + row.cachoAvermelhadoPct || 1;
+          const wMaduro = (row.cachoMaduroPct / total) * 100;
+          const wVerde = (row.cachoVerdePct / total) * 100;
+          const wPassado = (row.cachoPassadoPct / total) * 100;
+          const wAvermelhado = (row.cachoAvermelhadoPct / total) * 100;
+          return (
+            <div key={idx}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
+                <span style={{ fontWeight: 500 }}>{row.label}</span>
+                <span style={{ color: 'var(--text-muted)' }}>M: {row.cachoMaduroPct.toFixed(1)}%</span>
+              </div>
+              <div style={{ display: 'flex', height: '16px', borderRadius: '4px', overflow: 'hidden', backgroundColor: 'var(--surface-hover)' }}>
+                <div style={{ width: `${wMaduro}%`, backgroundColor: '#F88A4E', transition: 'width 0.5s' }} title="Maduro" />
+                <div style={{ width: `${wPassado}%`, backgroundColor: '#8B5A2B', transition: 'width 0.5s' }} title="Passado" />
+                <div style={{ width: `${wVerde}%`, backgroundColor: '#65A30D', transition: 'width 0.5s' }} title="Verde" />
+                <div style={{ width: `${wAvermelhado}%`, backgroundColor: '#B45309', transition: 'width 0.5s' }} title="Avermelhado" />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '16px', fontSize: '0.75rem', flexWrap: 'wrap' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 10, height: 10, backgroundColor: '#F88A4E', borderRadius: 2 }}/> Maduro</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 10, height: 10, backgroundColor: '#8B5A2B', borderRadius: 2 }}/> Passado</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 10, height: 10, backgroundColor: '#65A30D', borderRadius: 2 }}/> Verde</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 10, height: 10, backgroundColor: '#B45309', borderRadius: 2 }}/> Avermelhado</span>
+      </div>
+    </div>
+  );
+}
+
+function StackedBarVertical({ data, title, loading, hideLabels = false }) {
+  if (loading) return <div className="skeleton-chart" style={{ height: 200 }}></div>;
+  if (!data || data.length === 0) return null;
+  return (
+    <div className="card" style={{ flex: 1 }}>
+      <div className="card-header">
+        <h3 className="card-title">{title}</h3>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: '220px', padding: '10px 0', borderBottom: '1px solid var(--border-color)', overflowX: 'auto' }}>
+        {data.slice(-20).map((row, idx) => {
+          const total = row.cachoMaduroPct + row.cachoVerdePct + row.cachoPassadoPct + row.cachoAvermelhadoPct || 1;
+          const hMaduro = (row.cachoMaduroPct / total) * 100;
+          const hVerde = (row.cachoVerdePct / total) * 100;
+          const hPassado = (row.cachoPassadoPct / total) * 100;
+          const hAvermelhado = (row.cachoAvermelhadoPct / total) * 100;
+          return (
+            <div key={idx} style={{ flexShrink: 0, width: hideLabels ? '24px' : '40px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+              <div style={{ fontSize: '0.65rem', textAlign: 'center', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                {!hideLabels && `${row.cachoMaduroPct.toFixed(0)}%`}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', borderRadius: '4px 4px 0 0', overflow: 'hidden', backgroundColor: 'var(--surface-hover)' }}>
+                <div style={{ height: `${hMaduro}%`, backgroundColor: '#F88A4E', transition: 'height 0.5s' }} title="Maduro" />
+                <div style={{ height: `${hPassado}%`, backgroundColor: '#8B5A2B', transition: 'height 0.5s' }} title="Passado" />
+                <div style={{ height: `${hVerde}%`, backgroundColor: '#65A30D', transition: 'height 0.5s' }} title="Verde" />
+                <div style={{ height: `${hAvermelhado}%`, backgroundColor: '#B45309', transition: 'height 0.5s' }} title="Avermelhado" />
+              </div>
+              <div style={{ fontSize: '0.65rem', textAlign: 'center', marginTop: '8px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', height: hideLabels ? '0' : 'auto' }}>
+                {!hideLabels && String(row.label).split(' ')[0]}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function EvaluatorRanking({ data, loading }) {
+  if (loading) return <div className="skeleton-chart" style={{ height: 200 }}></div>;
+  if (!data || data.length === 0) return null;
+  return (
+    <div className="card">
+      <div className="card-header">
+        <h3 className="card-title">Avaliadores</h3>
+      </div>
+      <div className="compact-list">
+        {data.slice(0, 8).map((row, idx) => (
+          <div className="compact-row" key={idx} style={{ alignItems: 'center', padding: '12px 0' }}>
+            <div style={{ flex: 1 }}>
+              <strong style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{row.label}</strong>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Passado: {row.cachoPassadoPct.toFixed(2)}% | Verde: {row.cachoVerdePct.toFixed(2)}%
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--status-success)' }}>
+                {row.cachoMaduroPct.toFixed(2)}%
+              </div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Cacho maduro %</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function QualidadeOperacional({
   farmFilter,
   areaFilter,
@@ -448,6 +582,36 @@ export default function QualidadeOperacional({
               )}
             </tbody>
           </table>
+        </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: '60px', paddingTop: '40px', borderTop: '2px dashed var(--border-color)' }}>
+        <div className="page-title-block" style={{ marginBottom: '20px' }}>
+          <span className="page-eyebrow">DASHBOARD EXECUTIVO</span>
+          <h2>Qualidade Agrícola (Visão Power BI)</h2>
+          <p>Métricas de excelência operacional consolidadas para alta gestão (Substitui visões poluídas do BI antigo).</p>
+        </div>
+
+        <div className="grid-container" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+          <QualityScorecard loading={loading} label="Cacho Maduro %" pctValue={model.quality.cachoMaduroPct} meta={85} />
+          <QualityScorecard loading={loading} label="Cacho passado %" pctValue={model.quality.cachoPassadoPct} meta={10} />
+          <QualityScorecard loading={loading} label="Cacho verde %" pctValue={model.quality.cachoVerdePct} meta={1} />
+          <QualityScorecard loading={loading} label="Cacho Avermelhado %" pctValue={model.quality.cachoAvermelhadoPct} meta={4} />
+          <QualityScorecard loading={loading} label="Talo Comprido %" pctValue={model.quality.taloCompridoPct} meta={3} />
+          <QualityScorecard loading={loading} label="Cacho Estrela %" pctValue={model.quality.cachoEstrelaPct} meta={2} />
+        </div>
+
+        <div className="grid-container grid-cols-2">
+          <StackedBarHorizontal loading={loading} title="Qualidade por Fazenda" data={model.farmRows} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <StackedBarVertical loading={loading} title="Qualidade por Semana" data={model.weekRows} />
+            <EvaluatorRanking loading={loading} data={model.evaluatorRows} />
+          </div>
+        </div>
+
+        <div style={{ marginTop: '20px' }}>
+          <StackedBarVertical loading={loading} title="Qualidade por Dia / Fazenda / Parcela (Timeline Geral)" data={model.dayRows} hideLabels={true} />
         </div>
       </div>
     </div>
