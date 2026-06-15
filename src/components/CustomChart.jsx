@@ -485,10 +485,10 @@ export default function CustomChart({ type = 'line', data = [], height = 280, ti
 
     // Gauge arc parameters
     const cx = 140;
-    const cy = 130;
-    const r = 90;
-    const startAngle = -210; // degrees from 3 o'clock, going to -210 = bottom-left arc start
-    const sweepDeg = 240;   // 240° sweep for the gauge
+    const cy = 145;
+    const r = 100;
+    const startAngle = -180; // left side
+    const sweepDeg = 180;   // 180° sweep for half-donut
 
     function polarToCart(angleDeg, radius) {
       const rad = (angleDeg * Math.PI) / 180;
@@ -507,9 +507,9 @@ export default function CustomChart({ type = 'line', data = [], height = 280, ti
       return `M ${s.x} ${s.y} A ${radius} ${radius} 0 ${large} 1 ${e.x} ${e.y} L ${ei.x} ${ei.y} A ${innerRadius} ${innerRadius} 0 ${large} 0 ${si.x} ${si.y} Z`;
     }
 
-    const track = arcPath(startAngle, startAngle + sweepDeg, r, r - 18);
+    const track = arcPath(startAngle, startAngle + sweepDeg, r, r - 16);
     const fillDeg = (score / maxScore) * sweepDeg;
-    const fillPath = fillDeg > 0 ? arcPath(startAngle, startAngle + fillDeg, r, r - 18) : '';
+    const fillPath = fillDeg > 0 ? arcPath(startAngle, startAngle + fillDeg, r, r - 16) : '';
 
     const scoreColor = score >= 90
       ? '#22C55E'
@@ -519,47 +519,46 @@ export default function CustomChart({ type = 'line', data = [], height = 280, ti
 
     // Needle
     const needleAngleDeg = startAngle + fillDeg;
-    const needleTip = polarToCart(needleAngleDeg, r - 9);
-    const startPoint = polarToCart(startAngle, r - 9);
-    const endPointTrack = polarToCart(startAngle + sweepDeg, r - 9);
+    const needleTip = polarToCart(needleAngleDeg, r - 8);
+    const startPoint = polarToCart(startAngle, r - 8);
+    const endPointTrack = polarToCart(startAngle + sweepDeg, r - 8);
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0' }}>
         <svg viewBox="0 0 280 190" width="100%" style={{ maxWidth: 280 }}>
           {/* Track with rounded caps */}
-          <circle cx={startPoint.x} cy={startPoint.y} r="9" fill="var(--bg-secondary)" />
-          <circle cx={endPointTrack.x} cy={endPointTrack.y} r="9" fill="var(--bg-secondary)" />
-          <path d={track} fill="var(--bg-secondary)" />
+          <circle cx={startPoint.x} cy={startPoint.y} r="8" fill="var(--bg-tertiary)" />
+          <circle cx={endPointTrack.x} cy={endPointTrack.y} r="8" fill="var(--bg-tertiary)" />
+          <path d={track} fill="var(--bg-tertiary)" />
 
           {/* Fill */}
           {fillPath && (
             <g>
-              <circle cx={startPoint.x} cy={startPoint.y} r="9" fill={scoreColor} style={{ transition: 'all 0.6s ease' }} />
+              <circle cx={startPoint.x} cy={startPoint.y} r="8" fill={scoreColor} style={{ transition: 'all 0.6s ease' }} />
               <path d={fillPath} fill={scoreColor} style={{ transition: 'all 0.6s ease' }} />
             </g>
           )}
 
           {/* Needle dot (rounds the end of the fill) */}
-          <circle cx={needleTip.x} cy={needleTip.y} r="9" fill={scoreColor} style={{ transition: 'all 0.6s ease' }} />
+          <circle cx={needleTip.x} cy={needleTip.y} r="8" fill={scoreColor} style={{ transition: 'all 0.6s ease' }} />
 
           {/* Score value */}
-          <text x={cx} y={cy + 10} textAnchor="middle" fill={scoreColor} fontSize="34" fontWeight="800">
+          <text x={cx} y={cy - 12} textAnchor="middle" fill={scoreColor} fontSize="42" fontWeight="800">
             {score}
           </text>
-          <text x={cx} y={cy + 28} textAnchor="middle" fill="var(--text-muted)" fontSize="11">
+          <text x={cx} y={cy + 8} textAnchor="middle" fill="var(--text-muted)" fontSize="12" fontWeight="600">
             / 100
           </text>
 
           {/* Zone labels */}
-          <text x={polarToCart(startAngle, r + 24).x} y={polarToCart(startAngle, r + 24).y + 4} textAnchor="middle" fill="var(--text-muted)" fontSize="9" fontWeight="600">0</text>
-          <text x={polarToCart(startAngle + sweepDeg, r + 24).x} y={polarToCart(startAngle + sweepDeg, r + 24).y + 4} textAnchor="middle" fill="var(--text-muted)" fontSize="9" fontWeight="600">100</text>
-          <text x={polarToCart(startAngle + sweepDeg * 0.5, r + 24).x} y={polarToCart(startAngle + sweepDeg * 0.5, r + 24).y + 4} textAnchor="middle" fill="var(--text-muted)" fontSize="9" fontWeight="600">50</text>
-
+          <text x={polarToCart(startAngle, r + 20).x} y={polarToCart(startAngle, r + 20).y + 4} textAnchor="middle" fill="var(--text-muted)" fontSize="10" fontWeight="600">0</text>
+          <text x={polarToCart(startAngle + sweepDeg, r + 20).x} y={polarToCart(startAngle + sweepDeg, r + 20).y + 4} textAnchor="middle" fill="var(--text-muted)" fontSize="10" fontWeight="600">100</text>
+          
           {/* Status badge */}
-          <rect x={cx - 44} y={cy + 38} width="88" height="20" rx="10"
+          <rect x={cx - 44} y={cy + 20} width="88" height="22" rx="11"
             fill={score >= 90 ? 'rgba(34,197,94,0.15)' : score >= 75 ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)'}
           />
-          <text x={cx} y={cy + 52} textAnchor="middle" fill={scoreColor} fontSize="9" fontWeight="700">
+          <text x={cx} y={cy + 34} textAnchor="middle" fill={scoreColor} fontSize="9.5" fontWeight="700">
             {score >= 90 ? '✓ Excelente' : score >= 75 ? '~ Atenção' : '✗ Crítico'}
           </text>
         </svg>

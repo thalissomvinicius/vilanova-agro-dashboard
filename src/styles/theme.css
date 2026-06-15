@@ -16,9 +16,9 @@
   --font-family: 'Inter', 'Segoe UI', sans-serif;
 
   /* Theme: Light (Default) */
-  --bg-primary: #F7F8F3;
+  --bg-primary: #F8FAF9;
   --bg-secondary: #FFFFFF;
-  --bg-tertiary: #F0F2EB;
+  --bg-tertiary: #F1F4F2;
   --bg-sidebar: #0F351F;
   --bg-card: #FFFFFF;
   --bg-input: #FFFFFF;
@@ -48,6 +48,8 @@
   --status-danger-bg: rgba(239, 68, 68, 0.12);
   --status-info: #3B82F6;
   --status-info-bg: rgba(59, 130, 246, 0.12);
+  --status-neutral: #64748B;
+  --status-neutral-bg: rgba(100, 116, 139, 0.12);
 
   /* Scrollbar & Misc */
   --scrollbar-track: transparent;
@@ -89,6 +91,7 @@
   --status-warning-bg: rgba(245, 158, 11, 0.15);
   --status-danger-bg: rgba(239, 68, 68, 0.15);
   --status-info-bg: rgba(59, 130, 246, 0.15);
+  --status-neutral-bg: rgba(100, 116, 139, 0.15);
 
   --scrollbar-track: transparent;
   --scrollbar-thumb: #344054;

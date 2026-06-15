@@ -188,31 +188,33 @@ function RankingAvaliadores({ records, loading }) {
       </div>
 
       {/* Table header */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px 80px 80px', gap: 8, padding: '4px 8px', borderBottom: '2px solid var(--border-color)', marginBottom: 6 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px 80px 80px', gap: 12, padding: '8px 12px', borderBottom: '1px solid var(--border-color)', marginBottom: 8, backgroundColor: 'var(--bg-tertiary)', borderRadius: '6px' }}>
         <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Avaliador</span>
-        <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', textAlign: 'center' }}>Coletas</span>
-        <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', textAlign: 'center' }}>Aprovação</span>
-        <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', textAlign: 'center' }}>GPS</span>
+        <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', textAlign: 'right' }}>Coletas</span>
+        <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', textAlign: 'right' }}>Aprovação</span>
+        <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', textAlign: 'right' }}>GPS</span>
       </div>
 
       {ranking.map((item, idx) => {
         const barPct = (item.total / maxTotal) * 100;
         const aprPct = item.total > 0 ? ((item.aprovados / item.total) * 100).toFixed(0) : 0;
         const gpsPct = item.total > 0 ? ((item.comGps / item.total) * 100).toFixed(0) : 0;
-        const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}º`;
+        const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : <span style={{display: 'inline-block', width: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600}}>{idx + 1}º</span>;
+        
         return (
-          <div key={item.nome} style={{ display: 'grid', gridTemplateColumns: '1fr 60px 80px 80px', gap: 8, padding: '6px 8px', alignItems: 'center', borderBottom: '1px solid var(--border-color)', borderRadius: 6 }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{medal} {item.nome}</span>
+          <div key={item.nome} className="ranking-row" style={{ display: 'grid', gridTemplateColumns: '1fr 60px 80px 80px', gap: 12, padding: '10px 12px', alignItems: 'center', borderBottom: '1px dashed var(--border-color)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: '1rem', lineHeight: 1 }}>{medal}</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{item.nome}</span>
               </div>
-              <div style={{ height: 5, background: 'var(--bg-secondary)', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${barPct}%`, background: idx === 0 ? 'var(--green-institutional)' : 'var(--orange-institutional)', borderRadius: 3, transition: 'width 0.5s ease' }} />
+              <div style={{ height: '4px', background: 'var(--bg-tertiary)', borderRadius: '2px', overflow: 'hidden', width: 'calc(100% - 28px)', marginLeft: '28px' }}>
+                <div style={{ height: '100%', width: `${barPct}%`, background: idx < 3 ? 'var(--orange-institutional)' : 'var(--status-neutral)', borderRadius: '2px', transition: 'width 0.5s ease' }} />
               </div>
             </div>
-            <span style={{ textAlign: 'center', fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>{item.total}</span>
-            <span style={{ textAlign: 'center', fontSize: '0.82rem', fontWeight: 600, color: Number(aprPct) >= 80 ? 'var(--status-success)' : Number(aprPct) >= 50 ? 'var(--status-warning)' : 'var(--text-muted)' }}>{aprPct}%</span>
-            <span style={{ textAlign: 'center', fontSize: '0.82rem', fontWeight: 600, color: Number(gpsPct) >= 80 ? 'var(--status-info)' : 'var(--text-muted)' }}>{gpsPct}%</span>
+            <span style={{ textAlign: 'right', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{item.total}</span>
+            <span style={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 600, color: Number(aprPct) >= 80 ? 'var(--status-success)' : Number(aprPct) >= 50 ? 'var(--status-warning)' : 'var(--status-danger)' }}>{aprPct}%</span>
+            <span style={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 600, color: Number(gpsPct) >= 80 ? 'var(--status-info)' : 'var(--text-muted)' }}>{gpsPct}%</span>
           </div>
         );
       })}

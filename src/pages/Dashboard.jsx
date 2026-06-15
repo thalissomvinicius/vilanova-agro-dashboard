@@ -10,6 +10,7 @@ import {
   Scale,
   Sprout,
   Tractor,
+  Calendar,
 } from 'lucide-react';
 import CustomChart from '../components/CustomChart';
 import { aggregateRecords, useCqoDashboard } from '../utils/cqoData';
@@ -79,18 +80,24 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
 
   return (
     <div className="fade-in page-shell">
-      <div className="dashboard-page-header">
+      <div className="dashboard-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border-color)', paddingBottom: '24px', marginBottom: '8px' }}>
         <div>
-          <span className="page-eyebrow">Qualidade Agrícola / CQO</span>
-          <h2>Dashboard de Corte, Carreamento e Fruto Solto</h2>
-          <p>
-            Visão gerencial das coletas reais enviadas pelo app Android para o Supabase.
-          </p>
+          <span className="page-eyebrow" style={{ color: 'var(--orange-institutional)', fontWeight: 700, letterSpacing: '0.5px' }}>VISÃO EXECUTIVA • CQO</span>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '4px 0 10px', color: 'var(--text-primary)' }}>Dashboard de Qualidade Agrícola</h2>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Calendar size={14} /> {periodFilter === 'all' ? 'Todos os tempos' : periodFilter === 'today' ? 'Hoje' : periodFilter === 'week' ? 'Últimos 7 dias' : periodFilter === 'month' ? 'Este mês' : `${dateFrom || 'Início'} até ${dateTo || 'Fim'}`}
+            </span>
+            <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--border-color)' }} />
+            <span style={{ fontSize: '0.85rem', color: 'var(--status-success)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
+              <CheckCircle2 size={14} /> Conectado ao Supabase
+            </span>
+          </div>
         </div>
-        <div className="source-card">
-          <span>Fonte atual</span>
-          <strong>{loading ? 'Carregando...' : source}</strong>
-          {error ? <small>{error}</small> : <small>{lastRecord ? `Último registro: ${lastRecord.date} ${lastRecord.time}` : 'Sem registros'}</small>}
+        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '4px', backgroundColor: 'var(--bg-secondary)', padding: '12px 16px', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
+          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Sincronização</span>
+          <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>{loading ? 'Aguarde...' : source}</strong>
+          {error ? <small style={{ color: 'var(--status-danger)', fontSize: '0.75rem', fontWeight: 500 }}>{error}</small> : <small style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{lastRecord ? `Última: ${lastRecord.date} ${lastRecord.time}` : 'Sem dados'}</small>}
         </div>
       </div>
 
