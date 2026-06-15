@@ -8,6 +8,7 @@ import {
   Eye,
   MapPin,
   Rows3,
+  Search,
   ThumbsDown,
   ThumbsUp,
   User,
@@ -60,6 +61,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   const { loading, records, source, error } = useCqoData();
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [searchFicha, setSearchFicha] = useState('');
   const [reviewOverrides, setReviewOverrides] = useState({});
   const [isReviewing, setIsReviewing] = useState(false);
 
@@ -78,6 +80,11 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     cycleFilter,
     dateFrom,
     dateTo,
+  }).filter((record) => {
+    if (!searchFicha) return true;
+    const term = searchFicha.toLowerCase();
+    return String(record.id || '').toLowerCase().includes(term) || 
+           String(record.formId || '').toLowerCase().includes(term);
   });
 
   const selectedPhotos = selectedRecord
@@ -112,11 +119,21 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
             Consulta operacional das fichas recebidas do aplicativo, com detalhamento por linha e rastreio de GPS/acompanhamento.
           </p>
         </div>
-        <div className="page-actions">
+        <div className="page-actions" style={{ gap: '12px' }}>
+          <div className="header-search" style={{ flex: '0 0 auto', width: '220px' }}>
+            <Search size={16} />
+            <input
+              type="text"
+              placeholder="Buscar Nº da Ficha"
+              value={searchFicha}
+              onChange={(e) => setSearchFicha(e.target.value)}
+            />
+          </div>
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
             className="header-filter-select"
+            style={{ minWidth: '160px' }}
           >
             <option value="all">Todos os status</option>
             <option value="Sincronizado">Sincronizado</option>
