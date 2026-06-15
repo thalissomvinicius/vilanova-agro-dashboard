@@ -114,6 +114,74 @@ function normalizeTrackPoint(value, index) {
   };
 }
 
+function parseOccurrenceFieldId(fieldId) {
+  const text = String(fieldId || '');
+  if (!text.startsWith('ocorrencia_')) return { title: text, line: '--' };
+  const [, rawType = '', rawLine = ''] = text.match(/^ocorrencia_(.*?)(?:_linha_(.*))?$/) || [];
+  return {
+    title: rawType.replaceAll('_', ' ') || 'Ocorrencia',
+    line: rawLine || '--',
+  };
+}
+
+function normalizeGpsTablePoint(value, index) {
+  const gps = buildGps(value?.latitude, value?.longitude, value?.precisao);
+  if (!gps) return null;
+  const fieldId = value?.campo_id || 'gps';
+  const isOccurrence = String(fieldId).startsWith('ocorrencia_');
+  const occurrenceMeta = parseOccurrenceFieldId(fieldId);
+  return {
+    ...gps,
+    id: value?.id || `${fieldId}_${index + 1}`,
+    fieldId,
+    title: isOccurrence ? occurrenceMeta.title : fieldId,
+    line: isOccurrence ? occurrenceMeta.line : '--',
+    quantity: 1,
+    order: index + 1,
+    capturedAt: value?.capturado_em || null,
+    source: isOccurrence ? 'ocorrencia' : fieldId === 'gps_track' ? 'track' : 'mobile_gps',
+    occurrence: isOccurrence,
+  };
+}
+
+function normalizeOccurrencePoint(value, index) {
+  const gps = parseGps(value);
+  if (!gps) return null;
+  const fieldId = value?.campo_id || value?.fieldId || 'ocorrencia';
+  return {
+    ...gps,
+    id: value?.id || `${fieldId}_${index + 1}`,
+    fieldId,
+    title: value?.titulo || value?.title || fieldId.replace(/^ocorrencia_/, '').replaceAll('_', ' '),
+    line: value?.linha || value?.linha_index || value?.line || '--',
+    quantity: Number(value?.quantidade || value?.quantity || 1) || 1,
+    capturedAt: value?.capturado_em || value?.capturedAt || null,
+    source: value?.source || 'ocorrencia',
+    occurrence: true,
+  };
+}
+
+function parseOccurrenceArray(value) {
+  return parseTrackArray(value)
+    .map((point, index) => normalizeOccurrencePoint(point, index))
+    .filter(Boolean);
+}
+
+function dedupeGpsPoints(points) {
+  const seen = new Set();
+  return points.filter((point) => {
+    const key = [
+      point.fieldId || point.source || 'gps',
+      point.capturedAt || '',
+      Number(point.lat).toFixed(6),
+      Number(point.lng).toFixed(6),
+    ].join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function findGps(data, type) {
   const preferredKeys = type === 'carreamento'
     ? ['gps_cqo_carreamento', 'gps_carreamento']
@@ -141,7 +209,15 @@ function findGps(data, type) {
   );
 }
 
-function findGpsTrack(data, gps) {
+function findGpsTrack(data, gps, gpsRows = []) {
+  const tableTrack = gpsRows
+    .filter((point) => point?.campo_id === 'gps_track')
+    .map((point, index) => normalizeGpsTablePoint(point, index))
+    .filter(Boolean)
+    .sort((a, b) => new Date(a.capturedAt || 0) - new Date(b.capturedAt || 0));
+
+  if (tableTrack.length) return tableTrack;
+
   const candidateKeys = [
     'gps_track',
     'gpsTrack',
@@ -160,6 +236,21 @@ function findGpsTrack(data, gps) {
   }
 
   return gps ? [{ ...gps, order: 1, capturedAt: null, source: 'principal' }] : [];
+}
+
+function findGpsOccurrences(data, gpsRows = []) {
+  const tableOccurrences = gpsRows
+    .filter((point) => String(point?.campo_id || '').startsWith('ocorrencia_'))
+    .map((point, index) => normalizeGpsTablePoint(point, index))
+    .filter(Boolean);
+
+  const payloadOccurrences = [
+    ...parseOccurrenceArray(data?.cqo_ocorrencias_gps),
+    ...parseOccurrenceArray(data?.cqoGpsOccurrences),
+    ...parseOccurrenceArray(data?.ocorrencias_gps),
+  ];
+
+  return dedupeGpsPoints([...tableOccurrences, ...payloadOccurrences]);
 }
 
 function formType(formularioId, data) {
@@ -189,7 +280,7 @@ function formatDateTime(value) {
   };
 }
 
-export function normalizeResponse(row, headcount = []) {
+export function normalizeResponse(row, headcount = [], gpsRows = []) {
   const data = parseJson(row.dados_json);
 
   // Normalizar a estrutura de dados de legado (Android) para o padrão
@@ -261,7 +352,8 @@ export function normalizeResponse(row, headcount = []) {
     ? (Array.isArray(data.linhas_carreamento) ? data.linhas_carreamento : [])
     : (Array.isArray(data.linhas_corte) ? data.linhas_corte : []);
   const gps = findGps(data, type);
-  const gpsTrack = findGpsTrack(data, gps);
+  const gpsOccurrences = findGpsOccurrences(data, gpsRows);
+  const gpsTrack = findGpsTrack(data, gps, gpsRows);
   const dateTime = formatDateTime(row.criado_em || data.data_avaliacao);
   const matricula = data.matricula_avaliador || row.usuario_id || '';
   const collaborator = headcount.find((item) => String(item.matricula) === String(matricula));
@@ -289,8 +381,9 @@ export function normalizeResponse(row, headcount = []) {
     fiscal: data.fiscal_resp || '--',
     observation: data.observacao || '',
     acompanhamento,
-    gps,
+    gps: gps || gpsOccurrences[0] || gpsTrack[0] || null,
     gpsTrack,
+    gpsOccurrences,
     raw: data,
     lines,
   };
@@ -450,8 +543,16 @@ async function fetchFirstAvailableTable(candidates, query) {
   throw new Error(errors.join(' | '));
 }
 
+async function fetchOptionalTable(table, query) {
+  try {
+    return await fetchSupabaseTable(table, query);
+  } catch {
+    return [];
+  }
+}
+
 async function loadSupabaseData() {
-  const [responseResult, headcount] = await Promise.all([
+  const [responseResult, headcount, gpsRows] = await Promise.all([
     fetchFirstAvailableTable(
       ['mobile_respostas', 'respostas'],
       'select=id,formulario_id,usuario_id,dados_json,status,criado_em,enviado_em,erro_msg,tentativas&order=criado_em.desc&limit=1000'
@@ -460,10 +561,22 @@ async function loadSupabaseData() {
       'headcount_colaboradores',
       'select=matricula,nome,cargo,departamento,gestor,status&status=eq.ATIVO&limit=2000'
     ),
+    fetchOptionalTable(
+      'mobile_gps',
+      'select=id,resposta_id,campo_id,latitude,longitude,precisao,altitude,capturado_em&order=capturado_em.asc&limit=10000'
+    ),
   ]);
 
+  const gpsByResponse = gpsRows.reduce((acc, point) => {
+    const key = point.resposta_id;
+    if (!key) return acc;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(point);
+    return acc;
+  }, {});
+
   return {
-    records: responseResult.rows.map((row) => normalizeResponse(row, headcount)),
+    records: responseResult.rows.map((row) => normalizeResponse(row, headcount, gpsByResponse[row.id] || [])),
     headcount,
     source: `Supabase / ${responseResult.table}`,
     error: '',
@@ -626,6 +739,7 @@ export function aggregateRecords(records) {
     acc.pesoMedio += record.totals.pesoMedio || 0;
     acc.gps += record.gps ? 1 : 0;
     acc.gpsPoints += record.gpsTrack?.length || 0;
+    acc.gpsOccurrences += record.gpsOccurrences?.length || 0;
     
     // Novos acumulados adicionados para corrigir a agregação global
     acc.cachoBrocado += record.totals.cachoBrocado || 0;
@@ -658,6 +772,7 @@ export function aggregateRecords(records) {
     pesoMedio: 0,
     gps: 0,
     gpsPoints: 0,
+    gpsOccurrences: 0,
     sincronizados: 0,
     pendentesValidacao: 0,
     aprovados: 0,
