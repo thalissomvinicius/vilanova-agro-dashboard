@@ -9,19 +9,60 @@ $ErrorActionPreference = 'Stop'
 function Normalize-Text {
   param([string]$Text)
   if ($null -eq $Text) { return '' }
-  return ($Text.Normalize([Text.NormalizationForm]::FormD) -replace '[\u0300-\u036f]', '').ToLowerInvariant()
+  $value = $Text.Normalize([Text.NormalizationForm]::FormD) -replace '[\u0300-\u036f]', ''
+  $value = $value -replace '[^a-zA-Z0-9]+', ' '
+  return ($value.Trim() -replace '\s+', ' ').ToLowerInvariant()
 }
 
-function Normalize-Header {
-  param([string]$Text)
-  if ($null -eq $Text) { return '' }
-  return $Text.Trim()
+function Get-WorksheetByNameMatching {
+  param(
+    $Workbook,
+    [scriptblock]$Predicate,
+    [string]$ErrorLabel
+  )
+
+  foreach ($sheet in @($Workbook.Worksheets)) {
+    if (& $Predicate $sheet.Name) {
+      return $sheet
+    }
+  }
+
+  throw "Worksheet not found: $ErrorLabel"
 }
 
-function Convert-ValueToText {
+function Get-RangeMatrix {
+  param($Worksheet)
+  $range = $Worksheet.UsedRange
+  return [pscustomobject]@{
+    Values = $range.Value2
+    Rows = $range.Rows.Count
+    Cols = $range.Columns.Count
+  }
+}
+
+function Get-HeaderMap {
+  param($Values, [int]$Cols)
+  $map = @{}
+  for ($c = 1; $c -le $Cols; $c++) {
+    $header = [string]$Values[1, $c]
+    $key = Normalize-Text $header
+    if ($key) {
+      $map[$key] = $c
+    }
+  }
+  return $map
+}
+
+function Get-Value {
+  param($Values, [int]$Row, [int]$Col)
+  if ($Col -le 0) { return $null }
+  return $Values[$Row, $Col]
+}
+
+function Convert-ToText {
   param(
     [object]$Value,
-    [string]$Header = ''
+    [string]$HeaderKey = ''
   )
 
   if ($null -eq $Value) { return '' }
@@ -29,12 +70,12 @@ function Convert-ValueToText {
     return $Value.ToString('dd/MM/yyyy HH:mm')
   }
 
-  if ($Value -is [double] -or $Value -is [single] -or $Value -is [decimal]) {
-    $numeric = [double]$Value
-    if ($Header -match '(?i)(^data|data|hora)' -and $numeric -gt 20000 -and $numeric -lt 60000) {
+  if ($Value -is [double] -or $Value -is [single] -or $Value -is [decimal] -or $Value -is [int] -or $Value -is [long]) {
+    $number = [double]$Value
+    if ($HeaderKey -match '(^| )(data|hora)( |$)' -and $number -gt 20000 -and $number -lt 60000) {
       $base = [datetime]'1899-12-30'
-      $days = [int][math]::Floor($numeric)
-      $fraction = $numeric - $days
+      $days = [int][math]::Floor($number)
+      $fraction = $number - $days
       $date = $base.AddDays($days).AddDays($fraction)
       if ($fraction -gt 0) {
         return $date.ToString('dd/MM/yyyy HH:mm')
@@ -42,81 +83,20 @@ function Convert-ValueToText {
       return $date.ToString('dd/MM/yyyy')
     }
 
-    return ([double]$Value).ToString([Globalization.CultureInfo]::InvariantCulture)
+    return $number.ToString([Globalization.CultureInfo]::InvariantCulture)
   }
 
   return ([string]$Value).Trim()
 }
 
-function Get-RowField {
-  param(
-    $Row,
-    [string]$ExpectedName
-  )
-
-  $target = Normalize-Text $ExpectedName
-  foreach ($prop in $Row.PSObject.Properties) {
-    if ((Normalize-Text $prop.Name) -eq $target) {
-      return $prop.Value
-    }
-  }
-  return ''
-}
-
-function Get-WorksheetByNameLike {
-  param(
-    $Workbook,
-    [string]$ExpectedName
-  )
-
-  $target = Normalize-Text $ExpectedName
-  foreach ($worksheet in @($Workbook.Worksheets)) {
-    if ((Normalize-Text $worksheet.Name) -eq $target) {
-      return $worksheet
-    }
-  }
-  throw "Worksheet not found: $ExpectedName"
-}
-
-function Read-SheetRows {
-  param($Worksheet)
-
-  $range = $Worksheet.UsedRange
-  $rows = $range.Rows.Count
-  $cols = $range.Columns.Count
-  $values = $range.Value2
-
-  $headers = @()
-  for ($c = 1; $c -le $cols; $c++) {
-    $headers += (Normalize-Header (Convert-ValueToText -Value $values[1, $c]))
-  }
-
-  $items = New-Object System.Collections.Generic.List[object]
-  for ($r = 2; $r -le $rows; $r++) {
-    $obj = [ordered]@{}
-    $hasValue = $false
-
-    for ($c = 1; $c -le $cols; $c++) {
-      $key = $headers[$c - 1]
-      if ([string]::IsNullOrWhiteSpace($key)) { continue }
-      $text = Convert-ValueToText -Value $values[$r, $c] -Header $key
-      if (-not [string]::IsNullOrWhiteSpace($text)) { $hasValue = $true }
-      $obj[$key] = $text
-    }
-
-    if ($hasValue) {
-      $items.Add([pscustomobject]$obj)
-    }
-  }
-
-  return $items
-}
-
-function To-Number {
+function Convert-ToNumber {
   param([object]$Value)
   if ($null -eq $Value) { return 0 }
-  $text = [string]$Value
-  if ([string]::IsNullOrWhiteSpace($text)) { return 0 }
+  if ($Value -is [double] -or $Value -is [single] -or $Value -is [decimal] -or $Value -is [int] -or $Value -is [long]) {
+    return [double]$Value
+  }
+  $text = ([string]$Value).Trim()
+  if (-not $text) { return 0 }
   $text = $text.Replace(' ', '').Replace('.', '').Replace(',', '.')
   $result = 0.0
   if ([double]::TryParse($text, [Globalization.NumberStyles]::Any, [Globalization.CultureInfo]::InvariantCulture, [ref]$result)) {
@@ -125,13 +105,22 @@ function To-Number {
   return 0
 }
 
-function Get-MonthKey {
-  param([string]$Value)
-  if ([string]::IsNullOrWhiteSpace($Value)) { return 'sem-data' }
-  if ($Value -match '(\d{2})/(\d{2})/(\d{4})') {
+function Month-Key {
+  param([object]$Value)
+  if ($Value -is [double] -or $Value -is [single] -or $Value -is [decimal] -or $Value -is [int] -or $Value -is [long]) {
+    $serial = [double]$Value
+    if ($serial -gt 20000 -and $serial -lt 60000) {
+      $base = [datetime]'1899-12-30'
+      $date = $base.AddDays([int][math]::Floor($serial))
+      return '{0}-{1:00}' -f $date.Year, $date.Month
+    }
+  }
+  $text = Convert-ToText $Value
+  if (-not $text) { return 'sem-data' }
+  if ($text -match '(\d{2})/(\d{2})/(\d{4})') {
     return "$($matches[3])-$($matches[2])"
   }
-  if ($Value -match '(\d{4})-(\d{2})') {
+  if ($text -match '(\d{4})-(\d{2})') {
     return "$($matches[1])-$($matches[2])"
   }
   return 'sem-data'
@@ -144,37 +133,55 @@ function Month-Label {
   return "$($parts[1])/$($parts[0])"
 }
 
-function Group-By {
-  param(
-    [object[]]$Rows,
-    [scriptblock]$KeySelector,
-    [scriptblock]$Accumulator
-  )
-
-  $map = @{}
-  foreach ($row in $Rows) {
-    $key = & $KeySelector $row
-    if (-not $map.ContainsKey($key)) {
-      $map[$key] = [ordered]@{ key = $key; count = 0 }
-    }
-    & $Accumulator $map[$key] $row
+function New-Bucket {
+  param([string]$Key)
+  return @{
+    key = $Key
+    count = 0
   }
-
-  return $map.Values
 }
 
-function Add-NumberProp {
-  param([hashtable]$Bucket, [string]$Name, [double]$Value)
+function Ensure-Bucket {
+  param(
+    [hashtable]$Map,
+    [string]$Key
+  )
+
+  if (-not $Map.ContainsKey($Key)) {
+    $Map[$Key] = New-Bucket -Key $Key
+  }
+
+  return $Map[$Key]
+}
+
+function Add-Value {
+  param(
+    [object]$Bucket,
+    [string]$Name,
+    [double]$Value
+  )
+
   if (-not $Bucket.Contains($Name) -or $null -eq $Bucket[$Name]) {
     $Bucket[$Name] = 0
   }
+
   $Bucket[$Name] = [double]$Bucket[$Name] + $Value
 }
 
-function Get-PropValue {
-  param([hashtable]$Bucket, [string]$Name)
-  if (-not $Bucket.Contains($Name) -or $null -eq $Bucket[$Name]) { return 0 }
-  return $Bucket[$Name]
+function Get-Index {
+  param(
+    [hashtable]$Headers,
+    [string[]]$Candidates
+  )
+
+  foreach ($candidate in $Candidates) {
+    $key = Normalize-Text $candidate
+    if ($Headers.ContainsKey($key)) {
+      return [int]$Headers[$key]
+    }
+  }
+
+  return 0
 }
 
 if (-not (Test-Path -LiteralPath $WorkbookPath)) {
@@ -188,176 +195,246 @@ $excel.DisplayAlerts = $false
 try {
   $wb = $excel.Workbooks.Open($WorkbookPath, 0, $true)
 
-  $entradaRows = @(Read-SheetRows (Get-WorksheetByNameLike $wb 'Entrada de CFF'))
-  $rampaRows = @(Read-SheetRows (Get-WorksheetByNameLike $wb 'CQO - Rampa'))
-  $faturamentoRows = @(Read-SheetRows (Get-WorksheetByNameLike $wb 'Faturamento'))
-  $tipoRows = @(Read-SheetRows (Get-WorksheetByNameLike $wb 'Tipo Fornecedor'))
-  $precoRows = @(Read-SheetRows (Get-WorksheetByNameLike $wb 'Preco Fornecedor'))
+  $entradaWs = Get-WorksheetByNameMatching $wb { param($name) ($name -eq 'Entrada de CFF') } 'Entrada de CFF'
+  $rampaWs = Get-WorksheetByNameMatching $wb { param($name) ($name -eq 'CQO - Rampa') } 'CQO - Rampa'
+  $faturamentoWs = Get-WorksheetByNameMatching $wb { param($name) ($name -eq 'Faturamento') } 'Faturamento'
+  $tipoWs = Get-WorksheetByNameMatching $wb { param($name) ($name -eq 'Tipo Fornecedor') } 'Tipo Fornecedor'
+  $precoWs = Get-WorksheetByNameMatching $wb { param($name) ($name -like '*Fornecedor' -and $name -ne 'Tipo Fornecedor') } 'Preco Fornecedor'
 
-  $entradaByMonth = Group-By -Rows $entradaRows -KeySelector {
-    param($row) (Get-MonthKey (Get-RowField $row 'Data'))
-  } -Accumulator {
-    param($bucket, $row)
-    $bucket.count++
-    Add-NumberProp $bucket 'totalPesoBrutoKg' (To-Number (Get-RowField $row 'Peso Bruto'))
-    Add-NumberProp $bucket 'totalPesoLiquidoKg' (To-Number (Get-RowField $row 'Peso Liquido'))
-    Add-NumberProp $bucket 'totalTaraKg' (To-Number (Get-RowField $row 'Tara'))
-    Add-NumberProp $bucket 'totalCachos' (To-Number (Get-RowField $row 'N Cachos'))
-    Add-NumberProp $bucket 'ticketCount' 1
-  } | ForEach-Object {
+  $entrada = Get-RangeMatrix $entradaWs
+  $rampa = Get-RangeMatrix $rampaWs
+  $faturamento = Get-RangeMatrix $faturamentoWs
+  $tipo = Get-RangeMatrix $tipoWs
+  $preco = Get-RangeMatrix $precoWs
+
+  $entradaHeaders = Get-HeaderMap $entrada.Values $entrada.Cols
+  $rampaHeaders = Get-HeaderMap $rampa.Values $rampa.Cols
+  $faturamentoHeaders = Get-HeaderMap $faturamento.Values $faturamento.Cols
+  $tipoHeaders = Get-HeaderMap $tipo.Values $tipo.Cols
+  $precoHeaders = Get-HeaderMap $preco.Values $preco.Cols
+
+  $entradaDataIdx = Get-Index $entradaHeaders @('Data')
+  $entradaProdutoIdx = Get-Index $entradaHeaders @('Produto')
+  $entradaPesoBrutoIdx = Get-Index $entradaHeaders @('Peso Bruto')
+  $entradaPesoLiquidoIdx = Get-Index $entradaHeaders @('Peso Liquido')
+  $entradaTaraIdx = Get-Index $entradaHeaders @('Tara')
+  $entradaCachosIdx = Get-Index $entradaHeaders @('N Cachos')
+
+  $entradaMonthMap = @{}
+  $entradaProductMap = @{}
+  for ($r = 2; $r -le $entrada.Rows; $r++) {
+    $monthKey = Month-Key (Get-Value $entrada.Values $r $entradaDataIdx)
+    $monthBucket = Ensure-Bucket $entradaMonthMap $monthKey
+    $monthBucket['count'] = [double]$monthBucket['count'] + 1
+    Add-Value $monthBucket 'tickets' 1
+    Add-Value $monthBucket 'pesoBrutoKg' (Convert-ToNumber (Get-Value $entrada.Values $r $entradaPesoBrutoIdx))
+    Add-Value $monthBucket 'pesoLiquidoKg' (Convert-ToNumber (Get-Value $entrada.Values $r $entradaPesoLiquidoIdx))
+    Add-Value $monthBucket 'taraKg' (Convert-ToNumber (Get-Value $entrada.Values $r $entradaTaraIdx))
+    Add-Value $monthBucket 'cachos' (Convert-ToNumber (Get-Value $entrada.Values $r $entradaCachosIdx))
+
+    $productKey = Convert-ToText (Get-Value $entrada.Values $r $entradaProdutoIdx)
+    $productBucket = Ensure-Bucket $entradaProductMap $productKey
+    $productBucket['count'] = [double]$productBucket['count'] + 1
+    Add-Value $productBucket 'pesoLiquidoKg' (Convert-ToNumber (Get-Value $entrada.Values $r $entradaPesoLiquidoIdx))
+  }
+
+  $entradaByMonth = $entradaMonthMap.GetEnumerator() | ForEach-Object {
+    $bucket = $_.Value
     [ordered]@{
-      monthKey = $_.key
-      monthLabel = Month-Label $_.key
-      tickets = Get-PropValue $_ 'ticketCount'
-      pesoBrutoKg = [Math]::Round((Get-PropValue $_ 'totalPesoBrutoKg'), 2)
-      pesoLiquidoKg = [Math]::Round((Get-PropValue $_ 'totalPesoLiquidoKg'), 2)
-      taraKg = [Math]::Round((Get-PropValue $_ 'totalTaraKg'), 2)
-      cachos = [Math]::Round((Get-PropValue $_ 'totalCachos'), 2)
+      monthKey = $_.Key
+      monthLabel = Month-Label $_.Key
+      tickets = [Math]::Round([double]$bucket['tickets'], 2)
+      pesoBrutoKg = [Math]::Round([double]$bucket['pesoBrutoKg'], 2)
+      pesoLiquidoKg = [Math]::Round([double]$bucket['pesoLiquidoKg'], 2)
+      taraKg = [Math]::Round([double]$bucket['taraKg'], 2)
+      cachos = [Math]::Round([double]$bucket['cachos'], 2)
     }
   } | Sort-Object monthKey
 
-  $entradaByProduct = Group-By -Rows $entradaRows -KeySelector {
-    param($row) (Get-RowField $row 'Produto')
-  } -Accumulator {
-    param($bucket, $row)
-    $bucket.count++
-    Add-NumberProp $bucket 'totalPesoLiquidoKg' (To-Number (Get-RowField $row 'Peso Liquido'))
-  } | ForEach-Object {
+  $entradaByProduct = $entradaProductMap.GetEnumerator() | ForEach-Object {
+    $bucket = $_.Value
     [ordered]@{
-      produto = $_.key
-      registros = $_.count
-      pesoLiquidoKg = [Math]::Round((Get-PropValue $_ 'totalPesoLiquidoKg'), 2)
+      produto = $_.Key
+      registros = [Math]::Round([double]$bucket['count'], 2)
+      pesoLiquidoKg = [Math]::Round([double]$bucket['pesoLiquidoKg'], 2)
     }
   } | Sort-Object pesoLiquidoKg -Descending
 
-  $rampaByMonth = Group-By -Rows $rampaRows -KeySelector {
-    param($row) (Get-MonthKey (Get-RowField $row 'Data'))
-  } -Accumulator {
-    param($bucket, $row)
-    $bucket.count++
-    foreach ($field in @('TCA', 'CV', 'CM', 'CP', 'TC')) {
-      $sumName = "sum$field"
-      Add-NumberProp $bucket $sumName (To-Number (Get-RowField $row $field))
-    }
-  } | ForEach-Object {
-    $count = [Math]::Max($_.count, 1)
+  $rampaDataIdx = Get-Index $rampaHeaders @('Data')
+  $rampaFazendaIdx = Get-Index $rampaHeaders @('Fazenda')
+  $rampaTcaIdx = Get-Index $rampaHeaders @('TCA')
+  $rampaCvIdx = Get-Index $rampaHeaders @('CV')
+  $rampaCmIdx = Get-Index $rampaHeaders @('CM')
+  $rampaCpIdx = Get-Index $rampaHeaders @('CP')
+  $rampaTcIdx = Get-Index $rampaHeaders @('TC')
+
+  $rampaMonthMap = @{}
+  $rampaFarmMap = @{}
+  for ($r = 2; $r -le $rampa.Rows; $r++) {
+    $monthKey = Month-Key (Get-Value $rampa.Values $r $rampaDataIdx)
+    $monthBucket = Ensure-Bucket $rampaMonthMap $monthKey
+    $monthBucket['count'] = [double]$monthBucket['count'] + 1
+    Add-Value $monthBucket 'sumTCA' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaTcaIdx))
+    Add-Value $monthBucket 'sumCV' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaCvIdx))
+    Add-Value $monthBucket 'sumCM' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaCmIdx))
+    Add-Value $monthBucket 'sumCP' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaCpIdx))
+    Add-Value $monthBucket 'sumTC' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaTcIdx))
+
+    $farmKey = Convert-ToText (Get-Value $rampa.Values $r $rampaFazendaIdx)
+    $farmBucket = Ensure-Bucket $rampaFarmMap $farmKey
+    $farmBucket['count'] = [double]$farmBucket['count'] + 1
+    Add-Value $farmBucket 'sumTCA' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaTcaIdx))
+    Add-Value $farmBucket 'sumCV' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaCvIdx))
+    Add-Value $farmBucket 'sumCM' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaCmIdx))
+    Add-Value $farmBucket 'sumCP' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaCpIdx))
+    Add-Value $farmBucket 'sumTC' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaTcIdx))
+  }
+
+  $rampaByMonth = $rampaMonthMap.GetEnumerator() | ForEach-Object {
+    $bucket = $_.Value
+    $count = [Math]::Max([double]$bucket['count'], 1)
     [ordered]@{
-      monthKey = $_.key
-      monthLabel = Month-Label $_.key
-      registros = $_.count
-      tcaMedia = [Math]::Round(((Get-PropValue $_ 'sumTCA') / $count), 2)
-      cvMedia = [Math]::Round(((Get-PropValue $_ 'sumCV') / $count), 2)
-      cmMedia = [Math]::Round(((Get-PropValue $_ 'sumCM') / $count), 2)
-      cpMedia = [Math]::Round(((Get-PropValue $_ 'sumCP') / $count), 2)
-      tcMedia = [Math]::Round(((Get-PropValue $_ 'sumTC') / $count), 2)
+      monthKey = $_.Key
+      monthLabel = Month-Label $_.Key
+      registros = [Math]::Round([double]$bucket['count'], 2)
+      tcaMedia = [Math]::Round(([double]$bucket['sumTCA'] / $count), 2)
+      cvMedia = [Math]::Round(([double]$bucket['sumCV'] / $count), 2)
+      cmMedia = [Math]::Round(([double]$bucket['sumCM'] / $count), 2)
+      cpMedia = [Math]::Round(([double]$bucket['sumCP'] / $count), 2)
+      tcMedia = [Math]::Round(([double]$bucket['sumTC'] / $count), 2)
     }
   } | Sort-Object monthKey
 
-  $rampaByFarm = Group-By -Rows $rampaRows -KeySelector {
-    param($row) (Get-RowField $row 'Fazenda')
-  } -Accumulator {
-    param($bucket, $row)
-    $bucket.count++
-    Add-NumberProp $bucket 'totalTca' (To-Number (Get-RowField $row 'TCA'))
-    Add-NumberProp $bucket 'totalCv' (To-Number (Get-RowField $row 'CV'))
-    Add-NumberProp $bucket 'totalCm' (To-Number (Get-RowField $row 'CM'))
-    Add-NumberProp $bucket 'totalCp' (To-Number (Get-RowField $row 'CP'))
-    Add-NumberProp $bucket 'totalTc' (To-Number (Get-RowField $row 'TC'))
-  } | ForEach-Object {
-    $count = [Math]::Max($_.count, 1)
+  $rampaByFarm = $rampaFarmMap.GetEnumerator() | ForEach-Object {
+    $bucket = $_.Value
+    $count = [Math]::Max([double]$bucket['count'], 1)
     [ordered]@{
-      fazenda = $_.key
-      registros = $_.count
-      tcaMedia = [Math]::Round(((Get-PropValue $_ 'totalTca') / $count), 2)
-      cvMedia = [Math]::Round(((Get-PropValue $_ 'totalCv') / $count), 2)
-      cmMedia = [Math]::Round(((Get-PropValue $_ 'totalCm') / $count), 2)
-      cpMedia = [Math]::Round(((Get-PropValue $_ 'totalCp') / $count), 2)
-      tcMedia = [Math]::Round(((Get-PropValue $_ 'totalTc') / $count), 2)
+      fazenda = $_.Key
+      registros = [Math]::Round([double]$bucket['count'], 2)
+      tcaMedia = [Math]::Round(([double]$bucket['sumTCA'] / $count), 2)
+      cvMedia = [Math]::Round(([double]$bucket['sumCV'] / $count), 2)
+      cmMedia = [Math]::Round(([double]$bucket['sumCM'] / $count), 2)
+      cpMedia = [Math]::Round(([double]$bucket['sumCP'] / $count), 2)
+      tcMedia = [Math]::Round(([double]$bucket['sumTC'] / $count), 2)
     }
   } | Sort-Object tcaMedia -Descending
 
-  $faturamentoByMonth = Group-By -Rows $faturamentoRows -KeySelector {
-    param($row) (Get-MonthKey (Get-RowField $row 'Data Faturamento'))
-  } -Accumulator {
-    param($bucket, $row)
-    $bucket.count++
-    Add-NumberProp $bucket 'totalPesoLiquidoKg' (To-Number (Get-RowField $row 'Peso Liquido'))
-    Add-NumberProp $bucket 'totalPesoBrutoKg' (To-Number (Get-RowField $row 'Peso Bruto'))
-    Add-NumberProp $bucket 'totalTaraKg' (To-Number (Get-RowField $row 'Tara'))
-  } | ForEach-Object {
+  $fatDataIdx = Get-Index $faturamentoHeaders @('Data Faturamento')
+  $fatProdutoIdx = Get-Index $faturamentoHeaders @('Produto')
+  $fatPesoBrutoIdx = Get-Index $faturamentoHeaders @('Peso Bruto')
+  $fatPesoLiquidoIdx = Get-Index $faturamentoHeaders @('Peso Liquido')
+  $fatTaraIdx = Get-Index $faturamentoHeaders @('Tara')
+
+  $faturamentoMonthMap = @{}
+  $faturamentoProductMap = @{}
+  for ($r = 2; $r -le $faturamento.Rows; $r++) {
+    $monthKey = Month-Key (Get-Value $faturamento.Values $r $fatDataIdx)
+    $monthBucket = Ensure-Bucket $faturamentoMonthMap $monthKey
+    $monthBucket['count'] = [double]$monthBucket['count'] + 1
+    Add-Value $monthBucket 'pesoBrutoKg' (Convert-ToNumber (Get-Value $faturamento.Values $r $fatPesoBrutoIdx))
+    Add-Value $monthBucket 'pesoLiquidoKg' (Convert-ToNumber (Get-Value $faturamento.Values $r $fatPesoLiquidoIdx))
+    Add-Value $monthBucket 'taraKg' (Convert-ToNumber (Get-Value $faturamento.Values $r $fatTaraIdx))
+
+    $productKey = Convert-ToText (Get-Value $faturamento.Values $r $fatProdutoIdx)
+    $productBucket = Ensure-Bucket $faturamentoProductMap $productKey
+    $productBucket['count'] = [double]$productBucket['count'] + 1
+    Add-Value $productBucket 'pesoLiquidoKg' (Convert-ToNumber (Get-Value $faturamento.Values $r $fatPesoLiquidoIdx))
+  }
+
+  $faturamentoByMonth = $faturamentoMonthMap.GetEnumerator() | ForEach-Object {
+    $bucket = $_.Value
     [ordered]@{
-      monthKey = $_.key
-      monthLabel = Month-Label $_.key
-      registros = $_.count
-      pesoLiquidoKg = [Math]::Round((Get-PropValue $_ 'totalPesoLiquidoKg'), 2)
-      pesoBrutoKg = [Math]::Round((Get-PropValue $_ 'totalPesoBrutoKg'), 2)
-      taraKg = [Math]::Round((Get-PropValue $_ 'totalTaraKg'), 2)
+      monthKey = $_.Key
+      monthLabel = Month-Label $_.Key
+      registros = [Math]::Round([double]$bucket['count'], 2)
+      pesoLiquidoKg = [Math]::Round([double]$bucket['pesoLiquidoKg'], 2)
+      pesoBrutoKg = [Math]::Round([double]$bucket['pesoBrutoKg'], 2)
+      taraKg = [Math]::Round([double]$bucket['taraKg'], 2)
     }
   } | Sort-Object monthKey
 
-  $faturamentoByProduct = Group-By -Rows $faturamentoRows -KeySelector {
-    param($row) (Get-RowField $row 'Produto')
-  } -Accumulator {
-    param($bucket, $row)
-    $bucket.count++
-    Add-NumberProp $bucket 'totalPesoLiquidoKg' (To-Number (Get-RowField $row 'Peso Liquido'))
-  } | ForEach-Object {
+  $faturamentoByProduct = $faturamentoProductMap.GetEnumerator() | ForEach-Object {
+    $bucket = $_.Value
     [ordered]@{
-      produto = $_.key
-      registros = $_.count
-      pesoLiquidoKg = [Math]::Round((Get-PropValue $_ 'totalPesoLiquidoKg'), 2)
+      produto = $_.Key
+      registros = [Math]::Round([double]$bucket['count'], 2)
+      pesoLiquidoKg = [Math]::Round([double]$bucket['pesoLiquidoKg'], 2)
     }
   } | Sort-Object pesoLiquidoKg -Descending
 
-  $tipoFornecedor = $tipoRows | ForEach-Object {
-    [ordered]@{
-      fornecedor = Get-RowField $_ 'FORNECEDOR'
-      tipo = Get-RowField $_ 'TIPO'
-      representante = Get-RowField $_ 'REPRESENTANTE'
-      classificacao = Get-RowField $_ 'CLASSIFICACAO'
-      origem = Get-RowField $_ 'ORIGEM'
+  $tipoFornecedor = @()
+  for ($r = 2; $r -le $tipo.Rows; $r++) {
+    $tipoFornecedor += [ordered]@{
+      fornecedor = Convert-ToText (Get-Value $tipo.Values $r (Get-Index $tipoHeaders @('FORNECEDOR')))
+      tipo = Convert-ToText (Get-Value $tipo.Values $r (Get-Index $tipoHeaders @('TIPO')))
+      representante = Convert-ToText (Get-Value $tipo.Values $r (Get-Index $tipoHeaders @('REPRESENTANTE')))
+      classificacao = Convert-ToText (Get-Value $tipo.Values $r (Get-Index $tipoHeaders @('CLASSIFICACAO')))
+      origem = Convert-ToText (Get-Value $tipo.Values $r (Get-Index $tipoHeaders @('ORIGEM')))
     }
   }
 
-  $precoFornecedor = $precoRows | ForEach-Object {
+  $precoFornecedor = @()
+  $precoFornecedorIdx = Get-Index $precoHeaders @('FORNECEDOR')
+  for ($r = 2; $r -le $preco.Rows; $r++) {
     $prices = @()
     for ($i = 1; $i -le 19; $i++) {
-      $field = "Preco Unit $i"
-      $num = To-Number (Get-RowField $_ $field)
+      $col = Get-Index $precoHeaders @("Preco Unit $i")
+      $num = Convert-ToNumber (Get-Value $preco.Values $r $col)
       if ($num -gt 0) { $prices += $num }
     }
     $avg = if ($prices.Count) { ($prices | Measure-Object -Average).Average } else { 0 }
-    [ordered]@{
-      fornecedor = Get-RowField $_ 'FORNECEDOR'
+    $precoFornecedor += [ordered]@{
+      fornecedor = Convert-ToText (Get-Value $preco.Values $r $precoFornecedorIdx)
       precoMedio = [Math]::Round($avg, 2)
       precoMin = if ($prices.Count) { [Math]::Round(($prices | Measure-Object -Minimum).Minimum, 2) } else { 0 }
       precoMax = if ($prices.Count) { [Math]::Round(($prices | Measure-Object -Maximum).Maximum, 2) } else { 0 }
       unidades = $prices.Count
     }
-  } | Sort-Object precoMedio -Descending
+  }
+  $precoFornecedor = $precoFornecedor | Sort-Object precoMedio -Descending
+
+  $entradaTotalPesoBruto = 0
+  $entradaTotalPesoLiquido = 0
+  $entradaTotalTara = 0
+  $entradaTotalCachos = 0
+  for ($r = 2; $r -le $entrada.Rows; $r++) {
+    $entradaTotalPesoBruto += Convert-ToNumber (Get-Value $entrada.Values $r $entradaPesoBrutoIdx)
+    $entradaTotalPesoLiquido += Convert-ToNumber (Get-Value $entrada.Values $r $entradaPesoLiquidoIdx)
+    $entradaTotalTara += Convert-ToNumber (Get-Value $entrada.Values $r $entradaTaraIdx)
+    $entradaTotalCachos += Convert-ToNumber (Get-Value $entrada.Values $r $entradaCachosIdx)
+  }
+
+  $faturamentoTotalPesoLiquido = 0
+  $faturamentoTotalPesoBruto = 0
+  $faturamentoTotalTara = 0
+  for ($r = 2; $r -le $faturamento.Rows; $r++) {
+    $faturamentoTotalPesoLiquido += Convert-ToNumber (Get-Value $faturamento.Values $r $fatPesoLiquidoIdx)
+    $faturamentoTotalPesoBruto += Convert-ToNumber (Get-Value $faturamento.Values $r $fatPesoBrutoIdx)
+    $faturamentoTotalTara += Convert-ToNumber (Get-Value $faturamento.Values $r $fatTaraIdx)
+  }
 
   $snapshot = [ordered]@{
     generatedAt = (Get-Date).ToString('o')
     sourcePath = $WorkbookPath
     entradaDeCff = [ordered]@{
-      totalRegistros = $entradaRows.Count
-      totalPesoBrutoKg = [Math]::Round((($entradaRows | ForEach-Object { To-Number (Get-RowField $_ 'Peso Bruto') } | Measure-Object -Sum).Sum), 2)
-      totalPesoLiquidoKg = [Math]::Round((($entradaRows | ForEach-Object { To-Number (Get-RowField $_ 'Peso Liquido') } | Measure-Object -Sum).Sum), 2)
-      totalTaraKg = [Math]::Round((($entradaRows | ForEach-Object { To-Number (Get-RowField $_ 'Tara') } | Measure-Object -Sum).Sum), 2)
-      totalCachos = [Math]::Round((($entradaRows | ForEach-Object { To-Number (Get-RowField $_ 'N Cachos') } | Measure-Object -Sum).Sum), 2)
+      totalRegistros = $entrada.Rows - 1
+      totalPesoBrutoKg = [Math]::Round($entradaTotalPesoBruto, 2)
+      totalPesoLiquidoKg = [Math]::Round($entradaTotalPesoLiquido, 2)
+      totalTaraKg = [Math]::Round($entradaTotalTara, 2)
+      totalCachos = [Math]::Round($entradaTotalCachos, 2)
       byMonth = $entradaByMonth
       byProduct = $entradaByProduct
     }
     cqoRampa = [ordered]@{
-      totalRegistros = $rampaRows.Count
+      totalRegistros = $rampa.Rows - 1
       byMonth = $rampaByMonth
       byFarm = $rampaByFarm
     }
     faturamento = [ordered]@{
-      totalRegistros = $faturamentoRows.Count
-      totalPesoLiquidoKg = [Math]::Round((($faturamentoRows | ForEach-Object { To-Number (Get-RowField $_ 'Peso Liquido') } | Measure-Object -Sum).Sum), 2)
-      totalPesoBrutoKg = [Math]::Round((($faturamentoRows | ForEach-Object { To-Number (Get-RowField $_ 'Peso Bruto') } | Measure-Object -Sum).Sum), 2)
-      totalTaraKg = [Math]::Round((($faturamentoRows | ForEach-Object { To-Number (Get-RowField $_ 'Tara') } | Measure-Object -Sum).Sum), 2)
+      totalRegistros = $faturamento.Rows - 1
+      totalPesoLiquidoKg = [Math]::Round($faturamentoTotalPesoLiquido, 2)
+      totalPesoBrutoKg = [Math]::Round($faturamentoTotalPesoBruto, 2)
+      totalTaraKg = [Math]::Round($faturamentoTotalTara, 2)
       byMonth = $faturamentoByMonth
       byProduct = $faturamentoByProduct
     }
@@ -372,7 +449,7 @@ try {
     New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
   }
 
-  $snapshot | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $OutputPath -Encoding UTF8
+  $snapshot | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $OutputPath -Encoding UTF8
 }
 finally {
   if ($wb) { $wb.Close($false) }

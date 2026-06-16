@@ -1,200 +1,210 @@
 ﻿{
-    "generatedAt":  "2026-06-16T08:35:13.4178568-03:00",
+    "generatedAt":  "2026-06-16T09:50:11.3148431-03:00",
     "sourcePath":  "E:\\TÉCNICA\\1-Arvore de Relatórios\\1-Bonificação e Qualidade\\Base Qualidade CFF.xlsx",
     "entradaDeCff":  {
                          "totalRegistros":  9422,
                          "totalPesoBrutoKg":  292917660,
                          "totalPesoLiquidoKg":  152044101,
                          "totalTaraKg":  139249819,
-                         "totalCachos":  0,
+                         "totalCachos":  3341992.19,
                          "byMonth":  [
                                          {
                                              "monthKey":  "2024-09",
                                              "monthLabel":  "09/2024",
-                                             "tickets":  0,
-                                             "pesoBrutoKg":  0,
-                                             "pesoLiquidoKg":  0,
-                                             "taraKg":  0,
-                                             "cachos":  0
+                                             "tickets":  975,
+                                             "pesoBrutoKg":  29845630,
+                                             "pesoLiquidoKg":  15497820,
+                                             "taraKg":  14281330,
+                                             "cachos":  591020.19
                                          },
                                          {
                                              "monthKey":  "2024-05",
                                              "monthLabel":  "05/2024",
-                                             "tickets":  0,
-                                             "pesoBrutoKg":  0,
-                                             "pesoLiquidoKg":  0,
-                                             "taraKg":  0,
-                                             "cachos":  0
+                                             "tickets":  375,
+                                             "pesoBrutoKg":  11441140,
+                                             "pesoLiquidoKg":  5845440,
+                                             "taraKg":  5424870,
+                                             "cachos":  79701
                                          },
                                          {
                                              "monthKey":  "2024-11",
                                              "monthLabel":  "11/2024",
-                                             "tickets":  0,
-                                             "pesoBrutoKg":  0,
-                                             "pesoLiquidoKg":  0,
-                                             "taraKg":  0,
-                                             "cachos":  0
+                                             "tickets":  1419,
+                                             "pesoBrutoKg":  45084660,
+                                             "pesoLiquidoKg":  23735270,
+                                             "taraKg":  21381460,
+                                             "cachos":  485918
                                          },
                                          {
                                              "monthKey":  "2024-12",
                                              "monthLabel":  "12/2024",
-                                             "tickets":  0,
-                                             "pesoBrutoKg":  0,
-                                             "pesoLiquidoKg":  0,
-                                             "taraKg":  0,
-                                             "cachos":  0
+                                             "tickets":  1109,
+                                             "pesoBrutoKg":  34641370,
+                                             "pesoLiquidoKg":  18008860,
+                                             "taraKg":  16723160,
+                                             "cachos":  300267
                                          },
                                          {
                                              "monthKey":  "2024-06",
                                              "monthLabel":  "06/2024",
-                                             "tickets":  0,
-                                             "pesoBrutoKg":  0,
-                                             "pesoLiquidoKg":  0,
-                                             "taraKg":  0,
-                                             "cachos":  0
+                                             "tickets":  278,
+                                             "pesoBrutoKg":  8494130,
+                                             "pesoLiquidoKg":  4232240,
+                                             "taraKg":  3695800,
+                                             "cachos":  64215
                                          },
                                          {
                                              "monthKey":  "2024-07",
                                              "monthLabel":  "07/2024",
-                                             "tickets":  0,
-                                             "pesoBrutoKg":  0,
-                                             "pesoLiquidoKg":  0,
-                                             "taraKg":  0,
-                                             "cachos":  0
+                                             "tickets":  251,
+                                             "pesoBrutoKg":  7373450,
+                                             "pesoLiquidoKg":  3658750,
+                                             "taraKg":  3494310,
+                                             "cachos":  66855
                                          },
                                          {
                                              "monthKey":  "2025-01",
                                              "monthLabel":  "01/2025",
-                                             "tickets":  0,
-                                             "pesoBrutoKg":  0,
-                                             "pesoLiquidoKg":  0,
-                                             "taraKg":  0,
-                                             "cachos":  0
+                                             "tickets":  948,
+                                             "pesoBrutoKg":  30338650,
+                                             "pesoLiquidoKg":  15995501,
+                                             "taraKg":  14319739,
+                                             "cachos":  241049
                                          },
                                          {
                                              "monthKey":  "2024-03",
                                              "monthLabel":  "03/2024",
-                                             "tickets":  0,
-                                             "pesoBrutoKg":  0,
-                                             "pesoLiquidoKg":  0,
-                                             "taraKg":  0,
-                                             "cachos":  0
+                                             "tickets":  466,
+                                             "pesoBrutoKg":  14394350,
+                                             "pesoLiquidoKg":  7489930,
+                                             "taraKg":  6904420,
+                                             "cachos":  89944
                                          },
                                          {
                                              "monthKey":  "2025-02",
                                              "monthLabel":  "02/2025",
-                                             "tickets":  0,
-                                             "pesoBrutoKg":  0,
-                                             "pesoLiquidoKg":  0,
-                                             "taraKg":  0,
-                                             "cachos":  0
+                                             "tickets":  507,
+                                             "pesoBrutoKg":  16286060,
+                                             "pesoLiquidoKg":  8521610,
+                                             "taraKg":  7764450,
+                                             "cachos":  46823
                                          },
                                          {
                                              "monthKey":  "2024-02",
                                              "monthLabel":  "02/2024",
-                                             "tickets":  0,
-                                             "pesoBrutoKg":  0,
-                                             "pesoLiquidoKg":  0,
-                                             "taraKg":  0,
-                                             "cachos":  0
+                                             "tickets":  529,
+                                             "pesoBrutoKg":  16350550,
+                                             "pesoLiquidoKg":  8503460,
+                                             "taraKg":  7847090,
+                                             "cachos":  141734
                                          },
                                          {
                                              "monthKey":  "2024-10",
                                              "monthLabel":  "10/2024",
-                                             "tickets":  0,
-                                             "pesoBrutoKg":  0,
-                                             "pesoLiquidoKg":  0,
-                                             "taraKg":  0,
-                                             "cachos":  0
+                                             "tickets":  1786,
+                                             "pesoBrutoKg":  55071710,
+                                             "pesoLiquidoKg":  28718850,
+                                             "taraKg":  26286960,
+                                             "cachos":  948244
                                          },
                                          {
                                              "monthKey":  "2025-03",
                                              "monthLabel":  "03/2025",
-                                             "tickets":  0,
-                                             "pesoBrutoKg":  0,
-                                             "pesoLiquidoKg":  0,
-                                             "taraKg":  0,
-                                             "cachos":  0
+                                             "tickets":  70,
+                                             "pesoBrutoKg":  2319370,
+                                             "pesoLiquidoKg":  1263040,
+                                             "taraKg":  1056330,
+                                             "cachos":  5284
                                          },
                                          {
                                              "monthKey":  "2024-04",
                                              "monthLabel":  "04/2024",
-                                             "tickets":  0,
-                                             "pesoBrutoKg":  0,
-                                             "pesoLiquidoKg":  0,
-                                             "taraKg":  0,
-                                             "cachos":  0
+                                             "tickets":  304,
+                                             "pesoBrutoKg":  9201720,
+                                             "pesoLiquidoKg":  4408910,
+                                             "taraKg":  4282290,
+                                             "cachos":  90821
                                          },
                                          {
                                              "monthKey":  "2024-08",
                                              "monthLabel":  "08/2024",
-                                             "tickets":  0,
-                                             "pesoBrutoKg":  0,
-                                             "pesoLiquidoKg":  0,
-                                             "taraKg":  0,
-                                             "cachos":  0
+                                             "tickets":  405,
+                                             "pesoBrutoKg":  12074870,
+                                             "pesoLiquidoKg":  6164420,
+                                             "taraKg":  5787610,
+                                             "cachos":  190117
                                          }
                                      ],
                          "byProduct":  [
                                            {
                                                "produto":  "CFF Fruto de dende",
                                                "registros":  982,
-                                               "pesoLiquidoKg":  0
+                                               "pesoLiquidoKg":  15956500
                                            },
                                            {
                                                "produto":  "FS - Fruto Solto",
                                                "registros":  17,
-                                               "pesoLiquidoKg":  0
+                                               "pesoLiquidoKg":  38060
                                            },
                                            {
                                                "produto":  "CFF Fruto De Dendê",
                                                "registros":  8421,
-                                               "pesoLiquidoKg":  0
+                                               "pesoLiquidoKg":  136021171
                                            },
                                            {
                                                "produto":  "CFF Fruto De Dendê- Próprio",
                                                "registros":  2,
-                                               "pesoLiquidoKg":  0
+                                               "pesoLiquidoKg":  28370
                                            }
                                        ]
                      },
     "cqoRampa":  {
-                     "totalRegistros":  8954,
+                     "totalRegistros":  9010,
                      "byMonth":  [
                                      {
                                          "monthKey":  "2024-09",
                                          "monthLabel":  "09/2024",
                                          "registros":  948,
-                                         "tcaMedia":  0,
-                                         "cvMedia":  0,
-                                         "cmMedia":  0,
-                                         "cpMedia":  0,
-                                         "tcMedia":  0
-                                     },
-                                     {
-                                         "monthKey":  "2024-01",
-                                         "monthLabel":  "01/2024",
-                                         "registros":  609,
-                                         "tcaMedia":  0,
-                                         "cvMedia":  0,
-                                         "cmMedia":  0,
-                                         "cpMedia":  0,
-                                         "tcMedia":  0
-                                     },
-                                     {
-                                         "monthKey":  "2024-05",
-                                         "monthLabel":  "05/2024",
-                                         "registros":  350,
-                                         "tcaMedia":  0,
-                                         "cvMedia":  0,
-                                         "cmMedia":  0,
-                                         "cpMedia":  0,
-                                         "tcMedia":  0
+                                         "tcaMedia":  100,
+                                         "cvMedia":  24.09,
+                                         "cmMedia":  54.36,
+                                         "cpMedia":  20.38,
+                                         "tcMedia":  9.38
                                      },
                                      {
                                          "monthKey":  "2024-12",
                                          "monthLabel":  "12/2024",
                                          "registros":  1027,
+                                         "tcaMedia":  100,
+                                         "cvMedia":  10.95,
+                                         "cmMedia":  79.07,
+                                         "cpMedia":  9.97,
+                                         "tcMedia":  6.17
+                                     },
+                                     {
+                                         "monthKey":  "2024-05",
+                                         "monthLabel":  "05/2024",
+                                         "registros":  350,
+                                         "tcaMedia":  100,
+                                         "cvMedia":  7.37,
+                                         "cmMedia":  74.32,
+                                         "cpMedia":  18.31,
+                                         "tcMedia":  7.67
+                                     },
+                                     {
+                                         "monthKey":  "2024-01",
+                                         "monthLabel":  "01/2024",
+                                         "registros":  609,
+                                         "tcaMedia":  100,
+                                         "cvMedia":  17.92,
+                                         "cmMedia":  73.9,
+                                         "cpMedia":  8.18,
+                                         "tcMedia":  6.14
+                                     },
+                                     {
+                                         "monthKey":  "sem-data",
+                                         "monthLabel":  "Sem data",
+                                         "registros":  56,
                                          "tcaMedia":  0,
                                          "cvMedia":  0,
                                          "cmMedia":  0,
@@ -205,324 +215,315 @@
                                          "monthKey":  "2024-06",
                                          "monthLabel":  "06/2024",
                                          "registros":  238,
-                                         "tcaMedia":  0,
-                                         "cvMedia":  0,
-                                         "cmMedia":  0,
-                                         "cpMedia":  0,
-                                         "tcMedia":  0
-                                     },
-                                     {
-                                         "monthKey":  "2024-07",
-                                         "monthLabel":  "07/2024",
-                                         "registros":  222,
-                                         "tcaMedia":  0,
-                                         "cvMedia":  0,
-                                         "cmMedia":  0,
-                                         "cpMedia":  0,
-                                         "tcMedia":  0
+                                         "tcaMedia":  100,
+                                         "cvMedia":  11.1,
+                                         "cmMedia":  68.21,
+                                         "cpMedia":  20.68,
+                                         "tcMedia":  6.61
                                      },
                                      {
                                          "monthKey":  "2025-01",
                                          "monthLabel":  "01/2025",
                                          "registros":  821,
-                                         "tcaMedia":  0,
-                                         "cvMedia":  0,
-                                         "cmMedia":  0,
-                                         "cpMedia":  0,
-                                         "tcMedia":  0
+                                         "tcaMedia":  100,
+                                         "cvMedia":  10.44,
+                                         "cmMedia":  80.51,
+                                         "cpMedia":  9.05,
+                                         "tcMedia":  6.3
                                      },
                                      {
-                                         "monthKey":  "2024-11",
-                                         "monthLabel":  "11/2024",
-                                         "registros":  1309,
-                                         "tcaMedia":  0,
-                                         "cvMedia":  0,
-                                         "cmMedia":  0,
-                                         "cpMedia":  0,
-                                         "tcMedia":  0
+                                         "monthKey":  "2024-07",
+                                         "monthLabel":  "07/2024",
+                                         "registros":  222,
+                                         "tcaMedia":  100,
+                                         "cvMedia":  16.64,
+                                         "cmMedia":  59.18,
+                                         "cpMedia":  24.18,
+                                         "tcMedia":  8.12
                                      },
                                      {
                                          "monthKey":  "2024-03",
                                          "monthLabel":  "03/2024",
                                          "registros":  333,
-                                         "tcaMedia":  0,
-                                         "cvMedia":  0,
-                                         "cmMedia":  0,
-                                         "cpMedia":  0,
-                                         "tcMedia":  0
-                                     },
-                                     {
-                                         "monthKey":  "2025-02",
-                                         "monthLabel":  "02/2025",
-                                         "registros":  463,
-                                         "tcaMedia":  0,
-                                         "cvMedia":  0,
-                                         "cmMedia":  0,
-                                         "cpMedia":  0,
-                                         "tcMedia":  0
-                                     },
-                                     {
-                                         "monthKey":  "2024-02",
-                                         "monthLabel":  "02/2024",
-                                         "registros":  291,
-                                         "tcaMedia":  0,
-                                         "cvMedia":  0,
-                                         "cmMedia":  0,
-                                         "cpMedia":  0,
-                                         "tcMedia":  0
+                                         "tcaMedia":  100,
+                                         "cvMedia":  37.3,
+                                         "cmMedia":  55.54,
+                                         "cpMedia":  7.16,
+                                         "tcMedia":  8.48
                                      },
                                      {
                                          "monthKey":  "2024-10",
                                          "monthLabel":  "10/2024",
                                          "registros":  1635,
-                                         "tcaMedia":  0,
-                                         "cvMedia":  0,
-                                         "cmMedia":  0,
-                                         "cpMedia":  0,
-                                         "tcMedia":  0
+                                         "tcaMedia":  100,
+                                         "cvMedia":  18.38,
+                                         "cmMedia":  61.4,
+                                         "cpMedia":  20.21,
+                                         "tcMedia":  7.9
+                                     },
+                                     {
+                                         "monthKey":  "2024-02",
+                                         "monthLabel":  "02/2024",
+                                         "registros":  291,
+                                         "tcaMedia":  100,
+                                         "cvMedia":  16.27,
+                                         "cmMedia":  71.41,
+                                         "cpMedia":  10.94,
+                                         "tcMedia":  5.43
+                                     },
+                                     {
+                                         "monthKey":  "2025-02",
+                                         "monthLabel":  "02/2025",
+                                         "registros":  463,
+                                         "tcaMedia":  100,
+                                         "cvMedia":  14.75,
+                                         "cmMedia":  74.41,
+                                         "cpMedia":  10.84,
+                                         "tcMedia":  7.85
                                      },
                                      {
                                          "monthKey":  "2025-03",
                                          "monthLabel":  "03/2025",
                                          "registros":  62,
-                                         "tcaMedia":  0,
-                                         "cvMedia":  0,
-                                         "cmMedia":  0,
-                                         "cpMedia":  0,
-                                         "tcMedia":  0
+                                         "tcaMedia":  100,
+                                         "cvMedia":  14.81,
+                                         "cmMedia":  70.82,
+                                         "cpMedia":  14.37,
+                                         "tcMedia":  6.19
                                      },
                                      {
-                                         "monthKey":  "2024-04",
-                                         "monthLabel":  "04/2024",
-                                         "registros":  262,
-                                         "tcaMedia":  0,
-                                         "cvMedia":  0,
-                                         "cmMedia":  0,
-                                         "cpMedia":  0,
-                                         "tcMedia":  0
+                                         "monthKey":  "2024-11",
+                                         "monthLabel":  "11/2024",
+                                         "registros":  1309,
+                                         "tcaMedia":  100,
+                                         "cvMedia":  11.63,
+                                         "cmMedia":  77.34,
+                                         "cpMedia":  11.03,
+                                         "tcMedia":  5.13
                                      },
                                      {
                                          "monthKey":  "2024-08",
                                          "monthLabel":  "08/2024",
                                          "registros":  384,
-                                         "tcaMedia":  0,
-                                         "cvMedia":  0,
-                                         "cmMedia":  0,
-                                         "cpMedia":  0,
-                                         "tcMedia":  0
+                                         "tcaMedia":  100,
+                                         "cvMedia":  16.64,
+                                         "cmMedia":  56.29,
+                                         "cpMedia":  27.07,
+                                         "tcMedia":  10.52
+                                     },
+                                     {
+                                         "monthKey":  "2024-04",
+                                         "monthLabel":  "04/2024",
+                                         "registros":  262,
+                                         "tcaMedia":  100,
+                                         "cvMedia":  11.02,
+                                         "cmMedia":  79.92,
+                                         "cpMedia":  9.05,
+                                         "tcMedia":  5.78
                                      }
                                  ],
                      "byFarm":  [
                                     {
-                                        "fazenda":  "PATRIK RODRIGUES DA SILVA",
-                                        "registros":  7,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
                                         "fazenda":  "COOPFAN",
                                         "registros":  59,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "ARGEMIRO LISBOA BRANDÃO",
-                                        "registros":  3,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "MC SERVIÇO E COMERCIO LTDA",
-                                        "registros":  76,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "RLM SILVA TRANSPORTES COMERCIO LTDA",
-                                        "registros":  28,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "ADILSON FIRMINO DA SILVA",
-                                        "registros":  5,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  21.05,
+                                        "cmMedia":  66.61,
+                                        "cpMedia":  12.34,
+                                        "tcMedia":  10.54
                                     },
                                     {
                                         "fazenda":  "JESUS PALHETA DO NASCIMENTO",
                                         "registros":  1,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  5,
+                                        "cmMedia":  91,
+                                        "cpMedia":  4,
+                                        "tcMedia":  7
+                                    },
+                                    {
+                                        "fazenda":  "MC SERVIÇO E COMERCIO LTDA",
+                                        "registros":  76,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  25.24,
+                                        "cmMedia":  63,
+                                        "cpMedia":  11.76,
+                                        "tcMedia":  6.16
+                                    },
+                                    {
+                                        "fazenda":  "PATRIK RODRIGUES DA SILVA",
+                                        "registros":  7,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  8.86,
+                                        "cmMedia":  79,
+                                        "cpMedia":  12.14,
+                                        "tcMedia":  11
+                                    },
+                                    {
+                                        "fazenda":  "ADILSON FIRMINO DA SILVA",
+                                        "registros":  5,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  13,
+                                        "cmMedia":  76.6,
+                                        "cpMedia":  10.4,
+                                        "tcMedia":  10
+                                    },
+                                    {
+                                        "fazenda":  "MARCELO LUIS MORATELLI",
+                                        "registros":  1,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  7,
+                                        "cmMedia":  86,
+                                        "cpMedia":  7,
+                                        "tcMedia":  4
                                     },
                                     {
                                         "fazenda":  "AEC COMERCIO E SERVICO",
                                         "registros":  463,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  35.98,
+                                        "cmMedia":  45.51,
+                                        "cpMedia":  17.22,
+                                        "tcMedia":  9.08
                                     },
                                     {
-                                        "fazenda":  "TEREZEINHA COSTA DOS SANTOS",
-                                        "registros":  11,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "fazenda":  "RLM SILVA TRANSPORTES COMERCIO LTDA",
+                                        "registros":  28,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  16.68,
+                                        "cmMedia":  62.14,
+                                        "cpMedia":  21.18,
+                                        "tcMedia":  8.25
                                     },
                                     {
-                                        "fazenda":  "JOEL FREITAS",
-                                        "registros":  9,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "fazenda":  "ARGEMIRO LISBOA BRANDÃO",
+                                        "registros":  3,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  12.67,
+                                        "cmMedia":  55.67,
+                                        "cpMedia":  31.67,
+                                        "tcMedia":  10.33
                                     },
                                     {
                                         "fazenda":  "MARCIA CRISTINA",
                                         "registros":  5,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "MESSIAS DA CRUZ LIMA",
-                                        "registros":  13,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "MESSIAS DA CRUZ",
-                                        "registros":  6,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "DANIEL EVANIO FERNANDES TEIXEIRA",
-                                        "registros":  2,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "DCC TRANSPORTE",
-                                        "registros":  2,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  1.4,
+                                        "cmMedia":  85,
+                                        "cpMedia":  13.6,
+                                        "tcMedia":  9.4
                                     },
                                     {
                                         "fazenda":  "SHIRLEY CARVALHO",
                                         "registros":  4,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  5,
+                                        "cmMedia":  79.5,
+                                        "cpMedia":  15.5,
+                                        "tcMedia":  11.5
+                                    },
+                                    {
+                                        "fazenda":  "MESSIAS DA CRUZ",
+                                        "registros":  6,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  27.33,
+                                        "cmMedia":  66,
+                                        "cpMedia":  6.67,
+                                        "tcMedia":  10.33
+                                    },
+                                    {
+                                        "fazenda":  "JOEL FREITAS",
+                                        "registros":  9,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  43,
+                                        "cmMedia":  47.22,
+                                        "cpMedia":  9.78,
+                                        "tcMedia":  8.22
+                                    },
+                                    {
+                                        "fazenda":  "DCC TRANSPORTE",
+                                        "registros":  2,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  32.5,
+                                        "cmMedia":  62.5,
+                                        "cpMedia":  5,
+                                        "tcMedia":  11
+                                    },
+                                    {
+                                        "fazenda":  "TEREZEINHA COSTA DOS SANTOS",
+                                        "registros":  11,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  10,
+                                        "cmMedia":  75.73,
+                                        "cpMedia":  14.27,
+                                        "tcMedia":  7.82
                                     },
                                     {
                                         "fazenda":  "FLAUDIZIO DOS SANTOS COSTA",
                                         "registros":  3,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  17.33,
+                                        "cmMedia":  55.33,
+                                        "cpMedia":  27.33,
+                                        "tcMedia":  21
                                     },
                                     {
-                                        "fazenda":  "MOISES DE JESUS LAMBERTE",
-                                        "registros":  479,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "fazenda":  "DANIEL EVANIO FERNANDES TEIXEIRA",
+                                        "registros":  2,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  21,
+                                        "cmMedia":  70,
+                                        "cpMedia":  9,
+                                        "tcMedia":  3
                                     },
                                     {
                                         "fazenda":  "EDSON SHINJI MATSUZAK",
                                         "registros":  22,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "RL",
-                                        "registros":  265,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "ELI CABRAL SATURNO",
-                                        "registros":  2,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "KS MENDONCA",
-                                        "registros":  6,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "ANGELA NARCISIO DA SILVA",
-                                        "registros":  2,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  9.73,
+                                        "cmMedia":  73.41,
+                                        "cpMedia":  16.86,
+                                        "tcMedia":  8.32
                                     },
                                     {
                                         "fazenda":  "WOSHINGTON CUNHA MOREIRA",
                                         "registros":  3,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  12.33,
+                                        "cmMedia":  84.33,
+                                        "cpMedia":  3.33,
+                                        "tcMedia":  5.33
+                                    },
+                                    {
+                                        "fazenda":  "ELI CABRAL SATURNO",
+                                        "registros":  2,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  27.5,
+                                        "cmMedia":  50.5,
+                                        "cpMedia":  22,
+                                        "tcMedia":  18.5
+                                    },
+                                    {
+                                        "fazenda":  "MOISES DE JESUS LAMBERTE",
+                                        "registros":  479,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  7.95,
+                                        "cmMedia":  74.78,
+                                        "cpMedia":  17.27,
+                                        "tcMedia":  6.8
+                                    },
+                                    {
+                                        "fazenda":  "ANGELA NARCISIO DA SILVA",
+                                        "registros":  2,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  7.5,
+                                        "cmMedia":  81,
+                                        "cpMedia":  11.5,
+                                        "tcMedia":  4.5
+                                    },
+                                    {
+                                        "fazenda":  "",
+                                        "registros":  56,
                                         "tcaMedia":  0,
                                         "cvMedia":  0,
                                         "cmMedia":  0,
@@ -532,398 +533,416 @@
                                     {
                                         "fazenda":  "NOVO PROGRESSO",
                                         "registros":  126,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  16.46,
+                                        "cmMedia":  67.46,
+                                        "cpMedia":  16.08,
+                                        "tcMedia":  7.78
                                     },
                                     {
-                                        "fazenda":  "ROGERIO SANCHES RODRIGUES",
-                                        "registros":  4,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "fazenda":  "KS MENDONCA",
+                                        "registros":  6,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  34.33,
+                                        "cmMedia":  63.67,
+                                        "cpMedia":  2,
+                                        "tcMedia":  3.67
                                     },
                                     {
-                                        "fazenda":  "MARCO ANTONIO DA SILVA LEAO",
-                                        "registros":  2,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "fazenda":  "RL",
+                                        "registros":  265,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  38.42,
+                                        "cmMedia":  55.16,
+                                        "cpMedia":  6.05,
+                                        "tcMedia":  10.22
                                     },
                                     {
                                         "fazenda":  "JOAO EVANGELISTA SILVA",
                                         "registros":  3,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "MARCELO LUIS MORATELLI",
-                                        "registros":  1,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "Belem Bioenergia Brasil",
-                                        "registros":  99,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "FÉ EM DEUS",
-                                        "registros":  558,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
-                                    },
-                                    {
-                                        "fazenda":  "FAZENDA TOCA DOS GATOS LTDA",
-                                        "registros":  72,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  4.67,
+                                        "cmMedia":  64.33,
+                                        "cpMedia":  31,
+                                        "tcMedia":  5
                                     },
                                     {
                                         "fazenda":  "GLOBAL SOLUÇÕES AGRICOLAS LTDA",
                                         "registros":  284,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  19.33,
+                                        "cmMedia":  61.07,
+                                        "cpMedia":  19.6,
+                                        "tcMedia":  10.02
+                                    },
+                                    {
+                                        "fazenda":  "Belem Bioenergia Brasil",
+                                        "registros":  99,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  2.44,
+                                        "cmMedia":  74.26,
+                                        "cpMedia":  23.29,
+                                        "tcMedia":  6.13
+                                    },
+                                    {
+                                        "fazenda":  "MARCO ANTONIO DA SILVA LEAO",
+                                        "registros":  2,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  9,
+                                        "cmMedia":  80,
+                                        "cpMedia":  11,
+                                        "tcMedia":  7.5
+                                    },
+                                    {
+                                        "fazenda":  "FAZENDA TOCA DOS GATOS LTDA",
+                                        "registros":  72,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  19.03,
+                                        "cmMedia":  66.72,
+                                        "cpMedia":  14.25,
+                                        "tcMedia":  9.57
+                                    },
+                                    {
+                                        "fazenda":  "ROGERIO SANCHES RODRIGUES",
+                                        "registros":  4,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  5,
+                                        "cmMedia":  59.5,
+                                        "cpMedia":  35.5,
+                                        "tcMedia":  6.25
                                     },
                                     {
                                         "fazenda":  "PAULO NAILZO POMPEU PORTILHO",
                                         "registros":  14,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  25.07,
+                                        "cmMedia":  54.14,
+                                        "cpMedia":  20.79,
+                                        "tcMedia":  6
+                                    },
+                                    {
+                                        "fazenda":  "FÉ EM DEUS",
+                                        "registros":  558,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  3.48,
+                                        "cmMedia":  77.95,
+                                        "cpMedia":  18.57,
+                                        "tcMedia":  5.71
+                                    },
+                                    {
+                                        "fazenda":  "MESSIAS DA CRUZ LIMA",
+                                        "registros":  13,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  24.31,
+                                        "cmMedia":  73.08,
+                                        "cpMedia":  2.62,
+                                        "tcMedia":  4.38
                                     },
                                     {
                                         "fazenda":  "GEOVANI COELHO BATISTA",
                                         "registros":  2,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  34.5,
+                                        "cmMedia":  50.5,
+                                        "cpMedia":  15,
+                                        "tcMedia":  9
                                     },
                                     {
                                         "fazenda":  "COOPAFAMITA-MIRITIPITANGA",
                                         "registros":  181,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  11.3,
+                                        "cmMedia":  81.23,
+                                        "cpMedia":  7.48,
+                                        "tcMedia":  4.23
                                     },
                                     {
                                         "fazenda":  "PABLO LUCIANO SENA DE JESUS",
                                         "registros":  1,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  37,
+                                        "cmMedia":  60,
+                                        "cpMedia":  3,
+                                        "tcMedia":  5
                                     },
                                     {
                                         "fazenda":  "DALLBRAS",
                                         "registros":  108,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  12.54,
+                                        "cmMedia":  74.06,
+                                        "cpMedia":  13.41,
+                                        "tcMedia":  6.35
                                     },
                                     {
                                         "fazenda":  "KOJI KONAGANO",
                                         "registros":  1,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  8,
+                                        "cmMedia":  82,
+                                        "cpMedia":  10,
+                                        "tcMedia":  10
                                     },
                                     {
                                         "fazenda":  "EDSON HENRIQUE TEODOSIO SILVA",
                                         "registros":  215,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  15.4,
+                                        "cmMedia":  71.6,
+                                        "cpMedia":  13,
+                                        "tcMedia":  4.57
                                     },
                                     {
                                         "fazenda":  "EVANILDA BATISTA FARIAS",
                                         "registros":  102,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  22.05,
+                                        "cmMedia":  59.29,
+                                        "cpMedia":  18.66,
+                                        "tcMedia":  7.09
                                     },
                                     {
                                         "fazenda":  "JF COMERCIO AGRICOLA LTDA",
                                         "registros":  1186,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  24.67,
+                                        "cmMedia":  60.49,
+                                        "cpMedia":  14.75,
+                                        "tcMedia":  7.31
                                     },
                                     {
                                         "fazenda":  "JOSE DE SOUZA PANTOJA",
                                         "registros":  1,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  11,
+                                        "cmMedia":  79,
+                                        "cpMedia":  10,
                                         "tcMedia":  0
                                     },
                                     {
                                         "fazenda":  "THOMAZ ALEXANDRE RAPOSO",
                                         "registros":  2,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  13,
+                                        "cmMedia":  87,
                                         "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcMedia":  5
                                     },
                                     {
                                         "fazenda":  "AUGUSTA CAPELLOZA",
                                         "registros":  3,
-                                        "tcaMedia":  0,
+                                        "tcaMedia":  100,
                                         "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "cmMedia":  71.67,
+                                        "cpMedia":  28.33,
+                                        "tcMedia":  6.33
                                     },
                                     {
                                         "fazenda":  "H C SOLUÇÕES-TRANSPORTES E TERRAPLENAGEM",
                                         "registros":  865,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  17.34,
+                                        "cmMedia":  72.14,
+                                        "cpMedia":  10.52,
+                                        "tcMedia":  6.47
                                     },
                                     {
                                         "fazenda":  "CLIDENOR GUEDES DE OLIVEIRA",
                                         "registros":  10,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  18.2,
+                                        "cmMedia":  66.9,
+                                        "cpMedia":  14.9,
+                                        "tcMedia":  11.2
                                     },
                                     {
                                         "fazenda":  "GRACIELLE GOMES TEIXEIRA",
                                         "registros":  11,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  6.27,
+                                        "cmMedia":  88.55,
+                                        "cpMedia":  5.18,
+                                        "tcMedia":  4
                                     },
                                     {
                                         "fazenda":  "NOVA CONCEIÇÃO",
                                         "registros":  644,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  4.33,
+                                        "cmMedia":  81.33,
+                                        "cpMedia":  14.34,
+                                        "tcMedia":  6.55
                                     },
                                     {
                                         "fazenda":  "Movimento Representação com.de Prod.Agri",
                                         "registros":  1,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  28,
+                                        "cmMedia":  66,
+                                        "cpMedia":  6,
+                                        "tcMedia":  10
                                     },
                                     {
                                         "fazenda":  "ALEXANDRE YUTAKA SHINOMIYA",
                                         "registros":  2,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  3.5,
+                                        "cmMedia":  83,
+                                        "cpMedia":  13.5,
+                                        "tcMedia":  7.5
                                     },
                                     {
                                         "fazenda":  "MARCO ANTONIODA SILVA LEAO",
                                         "registros":  2,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  1,
+                                        "cmMedia":  89,
+                                        "cpMedia":  10,
+                                        "tcMedia":  10
                                     },
                                     {
                                         "fazenda":  "DATERRA SOLUÇÕES AGRICOLA",
                                         "registros":  139,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  17.84,
+                                        "cmMedia":  71.39,
+                                        "cpMedia":  10.77,
+                                        "tcMedia":  7.82
                                     },
                                     {
                                         "fazenda":  "ANTONIO MOREIRA INACIO",
                                         "registros":  3,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
+                                        "tcaMedia":  100,
+                                        "cvMedia":  9.33,
+                                        "cmMedia":  72.33,
+                                        "cpMedia":  18.33,
                                         "tcMedia":  0
                                     },
                                     {
                                         "fazenda":  "RONIVAN DA FONSECA CORDEIRO",
                                         "registros":  128,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  5.24,
+                                        "cmMedia":  73.29,
+                                        "cpMedia":  21.47,
+                                        "tcMedia":  9.24
                                     },
                                     {
                                         "fazenda":  "EVERSON LOPES DA SILVA",
                                         "registros":  14,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  7.5,
+                                        "cmMedia":  82.43,
+                                        "cpMedia":  10.07,
+                                        "tcMedia":  5
                                     },
                                     {
                                         "fazenda":  "DCC",
                                         "registros":  1,
-                                        "tcaMedia":  0,
+                                        "tcaMedia":  100,
                                         "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "cmMedia":  93,
+                                        "cpMedia":  7,
+                                        "tcMedia":  4
                                     },
                                     {
                                         "fazenda":  "GIOVANI CONCEIÇÃO DA SILVA",
                                         "registros":  2,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  2.5,
+                                        "cmMedia":  87.5,
+                                        "cpMedia":  10,
+                                        "tcMedia":  7.5
                                     },
                                     {
                                         "fazenda":  "RIBAMAR",
                                         "registros":  399,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  10.81,
+                                        "cmMedia":  77.28,
+                                        "cpMedia":  11.65,
+                                        "tcMedia":  4.51
                                     },
                                     {
                                         "fazenda":  "H. C. COMERCIO, TRANSPORTES E SERV. LTDA",
                                         "registros":  106,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  27.81,
+                                        "cmMedia":  64.67,
+                                        "cpMedia":  7.52,
+                                        "tcMedia":  12.88
                                     },
                                     {
                                         "fazenda":  "SMF PANTOJA",
                                         "registros":  415,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  32.84,
+                                        "cmMedia":  53.1,
+                                        "cpMedia":  13.33,
+                                        "tcMedia":  6.93
                                     },
                                     {
                                         "fazenda":  "VALERIA MORAES SILVA OLIVEIRA",
                                         "registros":  5,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  7.4,
+                                        "cmMedia":  81.8,
+                                        "cpMedia":  10.8,
+                                        "tcMedia":  4
                                     },
                                     {
                                         "fazenda":  "DENDE ACU SOLUCOES AGRICOLAS LTDA",
                                         "registros":  121,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  32.83,
+                                        "cmMedia":  43.34,
+                                        "cpMedia":  21.35,
+                                        "tcMedia":  10.42
                                     },
                                     {
                                         "fazenda":  "EVANDERSON FERREIRA DE SOUSA PEREIRA",
                                         "registros":  5,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  26.8,
+                                        "cmMedia":  54.4,
+                                        "cpMedia":  18.8,
+                                        "tcMedia":  4.2
                                     },
                                     {
                                         "fazenda":  "PALMARES",
                                         "registros":  28,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  16.21,
+                                        "cmMedia":  56.57,
+                                        "cpMedia":  27.21,
+                                        "tcMedia":  13.25
                                     },
                                     {
                                         "fazenda":  "VILA NOVA",
                                         "registros":  1549,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  4.21,
+                                        "cmMedia":  80.26,
+                                        "cpMedia":  15.52,
+                                        "tcMedia":  6.53
                                     },
                                     {
                                         "fazenda":  "OZENILDO DE CASTRO ROCHA",
                                         "registros":  24,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  14.92,
+                                        "cmMedia":  71.17,
+                                        "cpMedia":  13.92,
+                                        "tcMedia":  5.08
                                     },
                                     {
                                         "fazenda":  "ANTONIO MARIA MOREIRA DA SILVA",
                                         "registros":  39,
-                                        "tcaMedia":  0,
-                                        "cvMedia":  0,
-                                        "cmMedia":  0,
-                                        "cpMedia":  0,
-                                        "tcMedia":  0
+                                        "tcaMedia":  100,
+                                        "cvMedia":  55.87,
+                                        "cmMedia":  39.05,
+                                        "cpMedia":  5.08,
+                                        "tcMedia":  19.46
                                     }
                                 ]
                  },
@@ -937,290 +956,290 @@
                                             "monthKey":  "2024-09",
                                             "monthLabel":  "09/2024",
                                             "registros":  1942,
-                                            "pesoLiquidoKg":  0,
-                                            "pesoBrutoKg":  0,
-                                            "taraKg":  0
+                                            "pesoLiquidoKg":  33303680,
+                                            "pesoBrutoKg":  64057360,
+                                            "taraKg":  30517340
                                         },
                                         {
                                             "monthKey":  "2024-05",
                                             "monthLabel":  "05/2024",
                                             "registros":  902,
-                                            "pesoLiquidoKg":  0,
-                                            "pesoBrutoKg":  0,
-                                            "taraKg":  0
+                                            "pesoLiquidoKg":  16117720,
+                                            "pesoBrutoKg":  30148350,
+                                            "taraKg":  13975820
                                         },
                                         {
                                             "monthKey":  "2024-11",
                                             "monthLabel":  "11/2024",
                                             "registros":  2560,
-                                            "pesoLiquidoKg":  0,
-                                            "pesoBrutoKg":  0,
-                                            "taraKg":  0
+                                            "pesoLiquidoKg":  42332000,
+                                            "pesoBrutoKg":  82433780,
+                                            "taraKg":  40081660
                                         },
                                         {
                                             "monthKey":  "2024-12",
                                             "monthLabel":  "12/2024",
                                             "registros":  1935,
-                                            "pesoLiquidoKg":  0,
-                                            "pesoBrutoKg":  0,
-                                            "taraKg":  0
+                                            "pesoLiquidoKg":  31099150,
+                                            "pesoBrutoKg":  60981470,
+                                            "taraKg":  29667480
                                         },
                                         {
                                             "monthKey":  "2024-06",
                                             "monthLabel":  "06/2024",
                                             "registros":  648,
-                                            "pesoLiquidoKg":  0,
-                                            "pesoBrutoKg":  0,
-                                            "taraKg":  0
+                                            "pesoLiquidoKg":  11940140,
+                                            "pesoBrutoKg":  22643050,
+                                            "taraKg":  9989010
                                         },
                                         {
                                             "monthKey":  "2024-07",
                                             "monthLabel":  "07/2024",
                                             "registros":  819,
-                                            "pesoLiquidoKg":  0,
-                                            "pesoBrutoKg":  0,
-                                            "taraKg":  0
+                                            "pesoLiquidoKg":  15217880,
+                                            "pesoBrutoKg":  28247380,
+                                            "taraKg":  12724140
                                         },
                                         {
                                             "monthKey":  "2025-01",
                                             "monthLabel":  "01/2025",
                                             "registros":  1410,
-                                            "pesoLiquidoKg":  0,
-                                            "pesoBrutoKg":  0,
-                                            "taraKg":  0
+                                            "pesoLiquidoKg":  23361591,
+                                            "pesoBrutoKg":  45251550,
+                                            "taraKg":  21797549
                                         },
                                         {
                                             "monthKey":  "2024-03",
                                             "monthLabel":  "03/2024",
                                             "registros":  1294,
-                                            "pesoLiquidoKg":  0,
-                                            "pesoBrutoKg":  0,
-                                            "taraKg":  0
+                                            "pesoLiquidoKg":  21198980,
+                                            "pesoBrutoKg":  40132040,
+                                            "taraKg":  18825400
                                         },
                                         {
                                             "monthKey":  "2025-02",
                                             "monthLabel":  "02/2025",
                                             "registros":  879,
-                                            "pesoLiquidoKg":  0,
-                                            "pesoBrutoKg":  0,
-                                            "taraKg":  0
+                                            "pesoLiquidoKg":  15687500,
+                                            "pesoBrutoKg":  29728510,
+                                            "taraKg":  14056550
                                         },
                                         {
                                             "monthKey":  "2024-02",
                                             "monthLabel":  "02/2024",
                                             "registros":  1440,
-                                            "pesoLiquidoKg":  0,
-                                            "pesoBrutoKg":  0,
-                                            "taraKg":  0
+                                            "pesoLiquidoKg":  26935570,
+                                            "pesoBrutoKg":  48710220,
+                                            "taraKg":  21774650
                                         },
                                         {
                                             "monthKey":  "2024-10",
                                             "monthLabel":  "10/2024",
                                             "registros":  2878,
-                                            "pesoLiquidoKg":  0,
-                                            "pesoBrutoKg":  0,
-                                            "taraKg":  0
+                                            "pesoLiquidoKg":  43000460,
+                                            "pesoBrutoKg":  86805670,
+                                            "taraKg":  43703720
                                         },
                                         {
                                             "monthKey":  "2025-03",
                                             "monthLabel":  "03/2025",
                                             "registros":  119,
-                                            "pesoLiquidoKg":  0,
-                                            "pesoBrutoKg":  0,
-                                            "taraKg":  0
+                                            "pesoLiquidoKg":  2279130,
+                                            "pesoBrutoKg":  4230340,
+                                            "taraKg":  1954090
                                         },
                                         {
                                             "monthKey":  "2024-04",
                                             "monthLabel":  "04/2024",
                                             "registros":  830,
-                                            "pesoLiquidoKg":  0,
-                                            "pesoBrutoKg":  0,
-                                            "taraKg":  0
+                                            "pesoLiquidoKg":  15559420,
+                                            "pesoBrutoKg":  28602880,
+                                            "taraKg":  12749280
                                         },
                                         {
                                             "monthKey":  "2024-08",
                                             "monthLabel":  "08/2024",
                                             "registros":  865,
-                                            "pesoLiquidoKg":  0,
-                                            "pesoBrutoKg":  0,
-                                            "taraKg":  0
+                                            "pesoLiquidoKg":  14299290,
+                                            "pesoBrutoKg":  27694700,
+                                            "taraKg":  13218270
                                         }
                                     ],
                         "byProduct":  [
                                           {
                                               "produto":  "RBDPK-OLEO DE PALMISTE REFINADO",
                                               "registros":  18,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  574830
                                           },
                                           {
                                               "produto":  "RESIDUO DE AG",
                                               "registros":  1,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  11170
                                           },
                                           {
                                               "produto":  "PKO-OLEO DE PALMISTE BRUTO",
                                               "registros":  57,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  2175950
                                           },
                                           {
                                               "produto":  "EFLUENTE",
                                               "registros":  1746,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  37437310
                                           },
                                           {
                                               "produto":  "RBD-OLEO REFINADO DE PALMA DESCARREGAMENTO",
                                               "registros":  3,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  61310
                                           },
                                           {
                                               "produto":  "CPO-OLEO DE PALMA BRUTO DESCARREGAMENTO",
                                               "registros":  496,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  18747890
                                           },
                                           {
                                               "produto":  "AGL-ACIDO GRAXO DE PALMA",
                                               "registros":  41,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  1121980
                                           },
                                           {
                                               "produto":  "CINZA",
                                               "registros":  323,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  3634750
                                           },
                                           {
                                               "produto":  "OLEO DE SOJA REFINADO",
                                               "registros":  1,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  19630
                                           },
                                           {
                                               "produto":  "TORTA DE PALMISTE",
                                               "registros":  505,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  7473840
                                           },
                                           {
                                               "produto":  "Risiduos Sólidos",
                                               "registros":  2,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  8830
                                           },
                                           {
                                               "produto":  "CASQUINHA DE NOZES",
                                               "registros":  37,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  167960
                                           },
                                           {
                                               "produto":  "INSUMOS",
                                               "registros":  9,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  94080
                                           },
                                           {
                                               "produto":  "CAVACO",
                                               "registros":  84,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  1617240
                                           },
                                           {
                                               "produto":  "PKO-OLEO DE PALMISTE BRUTO DESCARREGAMENTO",
                                               "registros":  12,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  476510
                                           },
                                           {
                                               "produto":  "CPO-OLEO DE PALMA BRUTO",
                                               "registros":  406,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  16463590
                                           },
                                           {
                                               "produto":  "RBDPO-OLEO REFINADO DE PALMA",
                                               "registros":  529,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  20794790
                                           },
                                           {
                                               "produto":  "CFF Fruto De Dendê- Próprio",
                                               "registros":  12,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  182240
                                           },
                                           {
                                               "produto":  "Fertilizantes",
                                               "registros":  164,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  4706140
                                           },
                                           {
                                               "produto":  "OLEO DE SOJA REFINADO DESCARREGAMENTO",
                                               "registros":  1,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  19670
                                           },
                                           {
                                               "produto":  "RBDPO-OLEO DE PALMA REFINADO DESCARREGAMENTO",
                                               "registros":  1,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  520
                                           },
                                           {
                                               "produto":  "BUCHA-CACHO VAZIO",
                                               "registros":  1878,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  23371100
                                           },
                                           {
                                               "produto":  "CALCARIO",
                                               "registros":  1,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  1590
                                           },
                                           {
                                               "produto":  "Fibra de Cacho",
                                               "registros":  3,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  19720
                                           },
                                           {
                                               "produto":  "Residuos Liquidos",
                                               "registros":  5,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  3730
                                           },
                                           {
                                               "produto":  "FIBRA",
                                               "registros":  449,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  2945270
                                           },
                                           {
                                               "produto":  "CFF Fruto de dende",
                                               "registros":  986,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  16034100
                                           },
                                           {
                                               "produto":  "CFF Fruto De Dendê",
                                               "registros":  8327,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  135027401
                                           },
                                           {
                                               "produto":  "Nozes",
                                               "registros":  47,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  552150
                                           },
                                           {
                                               "produto":  "Insumo",
                                               "registros":  54,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  527150
                                           },
                                           {
                                               "produto":  "BORRA",
                                               "registros":  603,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  7953880
                                           },
                                           {
                                               "produto":  "GORDURA EM CAIXAS",
                                               "registros":  1,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  2790
                                           },
                                           {
                                               "produto":  "BUCHA TRITURADA",
                                               "registros":  1698,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  10051410
                                           },
                                           {
                                               "produto":  "FS - Fruto Solto",
                                               "registros":  17,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  38060
                                           },
                                           {
                                               "produto":  "Sucata",
                                               "registros":  4,
-                                              "pesoLiquidoKg":  0
+                                              "pesoLiquidoKg":  13930
                                           }
                                       ]
                     },
