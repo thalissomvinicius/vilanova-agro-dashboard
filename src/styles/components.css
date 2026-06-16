@@ -900,6 +900,67 @@
   min-width: 0;
 }
 
+.field-daily-chart-card {
+  min-width: 0;
+}
+
+.field-daily-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.field-daily-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+}
+
+.field-daily-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.field-daily-chart-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0 2px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.field-daily-chart-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.field-daily-chart-scroll::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+  border-radius: 999px;
+}
+
+.field-daily-chart-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 999px;
+}
+
+.field-daily-chart-svg {
+  display: block;
+  min-height: 280px;
+}
+
+.field-daily-value-label {
+  fill: var(--text-primary);
+  font-size: 8px;
+  font-weight: 800;
+}
+
 .field-powerbi-footnote {
   display: flex;
   align-items: center;

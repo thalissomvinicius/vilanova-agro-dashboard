@@ -37,6 +37,68 @@ function periodLabel(periodFilter, dateFrom, dateTo) {
   return 'Todos os tempos';
 }
 
+function resolveRecordDate(record) {
+  const candidates = [
+    record.createdAt,
+    record.sentAt,
+    record.raw?.data_avaliacao,
+    record.date,
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const direct = new Date(candidate);
+    if (!Number.isNaN(direct.getTime())) return direct;
+
+    if (typeof candidate === 'string') {
+      const brDate = candidate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (brDate) {
+        const parsed = new Date(Number(brDate[3]), Number(brDate[2]) - 1, Number(brDate[1]));
+        if (!Number.isNaN(parsed.getTime())) return parsed;
+      }
+    }
+  }
+
+  return null;
+}
+
+function buildDailyBunchRows(records) {
+  const buckets = new Map();
+
+  records
+    .filter((record) => record.type === 'corte')
+    .forEach((record) => {
+      const date = resolveRecordDate(record);
+      const sortKey = date ? date.toISOString().slice(0, 10) : `sem-data-${record.id}`;
+      const label = date
+        ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`
+        : 'Sem data';
+
+      if (!buckets.has(sortKey)) {
+        buckets.set(sortKey, {
+          sortKey,
+          label,
+          maduro: 0,
+          passado: 0,
+          verde: 0,
+          avermelhado: 0,
+          estrela: 0,
+          talo: 0,
+        });
+      }
+
+      const bucket = buckets.get(sortKey);
+      bucket.maduro += record.totals?.cachoMaduro || 0;
+      bucket.passado += record.totals?.cachoPassado || 0;
+      bucket.verde += record.totals?.cachoVerde || 0;
+      bucket.avermelhado += record.totals?.cachoAvermelhado || 0;
+      bucket.estrela += record.totals?.cachoEstrela || 0;
+      bucket.talo += record.totals?.taloComprido || 0;
+    });
+
+  return Array.from(buckets.values()).sort((a, b) => String(a.sortKey).localeCompare(String(b.sortKey)));
+}
+
 function qualityTone(value, meta, goodWhen = 'low') {
   const numeric = Number(value || 0);
   if (goodWhen === 'high') {
@@ -184,6 +246,111 @@ function StackedQualityRows({ title, subtitle, rows, loading = false, limit = 8 
   );
 }
 
+function DailyBunchBarChart({ rows, loading = false }) {
+  const series = [
+    { key: 'maduro', label: 'Maduro', color: '#F88A4E' },
+    { key: 'passado', label: 'Passado', color: '#8B5A2B' },
+    { key: 'verde', label: 'Verde', color: '#65A30D' },
+    { key: 'avermelhado', label: 'Avermelhado', color: '#B45309' },
+    { key: 'estrela', label: 'Estrela', color: '#F2B544' },
+    { key: 'talo', label: 'Talo comprido', color: '#64748B' },
+  ];
+
+  const visibleRows = rows.slice(-16);
+  const maxValue = Math.max(
+    10,
+    ...visibleRows.flatMap((row) => series.map((item) => Number(row[item.key] || 0)))
+  );
+
+  const chartHeight = 280;
+  const padding = { top: 22, right: 24, bottom: 42, left: 42 };
+  const dayWidth = 76;
+  const width = Math.max(680, padding.left + padding.right + visibleRows.length * dayWidth);
+  const graphHeight = chartHeight - padding.top - padding.bottom;
+  const groupWidth = 52;
+  const barWidth = 7;
+
+  return (
+    <div className="card field-daily-chart-card">
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">Quantidade de cachos por dia</h3>
+          <span className="card-subtitle">Barras por dia com as quantidades de cada classificacao do CQO Corte.</span>
+        </div>
+        <BarChart3 size={20} style={{ color: 'var(--orange-institutional)' }} />
+      </div>
+
+      {loading ? (
+        <div className="skeleton-chart" style={{ height: chartHeight }} />
+      ) : (
+        <>
+          <div className="field-daily-legend">
+            {series.map((item) => (
+              <span key={item.key}><i style={{ background: item.color }} />{item.label}</span>
+            ))}
+          </div>
+          <div className="field-daily-chart-scroll">
+            {visibleRows.length ? (
+              <svg className="field-daily-chart-svg" viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight}>
+                {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+                  const y = padding.top + graphHeight * (1 - ratio);
+                  return (
+                    <g key={ratio}>
+                      <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} className="chart-grid-line" />
+                      <text x={padding.left - 10} y={y + 4} textAnchor="end" className="chart-axis-text">
+                        {Math.round(maxValue * ratio)}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {visibleRows.map((row, rowIndex) => {
+                  const groupX = padding.left + rowIndex * dayWidth + (dayWidth - groupWidth) / 2;
+                  return (
+                    <g key={row.sortKey}>
+                      {series.map((item, index) => {
+                        const value = Number(row[item.key] || 0);
+                        const barHeight = (value / maxValue) * graphHeight;
+                        const x = groupX + index * (barWidth + 2);
+                        const y = padding.top + graphHeight - barHeight;
+                        return (
+                          <g key={item.key}>
+                            <rect
+                              x={x}
+                              y={y}
+                              width={barWidth}
+                              height={Math.max(barHeight, value > 0 ? 2 : 0)}
+                              rx="2"
+                              fill={item.color}
+                              className="chart-bar"
+                            >
+                              <title>{`${row.label} - ${item.label}: ${formatNumber(value)}`}</title>
+                            </rect>
+                            {value > 0 && barHeight > 32 && (
+                              <text x={x + barWidth / 2} y={y - 4} textAnchor="middle" className="field-daily-value-label">
+                                {formatNumber(value)}
+                              </text>
+                            )}
+                          </g>
+                        );
+                      })}
+                      <text x={groupX + groupWidth / 2} y={chartHeight - 18} textAnchor="middle" className="chart-axis-text">
+                        {row.label}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            ) : (
+              <div className="empty-panel">Nenhum dado de corte encontrado para montar o grafico por dia.</div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function QualityTable({ rows, loading = false }) {
   return (
     <div className="card page-card">
@@ -251,10 +418,10 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
   });
 
   const model = useMemo(() => buildQualidadeOperacional(records), [records]);
+  const dailyBunchRows = useMemo(() => buildDailyBunchRows(records), [records]);
   const lastRecord = records[0];
   const quality = model.quality;
 
-  const qualityDonut = model.charts.qualidade.filter((item) => item.value > 0);
   const matureTrend = model.weekRows.map((row) => ({
     label: row.label,
     value: Number(row.cachoMaduroPct.toFixed(1)),
@@ -334,12 +501,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
 
       <div className="grid-container grid-cols-2">
         <QualityDistribution quality={quality} loading={loading} />
-        <CustomChart
-          loading={loading}
-          type="donut"
-          data={qualityDonut}
-          title="Percentual de qualidade"
-        />
+        <DailyBunchBarChart rows={dailyBunchRows} loading={loading} />
       </div>
 
       <div className="grid-container grid-cols-2">
