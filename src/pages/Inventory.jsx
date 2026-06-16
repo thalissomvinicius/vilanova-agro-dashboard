@@ -57,8 +57,8 @@ export default function Inventory({ farmFilter, searchTerm }) {
   });
 
   return (
-    <div className="fade-in page-shell">
-      <div className="dashboard-page-header">
+    <div className="fade-in page-shell inventory-page">
+      <div className="dashboard-page-header operational-hero inventory-hero">
         <div>
           <span className="page-eyebrow">Inventário agrícola</span>
           <h2>Inventário de Parcelas das Fazendas</h2>
@@ -66,7 +66,17 @@ export default function Inventory({ farmFilter, searchTerm }) {
             Base histórica importada dos Excel de inventário para consulta por fazenda, ano de plantio, bloco, parcela e cultivar.
           </p>
         </div>
-        <div className="page-actions">
+        <div className="operational-hero-stats">
+          <div><span>Parcelas</span><strong>{formatNumber(totals.parcels)}</strong></div>
+          <div><span>Área</span><strong>{formatNumber(totals.areaHa, 1)} ha</strong></div>
+          <div><span>Plantas</span><strong>{formatNumber(totals.plants)}</strong></div>
+          <div><span>Cultivares</span><strong>{formatNumber(totals.cultivars.length)}</strong></div>
+        </div>
+      </div>
+
+      <div className="operational-filter-bar inventory-filter-bar">
+        <label className="operational-select-control">
+          <span>Ano de plantio</span>
           <select
             className="header-filter-select"
             value={yearFilter}
@@ -78,6 +88,9 @@ export default function Inventory({ farmFilter, searchTerm }) {
               <option key={year} value={year}>{year}</option>
             ))}
           </select>
+        </label>
+        <label className="operational-select-control">
+          <span>Cultivar</span>
           <select
             className="header-filter-select"
             value={cultivarFilter}
@@ -89,12 +102,12 @@ export default function Inventory({ farmFilter, searchTerm }) {
               <option key={cultivar} value={cultivar}>{cultivar}</option>
             ))}
           </select>
+        </label>
           <div className="source-card compact">
             <span>Fonte</span>
             <strong>{loading ? 'Carregando...' : source}</strong>
             <small>{generatedAt ? `Gerado em ${new Date(generatedAt).toLocaleString('pt-BR')}` : 'Aguardando leitura'}</small>
           </div>
-        </div>
       </div>
 
       {error ? (
@@ -144,7 +157,7 @@ export default function Inventory({ farmFilter, searchTerm }) {
         <CustomChart loading={loading} type="bar" data={totals.byYear} title="Parcelas por ano de plantio" />
       </div>
 
-      <div className="card page-card">
+      <div className="card page-card data-surface-card">
         <div className="table-card-header card-header">
           <div>
             <h3 className="card-title">Base de parcelas</h3>

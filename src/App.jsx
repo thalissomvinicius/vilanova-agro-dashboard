@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { Layers3, MapPinned, Route, Satellite, X } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
@@ -420,12 +420,18 @@ export default function App() {
         );
       case 'mapa':
         return (
-          <div className="fade-in page-shell map-page-shell">
-            <div className="page-header">
+          <div className="fade-in page-shell map-page-shell gps-page">
+            <div className="page-header operational-hero gps-hero">
               <div className="page-title-block">
                 <span className="page-eyebrow">Georreferenciamento</span>
                 <h2>Mapa Operacional Integrado</h2>
                 <p>Visualizacao geoespacial das areas produtivas de palma, rotas e ocorrencias recebidas do app.</p>
+              </div>
+              <div className="gps-hero-grid">
+                <div><MapPinned size={18} /><span>Parcelas</span><strong>Mapa CQO</strong></div>
+                <div><Layers3 size={18} /><span>Camadas</span><strong>Semáforo</strong></div>
+                <div><Route size={18} /><span>Rotas</span><strong>GPS app</strong></div>
+                <div><Satellite size={18} /><span>Base</span><strong>OSM/CARTO</strong></div>
               </div>
             </div>
             <div className="map-frame">

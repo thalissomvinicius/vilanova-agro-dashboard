@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import { Flame, Layers } from 'lucide-react';
+import { Flame, Layers, Route } from 'lucide-react';
 import { FARMS } from '../utils/mockData';
 import { filterRecords, useCqoData, aggregateRecords } from '../utils/cqoData';
 
@@ -418,18 +418,17 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   }, [theme, farmFilter, areaFilter, mapLayer, geoRecords, trackPoints, heatPoints, parcelGeoJson, filteredParcelFeatures, filteredRecords]);
 
   return (
-    <div className="card" style={{ padding: '0', height: '100%', minHeight: '500px', position: 'relative', overflow: 'hidden' }}>
-      <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1 }} />
+    <div className="card gps-map-card">
+      <div ref={mapContainerRef} className="gps-map-canvas" />
 
-      <div className="map-overlay-card" style={{ zIndex: 10 }}>
-        <h4 style={{ fontSize: '0.85rem', fontWeight: '700', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+      <div className="map-overlay-card gps-map-overlay">
+        <h4>
           Camadas do mapa
         </h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div className="gps-layer-stack">
           <button
             onClick={() => setMapLayer('polygon')}
             className={`btn ${mapLayer === 'polygon' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ height: '32px', fontSize: '0.75rem', justifyContent: 'flex-start' }}
           >
             <Layers size={14} />
             <span>Qualidade (Semáforo)</span>
@@ -437,24 +436,30 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           <button
             onClick={() => setMapLayer('heat')}
             className={`btn ${mapLayer === 'heat' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ height: '32px', fontSize: '0.75rem', justifyContent: 'flex-start' }}
           >
             <Flame size={14} />
             <span>Focos de Perda (Calor)</span>
           </button>
+          <button
+            onClick={() => setMapLayer('route')}
+            className={`btn ${mapLayer === 'route' ? 'btn-primary' : 'btn-secondary'}`}
+          >
+            <Route size={14} />
+            <span>Rotas e trilhas GPS</span>
+          </button>
         </div>
 
-        <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--border-color)', fontSize: '0.7rem', opacity: '0.8' }}>
-          <div style={{ marginBottom: '8px', fontWeight: 800 }}>
+        <div className="gps-map-stats">
+          <div className="gps-map-stats-total">
             {geoStats.occurrencePoints} ocorrencias / {geoStats.gpsPoints} pontos GPS / {geoStats.total} coletas
           </div>
           {Object.entries(FARM_STYLES).filter(([id]) => id !== 'default').map(([id, style]) => (
-            <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              <span style={{ width: '9px', height: '9px', borderRadius: '2px', backgroundColor: style.fill }} />
+            <div key={id}>
+              <span style={{ backgroundColor: style.fill }} />
               <span>{style.label}: {geoStats.byFarm[id] || 0}</span>
             </div>
           ))}
-          <div style={{ marginTop: '8px' }}>
+          <div className="gps-map-note">
             <span>{occurrencePoints.length ? 'Calor por ocorrencia georreferenciada' : 'Calor estimado pela trilha'}</span>
           </div>
         </div>

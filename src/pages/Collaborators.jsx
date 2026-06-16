@@ -103,12 +103,18 @@ export default function Collaborators() {
   const departments = new Set(rows.map((row) => row.departamento).filter(Boolean)).size;
 
   return (
-    <div className="fade-in page-shell">
-      <div className="dashboard-page-header">
+    <div className="fade-in page-shell collaborators-page">
+      <div className="dashboard-page-header operational-hero collaborators-hero">
         <div>
           <span className="page-eyebrow">Gestão operacional</span>
           <h2>Colaboradores</h2>
           <p>Consulta da base de headcount usada pelo app e pelo dashboard para autenticar matrículas e identificar avaliadores.</p>
+        </div>
+        <div className="operational-hero-stats">
+          <div><span>Total</span><strong>{rows.length}</strong></div>
+          <div><span>Ativos</span><strong>{active}</strong></div>
+          <div><span>Deptos</span><strong>{departments}</strong></div>
+          <div><span>Filtro</span><strong>{filtered.length}</strong></div>
         </div>
       </div>
 
@@ -126,9 +132,9 @@ export default function Collaborators() {
         {metric('Filtro atual', filtered.length, Search, 'info', loading)}
       </div>
 
-      <div className="card page-card">
-        <div className="table-toolbar">
-          <div className="table-search">
+      <div className="card page-card data-surface-card">
+        <div className="table-toolbar admin-toolbar">
+          <div className="table-search operational-search">
             <Search size={16} />
             <input
               value={search}
@@ -136,10 +142,13 @@ export default function Collaborators() {
               placeholder="Buscar por nome, matrícula, cargo ou gestor"
             />
           </div>
-          <select className="header-filter-select" value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="ATIVO">Ativos</option>
-            <option value="all">Todos</option>
-          </select>
+          <label className="operational-select-control compact-control">
+            <span>Status</span>
+            <select className="header-filter-select" value={status} onChange={(event) => setStatus(event.target.value)}>
+              <option value="ATIVO">Ativos</option>
+              <option value="all">Todos</option>
+            </select>
+          </label>
         </div>
 
         <div className="table-wrapper">

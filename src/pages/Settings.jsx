@@ -6,17 +6,29 @@ export default function Settings({ theme, setTheme, user, onLogout, triggerManua
   const maskedKey = `${SUPABASE_CONFIG.anonKey.slice(0, 18)}...${SUPABASE_CONFIG.anonKey.slice(-8)}`;
 
   return (
-    <div className="fade-in page-shell">
-      <div className="dashboard-page-header">
+    <div className="fade-in page-shell settings-page">
+      <div className="dashboard-page-header operational-hero settings-hero">
         <div>
           <span className="page-eyebrow">Administração</span>
           <h2>Configurações</h2>
           <p>Parâmetros operacionais do painel, conexão Supabase e sessão ativa.</p>
         </div>
+        <div className="settings-hero-card">
+          <ShieldCheck size={24} />
+          <strong>{user?.nome || 'Usuário autenticado'}</strong>
+          <span>{user?.matricula ? `Matrícula ${user.matricula}` : 'Sessão local do dashboard'}</span>
+        </div>
+      </div>
+
+      <div className="settings-status-grid">
+        <div><span>Tema atual</span><strong>{theme === 'light' ? 'Claro' : 'Escuro'}</strong></div>
+        <div><span>Banco online</span><strong>Supabase</strong></div>
+        <div><span>Coletas</span><strong>mobile_respostas</strong></div>
+        <div><span>Desenvolvedor</span><strong>Vinicius Dev.</strong></div>
       </div>
 
       <div className="settings-grid">
-        <div className="card settings-card">
+        <div className="card settings-card admin-settings-card">
           <div className="card-header">
             <div>
               <h3 className="card-title"><ShieldCheck size={18} /> Sessão</h3>
@@ -35,7 +47,7 @@ export default function Settings({ theme, setTheme, user, onLogout, triggerManua
           </button>
         </div>
 
-        <div className="card settings-card">
+        <div className="card settings-card admin-settings-card">
           <div className="card-header">
             <div>
               <h3 className="card-title"><Database size={18} /> Supabase</h3>
@@ -54,7 +66,7 @@ export default function Settings({ theme, setTheme, user, onLogout, triggerManua
           </button>
         </div>
 
-        <div className="card settings-card">
+        <div className="card settings-card admin-settings-card">
           <div className="card-header">
             <div>
               <h3 className="card-title">{theme === 'light' ? <Sun size={18} /> : <Moon size={18} />} Aparência</h3>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   AlertCircle,
   Calendar,
@@ -92,6 +92,21 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
            String(record.formId || '').toLowerCase().includes(term);
   });
 
+  const collectionStats = useMemo(() => {
+    const withGps = filteredRecords.filter((record) => record.gps || record.gpsOccurrences?.length).length;
+    const approved = filteredRecords.filter((record) => record.status === 'Aprovado' || record.status === 'Sincronizado').length;
+    const corte = filteredRecords.filter((record) => record.type === 'corte').length;
+    const carreamento = filteredRecords.filter((record) => record.type === 'carreamento').length;
+
+    return {
+      total: filteredRecords.length,
+      approved,
+      withGps,
+      corte,
+      carreamento,
+    };
+  }, [filteredRecords]);
+
   const selectedPhotos = selectedRecord
     ? Object.entries(selectedRecord.raw || {})
       .filter(([, value]) => value && typeof value === 'object' && value.base64)
@@ -131,8 +146,8 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
 
   return (
     <>
-      <div className="fade-in page-shell">
-        <div className="dashboard-page-header">
+      <div className="fade-in page-shell collection-page">
+        <div className="dashboard-page-header operational-hero collections-hero">
         <div>
           <span className="page-eyebrow">Auditoria de dados</span>
           <h2>Central de Coletas CQO</h2>
@@ -140,8 +155,16 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
             Consulta operacional das fichas recebidas do aplicativo, com detalhamento por linha e rastreio de GPS/acompanhamento.
           </p>
         </div>
-        <div className="page-actions" style={{ gap: '12px' }}>
-          <div className="header-search" style={{ flex: '0 0 auto', width: '220px' }}>
+        <div className="operational-hero-stats">
+          <div><span>Registros</span><strong>{formatNumber(collectionStats.total)}</strong></div>
+          <div><span>Com GPS</span><strong>{formatNumber(collectionStats.withGps)}</strong></div>
+          <div><span>Corte</span><strong>{formatNumber(collectionStats.corte)}</strong></div>
+          <div><span>Carream.</span><strong>{formatNumber(collectionStats.carreamento)}</strong></div>
+        </div>
+      </div>
+
+      <div className="operational-filter-bar">
+        <div className="table-search operational-search">
             <Search size={16} />
             <input
               type="text"
@@ -149,12 +172,13 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
               value={searchFicha}
               onChange={(e) => setSearchFicha(e.target.value)}
             />
-          </div>
+        </div>
+        <label className="operational-select-control">
+          <span>Status</span>
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
             className="header-filter-select"
-            style={{ minWidth: '160px' }}
           >
             <option value="all">Todos os status</option>
             <option value="Sincronizado">Sincronizado</option>
@@ -164,11 +188,11 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
             <option value="Pendente">Pendente</option>
             <option value="Falha">Falha</option>
           </select>
+        </label>
           <div className="source-card compact">
             <span>Fonte</span>
             <strong>{loading ? 'Carregando...' : source}</strong>
           </div>
-        </div>
       </div>
 
       {error ? (
@@ -178,7 +202,13 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
         </div>
       ) : null}
 
-      <div className="card page-card">
+      <div className="collection-summary-strip">
+        <div><CheckCircle2 size={16} /><span>Aprovadas/sincronizadas</span><strong>{formatNumber(collectionStats.approved)}</strong></div>
+        <div><MapPin size={16} /><span>Rastreáveis por GPS</span><strong>{formatNumber(collectionStats.withGps)}</strong></div>
+        <div><ClipboardList size={16} /><span>Auditoria filtrada</span><strong>{formatNumber(collectionStats.total)}</strong></div>
+      </div>
+
+      <div className="card page-card data-surface-card">
         <div className="table-wrapper">
           <table className="custom-table dense-table">
             <thead>

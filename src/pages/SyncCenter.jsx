@@ -34,14 +34,14 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
   const lastRecord = records[0];
 
   return (
-    <div className="fade-in page-shell">
-      <div className="page-header">
+    <div className="fade-in page-shell sync-page">
+      <div className="page-header operational-hero sync-hero">
         <div className="page-title-block">
           <span className="page-eyebrow">Sincronização online</span>
           <h2>Central de Sincronização</h2>
           <p>Monitoramento das coletas recebidas do app Android no Supabase.</p>
         </div>
-        <div className="page-actions">
+        <div className="sync-hero-action">
           <button
             onClick={triggerManualSync}
             disabled={isSyncing}
@@ -95,7 +95,28 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
         />
       </div>
 
-      <div className="card page-card">
+      <div className="sync-flow-grid">
+        <div>
+          <Server size={20} />
+          <span>Origem</span>
+          <strong>App Android CQO</strong>
+          <small>Coleta em campo com formulário e GPS.</small>
+        </div>
+        <div>
+          <Database size={20} />
+          <span>Banco online</span>
+          <strong>Supabase</strong>
+          <small>mobile_respostas e headcount.</small>
+        </div>
+        <div>
+          <CheckCircle2 size={20} />
+          <span>Leitura</span>
+          <strong>Dashboard CQO</strong>
+          <small>Indicadores, auditoria e mapas atualizados.</small>
+        </div>
+      </div>
+
+      <div className="card page-card data-surface-card">
         <div className="card-header table-card-header">
           <div>
             <h3 className="card-title">Últimas transmissões recebidas</h3>
