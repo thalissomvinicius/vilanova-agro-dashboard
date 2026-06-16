@@ -208,6 +208,27 @@ function StackedQualityRows({ title, subtitle, rows, loading = false, limit = 8 
     avermelhado: '#B45309',
   };
 
+  const getQualityValues = (row) => {
+    if (row.qualidade) {
+      const base = Math.max(row.qualidade.cachosObservados || 0, 0);
+      return {
+        maduro: base ? (row.qualidade.cachoMaduro / base) * 100 : 0,
+        passado: base ? (row.qualidade.cachoPassado / base) * 100 : 0,
+        verde: base ? (row.qualidade.cachoVerde / base) * 100 : 0,
+        avermelhado: base ? (row.qualidade.cachoAvermelhado / base) * 100 : 0,
+        samples: base,
+      };
+    }
+
+    return {
+      maduro: Number(row.cachoMaduroPct || 0),
+      passado: Number(row.cachoPassadoPct || 0),
+      verde: Number(row.cachoVerdePct || 0),
+      avermelhado: Number(row.cachoAvermelhadoPct || 0),
+      samples: row.recordsCount || 0,
+    };
+  };
+
   return (
     <div className="card field-quality-panel">
       <div className="card-header">
@@ -223,18 +244,26 @@ function StackedQualityRows({ title, subtitle, rows, loading = false, limit = 8 
       ) : (
         <div className="field-quality-bars">
           {rows.slice(0, limit).map((row) => {
-            const total = row.cachoMaduroPct + row.cachoPassadoPct + row.cachoVerdePct + row.cachoAvermelhadoPct || 1;
+            const values = getQualityValues(row);
+            const total = values.maduro + values.passado + values.verde + values.avermelhado;
+            const hasSample = values.samples > 0 && total > 0;
             return (
-              <div className="field-quality-bar-row" key={row.label}>
+              <div className={`field-quality-bar-row ${hasSample ? '' : 'is-empty'}`} key={row.label}>
                 <div className="field-quality-bar-label">
                   <strong>{row.label}</strong>
-                  <span>{formatPercent(row.cachoMaduroPct)} maduro</span>
+                  <span>{hasSample ? `${formatPercent(values.maduro)} maduro` : 'Sem amostra de corte'}</span>
                 </div>
                 <div className="field-quality-mini-stack">
-                  <span style={{ width: `${(row.cachoMaduroPct / total) * 100}%`, background: colors.maduro }} />
-                  <span style={{ width: `${(row.cachoPassadoPct / total) * 100}%`, background: colors.passado }} />
-                  <span style={{ width: `${(row.cachoVerdePct / total) * 100}%`, background: colors.verde }} />
-                  <span style={{ width: `${(row.cachoAvermelhadoPct / total) * 100}%`, background: colors.avermelhado }} />
+                  {hasSample ? (
+                    <>
+                      <span style={{ width: `${(values.maduro / total) * 100}%`, background: colors.maduro }} title={`Maduro: ${formatPercent(values.maduro)}`} />
+                      <span style={{ width: `${(values.passado / total) * 100}%`, background: colors.passado }} title={`Passado: ${formatPercent(values.passado)}`} />
+                      <span style={{ width: `${(values.verde / total) * 100}%`, background: colors.verde }} title={`Verde: ${formatPercent(values.verde)}`} />
+                      <span style={{ width: `${(values.avermelhado / total) * 100}%`, background: colors.avermelhado }} title={`Avermelhado: ${formatPercent(values.avermelhado)}`} />
+                    </>
+                  ) : (
+                    <small>Sem base</small>
+                  )}
                 </div>
               </div>
             );

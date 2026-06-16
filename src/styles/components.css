@@ -900,6 +900,21 @@
   min-width: 0;
 }
 
+.field-quality-bar-row.is-empty .field-quality-bar-label span {
+  color: var(--text-muted);
+}
+
+.field-quality-mini-stack small {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .field-daily-chart-card {
   min-width: 0;
 }
