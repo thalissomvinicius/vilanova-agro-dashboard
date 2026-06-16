@@ -173,7 +173,7 @@ export default function App() {
           />
         );
       case 'cqo-rampa':
-        return <CqoRampa />;
+        return <CqoRampa farmFilter={farmFilter} />;
       case 'bonificacao':
         return <Bonificacao />;
       case 'coletas':

@@ -133,6 +133,38 @@ function Month-Label {
   return "$($parts[1])/$($parts[0])"
 }
 
+function Resolve-ExcelDate {
+  param([object]$Value)
+  if ($Value -is [double] -or $Value -is [single] -or $Value -is [decimal] -or $Value -is [int] -or $Value -is [long]) {
+    $serial = [double]$Value
+    if ($serial -gt 20000 -and $serial -lt 60000) {
+      $base = [datetime]'1899-12-30'
+      return $base.AddDays([int][math]::Floor($serial))
+    }
+  }
+
+  $text = Convert-ToText $Value
+  if ($text -match '(\d{2})/(\d{2})/(\d{4})') {
+    return [datetime]::new([int]$matches[3], [int]$matches[2], [int]$matches[1])
+  }
+
+  return $null
+}
+
+function Day-Key {
+  param([object]$Value)
+  $date = Resolve-ExcelDate $Value
+  if ($null -eq $date) { return 'sem-data' }
+  return $date.ToString('yyyy-MM-dd')
+}
+
+function Day-Label {
+  param([string]$DayKey)
+  if ($DayKey -eq 'sem-data') { return 'Sem data' }
+  $date = [datetime]::ParseExact($DayKey, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
+  return $date.ToString('dd')
+}
+
 function New-Bucket {
   param([string]$Key)
   return @{
@@ -214,15 +246,29 @@ try {
   $precoHeaders = Get-HeaderMap $preco.Values $preco.Cols
 
   $entradaDataIdx = Get-Index $entradaHeaders @('Data')
+  $entradaTicketIdx = Get-Index $entradaHeaders @('Ticket')
   $entradaProdutoIdx = Get-Index $entradaHeaders @('Produto')
   $entradaPesoBrutoIdx = Get-Index $entradaHeaders @('Peso Bruto')
   $entradaPesoLiquidoIdx = Get-Index $entradaHeaders @('Peso Liquido')
   $entradaTaraIdx = Get-Index $entradaHeaders @('Tara')
   $entradaCachosIdx = Get-Index $entradaHeaders @('N Cachos')
+  $entradaCaixaIdx = Get-Index $entradaHeaders @('Caixa')
+  $entradaOrigemIdx = Get-Index $entradaHeaders @('Origem')
 
+  $entradaTicketMap = @{}
   $entradaMonthMap = @{}
   $entradaProductMap = @{}
   for ($r = 2; $r -le $entrada.Rows; $r++) {
+    $entradaTicket = Convert-ToText (Get-Value $entrada.Values $r $entradaTicketIdx)
+    if ($entradaTicket) {
+      $entradaTicketMap[$entradaTicket] = @{
+        origem = Convert-ToText (Get-Value $entrada.Values $r $entradaOrigemIdx)
+        data = Get-Value $entrada.Values $r $entradaDataIdx
+        caixa = Convert-ToText (Get-Value $entrada.Values $r $entradaCaixaIdx)
+        pesoLiquidoKg = Convert-ToNumber (Get-Value $entrada.Values $r $entradaPesoLiquidoIdx)
+      }
+    }
+
     $monthKey = Month-Key (Get-Value $entrada.Values $r $entradaDataIdx)
     $monthBucket = Ensure-Bucket $entradaMonthMap $monthKey
     $monthBucket['count'] = [double]$monthBucket['count'] + 1
@@ -262,6 +308,8 @@ try {
 
   $rampaDataIdx = Get-Index $rampaHeaders @('Data')
   $rampaFazendaIdx = Get-Index $rampaHeaders @('Fazenda')
+  $rampaTicketIdx = Get-Index $rampaHeaders @('Ticket')
+  $rampaCaixaIdx = Get-Index $rampaHeaders @('Caixa')
   $rampaTcaIdx = Get-Index $rampaHeaders @('TCA')
   $rampaCvIdx = Get-Index $rampaHeaders @('CV')
   $rampaCmIdx = Get-Index $rampaHeaders @('CM')
@@ -270,24 +318,70 @@ try {
 
   $rampaMonthMap = @{}
   $rampaFarmMap = @{}
+  $rampaProducerMap = @{}
+  $rampaDayMap = @{}
+  $rampaProducerDayMap = @{}
+  $rampaTickets = @{}
   for ($r = 2; $r -le $rampa.Rows; $r++) {
-    $monthKey = Month-Key (Get-Value $rampa.Values $r $rampaDataIdx)
+    $ticketText = Convert-ToText (Get-Value $rampa.Values $r $rampaTicketIdx)
+    if ($ticketText) { $rampaTickets[$ticketText] = $true }
+
+    $entradaRef = if ($ticketText -and $entradaTicketMap.ContainsKey($ticketText)) { $entradaTicketMap[$ticketText] } else { $null }
+    $producerKey = if ($entradaRef -and $entradaRef['origem']) { Convert-ToText $entradaRef['origem'] } else { Convert-ToText (Get-Value $rampa.Values $r $rampaFazendaIdx) }
+    if (-not $producerKey) { $producerKey = 'Sem origem' }
+    $pesoLiquidoKg = if ($entradaRef) { [double]$entradaRef['pesoLiquidoKg'] } else { 0 }
+    $dateValue = if ($entradaRef -and $entradaRef['data']) { $entradaRef['data'] } else { Get-Value $rampa.Values $r $rampaDataIdx }
+    $cv = Convert-ToNumber (Get-Value $rampa.Values $r $rampaCvIdx)
+    $cm = Convert-ToNumber (Get-Value $rampa.Values $r $rampaCmIdx)
+    $cp = Convert-ToNumber (Get-Value $rampa.Values $r $rampaCpIdx)
+    $tc = Convert-ToNumber (Get-Value $rampa.Values $r $rampaTcIdx)
+
+    $monthKey = Month-Key $dateValue
     $monthBucket = Ensure-Bucket $rampaMonthMap $monthKey
     $monthBucket['count'] = [double]$monthBucket['count'] + 1
     Add-Value $monthBucket 'sumTCA' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaTcaIdx))
-    Add-Value $monthBucket 'sumCV' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaCvIdx))
-    Add-Value $monthBucket 'sumCM' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaCmIdx))
-    Add-Value $monthBucket 'sumCP' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaCpIdx))
-    Add-Value $monthBucket 'sumTC' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaTcIdx))
+    Add-Value $monthBucket 'sumCV' $cv
+    Add-Value $monthBucket 'sumCM' $cm
+    Add-Value $monthBucket 'sumCP' $cp
+    Add-Value $monthBucket 'sumTC' $tc
 
-    $farmKey = Convert-ToText (Get-Value $rampa.Values $r $rampaFazendaIdx)
+    $farmKey = $producerKey
     $farmBucket = Ensure-Bucket $rampaFarmMap $farmKey
     $farmBucket['count'] = [double]$farmBucket['count'] + 1
     Add-Value $farmBucket 'sumTCA' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaTcaIdx))
-    Add-Value $farmBucket 'sumCV' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaCvIdx))
-    Add-Value $farmBucket 'sumCM' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaCmIdx))
-    Add-Value $farmBucket 'sumCP' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaCpIdx))
-    Add-Value $farmBucket 'sumTC' (Convert-ToNumber (Get-Value $rampa.Values $r $rampaTcIdx))
+    Add-Value $farmBucket 'sumCV' $cv
+    Add-Value $farmBucket 'sumCM' $cm
+    Add-Value $farmBucket 'sumCP' $cp
+    Add-Value $farmBucket 'sumTC' $tc
+    Add-Value $farmBucket 'pesoLiquidoKg' $pesoLiquidoKg
+
+    $producerBucket = Ensure-Bucket $rampaProducerMap $producerKey
+    $producerBucket['count'] = [double]$producerBucket['count'] + 1
+    Add-Value $producerBucket 'sumCV' $cv
+    Add-Value $producerBucket 'sumCM' $cm
+    Add-Value $producerBucket 'sumCP' $cp
+    Add-Value $producerBucket 'sumTC' $tc
+    Add-Value $producerBucket 'pesoLiquidoKg' $pesoLiquidoKg
+
+    $dayKey = Day-Key $dateValue
+    $dayBucket = Ensure-Bucket $rampaDayMap $dayKey
+    $dayBucket['count'] = [double]$dayBucket['count'] + 1
+    Add-Value $dayBucket 'sumCV' $cv
+    Add-Value $dayBucket 'sumCM' $cm
+    Add-Value $dayBucket 'sumCP' $cp
+    Add-Value $dayBucket 'sumTC' $tc
+    Add-Value $dayBucket 'pesoLiquidoKg' $pesoLiquidoKg
+
+    $producerDayKey = "$producerKey|||$dayKey"
+    $producerDayBucket = Ensure-Bucket $rampaProducerDayMap $producerDayKey
+    $producerDayBucket['producer'] = $producerKey
+    $producerDayBucket['dayKey'] = $dayKey
+    $producerDayBucket['count'] = [double]$producerDayBucket['count'] + 1
+    Add-Value $producerDayBucket 'sumCV' $cv
+    Add-Value $producerDayBucket 'sumCM' $cm
+    Add-Value $producerDayBucket 'sumCP' $cp
+    Add-Value $producerDayBucket 'sumTC' $tc
+    Add-Value $producerDayBucket 'pesoLiquidoKg' $pesoLiquidoKg
   }
 
   $rampaByMonth = $rampaMonthMap.GetEnumerator() | ForEach-Object {
@@ -316,8 +410,84 @@ try {
       cmMedia = [Math]::Round(([double]$bucket['sumCM'] / $count), 2)
       cpMedia = [Math]::Round(([double]$bucket['sumCP'] / $count), 2)
       tcMedia = [Math]::Round(([double]$bucket['sumTC'] / $count), 2)
+      pesoT = [Math]::Round(([double]$bucket['pesoLiquidoKg'] / 1000), 2)
     }
   } | Sort-Object { $_['registros'] } -Descending
+
+  $rampaByProducer = $rampaProducerMap.GetEnumerator() | ForEach-Object {
+    $bucket = $_.Value
+    $count = [Math]::Max([double]$bucket['count'], 1)
+    [ordered]@{
+      fornecedor = $_.Key
+      registros = [Math]::Round([double]$bucket['count'], 2)
+      qVerde = [Math]::Round(([double]$bucket['sumCV'] / $count), 2)
+      qMaduro = [Math]::Round(([double]$bucket['sumCM'] / $count), 2)
+      qPassado = [Math]::Round(([double]$bucket['sumCP'] / $count), 2)
+      qTaloComprido = [Math]::Round(([double]$bucket['sumTC'] / $count), 2)
+      qAvermelhado = $null
+      qBucha = $null
+      pesoT = [Math]::Round(([double]$bucket['pesoLiquidoKg'] / 1000), 2)
+    }
+  } | Sort-Object { $_['pesoT'] } -Descending
+
+  $rampaByDay = $rampaDayMap.GetEnumerator() | ForEach-Object {
+    $bucket = $_.Value
+    $count = [Math]::Max([double]$bucket['count'], 1)
+    [ordered]@{
+      dayKey = $_.Key
+      dayLabel = Day-Label $_.Key
+      registros = [Math]::Round([double]$bucket['count'], 2)
+      qVerde = [Math]::Round(([double]$bucket['sumCV'] / $count), 2)
+      qMaduro = [Math]::Round(([double]$bucket['sumCM'] / $count), 2)
+      qPassado = [Math]::Round(([double]$bucket['sumCP'] / $count), 2)
+      qTaloComprido = [Math]::Round(([double]$bucket['sumTC'] / $count), 2)
+      qAvermelhado = $null
+      qBucha = $null
+      pesoT = [Math]::Round(([double]$bucket['pesoLiquidoKg'] / 1000), 2)
+    }
+  } | Sort-Object { $_['dayKey'] }
+
+  $rampaByProducerDay = $rampaProducerDayMap.GetEnumerator() | ForEach-Object {
+    $bucket = $_.Value
+    $count = [Math]::Max([double]$bucket['count'], 1)
+    [ordered]@{
+      fornecedor = $bucket['producer']
+      dayKey = $bucket['dayKey']
+      dayLabel = Day-Label $bucket['dayKey']
+      registros = [Math]::Round([double]$bucket['count'], 2)
+      qVerde = [Math]::Round(([double]$bucket['sumCV'] / $count), 2)
+      qMaduro = [Math]::Round(([double]$bucket['sumCM'] / $count), 2)
+      qPassado = [Math]::Round(([double]$bucket['sumCP'] / $count), 2)
+      qTaloComprido = [Math]::Round(([double]$bucket['sumTC'] / $count), 2)
+      qAvermelhado = $null
+      qBucha = $null
+      pesoT = [Math]::Round(([double]$bucket['pesoLiquidoKg'] / 1000), 2)
+    }
+  } | Sort-Object { $_['dayKey'] }, { $_['fornecedor'] }
+
+  $rampaSemAvaliacaoMap = @{}
+  for ($r = 2; $r -le $entrada.Rows; $r++) {
+    $ticketText = Convert-ToText (Get-Value $entrada.Values $r $entradaTicketIdx)
+    if (-not $ticketText -or $rampaTickets.ContainsKey($ticketText)) { continue }
+    $producerKey = Convert-ToText (Get-Value $entrada.Values $r $entradaOrigemIdx)
+    if (-not $producerKey) { $producerKey = 'Sem origem' }
+    $bucket = Ensure-Bucket $rampaSemAvaliacaoMap $producerKey
+    $bucket['count'] = [double]$bucket['count'] + 1
+    $dayKey = Day-Key (Get-Value $entrada.Values $r $entradaDataIdx)
+    if (-not $bucket.Contains('latestDayKey') -or $dayKey -gt $bucket['latestDayKey']) {
+      $bucket['latestDayKey'] = $dayKey
+      $bucket['latestDayLabel'] = if ($dayKey -eq 'sem-data') { 'Sem data' } else { ([datetime]::ParseExact($dayKey, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)).ToString('dd/MM/yyyy') }
+    }
+  }
+
+  $rampaSemAvaliacao = $rampaSemAvaliacaoMap.GetEnumerator() | ForEach-Object {
+    $bucket = $_.Value
+    [ordered]@{
+      fornecedor = $_.Key
+      caixasSemAvaliacao = [Math]::Round([double]$bucket['count'], 2)
+      dataEntradaMaisRecente = $bucket['latestDayLabel']
+    }
+  } | Sort-Object { $_['caixasSemAvaliacao'] } -Descending
 
   $fatDataIdx = Get-Index $faturamentoHeaders @('Data Faturamento')
   $fatProdutoIdx = Get-Index $faturamentoHeaders @('Produto')
@@ -429,6 +599,11 @@ try {
       totalRegistros = $rampa.Rows - 1
       byMonth = $rampaByMonth
       byFarm = $rampaByFarm
+      byProducer = $rampaByProducer
+      byDay = $rampaByDay
+      byProducerDay = $rampaByProducerDay
+      semAvaliacao = $rampaSemAvaliacao
+      unavailableFields = @('qAvermelhado', 'qBucha')
     }
     faturamento = [ordered]@{
       totalRegistros = $faturamento.Rows - 1
