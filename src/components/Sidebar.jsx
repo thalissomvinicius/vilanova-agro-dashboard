@@ -18,6 +18,7 @@ import {
 export default function Sidebar({ activePage, setActivePage, collapsed, setCollapsed, width }) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard CQO', icon: LayoutDashboard },
+    { id: 'cqo-rampa', label: 'CQO Rampa', icon: Gauge },
     { id: 'bonificacao', label: 'Bonificacao', icon: Warehouse },
     { id: 'coletas', label: 'Coletas recebidas', icon: Tractor },
     { id: 'inventario', label: 'Inventário parcelas', icon: FileSpreadsheet },
