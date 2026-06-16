@@ -1,5 +1,6 @@
-import React from 'react';
-import { AlertTriangle, Box, ClipboardCheck, Leaf, Scale, Truck } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { AlertTriangle, Box, ClipboardCheck, Leaf, Maximize2, MonitorPlay, Scale, Truck, X } from 'lucide-react';
 import { BONIFICACAO_SOURCE, useBonificacaoData } from '../utils/bonificacaoData';
 
 const RAMPA_PRODUCERS = [
@@ -9,12 +10,12 @@ const RAMPA_PRODUCERS = [
 ];
 
 const QUALITY_COLORS = {
-  qVerde: '#08A53A',
-  qMaduro: '#E66A00',
-  qPassado: '#8B5E53',
-  qTaloComprido: '#D8C500',
-  qAvermelhado: '#EF4444',
-  qBucha: '#BDBDBD',
+  qVerde: 'var(--green-institutional)',
+  qMaduro: 'var(--orange-institutional)',
+  qPassado: 'var(--text-primary)',
+  qTaloComprido: 'var(--orange-highlight)',
+  qAvermelhado: 'var(--status-danger)',
+  qBucha: 'var(--text-muted)',
 };
 
 function fmt(value, digits = 0) {
@@ -375,42 +376,22 @@ function SemAvaliacaoTable({ rows }) {
   );
 }
 
-export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', dateFrom = '', dateTo = '' }) {
-  const data = useBonificacaoData();
-  const rampa = data?.cqoRampa || {};
-  const producerNames = selectedProducerNames(farmFilter);
-  const producerDayRows = filterByProducer(rampa.byProducerDay || [], producerNames);
-  const semAvaliacaoDayRows = filterByProducer(rampa.semAvaliacaoByDay || [], producerNames);
-  const referenceDate = latestDateFromRows([...producerDayRows, ...semAvaliacaoDayRows]);
-  const filteredProducerDayRows = filterByPeriod(
-    producerDayRows,
-    periodFilter,
-    dateFrom,
-    dateTo,
-    referenceDate
-  );
-  const filteredSemAvaliacaoDayRows = filterByPeriod(
-    semAvaliacaoDayRows,
-    periodFilter,
-    dateFrom,
-    dateTo,
-    referenceDate
-  );
-  const producerRows = aggregateProducerRows(filteredProducerDayRows);
-  const dailyRows = aggregateDayRows(filteredProducerDayRows);
-  const semAvaliacaoRows = aggregateSemAvaliacaoRows(filteredSemAvaliacaoDayRows);
-  const total = {
-    qVerde: weightedAverage(producerRows, 'qVerde'),
-    qMaduro: weightedAverage(producerRows, 'qMaduro'),
-    qPassado: weightedAverage(producerRows, 'qPassado'),
-    qTaloComprido: weightedAverage(producerRows, 'qTaloComprido'),
-    qAvermelhado: weightedAverage(producerRows, 'qAvermelhado'),
-    qBucha: weightedAverage(producerRows, 'qBucha'),
-    pesoT: producerRows.reduce((sum, row) => sum + Number(row.pesoT || 0), 0),
-  };
+function RampaDeveloperSignature() {
+  return <div className="developer-signature">Desenvolvedor: Vinicius Dev.</div>;
+}
 
+function RampaBoard({
+  data,
+  producerNames,
+  producerRows,
+  dailyRows,
+  semAvaliacaoRows,
+  total,
+  onPresent,
+  presentationMode = false,
+}) {
   return (
-    <div className="fade-in page-shell rampa-bi-page">
+    <div className={`rampa-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
       <div className="rampa-bi-header">
         <img src="/logo.png" alt="Vila Nova Agroindustrial" className="rampa-bi-logo" />
         <div>
@@ -418,10 +399,19 @@ export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', d
           <h2>Qualidade de CFF na Rampa</h2>
           <p>Apuração baseada na fonte BI: CQO - Rampa cruzado com Entrada de CFF por ticket e produtor.</p>
         </div>
-        <div className="source-card compact">
-          <span>Fonte</span>
-          <strong>{BONIFICACAO_SOURCE.workbook}</strong>
-          <small>{data.generatedAt ? `Atualizado em ${new Date(data.generatedAt).toLocaleString('pt-BR')}` : 'Snapshot local'}</small>
+        <div className="rampa-bi-header-actions">
+          <div className="source-card compact">
+            <span>Fonte</span>
+            <strong>{BONIFICACAO_SOURCE.workbook}</strong>
+            <small>{data.generatedAt ? `Atualizado em ${new Date(data.generatedAt).toLocaleString('pt-BR')}` : 'Snapshot local'}</small>
+          </div>
+          {!presentationMode && (
+            <button type="button" className="rampa-bi-present-btn" onClick={onPresent}>
+              <MonitorPlay size={18} />
+              Apresentar
+              <Maximize2 size={15} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -463,6 +453,114 @@ export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', d
         </div>
         <SemAvaliacaoTable rows={semAvaliacaoRows} />
       </div>
+
+      <RampaDeveloperSignature />
+    </div>
+  );
+}
+
+function RampaPresentationOverlay(props) {
+  return createPortal(
+    <div className="presentation-overlay rampa-presentation-overlay" role="dialog" aria-modal="true" aria-label="Apresentacao CQO Rampa">
+      <button type="button" className="presentation-close-btn field-bi-close-btn" onClick={props.onClose} title="Fechar apresentacao" aria-label="Fechar apresentacao">
+        <X size={22} />
+      </button>
+      <RampaBoard {...props} presentationMode />
+    </div>,
+    document.body
+  );
+}
+
+export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', dateFrom = '', dateTo = '' }) {
+  const [presentationOpen, setPresentationOpen] = useState(false);
+  const data = useBonificacaoData();
+  const rampa = data?.cqoRampa || {};
+  const producerNames = selectedProducerNames(farmFilter);
+  const producerDayRows = filterByProducer(rampa.byProducerDay || [], producerNames);
+  const semAvaliacaoDayRows = filterByProducer(rampa.semAvaliacaoByDay || [], producerNames);
+  const referenceDate = latestDateFromRows([...producerDayRows, ...semAvaliacaoDayRows]);
+  const filteredProducerDayRows = filterByPeriod(
+    producerDayRows,
+    periodFilter,
+    dateFrom,
+    dateTo,
+    referenceDate
+  );
+  const filteredSemAvaliacaoDayRows = filterByPeriod(
+    semAvaliacaoDayRows,
+    periodFilter,
+    dateFrom,
+    dateTo,
+    referenceDate
+  );
+  const producerRows = aggregateProducerRows(filteredProducerDayRows);
+  const dailyRows = aggregateDayRows(filteredProducerDayRows);
+  const semAvaliacaoRows = aggregateSemAvaliacaoRows(filteredSemAvaliacaoDayRows);
+  const total = {
+    qVerde: weightedAverage(producerRows, 'qVerde'),
+    qMaduro: weightedAverage(producerRows, 'qMaduro'),
+    qPassado: weightedAverage(producerRows, 'qPassado'),
+    qTaloComprido: weightedAverage(producerRows, 'qTaloComprido'),
+    qAvermelhado: weightedAverage(producerRows, 'qAvermelhado'),
+    qBucha: weightedAverage(producerRows, 'qBucha'),
+    pesoT: producerRows.reduce((sum, row) => sum + Number(row.pesoT || 0), 0),
+  };
+
+  useEffect(() => {
+    if (!presentationOpen) return undefined;
+
+    document.body.classList.add('presentation-active');
+
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setPresentationOpen(false);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.body.classList.remove('presentation-active');
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [presentationOpen]);
+
+  const openPresentation = () => {
+    setPresentationOpen(true);
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  };
+
+  const closePresentation = () => {
+    setPresentationOpen(false);
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
+  return (
+    <div className="fade-in page-shell rampa-bi-page">
+      {presentationOpen && (
+        <RampaPresentationOverlay
+          data={data}
+          producerNames={producerNames}
+          producerRows={producerRows}
+          dailyRows={dailyRows}
+          semAvaliacaoRows={semAvaliacaoRows}
+          total={total}
+          onClose={closePresentation}
+        />
+      )}
+
+      <RampaBoard
+        data={data}
+        producerNames={producerNames}
+        producerRows={producerRows}
+        dailyRows={dailyRows}
+        semAvaliacaoRows={semAvaliacaoRows}
+        total={total}
+        onPresent={openPresentation}
+      />
     </div>
   );
 }

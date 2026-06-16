@@ -1495,8 +1495,34 @@ body.presentation-active {
   background: rgba(255, 255, 255, 0.94);
 }
 
+.developer-signature {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 4px 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.presentation-overlay .developer-signature {
+  position: fixed;
+  right: 18px;
+  bottom: 10px;
+  z-index: 2147483647;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-sm);
+}
+
 .rampa-bi-page {
   gap: 0;
+}
+
+.rampa-bi-board {
+  width: 100%;
+  min-width: 0;
+  color: var(--text-primary);
 }
 
 .rampa-bi-header {
@@ -1507,8 +1533,9 @@ body.presentation-active {
   padding: 14px 16px;
   margin-bottom: 10px;
   border-radius: 8px;
-  background: #17224B;
-  color: #FFFFFF;
+  background: var(--green-institutional);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
 }
 
 .rampa-bi-logo {
@@ -1518,11 +1545,11 @@ body.presentation-active {
   flex-shrink: 0;
   padding: 4px 8px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--white);
 }
 
 .rampa-bi-header h2 {
-  color: #FFFFFF;
+  color: var(--white);
   font-size: 1.65rem;
   line-height: 1.1;
   margin: 2px 0 4px;
@@ -1533,8 +1560,40 @@ body.presentation-active {
   font-size: 0.82rem;
 }
 
+.rampa-bi-header-actions {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  max-width: 430px;
+}
+
 .rampa-bi-header .source-card {
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--bg-card);
+}
+
+.rampa-bi-present-btn {
+  min-height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  padding: 0 16px;
+  background: var(--orange-institutional);
+  color: var(--white);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.rampa-bi-present-btn:hover {
+  background: var(--orange-highlight);
 }
 
 .rampa-bi-producer-strip {
@@ -1576,6 +1635,8 @@ body.presentation-active {
   overflow: hidden;
   text-align: center;
   border-radius: 8px;
+  border-color: var(--border-color);
+  background: var(--bg-card);
 }
 
 .rampa-bi-kpi-title {
@@ -1584,7 +1645,7 @@ body.presentation-active {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  color: #FFFFFF;
+  color: var(--white);
   font-size: 0.82rem;
   font-weight: 800;
 }
@@ -1592,8 +1653,8 @@ body.presentation-active {
 .rampa-bi-kpi-title,
 .rampa-bi-kpi-title span,
 .rampa-bi-kpi-title svg {
-  color: #FFFFFF !important;
-  stroke: #FFFFFF;
+  color: var(--white) !important;
+  stroke: var(--white);
 }
 
 .rampa-bi-kpi strong {
@@ -1664,15 +1725,15 @@ body.presentation-active {
   align-items: center;
   justify-content: center;
   padding: 6px 12px;
-  background: #D0D0D0;
-  color: #111827;
+  background: var(--green-institutional);
+  color: var(--white);
   font-size: 1rem;
   font-weight: 700;
 }
 
 .rampa-bi-table th {
-  background: #F1F5F9;
-  color: #111827;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
   font-size: 0.68rem;
   text-transform: none;
   padding: 8px 6px;
@@ -1803,6 +1864,23 @@ body.presentation-active {
   justify-content: center;
   gap: 8px;
   color: var(--text-muted);
+}
+
+.rampa-presentation-overlay {
+  background: var(--bg-primary);
+}
+
+.rampa-presentation-overlay .rampa-bi-board {
+  min-height: calc(100vh - 20px);
+  padding: 8px 8px 34px;
+}
+
+.rampa-presentation-overlay .rampa-bi-header {
+  padding-right: 64px;
+}
+
+.rampa-presentation-overlay .developer-signature {
+  margin-top: auto;
 }
 
 .rampa-bi-empty-content strong {

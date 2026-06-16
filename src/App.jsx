@@ -350,6 +350,9 @@ export default function App() {
         <main className="app-content">
           {renderActivePage()}
         </main>
+        <footer className="app-developer-footer">
+          Desenvolvedor: Vinicius Dev.
+        </footer>
       </div>
     </div>
   );

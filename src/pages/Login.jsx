@@ -162,6 +162,7 @@ export default function Login({ onLogin }) {
         <div className="login-footer-note">
           <strong>Vila Nova Agroindustrial</strong>
           <span>Corte / Carreamento / Fruto Solto</span>
+          <span>Desenvolvedor: Vinicius Dev.</span>
         </div>
       </div>
     </div>

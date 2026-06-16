@@ -161,6 +161,12 @@ function htmlFor(record) {
                   <span class="info-value" style="font-weight: normal; font-size: 11px;">${escapeHtml(record.observation) || 'Nenhuma observação registrada.'}</span>
                 </td>
               </tr>
+              <tr class="footer">
+                <td colspan="${columns.length}">
+                  <span class="info-label">Desenvolvedor</span>
+                  <span class="info-value" style="font-weight: 700; font-size: 11px;">Vinicius Dev.</span>
+                </td>
+              </tr>
             </tfoot>
           </table>
         </div>

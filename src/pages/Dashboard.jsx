@@ -473,6 +473,8 @@ function FieldBiBoard({
       </div>
 
       <DailyBunchBarChart rows={dailyBunchRows} loading={loading} />
+
+      <div className="developer-signature">Desenvolvedor: Vinicius Dev.</div>
     </div>
   );
 }

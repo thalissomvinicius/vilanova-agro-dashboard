@@ -708,6 +708,20 @@ body.sidebar-resizing {
   min-width: 0;
 }
 
+.app-developer-footer {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 5px 20px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
 /* Custom Scrollbar for App Content */
 .app-content::-webkit-scrollbar {
   width: 8px;
