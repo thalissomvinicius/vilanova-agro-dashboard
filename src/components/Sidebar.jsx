@@ -9,17 +9,16 @@ import {
   RefreshCw,
   Settings,
   Tractor,
+  Truck,
   Users,
   Warehouse,
 } from 'lucide-react';
 
 export default function Sidebar({ activePage, setActivePage, collapsed, setCollapsed, width }) {
-  const assessmentItems = [
-    { id: 'dashboard', label: 'CQO Campo', icon: LayoutDashboard },
-    { id: 'cqo-rampa', label: 'CQO Rampa', icon: Gauge },
-  ];
-
   const menuItems = [
+    { id: 'dashboard', label: 'CQO Campo', icon: LayoutDashboard },
+    { id: 'cqo-carreamento', label: 'CQO Carreamento', icon: Truck },
+    { id: 'cqo-rampa', label: 'CQO Rampa', icon: Gauge },
     { id: 'bonificacao', label: 'Bonificacao', icon: Warehouse },
     { id: 'coletas', label: 'Coletas recebidas', icon: Tractor },
     { id: 'inventario', label: 'Inventário parcelas', icon: FileSpreadsheet },
@@ -58,26 +57,6 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
       </div>
 
       <nav className="sidebar-menu">
-        <div className="cqo-assessment-switch" aria-label="Tipos de avaliação CQO">
-          {assessmentItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activePage === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleItemClick(item)}
-                className={`cqo-assessment-button ${isActive ? 'active' : ''}`}
-                title={item.label}
-                aria-label={item.label}
-              >
-                <Icon />
-                <span className="cqo-assessment-label">{item.label.replace('CQO ', '')}</span>
-              </button>
-            );
-          })}
-        </div>
-
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activePage === item.id;

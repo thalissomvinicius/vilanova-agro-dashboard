@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { Bell, LogOut, Moon, RefreshCw, Search, Sun } from 'lucide-react';
-import { ACTIVE_CQO_FARM_IDS, CQO_AREAS, CQO_FARMS } from '../utils/cqoData';
+import { ACTIVE_CQO_FARM_IDS, CQO_FARMS } from '../utils/cqoData';
 
 import { useCqoData } from '../utils/cqoData';
 
 export default function Header({
   farmFilter,
   setFarmFilter,
-  areaFilter,
-  setAreaFilter,
   periodFilter,
   setPeriodFilter,
   cycleFilter,
@@ -74,17 +72,6 @@ export default function Header({
         >
           {CQO_FARMS.map((farm) => (
             <option key={farm.id} value={farm.id}>{farm.name}</option>
-          ))}
-        </select>
-
-        <select
-          className="header-filter-select"
-          value={areaFilter}
-          onChange={(event) => setAreaFilter(event.target.value)}
-          title="Selecionar formulário"
-        >
-          {CQO_AREAS.map((area) => (
-            <option key={area.id} value={area.id}>{area.name}</option>
           ))}
         </select>
 

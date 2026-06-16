@@ -302,9 +302,9 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
     <div className="fade-in page-shell">
       <div className="page-header">
         <div className="page-title-block">
-          <span className="page-eyebrow">CQO Campo</span>
-          <h2>Painel de Indicadores de Campo</h2>
-          <p>Dados calculados em tempo real a partir das respostas sincronizadas pelo aplicativo Android. A rampa é tratada em uma visão separada.</p>
+          <span className="page-eyebrow">{areaFilter === 'carreamento' ? 'CQO Carreamento' : 'CQO Campo'}</span>
+          <h2>{areaFilter === 'carreamento' ? 'Painel de Indicadores de Carreamento' : 'Painel de Indicadores de Campo'}</h2>
+          <p>{areaFilter === 'carreamento' ? 'Modulo dedicado ao acompanhamento das respostas de carreamento sincronizadas pelo aplicativo.' : 'Dados calculados em tempo real a partir das respostas sincronizadas pelo aplicativo Android. A rampa é tratada em uma visão separada.'}</p>
         </div>
         <div className="source-card compact">
           <span>Fonte</span>

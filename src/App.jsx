@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
+import Analytics from './pages/Analytics';
 import CqoRampa from './pages/CqoRampa';
 import Bonificacao from './pages/Bonificacao';
 import Collections from './pages/Collections';
@@ -15,6 +16,7 @@ import { refreshCqoData } from './utils/cqoData';
 
 const PAGE_ROUTES = {
   dashboard: '/campo',
+  'cqo-carreamento': '/carreamento',
   'cqo-rampa': '/rampa',
   bonificacao: '/bonificacao',
   coletas: '/coletas',
@@ -59,7 +61,7 @@ export default function App() {
   });
 
   const [farmFilter, setFarmFilter] = useState('all');
-  const [areaFilter, setAreaFilter] = useState('all');
+  const [areaFilter] = useState('all');
   const [periodFilter, setPeriodFilter] = useState('month');
   const [cycleFilter, setCycleFilter] = useState('all');
   const [evaluatorFilter, setEvaluatorFilter] = useState('all');
@@ -163,13 +165,25 @@ export default function App() {
           <Dashboard
             theme={theme}
             farmFilter={farmFilter}
-            areaFilter={areaFilter}
+            areaFilter="corte"
             periodFilter={periodFilter}
             cycleFilter={cycleFilter}
             evaluatorFilter={evaluatorFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
             searchTerm={searchTerm}
+          />
+        );
+      case 'cqo-carreamento':
+        return (
+          <Analytics
+            farmFilter={farmFilter}
+            areaFilter="carreamento"
+            periodFilter={periodFilter}
+            cycleFilter={cycleFilter}
+            evaluatorFilter={evaluatorFilter}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
           />
         );
       case 'cqo-rampa':
@@ -296,8 +310,6 @@ export default function App() {
         <Header
           farmFilter={farmFilter}
           setFarmFilter={setFarmFilter}
-          areaFilter={areaFilter}
-          setAreaFilter={setAreaFilter}
           periodFilter={periodFilter}
           setPeriodFilter={setPeriodFilter}
           cycleFilter={cycleFilter}
