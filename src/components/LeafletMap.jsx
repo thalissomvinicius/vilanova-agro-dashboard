@@ -20,6 +20,12 @@ const SENTINEL_TILE_URL = import.meta.env.VITE_SENTINEL_TILE_URL
 const SENTINEL_ATTRIBUTION = import.meta.env.VITE_SENTINEL_ATTRIBUTION
   || 'Sentinel-2 cloudless &copy; EOX IT Services GmbH, modified Copernicus Sentinel data 2025';
 
+const BASE_LAYER_NOTES = {
+  standard: 'Mapa leve para navegação e conferência geral.',
+  satellite: 'Imagem mais nítida para enxergar estrada, talhão e detalhe visual.',
+  sentinel: 'Imagem recente/agronômica Sentinel-2: gratuita, mas limitada a 10 m/pixel.',
+};
+
 const defaultIcon = L.icon({
   iconUrl: markerIcon,
   iconRetinaUrl: markerIconRetina,
@@ -461,22 +467,23 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             type="button"
             className={baseLayer === 'satellite' ? 'active' : ''}
             onClick={() => setBaseLayer('satellite')}
+            title="Satélite mais nítido para detalhe visual"
           >
             <Satellite size={13} />
-            Satélite
+            HD
           </button>
           <button
             type="button"
             className={baseLayer === 'sentinel' ? 'active' : ''}
             onClick={() => setBaseLayer('sentinel')}
-            title="Sentinel-2 cloudless 2025 gratuito, com shapes por cima"
+            title="Sentinel-2 gratuito, recente/agronômico, com resolução de 10 m/pixel"
           >
             <Satellite size={13} />
-            Sentinel-2
+            Recente
           </button>
         </div>
         <p className="gps-base-note">
-          Sentinel-2 usa mosaico cloudless gratuito. Para imagem por data, basta configurar a URL WMTS/WMS do Copernicus.
+          {BASE_LAYER_NOTES[baseLayer]}
         </p>
 
         <h4 className="gps-overlay-section-title">Camadas do mapa</h4>
