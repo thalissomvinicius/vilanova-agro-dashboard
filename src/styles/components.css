@@ -3257,6 +3257,42 @@ body.presentation-active {
   text-transform: uppercase;
 }
 
+.gps-overlay-section-title {
+  margin-top: 14px;
+}
+
+.gps-base-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.gps-base-toggle button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.gps-base-toggle button.active {
+  background: var(--orange-institutional);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+
 .gps-layer-stack {
   display: grid;
   gap: 8px;

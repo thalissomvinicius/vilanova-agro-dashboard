@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import { Flame, Layers, Route } from 'lucide-react';
+import { Flame, Layers, Map, Route, Satellite } from 'lucide-react';
 import { FARMS } from '../utils/mockData';
 import { filterRecords, useCqoData, aggregateRecords } from '../utils/cqoData';
 
@@ -64,6 +64,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   const mapInstanceRef = useRef(null);
   const layerGroupRef = useRef(null);
   const [mapLayer, setMapLayer] = useState('polygon');
+  const [baseLayer, setBaseLayer] = useState('standard');
   const [parcelGeoJson, setParcelGeoJson] = useState(null);
   const { records } = useCqoData();
 
@@ -205,15 +206,24 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       }
     });
 
-    const tileUrl = theme === 'dark'
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    const tileUrl = baseLayer === 'satellite'
+      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+      : theme === 'dark'
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 
-    L.tileLayer(tileUrl, {
-      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-      subdomains: 'abcd',
-      maxZoom: 20,
-    }).addTo(map);
+    const tileOptions = baseLayer === 'satellite'
+      ? {
+          attribution: 'Tiles &copy; Esri',
+          maxZoom: 20,
+        }
+      : {
+          attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+          subdomains: 'abcd',
+          maxZoom: 20,
+        };
+
+    L.tileLayer(tileUrl, tileOptions).addTo(map);
 
     const farmLayerBounds = [];
 
@@ -415,16 +425,34 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
         map.panTo([selectedFarm.Lat, selectedFarm.Lng]);
       }
     }
-  }, [theme, farmFilter, areaFilter, mapLayer, geoRecords, trackPoints, heatPoints, parcelGeoJson, filteredParcelFeatures, filteredRecords]);
+  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, geoRecords, trackPoints, heatPoints, parcelGeoJson, filteredParcelFeatures, filteredRecords]);
 
   return (
     <div className="card gps-map-card">
       <div ref={mapContainerRef} className="gps-map-canvas" />
 
       <div className="map-overlay-card gps-map-overlay">
-        <h4>
-          Camadas do mapa
-        </h4>
+        <h4>Visualização</h4>
+        <div className="gps-base-toggle" aria-label="Tipo de mapa">
+          <button
+            type="button"
+            className={baseLayer === 'standard' ? 'active' : ''}
+            onClick={() => setBaseLayer('standard')}
+          >
+            <Map size={13} />
+            Padrão
+          </button>
+          <button
+            type="button"
+            className={baseLayer === 'satellite' ? 'active' : ''}
+            onClick={() => setBaseLayer('satellite')}
+          >
+            <Satellite size={13} />
+            Satélite
+          </button>
+        </div>
+
+        <h4 className="gps-overlay-section-title">Camadas do mapa</h4>
         <div className="gps-layer-stack">
           <button
             onClick={() => setMapLayer('polygon')}
