@@ -611,17 +611,19 @@ function PresentationOverlay({ loading, model, totals, quality, dailyBunchRows, 
       <button type="button" className="presentation-close-btn field-bi-close-btn" onClick={onClose} title="Fechar apresentacao" aria-label="Fechar apresentacao">
         <X size={22} />
       </button>
-      <FieldBiBoard
-        loading={loading}
-        model={model}
-        totals={totals}
-        quality={quality}
-        dailyBunchRows={dailyBunchRows}
-        periodText={periodText}
-        source={source}
-        lastRecord={lastRecord}
-        presentationMode
-      />
+      <div className="presentation-scroll">
+        <FieldBiBoard
+          loading={loading}
+          model={model}
+          totals={totals}
+          quality={quality}
+          dailyBunchRows={dailyBunchRows}
+          periodText={periodText}
+          source={source}
+          lastRecord={lastRecord}
+          presentationMode
+        />
+      </div>
     </div>,
     document.body
   );

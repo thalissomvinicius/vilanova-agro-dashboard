@@ -721,12 +721,25 @@
   flex-direction: column;
   background: var(--bg-primary);
   color: var(--text-primary);
-  padding: 28px;
-  overflow: auto;
+  padding: 0;
+  overflow: hidden;
+  min-width: 0;
 }
 
 body.presentation-active {
   overflow: hidden;
+}
+
+.presentation-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 10px 74px;
+  scrollbar-gutter: stable both-edges;
 }
 
 .presentation-topbar {
@@ -1470,21 +1483,21 @@ body.presentation-active {
 }
 
 .presentation-overlay {
-  padding: 10px;
   background: var(--bg-primary);
 }
 
-.presentation-overlay .field-bi-board {
-  min-height: calc(100vh - 20px);
+.presentation-scroll > .field-bi-board,
+.presentation-scroll > .rampa-bi-board {
+  min-height: min-content;
+  max-width: none;
 }
 
 .presentation-overlay .field-bi-board.is-presentation {
-  display: flex;
-  flex-direction: column;
+  display: block;
 }
 
 .presentation-overlay .field-bi-main-grid {
-  flex: 1 1 auto;
+  flex: initial;
 }
 
 .field-bi-close-btn {
@@ -1871,8 +1884,7 @@ body.presentation-active {
 }
 
 .rampa-presentation-overlay .rampa-bi-board {
-  min-height: calc(100vh - 20px);
-  padding: 8px 8px 34px;
+  padding: 8px 8px 38px;
 }
 
 .rampa-presentation-overlay .rampa-bi-header {
@@ -2168,7 +2180,10 @@ body.presentation-active {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding-top: 10px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 0 68px;
+  scrollbar-gutter: stable both-edges;
 }
 
 .tv-mode-content .page-shell {
@@ -3412,8 +3427,8 @@ body.presentation-active {
     grid-template-columns: 1fr;
   }
 
-  .presentation-overlay {
-    padding: 16px;
+  .presentation-scroll {
+    padding: 10px 10px 76px;
   }
 
   .presentation-topbar {

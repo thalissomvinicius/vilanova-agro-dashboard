@@ -555,7 +555,9 @@ function RampaPresentationOverlay(props) {
       <button type="button" className="presentation-close-btn field-bi-close-btn" onClick={props.onClose} title="Fechar apresentacao" aria-label="Fechar apresentacao">
         <X size={22} />
       </button>
-      <RampaBoard {...props} presentationMode />
+      <div className="presentation-scroll">
+        <RampaBoard {...props} presentationMode />
+      </div>
     </div>,
     document.body
   );
