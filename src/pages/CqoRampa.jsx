@@ -67,7 +67,16 @@ function dateFromDayKey(dayKey) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function isWithinPeriod(row, periodFilter = 'month', dateFrom = '', dateTo = '') {
+function latestDateFromRows(rows = []) {
+  return rows.reduce((latest, row) => {
+    const date = dateFromDayKey(row.dayKey);
+    if (!date) return latest;
+    if (!latest || date > latest) return date;
+    return latest;
+  }, null);
+}
+
+function isWithinPeriod(row, periodFilter = 'month', dateFrom = '', dateTo = '', referenceDate = null) {
   const date = dateFromDayKey(row.dayKey);
   if (!date) return periodFilter === 'all' || periodFilter === 'season';
 
@@ -79,7 +88,7 @@ function isWithinPeriod(row, periodFilter = 'month', dateFrom = '', dateTo = '')
 
   if (periodFilter === 'all' || periodFilter === 'season') return true;
 
-  const now = new Date();
+  const now = referenceDate || new Date();
   const diffDays = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24);
   if (periodFilter === 'today') return date.toDateString() === now.toDateString();
   if (periodFilter === 'week') return diffDays >= 0 && diffDays <= 7;
@@ -88,8 +97,8 @@ function isWithinPeriod(row, periodFilter = 'month', dateFrom = '', dateTo = '')
   return true;
 }
 
-function filterByPeriod(rows = [], periodFilter, dateFrom, dateTo) {
-  return rows.filter((row) => isWithinPeriod(row, periodFilter, dateFrom, dateTo));
+function filterByPeriod(rows = [], periodFilter, dateFrom, dateTo, referenceDate = null) {
+  return rows.filter((row) => isWithinPeriod(row, periodFilter, dateFrom, dateTo, referenceDate));
 }
 
 function aggregateDayRows(rows = []) {
@@ -370,17 +379,22 @@ export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', d
   const data = useBonificacaoData();
   const rampa = data?.cqoRampa || {};
   const producerNames = selectedProducerNames(farmFilter);
+  const producerDayRows = filterByProducer(rampa.byProducerDay || [], producerNames);
+  const semAvaliacaoDayRows = filterByProducer(rampa.semAvaliacaoByDay || [], producerNames);
+  const referenceDate = latestDateFromRows([...producerDayRows, ...semAvaliacaoDayRows]);
   const filteredProducerDayRows = filterByPeriod(
-    filterByProducer(rampa.byProducerDay || [], producerNames),
+    producerDayRows,
     periodFilter,
     dateFrom,
-    dateTo
+    dateTo,
+    referenceDate
   );
   const filteredSemAvaliacaoDayRows = filterByPeriod(
-    filterByProducer(rampa.semAvaliacaoByDay || [], producerNames),
+    semAvaliacaoDayRows,
     periodFilter,
     dateFrom,
-    dateTo
+    dateTo,
+    referenceDate
   );
   const producerRows = aggregateProducerRows(filteredProducerDayRows);
   const dailyRows = aggregateDayRows(filteredProducerDayRows);
