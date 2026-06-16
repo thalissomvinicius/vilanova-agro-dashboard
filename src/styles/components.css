@@ -1160,11 +1160,11 @@ body.presentation-active {
   width: 100%;
   min-width: 0;
   padding: 8px;
-  border: 1px solid #1F2937;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: #ECECEC;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-  color: #2F2F2F;
+  background: var(--bg-tertiary);
+  box-shadow: var(--shadow-premium);
+  color: var(--text-primary);
 }
 
 .field-bi-header {
@@ -1174,10 +1174,10 @@ body.presentation-active {
   align-items: center;
   gap: 18px;
   padding: 8px 18px;
-  border: 1px solid #1F2937;
+  border: 1px solid var(--orange-institutional);
   border-radius: 8px;
-  background: #E96532;
-  color: #FFFFFF;
+  background: var(--orange-institutional);
+  color: var(--white);
 }
 
 .field-bi-logo {
@@ -1186,12 +1186,12 @@ body.presentation-active {
   object-fit: contain;
   padding: 4px 10px;
   border-radius: 2px;
-  background: #FFFFFF;
+  background: var(--white);
 }
 
 .field-bi-header h2 {
   margin: 0;
-  color: #FFFFFF;
+  color: var(--white);
   font-size: clamp(1.55rem, 3.2vw, 2.28rem);
   font-weight: 850;
   line-height: 1;
@@ -1202,8 +1202,8 @@ body.presentation-active {
   border: 1px solid rgba(255, 255, 255, 0.45);
   border-radius: 8px;
   padding: 0 14px;
-  background: #F29A00;
-  color: #FFFFFF;
+  background: var(--green-institutional);
+  color: var(--white);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1211,7 +1211,7 @@ body.presentation-active {
   font: inherit;
   font-weight: 850;
   cursor: pointer;
-  box-shadow: 0 6px 14px rgba(91, 52, 0, 0.18);
+  box-shadow: var(--shadow-sm);
 }
 
 .field-bi-filter-strip {
@@ -1221,7 +1221,7 @@ body.presentation-active {
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  color: #5B5B5B;
+  color: var(--text-secondary);
   font-size: 0.74rem;
   font-weight: 650;
 }
@@ -1231,9 +1231,9 @@ body.presentation-active {
   display: inline-flex;
   align-items: center;
   padding: 3px 9px;
-  border: 1px solid #C8C8C8;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  background: #F7F7F7;
+  background: var(--bg-card);
 }
 
 .field-bi-kpi-grid {
@@ -1246,17 +1246,17 @@ body.presentation-active {
 .field-bi-kpi {
   min-height: 82px;
   padding: 6px 10px 9px;
-  border: 1px solid #2D2D2D;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: linear-gradient(180deg, #F8F8F8 0%, #E9E9E9 100%);
-  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.16);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
   text-align: center;
   overflow: hidden;
 }
 
 .field-bi-kpi span {
   display: block;
-  color: #2F2F2F;
+  color: var(--text-primary);
   font-size: 0.84rem;
   line-height: 1.15;
 }
@@ -1272,18 +1272,18 @@ body.presentation-active {
 
 .field-bi-kpi small {
   display: block;
-  color: #333333;
+  color: var(--text-secondary);
   font-size: 0.78rem;
   line-height: 1.2;
 }
 
 .field-bi-kpi-green strong {
-  color: #16A34A;
+  color: var(--green-institutional);
 }
 
 .field-bi-kpi-orange strong,
 .field-bi-kpi-danger strong {
-  color: #D84A58;
+  color: var(--status-danger);
 }
 
 .field-bi-main-grid {
@@ -1296,16 +1296,16 @@ body.presentation-active {
   min-width: 0;
   min-height: 210px;
   padding: 8px;
-  border: 1px solid #2D2D2D;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: #F7F7F7;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6), 0 3px 8px rgba(0,0,0,0.08);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
 .field-bi-panel h3 {
   margin: -2px 0 7px;
-  color: #2F2F2F;
+  color: var(--text-primary);
   text-align: center;
   font-size: clamp(1rem, 1.35vw, 1.28rem);
   font-weight: 500;
@@ -1319,7 +1319,7 @@ body.presentation-active {
   justify-content: center;
   gap: 7px 10px;
   min-height: 20px;
-  color: #5E5E5E;
+  color: var(--text-secondary);
   font-size: 0.72rem;
   font-weight: 650;
 }
@@ -1354,7 +1354,7 @@ body.presentation-active {
 }
 
 .field-bi-farm-row strong {
-  color: #666666;
+  color: var(--text-secondary);
   font-size: 0.75rem;
   font-weight: 700;
   text-align: right;
@@ -1386,7 +1386,7 @@ body.presentation-active {
   position: absolute;
   top: -1px;
   right: 0;
-  color: #666666;
+  color: var(--text-secondary);
   font-size: 0.7rem;
 }
 
@@ -1394,7 +1394,7 @@ body.presentation-active {
   display: flex;
   justify-content: space-between;
   margin: 8px 24px 0 112px;
-  color: #666666;
+  color: var(--text-secondary);
   font-size: 0.72rem;
 }
 
@@ -1414,11 +1414,11 @@ body.presentation-active {
 .field-bi-y-label {
   font-size: 0.76rem;
   font-weight: 800;
-  fill: #2F2F2F;
+  fill: var(--text-primary);
 }
 
 .field-bi-bar-label {
-  fill: #FFFFFF;
+  fill: var(--white);
   font-size: 0.72rem;
   font-weight: 850;
 }
@@ -1432,15 +1432,15 @@ body.presentation-active {
 
 .field-bi-evaluator-card {
   padding: 8px 12px;
-  border: 1px solid #C7C7C7;
-  background: #FAFAFA;
-  box-shadow: inset 4px 0 0 #D2D2D2;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  box-shadow: inset 4px 0 0 var(--green-institutional);
 }
 
 .field-bi-evaluator-card strong {
   display: block;
   margin-bottom: 7px;
-  color: #1B3C73;
+  color: var(--green-institutional);
   font-size: 0.76rem;
 }
 
@@ -1453,13 +1453,13 @@ body.presentation-active {
 .field-bi-evaluator-card span,
 .field-bi-evaluator-card b {
   display: block;
-  color: #555555;
+  color: var(--text-secondary);
   font-size: 0.72rem;
   line-height: 1.2;
 }
 
 .field-bi-evaluator-card b {
-  color: #2F2F2F;
+  color: var(--text-primary);
   font-size: 0.78rem;
   font-weight: 500;
 }
@@ -1469,17 +1469,9 @@ body.presentation-active {
   margin-top: 4px;
 }
 
-.field-bi-footer {
-  display: flex;
-  justify-content: flex-end;
-  padding: 5px 4px 0;
-  color: #333333;
-  font-size: 0.64rem;
-}
-
 .presentation-overlay {
   padding: 10px;
-  background: #DADADA;
+  background: var(--bg-primary);
 }
 
 .presentation-overlay .field-bi-board {

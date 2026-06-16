@@ -123,10 +123,10 @@ function FieldBiKpiCard({ label, value, meta, goodWhen = 'low', loading = false 
 }
 
 const BI_SERIES = [
-  { key: 'maduro', sourceKey: 'cachoMaduroPct', label: 'CM %', fullLabel: 'Cacho maduro %', color: '#FB8B5B' },
-  { key: 'passado', sourceKey: 'cachoPassadoPct', label: 'CP %', fullLabel: 'Cacho passado %', color: '#4A3A2E' },
-  { key: 'verde', sourceKey: 'cachoVerdePct', label: 'CV %', fullLabel: 'Cacho verde %', color: '#4EA64F' },
-  { key: 'avermelhado', sourceKey: 'cachoAvermelhadoPct', label: 'CA %', fullLabel: 'Cacho Avermelhado %', color: '#B82025' },
+  { key: 'maduro', sourceKey: 'cachoMaduroPct', label: 'CM %', fullLabel: 'Cacho maduro %', color: 'var(--orange-institutional)' },
+  { key: 'passado', sourceKey: 'cachoPassadoPct', label: 'CP %', fullLabel: 'Cacho passado %', color: 'var(--text-primary)' },
+  { key: 'verde', sourceKey: 'cachoVerdePct', label: 'CV %', fullLabel: 'Cacho verde %', color: 'var(--green-institutional)' },
+  { key: 'avermelhado', sourceKey: 'cachoAvermelhadoPct', label: 'CA %', fullLabel: 'Cacho Avermelhado %', color: 'var(--status-danger)' },
 ];
 
 function qualityValuesFromRow(row) {
@@ -317,10 +317,10 @@ function EvaluatorQualityCards({ rows, loading = false }) {
 
 function DailyBunchBarChart({ rows, loading = false }) {
   const series = [
-    { key: 'maduro', label: 'Cacho maduro %', color: '#FB8B5B' },
-    { key: 'passado', label: 'Cacho passado %', color: '#4A3A2E' },
-    { key: 'verde', label: 'Cacho verde %', color: '#4EA64F' },
-    { key: 'avermelhado', label: 'Cacho Avermelhado %', color: '#B82025' },
+    { key: 'maduro', label: 'Cacho maduro %', color: 'var(--orange-institutional)' },
+    { key: 'passado', label: 'Cacho passado %', color: 'var(--text-primary)' },
+    { key: 'verde', label: 'Cacho verde %', color: 'var(--green-institutional)' },
+    { key: 'avermelhado', label: 'Cacho Avermelhado %', color: 'var(--status-danger)' },
   ];
 
   const visibleRows = rows.slice(-12);
@@ -450,10 +450,6 @@ function FieldBiBoard({
       </div>
 
       <DailyBunchBarChart rows={dailyBunchRows} loading={loading} />
-
-      <div className="field-bi-footer">
-        <span>Desenvolvido por: Marcos Vaz</span>
-      </div>
     </div>
   );
 }
