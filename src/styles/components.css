@@ -709,6 +709,215 @@
   line-height: 1.35;
 }
 
+.field-powerbi-header {
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.field-powerbi-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.field-powerbi-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+}
+
+.field-quality-scorecard {
+  min-height: 116px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+}
+
+.field-quality-scorecard-top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-quality-scorecard-top span {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 1.35;
+}
+
+.field-quality-scorecard-top strong {
+  color: var(--text-primary);
+  font-size: 1.75rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.field-quality-scorecard-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.field-quality-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.field-quality-status-green {
+  color: var(--status-success);
+  background: var(--status-success-bg);
+}
+
+.field-quality-status-orange {
+  color: var(--status-warning);
+  background: var(--status-warning-bg);
+}
+
+.field-quality-status-danger {
+  color: var(--status-danger);
+  background: var(--status-danger-bg);
+}
+
+.field-quality-panel {
+  min-width: 0;
+}
+
+.field-quality-stackbar {
+  width: 100%;
+  height: 30px;
+  display: flex;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+}
+
+.field-quality-stackbar > div {
+  min-width: 0;
+  transition: width var(--transition-normal);
+}
+
+.field-quality-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.field-quality-legend > div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+}
+
+.field-quality-legend span {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.field-quality-legend strong,
+.field-quality-legend small {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.field-quality-legend small {
+  color: var(--text-primary);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.field-quality-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.field-quality-bar-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.field-quality-bar-label {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.field-quality-bar-label strong {
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-quality-bar-label span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.field-quality-mini-stack {
+  height: 18px;
+  display: flex;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+}
+
+.field-quality-mini-stack span {
+  min-width: 0;
+}
+
+.field-powerbi-footnote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+}
+
+.field-powerbi-footnote svg {
+  color: var(--orange-institutional);
+  flex-shrink: 0;
+}
+
 .quality-stack {
   display: flex;
   flex-direction: column;
@@ -1942,8 +2151,19 @@
 
   .detail-grid,
   .detail-footer-grid,
-  .evidence-grid {
+  .evidence-grid,
+  .field-quality-legend {
     grid-template-columns: 1fr;
+  }
+
+  .field-quality-scorecard-bottom,
+  .field-quality-bar-row {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .field-quality-scorecard-bottom {
+    flex-direction: column;
   }
 
   .compact-row {

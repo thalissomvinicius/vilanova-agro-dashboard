@@ -1,25 +1,53 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   AlertTriangle,
+  BarChart3,
+  Calendar,
   CheckCircle2,
   ClipboardCheck,
-  FileSpreadsheet,
-  MapPin,
-  RefreshCcw,
-  Rows3,
+  Gauge,
+  Leaf,
   Scale,
   Sprout,
+  Target,
   Tractor,
-  Calendar,
+  TrendingUp,
+  Users,
 } from 'lucide-react';
 import CustomChart from '../components/CustomChart';
-import { aggregateRecords, useCqoDashboard } from '../utils/cqoData';
+import { useCqoDashboard } from '../utils/cqoData';
+import { buildQualidadeOperacional } from '../utils/qualidadeOperacionalData';
 
 function formatNumber(value, digits = 0) {
   return new Intl.NumberFormat('pt-BR', {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   }).format(Number(value || 0));
+}
+
+function formatPercent(value, digits = 2) {
+  return `${formatNumber(value, digits)}%`;
+}
+
+function periodLabel(periodFilter, dateFrom, dateTo) {
+  if (periodFilter === 'today') return 'Hoje';
+  if (periodFilter === 'week') return 'Ultimos 7 dias';
+  if (periodFilter === 'month') return 'Este mes';
+  if (periodFilter === 'custom') return `${dateFrom || 'Inicio'} ate ${dateTo || 'Fim'}`;
+  return 'Todos os tempos';
+}
+
+function qualityTone(value, meta, goodWhen = 'low') {
+  const numeric = Number(value || 0);
+  if (goodWhen === 'high') {
+    if (numeric >= meta) return { tone: 'green', color: 'var(--status-success)', status: 'Dentro da meta' };
+    if (numeric >= meta * 0.95) return { tone: 'orange', color: 'var(--status-warning)', status: 'Atencao' };
+    return { tone: 'danger', color: 'var(--status-danger)', status: 'Fora da meta' };
+  }
+
+  if (numeric <= meta) return { tone: 'green', color: 'var(--status-success)', status: 'Dentro da meta' };
+  if (numeric <= meta * 1.25) return { tone: 'orange', color: 'var(--status-warning)', status: 'Atencao' };
+  return { tone: 'danger', color: 'var(--status-danger)', status: 'Fora da meta' };
 }
 
 function KpiCard({ title, value, footer, icon: Icon, tone = 'green', loading = false }) {
@@ -45,23 +73,173 @@ function KpiCard({ title, value, footer, icon: Icon, tone = 'green', loading = f
   );
 }
 
-function QualityLine({ label, value, max, color = 'var(--green-institutional)', loading = false }) {
-  const percent = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+function QualityScorecard({ label, value, meta, goodWhen = 'low', loading = false }) {
+  const tone = qualityTone(value, meta, goodWhen);
   return (
-    <div className="quality-line">
-      <div className="quality-line-top">
+    <div className="card field-quality-scorecard">
+      <div className="field-quality-scorecard-top">
         <span>{label}</span>
-        <strong className={loading ? 'skeleton-text' : ''}>{loading ? '\u00A0' : formatNumber(value)}</strong>
+        <strong className={loading ? 'skeleton-text' : ''} style={{ color: tone.color }}>
+          {loading ? '\u00A0' : formatPercent(value)}
+        </strong>
       </div>
-      <div className={`quality-track ${loading ? 'skeleton-chart' : ''}`} style={{ height: '8px', minHeight: '8px' }}>
-        {!loading && <div className="quality-bar" style={{ width: `${percent}%`, background: color }} />}
+      <div className="field-quality-scorecard-bottom">
+        <span>Meta {goodWhen === 'high' ? 'min.' : 'max.'} {formatPercent(meta)}</span>
+        <span className={`field-quality-status field-quality-status-${tone.tone}`}>{tone.status}</span>
+      </div>
+    </div>
+  );
+}
+
+function QualityDistribution({ quality, loading = false }) {
+  const rows = [
+    { label: 'Maduro', value: quality.cachoMaduroPct, color: '#F88A4E' },
+    { label: 'Passado', value: quality.cachoPassadoPct, color: '#8B5A2B' },
+    { label: 'Verde', value: quality.cachoVerdePct, color: '#65A30D' },
+    { label: 'Avermelhado', value: quality.cachoAvermelhadoPct, color: '#B45309' },
+  ];
+  const total = rows.reduce((sum, row) => sum + Number(row.value || 0), 0) || 1;
+
+  return (
+    <div className="card field-quality-panel">
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">Distribuicao da maturacao</h3>
+          <span className="card-subtitle">Leitura equivalente aos percentuais de qualidade do Power BI.</span>
+        </div>
+        <Leaf size={20} style={{ color: 'var(--green-institutional)' }} />
+      </div>
+
+      {loading ? (
+        <div className="skeleton-chart" style={{ height: 132 }} />
+      ) : (
+        <>
+          <div className="field-quality-stackbar">
+            {rows.map((row) => (
+              <div
+                key={row.label}
+                style={{ width: `${Math.max((row.value / total) * 100, row.value > 0 ? 2 : 0)}%`, background: row.color }}
+                title={`${row.label}: ${formatPercent(row.value)}`}
+              />
+            ))}
+          </div>
+          <div className="field-quality-legend">
+            {rows.map((row) => (
+              <div key={row.label}>
+                <span style={{ background: row.color }} />
+                <strong>{row.label}</strong>
+                <small>{formatPercent(row.value)}</small>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function StackedQualityRows({ title, subtitle, rows, loading = false, limit = 8 }) {
+  const colors = {
+    maduro: '#F88A4E',
+    passado: '#8B5A2B',
+    verde: '#65A30D',
+    avermelhado: '#B45309',
+  };
+
+  return (
+    <div className="card field-quality-panel">
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">{title}</h3>
+          <span className="card-subtitle">{subtitle}</span>
+        </div>
+        <BarChart3 size={20} style={{ color: 'var(--orange-institutional)' }} />
+      </div>
+
+      {loading ? (
+        <div className="skeleton-chart" style={{ height: 240 }} />
+      ) : (
+        <div className="field-quality-bars">
+          {rows.slice(0, limit).map((row) => {
+            const total = row.cachoMaduroPct + row.cachoPassadoPct + row.cachoVerdePct + row.cachoAvermelhadoPct || 1;
+            return (
+              <div className="field-quality-bar-row" key={row.label}>
+                <div className="field-quality-bar-label">
+                  <strong>{row.label}</strong>
+                  <span>{formatPercent(row.cachoMaduroPct)} maduro</span>
+                </div>
+                <div className="field-quality-mini-stack">
+                  <span style={{ width: `${(row.cachoMaduroPct / total) * 100}%`, background: colors.maduro }} />
+                  <span style={{ width: `${(row.cachoPassadoPct / total) * 100}%`, background: colors.passado }} />
+                  <span style={{ width: `${(row.cachoVerdePct / total) * 100}%`, background: colors.verde }} />
+                  <span style={{ width: `${(row.cachoAvermelhadoPct / total) * 100}%`, background: colors.avermelhado }} />
+                </div>
+              </div>
+            );
+          })}
+          {!rows.length && <div className="empty-panel">Nenhum dado de corte encontrado para os filtros atuais.</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QualityTable({ rows, loading = false }) {
+  return (
+    <div className="card page-card">
+      <div className="card-header table-card-header">
+        <div>
+          <h3 className="card-title">Detalhe por fazenda</h3>
+          <span className="card-subtitle">Mesmas leituras do PBIX: maturacao, anomalias e volume de coletas.</span>
+        </div>
+        <Sprout size={20} style={{ color: 'var(--green-institutional)' }} />
+      </div>
+      <div className="table-wrapper">
+        <table className="custom-table dense-table">
+          <thead>
+            <tr>
+              <th>Fazenda</th>
+              <th>Coletas</th>
+              <th>Cacho maduro %</th>
+              <th>Cacho passado %</th>
+              <th>Cacho verde %</th>
+              <th>Avermelhado %</th>
+              <th>Talo comprido %</th>
+              <th>Cacho estrela %</th>
+            </tr>
+          </thead>
+          <tbody>
+            {!loading && rows.map((row) => (
+              <tr key={row.label}>
+                <td><strong>{row.label}</strong></td>
+                <td>{formatNumber(row.records.length)}</td>
+                <td>{formatPercent(row.qualidade.cachosObservados ? (row.qualidade.cachoMaduro / row.qualidade.cachosObservados) * 100 : 0)}</td>
+                <td>{formatPercent(row.qualidade.cachosObservados ? (row.qualidade.cachoPassado / row.qualidade.cachosObservados) * 100 : 0)}</td>
+                <td>{formatPercent(row.qualidade.cachosObservados ? (row.qualidade.cachoVerde / row.qualidade.cachosObservados) * 100 : 0)}</td>
+                <td>{formatPercent(row.qualidade.cachosObservados ? (row.qualidade.cachoAvermelhado / row.qualidade.cachosObservados) * 100 : 0)}</td>
+                <td>{formatPercent(row.qualidade.cachosObservados ? (row.qualidade.taloComprido / row.qualidade.cachosObservados) * 100 : 0)}</td>
+                <td>{formatPercent(row.qualidade.cachosObservados ? (row.qualidade.cachoEstrela / row.qualidade.cachosObservados) * 100 : 0)}</td>
+              </tr>
+            ))}
+            {!loading && rows.length === 0 && (
+              <tr>
+                <td colSpan="8" className="empty-table-cell">Nenhuma coleta encontrada para os filtros atuais.</td>
+              </tr>
+            )}
+            {loading && (
+              <tr>
+                <td colSpan="8" className="empty-table-cell">Carregando indicadores...</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 }
 
 export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, dateFrom, dateTo, searchTerm }) {
-  const { loading, records, totals, charts, source, error } = useCqoDashboard({
+  const { loading, records, totals, source, error } = useCqoDashboard({
     farmFilter,
     areaFilter,
     periodFilter,
@@ -72,172 +250,177 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
     searchTerm,
   });
 
-  const corteRecords = records.filter((record) => record.type === 'corte');
-  const carreamentoRecords = records.filter((record) => record.type === 'carreamento');
-  const corteTotals = aggregateRecords(corteRecords);
-  const carreamentoTotals = aggregateRecords(carreamentoRecords);
+  const model = useMemo(() => buildQualidadeOperacional(records), [records]);
   const lastRecord = records[0];
+  const quality = model.quality;
+
+  const qualityDonut = model.charts.qualidade.filter((item) => item.value > 0);
+  const matureTrend = model.weekRows.map((row) => ({
+    label: row.label,
+    value: Number(row.cachoMaduroPct.toFixed(1)),
+  }));
+  const anomalyTrend = model.weekRows.map((row) => ({
+    label: row.label,
+    value: Number((row.cachoVerdePct + row.cachoPassadoPct + row.cachoAvermelhadoPct).toFixed(1)),
+  }));
 
   return (
     <div className="fade-in page-shell">
-      <div className="dashboard-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border-color)', paddingBottom: '24px', marginBottom: '8px' }}>
+      <div className="dashboard-page-header field-powerbi-header">
         <div>
-          <span className="page-eyebrow" style={{ color: 'var(--orange-institutional)', fontWeight: 700, letterSpacing: '0.5px' }}>VISÃO EXECUTIVA • CQO</span>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '4px 0 10px', color: 'var(--text-primary)' }}>Dashboard de Qualidade Agrícola</h2>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Calendar size={14} /> {periodFilter === 'all' ? 'Todos os tempos' : periodFilter === 'today' ? 'Hoje' : periodFilter === 'week' ? 'Últimos 7 dias' : periodFilter === 'month' ? 'Este mês' : `${dateFrom || 'Início'} até ${dateTo || 'Fim'}`}
-            </span>
-            <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--border-color)' }} />
-            <span style={{ fontSize: '0.85rem', color: 'var(--status-success)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
-              <CheckCircle2 size={14} /> Conectado ao Supabase
-            </span>
+          <span className="page-eyebrow">Qualidade Agricola • CQO Campo</span>
+          <h2>Campo no modelo do Power BI</h2>
+          <div className="field-powerbi-meta">
+            <span><Calendar size={14} /> {periodLabel(periodFilter, dateFrom, dateTo)}</span>
+            <span><CheckCircle2 size={14} /> {loading ? 'Carregando base' : source}</span>
+            <span><ClipboardCheck size={14} /> {formatNumber(model.corteRecords.length)} corte / {formatNumber(model.carreamentoRecords.length)} carreamento</span>
           </div>
         </div>
-        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '4px', backgroundColor: 'var(--bg-secondary)', padding: '12px 16px', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
-          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Sincronização</span>
-          <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>{loading ? 'Aguarde...' : source}</strong>
-          {error ? <small style={{ color: 'var(--status-danger)', fontSize: '0.75rem', fontWeight: 500 }}>{error}</small> : <small style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{lastRecord ? `Última: ${lastRecord.date} ${lastRecord.time}` : 'Sem dados'}</small>}
+        <div className="source-card compact">
+          <span>Referencia</span>
+          <strong>Qualidade Agricola.pbix</strong>
+          <small>{lastRecord ? `Ultima coleta: ${lastRecord.date} ${lastRecord.time}` : 'Sem dados no filtro'}</small>
         </div>
+      </div>
+
+      {error && (
+        <div className="warning-strip">
+          <AlertTriangle size={16} />
+          <span>Falha ao carregar dados: {error}</span>
+        </div>
+      )}
+
+      <div className="grid-container grid-cols-4">
+        <QualityScorecard loading={loading} label="Cacho Maduro %" value={quality.cachoMaduroPct} meta={85} goodWhen="high" />
+        <QualityScorecard loading={loading} label="Cacho passado %" value={quality.cachoPassadoPct} meta={10} />
+        <QualityScorecard loading={loading} label="Cacho verde %" value={quality.cachoVerdePct} meta={1} />
+        <QualityScorecard loading={loading} label="Cacho Avermelhado %" value={quality.cachoAvermelhadoPct} meta={4} />
       </div>
 
       <div className="grid-container grid-cols-4">
         <KpiCard
-          title="Coletas recebidas"
-          value={formatNumber(totals.total)}
-          footer={`${formatNumber(totals.linhas)} linhas avaliadas`}
-          icon={ClipboardCheck}
-          tone="green"
+          title="Talo Comprido %"
+          value={formatPercent(quality.taloCompridoPct)}
+          footer="Meta maxima 3,00%"
+          icon={Target}
+          tone={qualityTone(quality.taloCompridoPct, 3).tone}
           loading={loading}
         />
         <KpiCard
-          title="CQO Corte"
-          value={formatNumber(totals.corte)}
-          footer={`${formatNumber(corteTotals.cachosObservados)} cachos observados`}
+          title="Cacho Estrela %"
+          value={formatPercent(quality.cachoEstrelaPct)}
+          footer="Meta maxima 2,00%"
+          icon={Gauge}
+          tone={qualityTone(quality.cachoEstrelaPct, 2).tone}
+          loading={loading}
+        />
+        <KpiCard
+          title="Cachos observados"
+          value={formatNumber(model.corteTotals.cachosObservados)}
+          footer={`${formatNumber(model.corteTotals.plantasObservadas)} plantas observadas`}
           icon={Tractor}
-          tone="info"
-          loading={loading}
-        />
-        <KpiCard
-          title="Carreamento"
-          value={formatNumber(totals.carreamento)}
-          footer={`${formatNumber(carreamentoTotals.cachoNaoCarreado)} cachos não carreados`}
-          icon={Rows3}
-          tone="orange"
-          loading={loading}
-        />
-        <KpiCard
-          title="Sincronização concluída"
-          value={`${totals.syncRate}%`}
-          footer={`${formatNumber(totals.sincronizados)} sincronizadas / ${formatNumber(totals.pendentes + totals.falhas)} pendentes`}
-          icon={RefreshCcw}
-          tone="green"
-          loading={loading}
-        />
-      </div>
-
-      <div className="grid-container grid-cols-4">
-        <KpiCard
-          title="GPS capturado"
-          value={`${totals.gpsRate}%`}
-          footer={`${formatNumber(totals.gps)} registros com ponto`}
-          icon={MapPin}
-          tone="info"
-          loading={loading}
-        />
-        <KpiCard
-          title="Plantas observadas"
-          value={formatNumber(totals.plantasObservadas)}
-          footer="Base de cálculo das perdas"
-          icon={Sprout}
           tone="green"
           loading={loading}
         />
         <KpiCard
-          title="Perda no corte"
-          value={`${totals.perdaCorteRate}%`}
-          footer={`${formatNumber(totals.cachoEsquecido)} cachos esquecidos`}
-          icon={AlertTriangle}
-          tone="danger"
-          loading={loading}
-        />
-        <KpiCard
-          title="Peso fruto solto"
-          value={formatNumber(totals.pesoMedio, 1)}
-          footer="Soma dos pesos informados"
+          title="Perdas estimadas"
+          value={`${formatNumber(model.totals.perdasT, 2)} t`}
+          footer={`${formatNumber(model.totals.estimatedCachos)} cachos estimados`}
           icon={Scale}
-          tone="orange"
+          tone={model.totals.perdasT > 0 ? 'orange' : 'green'}
           loading={loading}
         />
       </div>
 
       <div className="grid-container grid-cols-2">
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <h3 className="card-title">CQO Corte destrinchado</h3>
-              <span className="card-subtitle">Maturação, perdas e falhas observadas no corte.</span>
-            </div>
-            <FileSpreadsheet size={20} style={{ color: 'var(--orange-institutional)' }} />
-          </div>
-          <div className="quality-stack">
-            <QualityLine loading={loading} label="Cachos maduros" value={corteTotals.cachoMaduro} max={Math.max(corteTotals.cachosObservados, 1)} />
-            <QualityLine loading={loading} label="Cachos verdes" value={corteTotals.cachoVerde} max={Math.max(corteTotals.cachosObservados, 1)} color="var(--status-warning)" />
-            <QualityLine loading={loading} label="Cachos passados" value={corteTotals.cachoPassado} max={Math.max(corteTotals.cachosObservados, 1)} color="var(--status-danger)" />
-            <QualityLine loading={loading} label="Cachos esquecidos" value={corteTotals.cachoEsquecido} max={Math.max(corteTotals.cachosObservados, 1)} color="var(--orange-institutional)" />
-            <QualityLine loading={loading} label="Folha cortada indevida" value={corteTotals.folhaCortada} max={Math.max(corteTotals.plantasObservadas, 1)} color="var(--status-info)" />
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <h3 className="card-title">Carreamento e fruto solto</h3>
-              <span className="card-subtitle">Indicadores de posicionamento, transporte e peso de fruto.</span>
-            </div>
-            <CheckCircle2 size={20} style={{ color: 'var(--green-institutional)' }} />
-          </div>
-          <div className="quality-stack">
-            <QualityLine loading={loading} label="Cachos mal posicionados" value={carreamentoTotals.cachoMalPosicionado} max={Math.max(carreamentoTotals.plantasObservadas, 1)} />
-            <QualityLine loading={loading} label="Cachos não carreados" value={carreamentoTotals.cachoNaoCarreado} max={Math.max(carreamentoTotals.plantasObservadas, 1)} color="var(--status-danger)" />
-            <QualityLine loading={loading} label="Plantas observadas" value={carreamentoTotals.plantasObservadas} max={Math.max(carreamentoTotals.plantasObservadas, 1)} color="var(--status-info)" />
-            <QualityLine loading={loading} label="Peso dos frutos" value={carreamentoTotals.pesoMedio} max={Math.max(carreamentoTotals.pesoMedio, 1)} color="var(--orange-institutional)" />
-          </div>
-        </div>
+        <QualityDistribution quality={quality} loading={loading} />
+        <CustomChart
+          loading={loading}
+          type="donut"
+          data={qualityDonut}
+          title="Percentual de qualidade"
+        />
       </div>
 
       <div className="grid-container grid-cols-2">
-        <CustomChart loading={loading} type="bar" data={charts.byFarm} title="Nota CQO por fazenda" />
-        <CustomChart loading={loading} type="bar" data={charts.byEvaluator} title="Nota CQO por avaliador" />
+        <StackedQualityRows
+          loading={loading}
+          title="Qualidade por Fazenda"
+          subtitle="Maduro, passado, verde e avermelhado por origem."
+          rows={model.farmRows}
+          limit={10}
+        />
+        <StackedQualityRows
+          loading={loading}
+          title="Qualidade por Semana"
+          subtitle="Evolucao semanal dos percentuais de corte."
+          rows={model.weekRows}
+          limit={10}
+        />
       </div>
 
-      <div className="grid-container grid-cols-1">
-        <CustomChart loading={loading} type="line" data={charts.byDay} title="Evolução diária das coletas" />
-        <div className="card page-card">
-          <div className="card-header table-card-header">
+      <div className="grid-container grid-cols-2">
+        <CustomChart loading={loading} type="line" data={matureTrend} title="Cacho maduro % por semana" targetValue={85} targetLabel="Meta" />
+        <CustomChart loading={loading} type="line" data={anomalyTrend} title="Anomalias de maturacao % por semana" targetValue={15} targetLabel="Limite" />
+      </div>
+
+      <div className="grid-container grid-cols-2">
+        <StackedQualityRows
+          loading={loading}
+          title="Ranking de Avaliadores"
+          subtitle="Auditores/fiscais com maior volume de amostras no filtro."
+          rows={model.evaluatorRows}
+          limit={8}
+        />
+        <div className="card">
+          <div className="card-header">
             <div>
-              <h3 className="card-title">Últimos registros</h3>
-              <span className="card-subtitle">Auditoria rápida do que chegou ao painel.</span>
+              <h3 className="card-title">Resumo operacional</h3>
+              <span className="card-subtitle">Base usada para aproximar a leitura do PBIX no sistema.</span>
             </div>
+            <Users size={20} style={{ color: 'var(--green-institutional)' }} />
           </div>
           <div className="compact-list">
-            {records.slice(0, 6).map((record) => (
-              <div className="compact-row" key={record.id}>
-                <div>
-                  <strong>{record.form}</strong>
-                  <span>{record.farm} / Parcela {record.parcel}</span>
-                </div>
-                <div>
-                  <strong>{record.status}</strong>
-                  <span>{record.date} {record.time}</span>
-                </div>
-              </div>
-            ))}
-            {!records.length && (
-              <div className="empty-panel">Nenhum registro encontrado para os filtros atuais.</div>
-            )}
+            <div className="compact-row">
+              <div><strong>Total de coletas</strong><span>Registros dentro dos filtros</span></div>
+              <strong>{formatNumber(totals.total)}</strong>
+            </div>
+            <div className="compact-row">
+              <div><strong>Cachos maduros</strong><span>Base do indicador principal</span></div>
+              <strong>{formatNumber(model.corteTotals.cachoMaduro)}</strong>
+            </div>
+            <div className="compact-row">
+              <div><strong>Ocorrencias criticas</strong><span>Verde + passado + avermelhado</span></div>
+              <strong>{formatNumber(model.corteTotals.cachoVerde + model.corteTotals.cachoPassado + model.corteTotals.cachoAvermelhado)}</strong>
+            </div>
+            <div className="compact-row">
+              <div><strong>Sincronizacao</strong><span>Coletas ja sincronizadas</span></div>
+              <strong>{formatNumber(totals.syncRate)}%</strong>
+            </div>
           </div>
         </div>
+      </div>
+
+      <QualityTable rows={model.farmRows} loading={loading} />
+
+      <div className="grid-container grid-cols-1">
+        <CustomChart
+          loading={loading}
+          type="bar"
+          data={model.farmRows.slice(0, 12).map((row) => ({
+            label: row.label.length > 16 ? `${row.label.slice(0, 16)}...` : row.label,
+            value: Number((row.qualidade.cachosObservados ? (row.qualidade.cachoMaduro / row.qualidade.cachosObservados) * 100 : 0).toFixed(1)),
+            fill: '#234F2A',
+          }))}
+          title="Cacho maduro % por fazenda"
+          targetValue={85}
+          targetLabel="Meta"
+        />
+      </div>
+
+      <div className="field-powerbi-footnote">
+        <TrendingUp size={16} />
+        <span>Indicadores estruturados a partir da pagina "Qualidade Agricola" do PBIX: scorecards de maturacao, qualidade por fazenda, qualidade por semana e ranking de avaliadores.</span>
       </div>
     </div>
   );
