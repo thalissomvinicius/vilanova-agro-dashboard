@@ -55,6 +55,43 @@ function filterByProducer(rows = [], names = []) {
   return rows.filter((row) => allowed.has(row.fornecedor || row.fazenda));
 }
 
+function parseDateBoundary(value, endOfDay = false) {
+  if (!value) return null;
+  const date = new Date(`${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function dateFromDayKey(dayKey) {
+  if (!dayKey || dayKey === 'sem-data') return null;
+  const date = new Date(`${dayKey}T12:00:00.000`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isWithinPeriod(row, periodFilter = 'month', dateFrom = '', dateTo = '') {
+  const date = dateFromDayKey(row.dayKey);
+  if (!date) return periodFilter === 'all' || periodFilter === 'season';
+
+  if (periodFilter === 'custom') {
+    const from = parseDateBoundary(dateFrom);
+    const to = parseDateBoundary(dateTo, true);
+    return (!from || date >= from) && (!to || date <= to);
+  }
+
+  if (periodFilter === 'all' || periodFilter === 'season') return true;
+
+  const now = new Date();
+  const diffDays = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24);
+  if (periodFilter === 'today') return date.toDateString() === now.toDateString();
+  if (periodFilter === 'week') return diffDays >= 0 && diffDays <= 7;
+  if (periodFilter === 'month') return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+
+  return true;
+}
+
+function filterByPeriod(rows = [], periodFilter, dateFrom, dateTo) {
+  return rows.filter((row) => isWithinPeriod(row, periodFilter, dateFrom, dateTo));
+}
+
 function aggregateDayRows(rows = []) {
   const buckets = new Map();
 
@@ -94,7 +131,75 @@ function aggregateDayRows(rows = []) {
     .sort((a, b) => String(a.dayKey).localeCompare(String(b.dayKey)));
 }
 
-function QualityCard({ label, value, meta, icon: Icon, color, warning = false, note }) {
+function aggregateProducerRows(rows = []) {
+  const buckets = new Map();
+
+  rows.forEach((row) => {
+    const key = row.fornecedor || 'Sem origem';
+    const current = buckets.get(key) || {
+      fornecedor: key,
+      registros: 0,
+      qVerde: 0,
+      qMaduro: 0,
+      qPassado: 0,
+      qTaloComprido: 0,
+      qAvermelhado: null,
+      qBucha: null,
+      pesoT: 0,
+    };
+    const weight = Number(row.registros || 0);
+    current.registros += weight;
+    current.qVerde += Number(row.qVerde || 0) * weight;
+    current.qMaduro += Number(row.qMaduro || 0) * weight;
+    current.qPassado += Number(row.qPassado || 0) * weight;
+    current.qTaloComprido += Number(row.qTaloComprido || 0) * weight;
+    current.pesoT += Number(row.pesoT || 0);
+    buckets.set(key, current);
+  });
+
+  return Array.from(buckets.values())
+    .map((row) => {
+      const weight = Math.max(row.registros, 1);
+      return {
+        ...row,
+        qVerde: row.qVerde / weight,
+        qMaduro: row.qMaduro / weight,
+        qPassado: row.qPassado / weight,
+        qTaloComprido: row.qTaloComprido / weight,
+      };
+    })
+    .sort((a, b) => Number(b.pesoT || 0) - Number(a.pesoT || 0));
+}
+
+function aggregateSemAvaliacaoRows(rows = []) {
+  const buckets = new Map();
+
+  rows.forEach((row) => {
+    const key = row.fornecedor || 'Sem origem';
+    const current = buckets.get(key) || {
+      fornecedor: key,
+      caixasSemAvaliacao: 0,
+      latestDayKey: '',
+      dataEntradaMaisRecente: '',
+    };
+    current.caixasSemAvaliacao += Number(row.caixasSemAvaliacao || 0);
+    if (row.dayKey && row.dayKey > current.latestDayKey) {
+      current.latestDayKey = row.dayKey;
+      current.dataEntradaMaisRecente = row.dataEntrada || row.dayLabel || '';
+    }
+    buckets.set(key, current);
+  });
+
+  return Array.from(buckets.values())
+    .map((row) => ({
+      fornecedor: row.fornecedor,
+      caixasSemAvaliacao: row.caixasSemAvaliacao,
+      dataEntradaMaisRecente: row.dataEntradaMaisRecente,
+    }))
+    .sort((a, b) => Number(b.caixasSemAvaliacao || 0) - Number(a.caixasSemAvaliacao || 0));
+}
+
+function QualityCard({ label, value, meta, icon: Icon, color, warning = false, note, unavailable = false }) {
   const hasValue = hasQualityValue(value);
   const delta = hasValue && meta !== null && meta !== undefined ? Number(value) - Number(meta) : null;
   return (
@@ -104,13 +209,13 @@ function QualityCard({ label, value, meta, icon: Icon, color, warning = false, n
         <span>{label}</span>
       </div>
       <strong style={{ color: warning ? 'var(--status-danger)' : color }}>
-        {hasValue ? fmtPct(value) : 'Sem coluna'}
+        {hasValue ? fmtPct(value) : unavailable ? 'Sem coluna' : 'Sem dados'}
         {warning && hasValue ? <small>!</small> : null}
       </strong>
       <span>
         {hasValue && meta !== null && meta !== undefined
           ? `Meta: ${fmt(meta, 0)} (${delta >= 0 ? '+' : ''}${fmt(delta, 1)})`
-          : note || 'Campo não disponível na base local'}
+          : note || 'Nenhum registro no período'}
       </span>
     </div>
   );
@@ -148,7 +253,7 @@ function ProducerQualityTable({ rows, total }) {
             </tr>
           </thead>
           <tbody>
-            {tableRows.map((row) => (
+            {rows.length ? tableRows.map((row) => (
               <tr key={row.fornecedor} className={row.isTotal ? 'rampa-total-row' : ''}>
                 <td><strong>{row.fornecedor}</strong></td>
                 <td>{fmt(row.qVerde, 2)}</td>
@@ -157,7 +262,11 @@ function ProducerQualityTable({ rows, total }) {
                 <td>{fmt(row.qTaloComprido, 2)}</td>
                 <td>{fmt(row.pesoT, 2)}</td>
               </tr>
-            ))}
+            )) : (
+              <tr>
+                <td colSpan="6" className="empty-table-cell">Nenhum dado de rampa encontrado para o período selecionado.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -239,11 +348,17 @@ function SemAvaliacaoTable({ rows }) {
                 <td>{row.dataEntradaMaisRecente || '--'}</td>
               </tr>
             ))}
-            <tr className="rampa-total-row">
-              <td><strong>Total</strong></td>
-              <td>{fmt(total)}</td>
-              <td />
-            </tr>
+            {rows.length ? (
+              <tr className="rampa-total-row">
+                <td><strong>Total</strong></td>
+                <td>{fmt(total)}</td>
+                <td />
+              </tr>
+            ) : (
+              <tr>
+                <td colSpan="3" className="empty-table-cell">Nenhuma caixa sem avaliação no período selecionado.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -251,13 +366,25 @@ function SemAvaliacaoTable({ rows }) {
   );
 }
 
-export default function CqoRampa({ farmFilter = 'all' }) {
+export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', dateFrom = '', dateTo = '' }) {
   const data = useBonificacaoData();
   const rampa = data?.cqoRampa || {};
   const producerNames = selectedProducerNames(farmFilter);
-  const producerRows = filterByProducer(rampa.byProducer || [], producerNames);
-  const dailyRows = aggregateDayRows(filterByProducer(rampa.byProducerDay || [], producerNames));
-  const semAvaliacaoRows = filterByProducer(rampa.semAvaliacao || [], producerNames);
+  const filteredProducerDayRows = filterByPeriod(
+    filterByProducer(rampa.byProducerDay || [], producerNames),
+    periodFilter,
+    dateFrom,
+    dateTo
+  );
+  const filteredSemAvaliacaoDayRows = filterByPeriod(
+    filterByProducer(rampa.semAvaliacaoByDay || [], producerNames),
+    periodFilter,
+    dateFrom,
+    dateTo
+  );
+  const producerRows = aggregateProducerRows(filteredProducerDayRows);
+  const dailyRows = aggregateDayRows(filteredProducerDayRows);
+  const semAvaliacaoRows = aggregateSemAvaliacaoRows(filteredSemAvaliacaoDayRows);
   const total = {
     qVerde: weightedAverage(producerRows, 'qVerde'),
     qMaduro: weightedAverage(producerRows, 'qMaduro'),
@@ -296,9 +423,9 @@ export default function CqoRampa({ farmFilter = 'all' }) {
         <QualityCard label="Verde (%)" value={total.qVerde} meta={5} icon={Leaf} color={QUALITY_COLORS.qVerde} warning={Number(total.qVerde || 0) > 5} />
         <QualityCard label="Maduro (%)" value={total.qMaduro} meta={80} icon={Truck} color={QUALITY_COLORS.qMaduro} warning={Number(total.qMaduro || 0) < 80} />
         <QualityCard label="Passado (%)" value={total.qPassado} meta={5} icon={AlertTriangle} color={QUALITY_COLORS.qPassado} warning={Number(total.qPassado || 0) > 5} />
-        <QualityCard label="Cacho Averm. (%)" value={total.qAvermelhado} meta={10} icon={AlertTriangle} color={QUALITY_COLORS.qAvermelhado} note="Aguardando fonte do BI" />
+        <QualityCard label="Cacho Averm. (%)" value={total.qAvermelhado} meta={10} icon={AlertTriangle} color={QUALITY_COLORS.qAvermelhado} note="Aguardando fonte do BI" unavailable />
         <QualityCard label="Talo comprido (%)" value={total.qTaloComprido} meta={3} icon={Scale} color={QUALITY_COLORS.qTaloComprido} warning={Number(total.qTaloComprido || 0) > 3} />
-        <QualityCard label="Bucha (%)" value={total.qBucha} meta={0} icon={Box} color={QUALITY_COLORS.qBucha} note="Aguardando fonte do BI" />
+        <QualityCard label="Bucha (%)" value={total.qBucha} meta={0} icon={Box} color={QUALITY_COLORS.qBucha} note="Aguardando fonte do BI" unavailable />
       </div>
 
       <div className="warning-strip rampa-bi-warning">

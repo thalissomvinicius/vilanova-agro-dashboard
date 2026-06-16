@@ -466,18 +466,24 @@ try {
   } | Sort-Object { $_['dayKey'] }, { $_['fornecedor'] }
 
   $rampaSemAvaliacaoMap = @{}
+  $rampaSemAvaliacaoDayMap = @{}
   for ($r = 2; $r -le $entrada.Rows; $r++) {
     $ticketText = Convert-ToText (Get-Value $entrada.Values $r $entradaTicketIdx)
     if (-not $ticketText -or $rampaTickets.ContainsKey($ticketText)) { continue }
     $producerKey = Convert-ToText (Get-Value $entrada.Values $r $entradaOrigemIdx)
     if (-not $producerKey) { $producerKey = 'Sem origem' }
+    $dayKey = Day-Key (Get-Value $entrada.Values $r $entradaDataIdx)
     $bucket = Ensure-Bucket $rampaSemAvaliacaoMap $producerKey
     $bucket['count'] = [double]$bucket['count'] + 1
-    $dayKey = Day-Key (Get-Value $entrada.Values $r $entradaDataIdx)
     if (-not $bucket.Contains('latestDayKey') -or $dayKey -gt $bucket['latestDayKey']) {
       $bucket['latestDayKey'] = $dayKey
       $bucket['latestDayLabel'] = if ($dayKey -eq 'sem-data') { 'Sem data' } else { ([datetime]::ParseExact($dayKey, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)).ToString('dd/MM/yyyy') }
     }
+
+    $dayBucket = Ensure-Bucket $rampaSemAvaliacaoDayMap "$producerKey|||$dayKey"
+    $dayBucket['producer'] = $producerKey
+    $dayBucket['dayKey'] = $dayKey
+    $dayBucket['count'] = [double]$dayBucket['count'] + 1
   }
 
   $rampaSemAvaliacao = $rampaSemAvaliacaoMap.GetEnumerator() | ForEach-Object {
@@ -488,6 +494,17 @@ try {
       dataEntradaMaisRecente = $bucket['latestDayLabel']
     }
   } | Sort-Object { $_['caixasSemAvaliacao'] } -Descending
+
+  $rampaSemAvaliacaoByDay = $rampaSemAvaliacaoDayMap.GetEnumerator() | ForEach-Object {
+    $bucket = $_.Value
+    [ordered]@{
+      fornecedor = $bucket['producer']
+      dayKey = $bucket['dayKey']
+      dayLabel = Day-Label $bucket['dayKey']
+      caixasSemAvaliacao = [Math]::Round([double]$bucket['count'], 2)
+      dataEntrada = if ($bucket['dayKey'] -eq 'sem-data') { 'Sem data' } else { ([datetime]::ParseExact($bucket['dayKey'], 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)).ToString('dd/MM/yyyy') }
+    }
+  } | Sort-Object { $_['dayKey'] }, { $_['fornecedor'] }
 
   $fatDataIdx = Get-Index $faturamentoHeaders @('Data Faturamento')
   $fatProdutoIdx = Get-Index $faturamentoHeaders @('Produto')
@@ -603,6 +620,7 @@ try {
       byDay = $rampaByDay
       byProducerDay = $rampaByProducerDay
       semAvaliacao = $rampaSemAvaliacao
+      semAvaliacaoByDay = $rampaSemAvaliacaoByDay
       unavailableFields = @('qAvermelhado', 'qBucha')
     }
     faturamento = [ordered]@{
