@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   BarChart3,
@@ -427,7 +428,7 @@ function QualityTable({ rows, loading = false }) {
 }
 
 function PresentationOverlay({ loading, model, totals, quality, dailyBunchRows, periodText, source, lastRecord, onClose }) {
-  return (
+  return createPortal(
     <div className="presentation-overlay" role="dialog" aria-modal="true" aria-label="Apresentacao em tela cheia">
       <div className="presentation-topbar">
         <div>
@@ -499,7 +500,8 @@ function PresentationOverlay({ loading, model, totals, quality, dailyBunchRows, 
           />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -534,6 +536,8 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
   useEffect(() => {
     if (!presentationOpen) return undefined;
 
+    document.body.classList.add('presentation-active');
+
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) {
         setPresentationOpen(false);
@@ -541,7 +545,10 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.body.classList.remove('presentation-active');
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
   }, [presentationOpen]);
 
   const openPresentation = () => {
