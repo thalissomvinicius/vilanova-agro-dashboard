@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
+import Bonificacao from './pages/Bonificacao';
 import FormBuilder from './pages/FormBuilder';
 import Collections from './pages/Collections';
 import Analytics from './pages/Analytics';
@@ -131,6 +132,8 @@ export default function App() {
             searchTerm={searchTerm}
           />
         );
+      case 'bonificacao':
+        return <Bonificacao />;
       case 'formularios':
         return <FormBuilder />;
       case 'coletas':

@@ -42,6 +42,27 @@ function monthKey(record) {
   return record.date || 'Sem data';
 }
 
+function weekKey(record) {
+  const date = new Date(record.createdAt || record.sentAt || record.raw?.data_avaliacao || '');
+  if (!Number.isNaN(date.getTime())) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return `S${String(weekNo).padStart(2, '0')} (${d.getUTCFullYear()})`;
+  }
+  return 'Sem semana';
+}
+
+function dayKey(record) {
+  const date = new Date(record.createdAt || record.sentAt || record.raw?.data_avaliacao || '');
+  if (!Number.isNaN(date.getTime())) {
+    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
+  }
+  return 'Sem data';
+}
+
 function shortLabel(value, size = 18) {
   const text = String(value || 'Sem nome');
   return text.length > size ? `${text.slice(0, size)}...` : text;
@@ -179,9 +200,22 @@ export function buildQualidadeOperacional(records) {
 
   const byFarm = new Map();
   const byMonth = new Map();
+  const byParcela = new Map();
+  const byEvaluator = new Map();
+  const byWeek = new Map();
+  const byDay = new Map();
+
   losses.forEach(({ record, loss }) => {
     pushBucket(byFarm, record.farm || 'Sem fazenda', record, loss);
     pushBucket(byMonth, monthKey(record), record, loss);
+    pushBucket(byParcela, record.parcel || 'Sem parcela', record, loss);
+    
+    // Novas agregações para o painel estilo Power BI
+    pushBucket(byEvaluator, shortLabel(record.evaluator || record.evaluatorRole || 'Sem auditor'), record, loss);
+    pushBucket(byWeek, weekKey(record), record, loss);
+    
+    const dKey = `${dayKey(record)} - ${record.farm || 'Sem fazenda'} - ${record.parcel || 'Sem parcela'}`;
+    pushBucket(byDay, dKey, record, loss);
   });
 
   const farmRows = Array.from(byFarm.values())
@@ -200,6 +234,56 @@ export function buildQualidadeOperacional(records) {
       ...bucket,
       totalPct: safePct(bucket.perdasT, bucket.producedTon),
     }));
+
+  const parcelaRows = Array.from(byParcela.values())
+    .map((bucket) => {
+      const agg = aggregateRecords(bucket.records);
+      const baseQualidade = Math.max(agg.cachosObservados, 0);
+      const basePlantas = Math.max(agg.plantasObservadas, 0);
+      return {
+        label: bucket.label,
+        recordsCount: bucket.records.length,
+        perdasT: bucket.perdasT,
+        taloCompridoPct: safePct(agg.taloComprido, basePlantas),
+        cachoVerdePct: safePct(agg.cachoVerde, baseQualidade),
+        cachoPassadoPct: safePct(agg.cachoPassado, baseQualidade),
+        folhaMamandoPct: safePct(agg.folhaMamando, basePlantas),
+        folhaMamando: agg.folhaMamando,
+        cachoBrocadoPct: safePct(agg.cachoBrocado, baseQualidade),
+      };
+    })
+    .sort((a, b) => b.perdasT - a.perdasT);
+
+  const formatQualityRow = (bucket) => {
+    const agg = aggregateRecords(bucket.records);
+    const base = Math.max(agg.cachosObservados, 0);
+    return {
+      label: bucket.label,
+      recordsCount: bucket.records.length,
+      cachoMaduroPct: safePct(agg.cachoMaduro, base),
+      cachoVerdePct: safePct(agg.cachoVerde, base),
+      cachoPassadoPct: safePct(agg.cachoPassado, base),
+      cachoAvermelhadoPct: safePct(agg.cachoAvermelhado, base),
+      taloCompridoPct: safePct(agg.taloComprido, Math.max(agg.plantasObservadas, 0)),
+      cachoEstrelaPct: safePct(agg.cachoEstrela, base),
+      corteT: bucket.corteT,
+      carreamentoT: bucket.carreamentoT,
+      cortePct: safePct(bucket.corteT, bucket.producedTon),
+      carreamentoPct: safePct(bucket.carreamentoT, bucket.producedTon),
+    };
+  };
+
+  const evaluatorRows = Array.from(byEvaluator.values())
+    .map(formatQualityRow)
+    .sort((a, b) => b.recordsCount - a.recordsCount);
+
+  const weekRows = Array.from(byWeek.values())
+    .map(formatQualityRow)
+    .sort((a, b) => String(a.label).localeCompare(String(b.label)));
+
+  const dayRows = Array.from(byDay.values())
+    .map(formatQualityRow)
+    .sort((a, b) => String(a.label).localeCompare(String(b.label)));
 
   let perdasYtd = 0;
   let pesoYtd = 0;
@@ -248,5 +332,9 @@ export function buildQualidadeOperacional(records) {
       perdasPctMensal: monthlyChart,
     },
     farmRows,
+    parcelaRows,
+    evaluatorRows,
+    weekRows,
+    dayRows,
   };
 }

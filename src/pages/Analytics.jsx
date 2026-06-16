@@ -472,7 +472,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
             />
             <KpiCard
               title="Cachos verdes"
-              value={`${totalsCorte.cachoVerdeRate.toFixed(1).replace('.', ',')}%`}
+              value={`${totalsCorte.cachoVerdeRate.toFixed(2).replace('.', ',')}%`}
               subtitle={`${fmt(totalsCorte.cachoVerde)} unidades colhidas`}
               icon={Leaf}
               tone={totalsCorte.cachoVerdeRate > 3.0 ? 'danger' : 'warning'}
@@ -480,7 +480,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
             />
             <KpiCard
               title="Cachos passados"
-              value={`${totalsCorte.cachoPassadoRate.toFixed(1).replace('.', ',')}%`}
+              value={`${totalsCorte.cachoPassadoRate.toFixed(2).replace('.', ',')}%`}
               subtitle={`${fmt(totalsCorte.cachoPassado)} unidades colhidas`}
               icon={TrendingDown}
               tone={totalsCorte.cachoPassadoRate > 5.0 ? 'danger' : 'warning'}
@@ -507,13 +507,13 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
                 <AlertFarol
                   label="Colheita de Cachos Verdes"
                   meta="Meta: < 3,0% de verdes"
-                  value={totalsCorte.cachoVerdeRate.toFixed(1)}
+                  value={totalsCorte.cachoVerdeRate.toFixed(2).replace('.', ',')}
                   danger={3.0}
                 />
                 <AlertFarol
                   label="Incidência de Talo Comprido"
                   meta="Meta: < 5,0% das plantas"
-                  value={totalsCorte.taloCompridoRate.toFixed(1)}
+                  value={totalsCorte.taloCompridoRate.toFixed(2).replace('.', ',')}
                   danger={5.0}
                   warning={3.0}
                 />
@@ -530,7 +530,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, margin: 'auto' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Taxa de Infestação por Broca</span>
                 <strong style={{ fontSize: '2.2rem', color: totalsCorte.pragasRate > 1.0 ? 'var(--status-danger)' : 'var(--status-success)' }}>
-                  {totalsCorte.pragasRate.toFixed(1).replace('.', ',')}%
+                  {totalsCorte.pragasRate.toFixed(2).replace('.', ',')}%
                 </strong>
                 <span className={`badge ${totalsCorte.pragasRate > 1.0 ? 'badge-danger' : 'badge-success'}`} style={{ fontSize: '0.75rem', padding: '4px 12px', borderRadius: '4px' }}>
                   {totalsCorte.pragasRate > 1.0 ? 'Risco Fitossanitário Alto ⚠️' : 'Sob Controle 🟢'}

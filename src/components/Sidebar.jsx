@@ -12,11 +12,13 @@ import {
   Settings,
   Tractor,
   Users,
+  Warehouse,
 } from 'lucide-react';
 
 export default function Sidebar({ activePage, setActivePage, collapsed, setCollapsed, width }) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard CQO', icon: LayoutDashboard },
+    { id: 'bonificacao', label: 'Bonificacao', icon: Warehouse },
     { id: 'coletas', label: 'Coletas recebidas', icon: Tractor },
     { id: 'inventario', label: 'Inventário parcelas', icon: FileSpreadsheet },
     { id: 'formularios', label: 'Modelos de formulários', icon: ClipboardList },
