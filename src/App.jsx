@@ -58,6 +58,12 @@ function monthDateRange(yearValue, monthValue) {
   };
 }
 
+function isDateInputValue(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return false;
+  const date = new Date(`${value}T00:00:00`);
+  return !Number.isNaN(date.getTime());
+}
+
 function pageFromPath(pathname) {
   const normalized = pathname.replace(/\/+$/, '') || '/';
   return ROUTE_PAGES[normalized] || 'dashboard';
@@ -84,19 +90,33 @@ function searchFilters() {
     cycleFilter: params.get('ciclo') || undefined,
     evaluatorFilter: params.get('avaliador') || undefined,
     searchTerm: params.get('busca') || undefined,
+    dateFrom: params.get('dataInicio') || params.get('de') || undefined,
+    dateTo: params.get('dataFim') || params.get('ate') || undefined,
   };
 }
 
 function compactFilters(filters) {
   const currentYear = String(new Date().getFullYear());
   const currentMonth = currentMonthValue();
+  const yearFilter = /^\d{4}$/.test(String(filters.yearFilter || '')) ? String(filters.yearFilter) : currentYear;
+  const monthFilter = VALID_MONTHS.has(String(filters.monthFilter || '')) ? String(filters.monthFilter) : currentMonth;
+  const defaultRange = monthDateRange(yearFilter, monthFilter);
+  let dateFrom = isDateInputValue(filters.dateFrom) ? String(filters.dateFrom) : defaultRange.from;
+  let dateTo = isDateInputValue(filters.dateTo) ? String(filters.dateTo) : defaultRange.to;
+
+  if (dateFrom > dateTo) {
+    [dateFrom, dateTo] = [dateTo, dateFrom];
+  }
+
   return {
     farmFilter: filters.farmFilter || 'all',
-    yearFilter: /^\d{4}$/.test(String(filters.yearFilter || '')) ? String(filters.yearFilter) : currentYear,
-    monthFilter: VALID_MONTHS.has(String(filters.monthFilter || '')) ? String(filters.monthFilter) : currentMonth,
+    yearFilter,
+    monthFilter,
     cycleFilter: filters.cycleFilter || 'all',
     evaluatorFilter: filters.evaluatorFilter || 'all',
     searchTerm: filters.searchTerm || '',
+    dateFrom,
+    dateTo,
   };
 }
 
@@ -115,6 +135,8 @@ function buildSearch(filters) {
   if (filters.cycleFilter !== 'all') params.set('ciclo', filters.cycleFilter);
   if (filters.evaluatorFilter !== 'all') params.set('avaliador', filters.evaluatorFilter);
   if (filters.searchTerm) params.set('busca', filters.searchTerm);
+  if (filters.dateFrom) params.set('dataInicio', filters.dateFrom);
+  if (filters.dateTo) params.set('dataFim', filters.dateTo);
   const query = params.toString();
   return query ? `?${query}` : '';
 }
@@ -189,6 +211,8 @@ export default function App() {
   const [areaFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState(bootFilters.yearFilter);
   const [monthFilter, setMonthFilter] = useState(bootFilters.monthFilter);
+  const [dateFrom, setDateFrom] = useState(bootFilters.dateFrom);
+  const [dateTo, setDateTo] = useState(bootFilters.dateTo);
   const [cycleFilter, setCycleFilter] = useState(bootFilters.cycleFilter);
   const [evaluatorFilter, setEvaluatorFilter] = useState(bootFilters.evaluatorFilter);
   const [searchTerm, setSearchTerm] = useState(bootFilters.searchTerm);
@@ -199,7 +223,6 @@ export default function App() {
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   ));
   const periodFilter = 'custom';
-  const { from: dateFrom, to: dateTo } = monthDateRange(yearFilter, monthFilter);
   const activeFilters = useMemo(() => compactFilters({
     farmFilter,
     yearFilter,
@@ -207,7 +230,9 @@ export default function App() {
     cycleFilter,
     evaluatorFilter,
     searchTerm,
-  }), [farmFilter, yearFilter, monthFilter, cycleFilter, evaluatorFilter, searchTerm]);
+    dateFrom,
+    dateTo,
+  }), [farmFilter, yearFilter, monthFilter, cycleFilter, evaluatorFilter, searchTerm, dateFrom, dateTo]);
   const commonDashboardProps = {
     theme,
     farmFilter,
@@ -215,9 +240,37 @@ export default function App() {
     periodFilter,
     cycleFilter,
     evaluatorFilter,
-    dateFrom,
-    dateTo,
+    dateFrom: activeFilters.dateFrom,
+    dateTo: activeFilters.dateTo,
     searchTerm,
+  };
+
+  const applyYearFilter = (nextYear) => {
+    setYearFilter(nextYear);
+    const range = monthDateRange(nextYear, monthFilter);
+    setDateFrom(range.from);
+    setDateTo(range.to);
+  };
+
+  const applyMonthFilter = (nextMonth) => {
+    setMonthFilter(nextMonth);
+    const range = monthDateRange(yearFilter, nextMonth);
+    setDateFrom(range.from);
+    setDateTo(range.to);
+  };
+
+  const applyDateFrom = (nextDate) => {
+    setDateFrom(nextDate);
+    if (nextDate && dateTo && nextDate > dateTo) {
+      setDateTo(nextDate);
+    }
+  };
+
+  const applyDateTo = (nextDate) => {
+    setDateTo(nextDate);
+    if (nextDate && dateFrom && nextDate < dateFrom) {
+      setDateFrom(nextDate);
+    }
   };
 
   useEffect(() => {
@@ -260,6 +313,8 @@ export default function App() {
       setFarmFilter(nextFilters.farmFilter);
       setYearFilter(nextFilters.yearFilter);
       setMonthFilter(nextFilters.monthFilter);
+      setDateFrom(nextFilters.dateFrom);
+      setDateTo(nextFilters.dateTo);
       setCycleFilter(nextFilters.cycleFilter);
       setEvaluatorFilter(nextFilters.evaluatorFilter);
       setSearchTerm(nextFilters.searchTerm);
@@ -497,9 +552,13 @@ export default function App() {
           farmFilter={farmFilter}
           setFarmFilter={setFarmFilter}
           yearFilter={yearFilter}
-          setYearFilter={setYearFilter}
+          setYearFilter={applyYearFilter}
           monthFilter={monthFilter}
-          setMonthFilter={setMonthFilter}
+          setMonthFilter={applyMonthFilter}
+          dateFrom={dateFrom}
+          setDateFrom={applyDateFrom}
+          dateTo={dateTo}
+          setDateTo={applyDateTo}
           cycleFilter={cycleFilter}
           setCycleFilter={setCycleFilter}
           evaluatorFilter={evaluatorFilter}

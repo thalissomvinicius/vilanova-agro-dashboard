@@ -35,6 +35,10 @@ export default function Header({
   setYearFilter,
   monthFilter,
   setMonthFilter,
+  dateFrom,
+  setDateFrom,
+  dateTo,
+  setDateTo,
   cycleFilter,
   setCycleFilter,
   evaluatorFilter,
@@ -197,6 +201,30 @@ export default function Header({
               <option key={month.value} value={month.value}>{month.label}</option>
             ))}
           </select>
+        </label>
+
+        <label className="header-filter-control header-filter-control-date">
+          <span>Data inicial</span>
+          <input
+            className="header-date-input"
+            type="date"
+            value={dateFrom}
+            max={dateTo || undefined}
+            onChange={(event) => setDateFrom(event.target.value)}
+            title="Data inicial"
+          />
+        </label>
+
+        <label className="header-filter-control header-filter-control-date">
+          <span>Data final</span>
+          <input
+            className="header-date-input"
+            type="date"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={(event) => setDateTo(event.target.value)}
+            title="Data final"
+          />
         </label>
       </div>
 
