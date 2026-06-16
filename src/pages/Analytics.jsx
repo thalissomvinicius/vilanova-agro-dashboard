@@ -302,9 +302,9 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
     <div className="fade-in page-shell">
       <div className="page-header">
         <div className="page-title-block">
-          <span className="page-eyebrow">Indicadores CQO</span>
-          <h2>Painel de Indicadores por Tipo de Formulário</h2>
-          <p>Dados calculados em tempo real a partir das respostas sincronizadas pelo aplicativo Android.</p>
+          <span className="page-eyebrow">CQO Campo</span>
+          <h2>Painel de Indicadores de Campo</h2>
+          <p>Dados calculados em tempo real a partir das respostas sincronizadas pelo aplicativo Android. A rampa é tratada em uma visão separada.</p>
         </div>
         <div className="source-card compact">
           <span>Fonte</span>
@@ -350,7 +350,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
       {/* ============ VISÃO GERAL ============ */}
       {currentTab === 'geral' && (loading || filtered.length > 0) && (
         <>
-          <SectionHeader eyebrow="Indicadores de Conformidade" title="Avaliação Geral da Qualidade Operacional" color="var(--green-institutional)" />
+          <SectionHeader eyebrow="Indicadores de Conformidade" title="Avaliação Geral da Qualidade Operacional de Campo" color="var(--green-institutional)" />
 
           {/* Gauge scores */}
           <div className={`grid-container ${areaFilter === 'all' ? 'grid-cols-3' : 'grid-cols-2'}`} style={{ marginBottom: 4 }}>
@@ -418,8 +418,9 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
 
           {/* Charts */}
           {/* Charts */}
-          <div className="grid-container grid-cols-2" style={{ marginBottom: '16px' }}>
-            <CustomChart loading={loading} type="line" data={chartsGeral.byWeek} title="Evolução Semanal da Nota CQO" />
+          <div className="grid-container grid-cols-3" style={{ marginBottom: '16px' }}>
+            <CustomChart loading={loading} type="line" data={chartsGeral.byWeekOfMonth} title="Evolução por semana do mês" />
+            <CustomChart loading={loading} type="line" data={chartsGeral.byDayOfMonth} title="Evolução por dia do mês" />
             <CustomChart loading={loading} type="line" data={chartsGeral.ytdLoss} title="Evolução Acumulada de Perdas (YTD Toneladas)" />
           </div>
 
@@ -584,12 +585,12 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
 
           {/* Charts */}
           <div className="grid-container grid-cols-2" style={{ marginBottom: '16px' }}>
-            <CustomChart loading={loading} type="line" data={chartsCorte.byDay} title="Evolução diária — Nota CQO Corte" />
+            <CustomChart loading={loading} type="line" data={chartsCorte.byDayOfMonth} title="Evolução por dia do mês — Nota CQO Corte" />
             <CustomChart
               loading={loading}
               type="bar"
-              data={chartsCorte.lossRateByWeek}
-              title="Perda no Corte por Semana (%)"
+              data={chartsCorte.lossRateByWeekOfMonth}
+              title="Perda no Corte por Semana do mês (%)"
               targetValue={2.0}
               targetLabel="Limite Tolerável"
             />
@@ -778,7 +779,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
           </div>
 
           {/* Charts */}
-          <CustomChart loading={loading} type="line" data={chartsCarreamento.byDay} title="Evolução diária — Nota CQO Carreamento" />
+          <CustomChart loading={loading} type="line" data={chartsCarreamento.byDayOfMonth} title="Evolução por dia do mês — Nota CQO Carreamento" />
           <div className="grid-container grid-cols-2">
             <CustomChart loading={loading} type="bar" data={chartsCarreamento.byFarm} title="Nota CQO Carreamento por Fazenda" />
             <CustomChart loading={loading} type="bar" data={chartsCarreamento.byEvaluator} title="Nota CQO Carreamento por Avaliador" />

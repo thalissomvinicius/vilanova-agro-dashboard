@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
+import CqoRampa from './pages/CqoRampa';
+import Bonificacao from './pages/Bonificacao';
 import FormBuilder from './pages/FormBuilder';
 import Collections from './pages/Collections';
 import Analytics from './pages/Analytics';
@@ -36,7 +38,7 @@ export default function App() {
 
   const [farmFilter, setFarmFilter] = useState('all');
   const [areaFilter, setAreaFilter] = useState('all');
-  const [periodFilter, setPeriodFilter] = useState('today');
+  const [periodFilter, setPeriodFilter] = useState('all');
   const [cycleFilter, setCycleFilter] = useState('all');
   const [evaluatorFilter, setEvaluatorFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
@@ -131,6 +133,10 @@ export default function App() {
             searchTerm={searchTerm}
           />
         );
+      case 'cqo-rampa':
+        return <CqoRampa />;
+      case 'bonificacao':
+        return <Bonificacao />;
       case 'formularios':
         return <FormBuilder />;
       case 'coletas':

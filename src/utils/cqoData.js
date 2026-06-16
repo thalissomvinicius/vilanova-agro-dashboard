@@ -872,21 +872,52 @@ function formatEvaluatorName(name) {
   return `${first} ${last}`;
 }
 
+function resolveRecordDate(record) {
+  const candidates = [
+    record.createdAt,
+    record.sentAt,
+    record.raw?.data_avaliacao,
+    record.date,
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const direct = new Date(candidate);
+    if (!Number.isNaN(direct.getTime())) return direct;
+
+    if (typeof candidate === 'string') {
+      const match = candidate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (match) {
+        const parsed = new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
+        if (!Number.isNaN(parsed.getTime())) return parsed;
+      }
+    }
+  }
+
+  return null;
+}
+
+function monthWeekKey(record) {
+  const date = resolveRecordDate(record);
+  if (!date) return 'Semana sem data';
+  const week = Math.min(5, Math.max(1, Math.ceil(date.getDate() / 7)));
+  return `Semana ${week}`;
+}
+
+function monthDayKey(record) {
+  const date = resolveRecordDate(record);
+  if (!date) return 'Sem data';
+  return String(date.getDate()).padStart(2, '0');
+}
+
 export function buildCharts(records) {
   const byFarm = new Map();
   const byEvaluator = new Map();
   const byDay = new Map();
   const byWeek = new Map();
+  const byMonthDay = new Map();
+  const byMonthWeek = new Map();
   const byCycle = new Map();
-
-  // Helper to get week number
-  const getWeekNumber = (d) => {
-    const date = new Date(d);
-    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
-    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
-    return `Sem ${weekNo}`;
-  };
 
   records.forEach((record) => {
     // Farm
@@ -902,10 +933,17 @@ export function buildCharts(records) {
     if (!byDay.has(record.date)) byDay.set(record.date, []);
     byDay.get(record.date).push(record);
 
+    const monthDay = monthDayKey(record);
+    if (!byMonthDay.has(monthDay)) byMonthDay.set(monthDay, []);
+    byMonthDay.get(monthDay).push(record);
+
     // Week
-    const week = getWeekNumber(record.createdAt || record.date);
+    const week = monthWeekKey(record);
     if (!byWeek.has(week)) byWeek.set(week, []);
     byWeek.get(week).push(record);
+
+    if (!byMonthWeek.has(week)) byMonthWeek.set(week, []);
+    byMonthWeek.get(week).push(record);
 
     // Cycle
     if (!byCycle.has(String(record.cycle))) byCycle.set(String(record.cycle), []);
@@ -928,13 +966,21 @@ export function buildCharts(records) {
     .map(([label, recs]) => ({ label, value: getScore(recs) }));
 
   const byWeekData = Array.from(byWeek.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => Number(a.replace(/\D+/g, '')) - Number(b.replace(/\D+/g, '')))
+    .map(([label, recs]) => ({ label, value: getScore(recs) }));
+
+  const byMonthDayData = Array.from(byMonthDay.entries())
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .map(([label, recs]) => ({ label, value: getScore(recs) }));
+
+  const byMonthWeekData = Array.from(byMonthWeek.entries())
+    .sort(([a], [b]) => Number(a.replace(/\D+/g, '')) - Number(b.replace(/\D+/g, '')))
     .map(([label, recs]) => ({ label, value: getScore(recs) }));
 
   // YTD Calculation (Losses accumulated)
   let accumulatedLoss = 0;
   const ytdLossData = Array.from(byWeek.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => Number(a.replace(/\D+/g, '')) - Number(b.replace(/\D+/g, '')))
     .map(([label, recs]) => {
       accumulatedLoss += getLossTon(recs);
       return { label, value: Number(accumulatedLoss.toFixed(2)) };
@@ -946,17 +992,20 @@ export function buildCharts(records) {
   };
 
   const lossRateByWeekData = Array.from(byWeek.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => Number(a.replace(/\D+/g, '')) - Number(b.replace(/\D+/g, '')))
     .map(([label, recs]) => ({ label, value: getLossRate(recs) }));
 
   return {
     byFarm: mapToChart(byFarm, '#234F2A'),
     byEvaluator: mapToChart(byEvaluator, '#F2B544').slice(0, 10),
     byDay: byDayData,
+    byDayOfMonth: byMonthDayData,
     byWeek: byWeekData,
+    byWeekOfMonth: byMonthWeekData,
     byCycle: mapToBarChartByLabel(byCycle, '#F59E0B'),
     ytdLoss: ytdLossData,
     lossRateByWeek: lossRateByWeekData,
+    lossRateByWeekOfMonth: lossRateByWeekData,
   };
 }
 
