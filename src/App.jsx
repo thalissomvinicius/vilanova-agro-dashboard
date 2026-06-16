@@ -12,6 +12,7 @@ import Collaborators from './pages/Collaborators';
 import Inventory from './pages/Inventory';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
+import Development from './pages/Development';
 import LeafletMap from './components/LeafletMap';
 import { refreshCqoData } from './utils/cqoData';
 
@@ -22,6 +23,7 @@ const PAGE_ROUTES = {
   coletas: '/coletas',
   inventario: '/inventario',
   mapa: '/mapa',
+  desenvolvimento: '/desenvolvimento',
   sync: '/sincronizacoes',
   colaboradores: '/colaboradores',
   config: '/configuracoes',
@@ -403,6 +405,8 @@ export default function App() {
         );
       case 'colaboradores':
         return <Collaborators />;
+      case 'desenvolvimento':
+        return <Development />;
       case 'config':
         return (
           <Settings
