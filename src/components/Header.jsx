@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Bell, LogOut, Moon, RefreshCw, Search, Sun } from 'lucide-react';
-import { CQO_AREAS, CQO_FARMS } from '../utils/cqoData';
+import { ACTIVE_CQO_FARM_IDS, CQO_AREAS, CQO_FARMS } from '../utils/cqoData';
 
 import { useCqoData } from '../utils/cqoData';
 
@@ -35,7 +35,7 @@ export default function Header({
   const evaluators = React.useMemo(() => {
     const evals = new Set();
     records.forEach(r => {
-      if (r.evaluator && r.evaluator !== 'Sem avaliador') {
+      if (ACTIVE_CQO_FARM_IDS.includes(r.farmId) && r.evaluator && r.evaluator !== 'Sem avaliador') {
         evals.add(r.evaluator);
       }
     });

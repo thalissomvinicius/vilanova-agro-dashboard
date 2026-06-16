@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { normalizeText } from './cqoData';
+import { ACTIVE_CQO_FARM_IDS, normalizeText } from './cqoData';
 
 export function useInventoryData() {
   const [state, setState] = useState({
@@ -52,6 +52,7 @@ export function useInventoryData() {
 export function filterInventory(records, { farmFilter = 'all', searchTerm = '', yearFilter = 'all', cultivarFilter = 'all' } = {}) {
   const search = normalizeText(searchTerm);
   return records.filter((record) => {
+    const activeFarmOk = ACTIVE_CQO_FARM_IDS.includes(record.farmId);
     const farmOk = farmFilter === 'all' || record.farmId === farmFilter;
     const yearOk = yearFilter === 'all' || String(record.year) === String(yearFilter);
     const cultivarOk = cultivarFilter === 'all' || normalizeText(record.cultivar) === normalizeText(cultivarFilter);
@@ -63,7 +64,7 @@ export function filterInventory(records, { farmFilter = 'all', searchTerm = '', 
       record.cultivar,
       record.sourceFile,
     ].join(' '));
-    return farmOk && yearOk && cultivarOk && (!search || haystack.includes(search));
+    return activeFarmOk && farmOk && yearOk && cultivarOk && (!search || haystack.includes(search));
   });
 }
 

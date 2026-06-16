@@ -15,6 +15,10 @@ export const CQO_FARMS = [
   { id: 'vila-nova', name: 'Vila Nova' },
 ];
 
+export const ACTIVE_CQO_FARM_IDS = CQO_FARMS
+  .filter((farm) => farm.id !== 'all')
+  .map((farm) => farm.id);
+
 export const CQO_AREAS = [
   { id: 'all', name: 'Todos os formulários' },
   { id: 'corte', name: 'CQO Corte' },
@@ -722,9 +726,10 @@ function isWithinPeriod(record, periodFilter, dateFrom = '', dateTo = '') {
   return true;
 }
 
-export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all', periodFilter = 'all', cycleFilter = 'all', evaluatorFilter = 'all', dateFrom = '', dateTo = '', searchTerm = '', statusFilter = 'all' } = {}) {
+export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all', periodFilter = 'month', cycleFilter = 'all', evaluatorFilter = 'all', dateFrom = '', dateTo = '', searchTerm = '', statusFilter = 'all' } = {}) {
   const search = normalizeText(searchTerm);
   return records.filter((record) => {
+    const activeFarmOk = ACTIVE_CQO_FARM_IDS.includes(record.farmId);
     const farmOk = farmFilter === 'all' || record.farmId === farmFilter;
     const areaOk = areaFilter === 'all' || record.type === areaFilter;
     const cycleOk = cycleFilter === 'all' || String(record.cycle) === String(cycleFilter);
@@ -742,7 +747,7 @@ export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all',
       record.fiscal,
     ].join(' '));
     const searchOk = !search || haystack.includes(search);
-    return farmOk && areaOk && cycleOk && evaluatorOk && statusOk && periodOk && searchOk;
+    return activeFarmOk && farmOk && areaOk && cycleOk && evaluatorOk && statusOk && periodOk && searchOk;
   });
 }
 

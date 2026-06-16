@@ -13,8 +13,33 @@ import Login from './pages/Login';
 import LeafletMap from './components/LeafletMap';
 import { refreshCqoData } from './utils/cqoData';
 
+const PAGE_ROUTES = {
+  dashboard: '/campo',
+  'cqo-rampa': '/rampa',
+  bonificacao: '/bonificacao',
+  coletas: '/coletas',
+  inventario: '/inventario',
+  mapa: '/mapa',
+  sync: '/sincronizacoes',
+  colaboradores: '/colaboradores',
+  config: '/configuracoes',
+};
+
+const ROUTE_PAGES = Object.fromEntries(
+  Object.entries(PAGE_ROUTES).map(([page, path]) => [path, page])
+);
+
+function pageFromPath(pathname) {
+  const normalized = pathname.replace(/\/+$/, '') || '/';
+  return ROUTE_PAGES[normalized] || 'dashboard';
+}
+
+function pathFromPage(page) {
+  return PAGE_ROUTES[page] || PAGE_ROUTES.dashboard;
+}
+
 export default function App() {
-  const [activePage, setActivePage] = useState('dashboard');
+  const [activePage, setActivePage] = useState(() => pageFromPath(window.location.pathname));
   const [theme, setTheme] = useState(() => localStorage.getItem('vilanova_dashboard_theme') || 'light');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('vilanova_sidebar_collapsed') === 'true');
   const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -35,7 +60,7 @@ export default function App() {
 
   const [farmFilter, setFarmFilter] = useState('all');
   const [areaFilter, setAreaFilter] = useState('all');
-  const [periodFilter, setPeriodFilter] = useState('all');
+  const [periodFilter, setPeriodFilter] = useState('month');
   const [cycleFilter, setCycleFilter] = useState('all');
   const [evaluatorFilter, setEvaluatorFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
@@ -65,6 +90,22 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('vilanova_sidebar_width', String(sidebarWidth));
   }, [sidebarWidth]);
+
+  useEffect(() => {
+    const nextPath = pathFromPage(activePage);
+    if (window.location.pathname !== nextPath) {
+      window.history.pushState({ activePage }, '', nextPath);
+    }
+  }, [activePage]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setActivePage(pageFromPath(window.location.pathname));
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const startSidebarResize = (event) => {
     if (sidebarCollapsed) return;
@@ -98,6 +139,7 @@ export default function App() {
     localStorage.removeItem('vilanova_dashboard_user');
     setUser(null);
     setActivePage('dashboard');
+    window.history.replaceState({ activePage: 'dashboard' }, '', pathFromPage('dashboard'));
   };
 
   const triggerManualSync = () => {
