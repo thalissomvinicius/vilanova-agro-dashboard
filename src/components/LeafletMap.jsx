@@ -14,6 +14,12 @@ import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerIconRetina from 'leaflet/dist/images/marker-icon-2x.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
+const SENTINEL_TILE_URL = import.meta.env.VITE_SENTINEL_TILE_URL
+  || 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2025_3857/default/g/{z}/{y}/{x}.jpg';
+
+const SENTINEL_ATTRIBUTION = import.meta.env.VITE_SENTINEL_ATTRIBUTION
+  || 'Sentinel-2 cloudless &copy; EOX IT Services GmbH, modified Copernicus Sentinel data 2025';
+
 const defaultIcon = L.icon({
   iconUrl: markerIcon,
   iconRetinaUrl: markerIconRetina,
@@ -206,22 +212,31 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       }
     });
 
-    const tileUrl = baseLayer === 'satellite'
-      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-      : theme === 'dark'
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    let tileUrl = theme === 'dark'
+      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    let tileOptions = {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      subdomains: 'abcd',
+      maxZoom: 20,
+    };
 
-    const tileOptions = baseLayer === 'satellite'
-      ? {
-          attribution: 'Tiles &copy; Esri',
-          maxZoom: 20,
-        }
-      : {
-          attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-          subdomains: 'abcd',
-          maxZoom: 20,
-        };
+    if (baseLayer === 'satellite') {
+      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      tileOptions = {
+        attribution: 'Tiles &copy; Esri',
+        maxZoom: 20,
+      };
+    }
+
+    if (baseLayer === 'sentinel') {
+      tileUrl = SENTINEL_TILE_URL;
+      tileOptions = {
+        attribution: SENTINEL_ATTRIBUTION,
+        maxZoom: 20,
+        maxNativeZoom: 16,
+      };
+    }
 
     L.tileLayer(tileUrl, tileOptions).addTo(map);
 
@@ -450,7 +465,19 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             <Satellite size={13} />
             Satélite
           </button>
+          <button
+            type="button"
+            className={baseLayer === 'sentinel' ? 'active' : ''}
+            onClick={() => setBaseLayer('sentinel')}
+            title="Sentinel-2 cloudless 2025 gratuito, com shapes por cima"
+          >
+            <Satellite size={13} />
+            Sentinel-2
+          </button>
         </div>
+        <p className="gps-base-note">
+          Sentinel-2 usa mosaico cloudless gratuito. Para imagem por data, basta configurar a URL WMTS/WMS do Copernicus.
+        </p>
 
         <h4 className="gps-overlay-section-title">Camadas do mapa</h4>
         <div className="gps-layer-stack">

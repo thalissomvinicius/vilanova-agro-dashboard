@@ -3263,7 +3263,7 @@ body.presentation-active {
 
 .gps-base-toggle {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   padding: 4px;
   border: 1px solid rgba(148, 163, 184, 0.34);
@@ -3291,6 +3291,17 @@ body.presentation-active {
   background: var(--orange-institutional);
   color: var(--white);
   box-shadow: var(--shadow-sm);
+}
+
+.gps-base-note {
+  margin: 8px 0 0;
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+[data-theme='light'] .gps-base-note {
+  color: var(--text-muted);
 }
 
 .gps-layer-stack {
