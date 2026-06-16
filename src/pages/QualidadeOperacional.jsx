@@ -248,9 +248,9 @@ function StackedBarHorizontal({ data, title, loading }) {
           const wAvermelhado = (row.cachoAvermelhadoPct / total) * 100;
           return (
             <div key={idx}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
-                <span style={{ fontWeight: 500 }}>{row.label}</span>
-                <span style={{ color: 'var(--text-muted)' }}>M: {row.cachoMaduroPct.toFixed(1)}%</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                <span style={{ fontWeight: 600 }}>{row.label}</span>
+                <span style={{ color: 'var(--text-muted)' }}>M: {row.cachoMaduroPct.toFixed(2).replace('.', ',')}%</span>
               </div>
               <div style={{ display: 'flex', height: '16px', borderRadius: '4px', overflow: 'hidden', backgroundColor: 'var(--surface-hover)' }}>
                 <div style={{ width: `${wMaduro}%`, backgroundColor: '#F88A4E', transition: 'width 0.5s' }} title="Maduro" />
@@ -289,8 +289,8 @@ function StackedBarVertical({ data, title, loading, hideLabels = false }) {
           const hAvermelhado = (row.cachoAvermelhadoPct / total) * 100;
           return (
             <div key={idx} style={{ flexShrink: 0, width: hideLabels ? '24px' : '40px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-              <div style={{ fontSize: '0.65rem', textAlign: 'center', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                {!hideLabels && `${row.cachoMaduroPct.toFixed(0)}%`}
+              <div style={{ fontSize: '0.7rem', textAlign: 'center', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 500 }}>
+                {!hideLabels && `${row.cachoMaduroPct.toFixed(2).replace('.', ',')}%`}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%', borderRadius: '4px 4px 0 0', overflow: 'hidden', backgroundColor: 'var(--surface-hover)' }}>
                 <div style={{ height: `${hMaduro}%`, backgroundColor: '#F88A4E', transition: 'height 0.5s' }} title="Maduro" />
@@ -298,7 +298,7 @@ function StackedBarVertical({ data, title, loading, hideLabels = false }) {
                 <div style={{ height: `${hVerde}%`, backgroundColor: '#65A30D', transition: 'height 0.5s' }} title="Verde" />
                 <div style={{ height: `${hAvermelhado}%`, backgroundColor: '#B45309', transition: 'height 0.5s' }} title="Avermelhado" />
               </div>
-              <div style={{ fontSize: '0.65rem', textAlign: 'center', marginTop: '8px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', height: hideLabels ? '0' : 'auto' }}>
+              <div style={{ fontSize: '0.8rem', textAlign: 'center', marginTop: '8px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', height: hideLabels ? '0' : 'auto', fontWeight: 500 }}>
                 {!hideLabels && String(row.label).split(' ')[0]}
               </div>
             </div>
@@ -321,16 +321,16 @@ function EvaluatorRanking({ data, loading }) {
         {data.slice(0, 8).map((row, idx) => (
           <div className="compact-row" key={idx} style={{ alignItems: 'center', padding: '4px 0' }}>
             <div style={{ flex: 1 }}>
-              <strong style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{row.label}</strong>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Passado: {row.cachoPassadoPct.toFixed(2)}% | Verde: {row.cachoVerdePct.toFixed(2)}%
+              <strong style={{ color: 'var(--text-primary)', fontSize: '1rem' }}>{row.label}</strong>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Passado: {row.cachoPassadoPct.toFixed(2).replace('.', ',')}% | Verde: {row.cachoVerdePct.toFixed(2).replace('.', ',')}%
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--status-success)' }}>
-                {row.cachoMaduroPct.toFixed(2)}%
+              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--status-success)' }}>
+                {row.cachoMaduroPct.toFixed(2).replace('.', ',')}%
               </div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Cacho maduro %</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Cacho maduro %</div>
             </div>
           </div>
         ))}
