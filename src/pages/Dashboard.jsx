@@ -248,34 +248,26 @@ function StackedQualityRows({ title, subtitle, rows, loading = false, limit = 8 
 
 function DailyBunchBarChart({ rows, loading = false }) {
   const series = [
-    { key: 'maduro', label: 'Maduro', color: '#F88A4E' },
-    { key: 'passado', label: 'Passado', color: '#8B5A2B' },
-    { key: 'verde', label: 'Verde', color: '#65A30D' },
-    { key: 'avermelhado', label: 'Avermelhado', color: '#B45309' },
-    { key: 'estrela', label: 'Estrela', color: '#F2B544' },
-    { key: 'talo', label: 'Talo comprido', color: '#64748B' },
+    { key: 'maduro', label: 'Cacho maduro %', color: '#F88A4E' },
+    { key: 'passado', label: 'Cacho passado %', color: '#4A3A2E' },
+    { key: 'verde', label: 'Cacho verde %', color: '#4EA64F' },
+    { key: 'avermelhado', label: 'Cacho Avermelhado %', color: '#B02025' },
   ];
 
-  const visibleRows = rows.slice(-16);
-  const maxValue = Math.max(
-    10,
-    ...visibleRows.flatMap((row) => series.map((item) => Number(row[item.key] || 0)))
-  );
-
-  const chartHeight = 280;
-  const padding = { top: 22, right: 24, bottom: 42, left: 42 };
-  const dayWidth = 76;
-  const width = Math.max(680, padding.left + padding.right + visibleRows.length * dayWidth);
+  const visibleRows = rows.slice(-18);
+  const chartHeight = 245;
+  const padding = { top: 18, right: 18, bottom: 35, left: 46 };
+  const dayWidth = 92;
+  const width = Math.max(760, padding.left + padding.right + visibleRows.length * dayWidth);
   const graphHeight = chartHeight - padding.top - padding.bottom;
-  const groupWidth = 52;
-  const barWidth = 7;
+  const barWidth = 58;
 
   return (
     <div className="card field-daily-chart-card">
       <div className="card-header">
         <div>
-          <h3 className="card-title">Quantidade de cachos por dia</h3>
-          <span className="card-subtitle">Barras por dia com as quantidades de cada classificacao do CQO Corte.</span>
+          <h3 className="card-title">Qualidade por Dia/Fazenda/Parcela</h3>
+          <span className="card-subtitle">Percentual diário por classificação, mantendo a quantidade no detalhe de cada barra.</span>
         </div>
         <BarChart3 size={20} style={{ color: 'var(--orange-institutional)' }} />
       </div>
@@ -292,49 +284,46 @@ function DailyBunchBarChart({ rows, loading = false }) {
           <div className="field-daily-chart-scroll">
             {visibleRows.length ? (
               <svg className="field-daily-chart-svg" viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight}>
-                {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+                {[0, 0.5, 1].map((ratio) => {
                   const y = padding.top + graphHeight * (1 - ratio);
                   return (
                     <g key={ratio}>
                       <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} className="chart-grid-line" />
                       <text x={padding.left - 10} y={y + 4} textAnchor="end" className="chart-axis-text">
-                        {Math.round(maxValue * ratio)}
+                        {Math.round(ratio * 100)}%
                       </text>
                     </g>
                   );
                 })}
 
                 {visibleRows.map((row, rowIndex) => {
-                  const groupX = padding.left + rowIndex * dayWidth + (dayWidth - groupWidth) / 2;
+                  const groupX = padding.left + rowIndex * dayWidth + (dayWidth - barWidth) / 2;
+                  const total = series.reduce((sum, item) => sum + Number(row[item.key] || 0), 0);
+                  let stackedHeight = 0;
                   return (
                     <g key={row.sortKey}>
-                      {series.map((item, index) => {
+                      {series.map((item) => {
                         const value = Number(row[item.key] || 0);
-                        const barHeight = (value / maxValue) * graphHeight;
-                        const x = groupX + index * (barWidth + 2);
-                        const y = padding.top + graphHeight - barHeight;
+                        const pct = total > 0 ? (value / total) * 100 : 0;
+                        const segmentHeight = total > 0 ? (pct / 100) * graphHeight : 0;
+                        const y = padding.top + graphHeight - stackedHeight - segmentHeight;
+                        stackedHeight += segmentHeight;
                         return (
                           <g key={item.key}>
                             <rect
-                              x={x}
+                              x={groupX}
                               y={y}
                               width={barWidth}
-                              height={Math.max(barHeight, value > 0 ? 2 : 0)}
-                              rx="2"
+                              height={Math.max(segmentHeight, value > 0 ? 1.5 : 0)}
                               fill={item.color}
                               className="chart-bar"
                             >
-                              <title>{`${row.label} - ${item.label}: ${formatNumber(value)}`}</title>
+                              <title>{`${row.label} - ${item.label}: ${formatNumber(value)} cachos (${formatPercent(pct)})`}</title>
                             </rect>
-                            {value > 0 && barHeight > 32 && (
-                              <text x={x + barWidth / 2} y={y - 4} textAnchor="middle" className="field-daily-value-label">
-                                {formatNumber(value)}
-                              </text>
-                            )}
                           </g>
                         );
                       })}
-                      <text x={groupX + groupWidth / 2} y={chartHeight - 18} textAnchor="middle" className="chart-axis-text">
+                      <text x={groupX + barWidth / 2} y={chartHeight - 14} textAnchor="middle" className="chart-axis-text">
                         {row.label}
                       </text>
                     </g>

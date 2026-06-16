@@ -904,13 +904,30 @@
   min-width: 0;
 }
 
+.field-daily-chart-card .card-header {
+  justify-content: center;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.field-daily-chart-card .card-header svg {
+  display: none;
+}
+
+.field-daily-chart-card .card-title {
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 750;
+}
+
 .field-daily-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 14px;
-  margin-bottom: 8px;
+  justify-content: center;
+  gap: 7px 12px;
+  margin-bottom: 6px;
   color: var(--text-secondary);
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 700;
 }
 
@@ -922,9 +939,9 @@
 }
 
 .field-daily-legend i {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
   flex-shrink: 0;
 }
 
@@ -952,7 +969,7 @@
 
 .field-daily-chart-svg {
   display: block;
-  min-height: 280px;
+  min-height: 245px;
 }
 
 .field-daily-value-label {
