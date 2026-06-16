@@ -3,6 +3,30 @@ import { Bell, LogOut, MonitorPlay, Moon, RefreshCw, Search, Sun } from 'lucide-
 import { ACTIVE_CQO_FARM_IDS, CQO_FARMS } from '../utils/cqoData';
 
 import { useCqoData } from '../utils/cqoData';
+import { useBonificacaoData } from '../utils/bonificacaoData';
+
+function addYearFromValue(years, value) {
+  if (!value) return;
+
+  if (typeof value === 'string') {
+    const isoYear = value.match(/^(\d{4})(?:-\d{2})?(?:-\d{2})?/);
+    if (isoYear) {
+      years.add(isoYear[1]);
+      return;
+    }
+
+    const brDate = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (brDate) {
+      years.add(brDate[3]);
+      return;
+    }
+  }
+
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) {
+    years.add(String(date.getFullYear()));
+  }
+}
 
 export default function Header({
   farmFilter,
@@ -28,6 +52,7 @@ export default function Header({
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const { records } = useCqoData();
+  const bonificacaoData = useBonificacaoData();
 
   const monthOptions = [
     { value: '01', label: 'Janeiro' },
@@ -45,28 +70,24 @@ export default function Header({
   ];
 
   const yearOptions = React.useMemo(() => {
-    const years = new Set([String(new Date().getFullYear())]);
+    const years = new Set([String(new Date().getFullYear()), String(yearFilter)]);
     records.forEach((record) => {
-      const candidates = [record.createdAt, record.sentAt, record.raw?.data_avaliacao, record.date];
-      for (const candidate of candidates) {
-        if (!candidate) continue;
-        const date = new Date(candidate);
-        if (!Number.isNaN(date.getTime())) {
-          years.add(String(date.getFullYear()));
-          break;
-        }
-
-        if (typeof candidate === 'string') {
-          const brDate = candidate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-          if (brDate) {
-            years.add(brDate[3]);
-            break;
-          }
-        }
-      }
+      [
+        record.raw?.data_avaliacao,
+        record.raw?.data,
+        record.raw?.Data,
+        record.sentAt,
+        record.createdAt,
+        record.date,
+      ].forEach((candidate) => addYearFromValue(years, candidate));
     });
+
+    (bonificacaoData?.cqoRampa?.byProducerDay || []).forEach((row) => addYearFromValue(years, row.dayKey));
+    (bonificacaoData?.entradaDeCff?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));
+    (bonificacaoData?.faturamento?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));
+
     return Array.from(years).sort((a, b) => Number(b) - Number(a));
-  }, [records]);
+  }, [records, bonificacaoData, yearFilter]);
 
   const evaluators = React.useMemo(() => {
     const evals = new Set();

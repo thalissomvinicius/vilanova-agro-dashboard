@@ -708,10 +708,68 @@ function parseDateBoundary(value, endOfDay = false) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function parseRecordDateValue(value) {
+  if (!value) return null;
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const brDate = value.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (brDate) {
+      const parsed = new Date(
+        Number(brDate[3]),
+        Number(brDate[2]) - 1,
+        Number(brDate[1]),
+        Number(brDate[4] || 12),
+        Number(brDate[5] || 0),
+        Number(brDate[6] || 0)
+      );
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    const isoDate = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (isoDate) {
+      const parsed = new Date(
+        Number(isoDate[1]),
+        Number(isoDate[2]) - 1,
+        Number(isoDate[3]),
+        Number(isoDate[4] || 12),
+        Number(isoDate[5] || 0),
+        Number(isoDate[6] || 0)
+      );
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function resolveFilterDate(record) {
+  const candidates = [
+    record.raw?.data_avaliacao,
+    record.raw?.data,
+    record.raw?.Data,
+    record.raw?.data_coleta,
+    record.raw?.dataAvaliacao,
+    record.sentAt,
+    record.createdAt,
+    record.date,
+  ];
+
+  for (const candidate of candidates) {
+    const date = parseRecordDateValue(candidate);
+    if (date) return date;
+  }
+
+  return null;
+}
+
 function isWithinPeriod(record, periodFilter, dateFrom = '', dateTo = '') {
-  if (!record.createdAt) return true;
-  const created = new Date(record.createdAt);
-  if (Number.isNaN(created.getTime())) return true;
+  const created = resolveFilterDate(record);
+  if (!created) return true;
   if (periodFilter === 'custom') {
     const from = parseDateBoundary(dateFrom);
     const to = parseDateBoundary(dateTo, true);
