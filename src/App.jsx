@@ -521,7 +521,8 @@ export default function App() {
           />
         )}
         <footer className="app-developer-footer">
-          Desenvolvedor: Vinicius Dev.
+          <span>Vila Nova Agroindustrial - Dashboard CQO</span>
+          <span className="app-developer-signature">Desenvolvedor: <strong>Vinicius Dev.</strong></span>
         </footer>
       </div>
     </div>

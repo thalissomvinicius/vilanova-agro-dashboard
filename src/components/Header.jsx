@@ -122,67 +122,82 @@ export default function Header({
 
       </div>
 
-      <div className="header-filters">
-        <select
-          className="header-filter-select"
-          value={farmFilter}
-          onChange={(event) => setFarmFilter(event.target.value)}
-          title="Selecionar fazenda"
-        >
-          {CQO_FARMS.map((farm) => (
-            <option key={farm.id} value={farm.id}>{farm.name}</option>
-          ))}
-        </select>
+      <div className="header-filters" aria-label="Filtros globais">
+        <label className="header-filter-control">
+          <span>Fazenda</span>
+          <select
+            className="header-filter-select"
+            value={farmFilter}
+            onChange={(event) => setFarmFilter(event.target.value)}
+            title="Selecionar fazenda"
+          >
+            {CQO_FARMS.map((farm) => (
+              <option key={farm.id} value={farm.id}>{farm.name}</option>
+            ))}
+          </select>
+        </label>
 
-        <select
-          className="header-filter-select"
-          value={cycleFilter}
-          onChange={(event) => setCycleFilter(event.target.value)}
-          title="Selecionar ciclo"
-        >
-          <option value="all">Todos os ciclos</option>
-          <option value="1">Ciclo 1</option>
-          <option value="2">Ciclo 2</option>
-          <option value="3">Ciclo 3</option>
-          <option value="4">Ciclo 4</option>
-          <option value="5">Ciclo 5</option>
-          <option value="6">Ciclo 6</option>
-        </select>
+        <label className="header-filter-control">
+          <span>Ciclo</span>
+          <select
+            className="header-filter-select"
+            value={cycleFilter}
+            onChange={(event) => setCycleFilter(event.target.value)}
+            title="Selecionar ciclo"
+          >
+            <option value="all">Todos os ciclos</option>
+            <option value="1">Ciclo 1</option>
+            <option value="2">Ciclo 2</option>
+            <option value="3">Ciclo 3</option>
+            <option value="4">Ciclo 4</option>
+            <option value="5">Ciclo 5</option>
+            <option value="6">Ciclo 6</option>
+          </select>
+        </label>
 
-        <select
-          className="header-filter-select"
-          value={evaluatorFilter}
-          onChange={(event) => setEvaluatorFilter(event.target.value)}
-          title="Selecionar avaliador"
-        >
-          <option value="all">Todos os avaliadores</option>
-          {evaluators.map((ev) => (
-            <option key={ev} value={ev}>{ev}</option>
-          ))}
-        </select>
+        <label className="header-filter-control header-filter-control-wide">
+          <span>Avaliador</span>
+          <select
+            className="header-filter-select"
+            value={evaluatorFilter}
+            onChange={(event) => setEvaluatorFilter(event.target.value)}
+            title="Selecionar avaliador"
+          >
+            <option value="all">Todos os avaliadores</option>
+            {evaluators.map((ev) => (
+              <option key={ev} value={ev}>{ev}</option>
+            ))}
+          </select>
+        </label>
 
-        <select
-          className="header-filter-select"
-          value={yearFilter}
-          onChange={(event) => setYearFilter(event.target.value)}
-          title="Selecionar ano"
-        >
-          {yearOptions.map((year) => (
-            <option key={year} value={year}>{year}</option>
-          ))}
-        </select>
+        <label className="header-filter-control header-filter-control-short">
+          <span>Ano</span>
+          <select
+            className="header-filter-select"
+            value={yearFilter}
+            onChange={(event) => setYearFilter(event.target.value)}
+            title="Selecionar ano"
+          >
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+        </label>
 
-        <select
-          className="header-filter-select"
-          value={monthFilter}
-          onChange={(event) => setMonthFilter(event.target.value)}
-          title="Selecionar mês"
-        >
-          <option value="all">Todos os meses</option>
-          {monthOptions.map((month) => (
-            <option key={month.value} value={month.value}>{month.label}</option>
-          ))}
-        </select>
+        <label className="header-filter-control header-filter-control-short">
+          <span>Mês</span>
+          <select
+            className="header-filter-select"
+            value={monthFilter}
+            onChange={(event) => setMonthFilter(event.target.value)}
+            title="Selecionar mês"
+          >
+            <option value="all">Todos os meses</option>
+            {monthOptions.map((month) => (
+              <option key={month.value} value={month.value}>{month.label}</option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className="header-right">
