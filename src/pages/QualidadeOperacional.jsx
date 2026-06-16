@@ -215,26 +215,18 @@ function RiskMatrix({ parcelas, loading }) {
 
 function QualityScorecard({ label, pctValue, meta, loading }) {
   if (loading) return <div className="skeleton-chart" style={{ height: 80, borderRadius: 8 }}></div>;
-  const isGood = pctValue <= meta;
-  if (label === 'Cacho Maduro %') {
-    const isMaduroGood = pctValue >= meta;
-    return (
-      <div className="card" style={{ padding: '8px 12px', textAlign: 'center', borderTop: isMaduroGood ? '4px solid var(--status-success)' : '4px solid var(--status-warning)', margin: 0 }}>
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>{label}</div>
-        <div style={{ fontSize: '1.4rem', fontWeight: 700, color: isMaduroGood ? 'var(--status-success)' : 'var(--text-primary)', lineHeight: 1.1 }}>
-          {pctValue.toFixed(2)}%
-        </div>
-        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>Meta: {meta.toFixed(2)}%</div>
-      </div>
-    );
-  }
+  const isMaduro = label === 'Cacho Maduro %';
+  const isGood = isMaduro ? pctValue >= meta : pctValue <= meta;
+  const color = isGood ? 'var(--status-success)' : 'var(--status-danger)';
+  const icon = isGood ? '✓' : '!';
+  
   return (
-    <div className="card" style={{ padding: '8px 12px', textAlign: 'center', borderTop: isGood ? '4px solid var(--status-success)' : '4px solid var(--status-danger)', margin: 0 }}>
-      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>{label}</div>
-      <div style={{ fontSize: '1.4rem', fontWeight: 700, color: isGood ? 'var(--status-success)' : 'var(--status-danger)', lineHeight: 1.1 }}>
-        {pctValue.toFixed(2)}%
+    <div style={{ backgroundColor: 'white', padding: '6px 12px', textAlign: 'center', border: '1px solid #C0C0C0', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', margin: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ fontSize: '0.85rem', color: '#333', marginBottom: '2px', fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: '1.8rem', fontWeight: 700, color: color, lineHeight: 1.1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px' }}>
+        {pctValue.toFixed(2).replace('.', ',')}%<span style={{ fontSize: '1.2rem', fontWeight: 400 }}>{icon}</span>
       </div>
-      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>Meta: {meta.toFixed(2)}%</div>
+      <div style={{ fontSize: '0.8rem', color: '#555', marginTop: '2px' }}>Meta: {meta.toFixed(2).replace('.', ',')}%</div>
     </div>
   );
 }
@@ -243,11 +235,11 @@ function StackedBarHorizontal({ data, title, loading }) {
   if (loading) return <div className="skeleton-chart" style={{ height: 200 }}></div>;
   if (!data || data.length === 0) return null;
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', flex: 1, margin: 0 }}>
-      <div className="card-header" style={{ padding: '8px 12px', minHeight: 'auto' }}>
-        <h3 className="card-title" style={{ fontSize: '0.9rem' }}>{title}</h3>
+    <div style={{ backgroundColor: 'white', border: '1px solid #C0C0C0', borderRadius: '8px', display: 'flex', flexDirection: 'column', flex: 1, margin: 0, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+      <div style={{ padding: '8px 12px', textAlign: 'center', borderBottom: 'none' }}>
+        <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#333', margin: 0 }}>{title}</h3>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '8px 12px', flex: 1 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '0 12px 12px 12px', flex: 1 }}>
         {data.slice(0, 10).map((row, idx) => {
           const total = row.cachoMaduroPct + row.cachoVerdePct + row.cachoPassadoPct + row.cachoAvermelhadoPct || 1;
           const wMaduro = (row.cachoMaduroPct / total) * 100;
@@ -284,11 +276,11 @@ function StackedBarVertical({ data, title, loading, hideLabels = false }) {
   if (loading) return <div className="skeleton-chart" style={{ height: 200 }}></div>;
   if (!data || data.length === 0) return null;
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', flex: 1, margin: 0 }}>
-      <div className="card-header" style={{ padding: '8px 12px', minHeight: 'auto' }}>
-        <h3 className="card-title" style={{ fontSize: '0.9rem' }}>{title}</h3>
+    <div style={{ backgroundColor: 'white', border: '1px solid #C0C0C0', borderRadius: '8px', display: 'flex', flexDirection: 'column', flex: 1, margin: 0, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+      <div style={{ padding: '8px 12px', textAlign: 'center', borderBottom: 'none' }}>
+        <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#333', margin: 0 }}>{title}</h3>
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', flex: 1, padding: '8px 12px', borderBottom: '1px solid var(--border-color)', overflowX: 'auto' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', flex: 1, padding: '0 12px 12px 12px', overflowX: 'auto' }}>
         {data.slice(-20).map((row, idx) => {
           const total = row.cachoMaduroPct + row.cachoVerdePct + row.cachoPassadoPct + row.cachoAvermelhadoPct || 1;
           const hMaduro = (row.cachoMaduroPct / total) * 100;
@@ -321,11 +313,11 @@ function EvaluatorRanking({ data, loading }) {
   if (loading) return <div className="skeleton-chart" style={{ height: 200 }}></div>;
   if (!data || data.length === 0) return null;
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', flex: 1, margin: 0 }}>
-      <div className="card-header" style={{ padding: '8px 12px', minHeight: 'auto' }}>
-        <h3 className="card-title" style={{ fontSize: '0.9rem' }}>Avaliadores</h3>
+    <div style={{ backgroundColor: 'white', border: '1px solid #C0C0C0', borderRadius: '8px', display: 'flex', flexDirection: 'column', flex: 1, margin: 0, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+      <div style={{ padding: '8px 12px', textAlign: 'center', borderBottom: 'none' }}>
+        <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#333', margin: 0 }}>Avaliadores</h3>
       </div>
-      <div className="compact-list" style={{ padding: '0 8px', gap: '4px' }}>
+      <div className="compact-list" style={{ padding: '0 12px 12px 12px', gap: '4px', overflowY: 'auto' }}>
         {data.slice(0, 8).map((row, idx) => (
           <div className="compact-row" key={idx} style={{ alignItems: 'center', padding: '4px 0' }}>
             <div style={{ flex: 1 }}>
@@ -729,8 +721,21 @@ export default function QualidadeOperacional({
       )}
 
       {activeTab === 'qualidade' && (
-        <div className="fade-in" style={{ height: 'calc(100vh - 160px)', display: 'flex', flexDirection: 'column', gap: '8px', overflow: 'hidden' }}>
-          <div className="grid-container" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', margin: 0, gap: '8px' }}>
+        <div className="fade-in" style={{ height: 'calc(100vh - 160px)', display: 'flex', flexDirection: 'column', gap: '8px', overflow: 'hidden', backgroundColor: '#EFEFEF', padding: '0 0 8px 0', border: '1px solid #C0C0C0' }}>
+          
+          {/* Header Vilanova BI */}
+          <div style={{ backgroundColor: '#F26522', padding: '12px 24px', display: 'flex', alignItems: 'center', color: 'white' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ backgroundColor: 'white', padding: '4px 12px', borderRadius: '4px', textAlign: 'center', lineHeight: 1.1 }}>
+                <span style={{ color: '#256B3A', fontWeight: 900, fontSize: '1.4rem', fontFamily: 'Arial, sans-serif' }}>VILANOVA</span>
+                <br/>
+                <span style={{ color: '#F26522', fontWeight: 700, fontSize: '0.65rem', display: 'block', marginTop: '2px' }}>AGROINDUSTRIAL</span>
+              </div>
+              <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 700, fontFamily: 'Arial, sans-serif', letterSpacing: '0.5px', textShadow: '1px 1px 2px rgba(0,0,0,0.2)' }}>Qualidade Agrícola</h1>
+            </div>
+          </div>
+
+          <div className="grid-container" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', margin: '0 8px', gap: '8px' }}>
             <QualityScorecard loading={loading} label="Cacho Maduro %" pctValue={model.quality.cachoMaduroPct} meta={85} />
             <QualityScorecard loading={loading} label="Cacho passado %" pctValue={model.quality.cachoPassadoPct} meta={10} />
             <QualityScorecard loading={loading} label="Cacho verde %" pctValue={model.quality.cachoVerdePct} meta={1} />
