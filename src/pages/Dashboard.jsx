@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   BarChart3,
@@ -7,12 +7,15 @@ import {
   ClipboardCheck,
   Gauge,
   Leaf,
+  Maximize2,
+  MonitorPlay,
   Scale,
   Sprout,
   Target,
   Tractor,
   TrendingUp,
   Users,
+  X,
 } from 'lucide-react';
 import CustomChart from '../components/CustomChart';
 import { useCqoDashboard } from '../utils/cqoData';
@@ -423,7 +426,85 @@ function QualityTable({ rows, loading = false }) {
   );
 }
 
+function PresentationOverlay({ loading, model, totals, quality, dailyBunchRows, periodText, source, lastRecord, onClose }) {
+  return (
+    <div className="presentation-overlay" role="dialog" aria-modal="true" aria-label="Apresentacao em tela cheia">
+      <div className="presentation-topbar">
+        <div>
+          <span className="page-eyebrow">CQO Campo</span>
+          <h2>Apresentacao de Qualidade Agricola</h2>
+          <div className="presentation-meta">
+            <span><Calendar size={15} /> {periodText}</span>
+            <span><CheckCircle2 size={15} /> {loading ? 'Carregando base' : source}</span>
+            <span><ClipboardCheck size={15} /> {formatNumber(model.corteRecords.length)} corte / {formatNumber(model.carreamentoRecords.length)} carreamento</span>
+            <span>{lastRecord ? `Ultima coleta: ${lastRecord.date} ${lastRecord.time}` : 'Sem dados no filtro'}</span>
+          </div>
+        </div>
+        <button type="button" className="presentation-close-btn" onClick={onClose} title="Fechar apresentacao" aria-label="Fechar apresentacao">
+          <X size={22} />
+        </button>
+      </div>
+
+      <div className="presentation-content">
+        <div className="presentation-kpi-grid">
+          <QualityScorecard loading={loading} label="Cacho Maduro %" value={quality.cachoMaduroPct} meta={85} goodWhen="high" />
+          <QualityScorecard loading={loading} label="Cacho passado %" value={quality.cachoPassadoPct} meta={10} />
+          <QualityScorecard loading={loading} label="Cacho verde %" value={quality.cachoVerdePct} meta={1} />
+          <QualityScorecard loading={loading} label="Cacho Avermelhado %" value={quality.cachoAvermelhadoPct} meta={4} />
+        </div>
+
+        <div className="presentation-summary-grid">
+          <KpiCard
+            title="Cachos observados"
+            value={formatNumber(model.corteTotals.cachosObservados)}
+            footer={`${formatNumber(model.corteTotals.plantasObservadas)} plantas observadas`}
+            icon={Tractor}
+            tone="green"
+            loading={loading}
+          />
+          <KpiCard
+            title="Perdas estimadas"
+            value={`${formatNumber(model.totals.perdasT, 2)} t`}
+            footer={`${formatNumber(model.totals.estimatedCachos)} cachos estimados`}
+            icon={Scale}
+            tone={model.totals.perdasT > 0 ? 'orange' : 'green'}
+            loading={loading}
+          />
+          <KpiCard
+            title="Total de coletas"
+            value={formatNumber(totals.total)}
+            footer="Registros dentro dos filtros"
+            icon={ClipboardCheck}
+            tone="info"
+            loading={loading}
+          />
+        </div>
+
+        <DailyBunchBarChart rows={dailyBunchRows} loading={loading} />
+
+        <div className="presentation-chart-grid">
+          <StackedQualityRows
+            loading={loading}
+            title="Qualidade por Fazenda"
+            subtitle="Maduro, passado, verde e avermelhado por origem."
+            rows={model.farmRows}
+            limit={6}
+          />
+          <StackedQualityRows
+            loading={loading}
+            title="Qualidade por Semana"
+            subtitle="Evolucao semanal dos percentuais de corte."
+            rows={model.weekRows}
+            limit={6}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, dateFrom, dateTo, searchTerm }) {
+  const [presentationOpen, setPresentationOpen] = useState(false);
   const { loading, records, totals, source, error } = useCqoDashboard({
     farmFilter,
     areaFilter,
@@ -439,6 +520,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
   const dailyBunchRows = useMemo(() => buildDailyBunchRows(records), [records]);
   const lastRecord = records[0];
   const quality = model.quality;
+  const periodText = periodLabel(periodFilter, dateFrom, dateTo);
 
   const matureTrend = model.weekRows.map((row) => ({
     label: row.label,
@@ -449,6 +531,33 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
     value: Number((row.cachoVerdePct + row.cachoPassadoPct + row.cachoAvermelhadoPct).toFixed(1)),
   }));
 
+  useEffect(() => {
+    if (!presentationOpen) return undefined;
+
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setPresentationOpen(false);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, [presentationOpen]);
+
+  const openPresentation = () => {
+    setPresentationOpen(true);
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  };
+
+  const closePresentation = () => {
+    setPresentationOpen(false);
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
   return (
     <div className="fade-in page-shell">
       <div className="dashboard-page-header field-powerbi-header">
@@ -456,17 +565,38 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
           <span className="page-eyebrow">Qualidade Agricola • CQO Campo</span>
           <h2>Campo no modelo do Power BI</h2>
           <div className="field-powerbi-meta">
-            <span><Calendar size={14} /> {periodLabel(periodFilter, dateFrom, dateTo)}</span>
+            <span><Calendar size={14} /> {periodText}</span>
             <span><CheckCircle2 size={14} /> {loading ? 'Carregando base' : source}</span>
             <span><ClipboardCheck size={14} /> {formatNumber(model.corteRecords.length)} corte / {formatNumber(model.carreamentoRecords.length)} carreamento</span>
           </div>
         </div>
-        <div className="source-card compact">
-          <span>Referencia</span>
-          <strong>Qualidade Agricola.pbix</strong>
-          <small>{lastRecord ? `Ultima coleta: ${lastRecord.date} ${lastRecord.time}` : 'Sem dados no filtro'}</small>
+        <div className="page-actions field-presentation-actions">
+          <button type="button" className="btn btn-primary" onClick={openPresentation}>
+            <MonitorPlay size={18} />
+            Apresentar
+            <Maximize2 size={15} />
+          </button>
+          <div className="source-card compact">
+            <span>Referencia</span>
+            <strong>Qualidade Agricola.pbix</strong>
+            <small>{lastRecord ? `Ultima coleta: ${lastRecord.date} ${lastRecord.time}` : 'Sem dados no filtro'}</small>
+          </div>
         </div>
       </div>
+
+      {presentationOpen && (
+        <PresentationOverlay
+          loading={loading}
+          model={model}
+          totals={totals}
+          quality={quality}
+          dailyBunchRows={dailyBunchRows}
+          periodText={periodText}
+          source={source}
+          lastRecord={lastRecord}
+          onClose={closePresentation}
+        />
+      )}
 
       {error && (
         <div className="warning-strip">
