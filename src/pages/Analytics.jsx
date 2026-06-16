@@ -631,6 +631,39 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
     }
   };
 
+  if (areaFilter === 'carreamento') {
+    return (
+      <div className="fade-in page-shell carreamento-bi-page">
+        {carreamentoPresentationOpen && (
+          <CarreamentoPresentationOverlay
+            loading={loading}
+            source={source}
+            totals={totalsCarreamento}
+            records={carreamentoRecords}
+            periodText={periodText}
+            onClose={closeCarreamentoPresentation}
+          />
+        )}
+
+        {error && (
+          <div className="warning-strip">
+            <AlertTriangle size={16} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <CarreamentoBiBoard
+          loading={loading}
+          source={source}
+          totals={totalsCarreamento}
+          records={carreamentoRecords}
+          periodText={periodText}
+          onPresent={openCarreamentoPresentation}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="fade-in page-shell">
       {carreamentoPresentationOpen && (

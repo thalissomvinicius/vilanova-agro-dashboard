@@ -1915,6 +1915,11 @@ body.presentation-active {
   color: var(--text-primary);
 }
 
+.carreamento-bi-page {
+  gap: 0;
+  padding-top: 0;
+}
+
 .carreamento-bi-header {
   min-height: 72px;
   display: grid;
