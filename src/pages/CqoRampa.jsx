@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, Box, ClipboardCheck, Leaf, Maximize2, MonitorPlay, Scale, Truck, X } from 'lucide-react';
+import { Activity, AlertTriangle, Box, ClipboardCheck, Gauge, Leaf, Maximize2, MonitorPlay, Scale, Target, Trophy, Truck, X } from 'lucide-react';
 import { BONIFICACAO_SOURCE, useBonificacaoData } from '../utils/bonificacaoData';
 
 const RAMPA_PRODUCERS = [
@@ -231,6 +231,90 @@ function QualityCard({ label, value, meta, icon: Icon, color, warning = false, n
   );
 }
 
+function buildRampaInsights({ producerRows, dailyRows, semAvaliacaoRows, total }) {
+  if (!producerRows.length && !dailyRows.length) {
+    return {
+      alertText: 'Sem dados de Rampa no período selecionado.',
+      alertTone: 'info',
+      bestText: 'Sem ranking de produtor no filtro.',
+      riskText: 'Sem produtor crítico no filtro.',
+      trendText: 'Tendência será exibida com dados importados.',
+      trendTone: 'info',
+      boxesText: 'Sem caixas pendentes no filtro.',
+    };
+  }
+
+  const alerts = [
+    { label: 'Verde', value: total.qVerde, meta: 5, goodWhen: 'low' },
+    { label: 'Maduro', value: total.qMaduro, meta: 80, goodWhen: 'high' },
+    { label: 'Passado', value: total.qPassado, meta: 5, goodWhen: 'low' },
+    { label: 'Talo comprido', value: total.qTaloComprido, meta: 3, goodWhen: 'low' },
+  ].filter((item) => {
+    if (!hasQualityValue(item.value)) return false;
+    const value = Number(item.value);
+    return item.goodWhen === 'high' ? value < item.meta : value > item.meta;
+  });
+
+  const bestProducer = [...producerRows]
+    .filter((row) => hasQualityValue(row.qMaduro))
+    .sort((a, b) => Number(b.qMaduro || 0) - Number(a.qMaduro || 0))[0];
+  const riskProducer = [...producerRows]
+    .map((row) => ({
+      ...row,
+      risco: Number(row.qPassado || 0) + Number(row.qVerde || 0) + Number(row.qTaloComprido || 0),
+    }))
+    .sort((a, b) => b.risco - a.risco)[0];
+
+  const lastDays = dailyRows.slice(-3);
+  const previousDays = dailyRows.slice(-6, -3);
+  const avg = (rows, key) => rows.length
+    ? rows.reduce((sum, row) => sum + Number(row[key] || 0), 0) / rows.length
+    : 0;
+  const trend = previousDays.length ? avg(lastDays, 'qMaduro') - avg(previousDays, 'qMaduro') : 0;
+  const caixas = semAvaliacaoRows.reduce((sum, row) => sum + Number(row.caixasSemAvaliacao || 0), 0);
+
+  return {
+    alertText: alerts.length
+      ? `${alerts.length} indicador${alerts.length > 1 ? 'es' : ''} fora da meta na Rampa.`
+      : 'Rampa dentro das metas principais disponíveis.',
+    alertTone: alerts.length ? 'danger' : 'success',
+    bestText: bestProducer ? `${bestProducer.fornecedor}: ${fmtPct(bestProducer.qMaduro)} maduro.` : 'Sem ranking de produtor no filtro.',
+    riskText: riskProducer ? `${riskProducer.fornecedor}: ${fmtPct(riskProducer.risco)} soma de riscos.` : 'Sem produtor crítico no filtro.',
+    trendText: previousDays.length
+      ? `${trend >= 0 ? '+' : ''}${fmt(trend, 1)} p.p. de maduro nos últimos 3 dias.`
+      : 'Tendência será exibida com mais dias importados.',
+    trendTone: trend >= 0 ? 'success' : 'danger',
+    boxesText: caixas ? `${fmt(caixas)} caixas sem avaliação no filtro.` : 'Sem caixas pendentes no filtro.',
+  };
+}
+
+function RampaInsightStrip({ insights }) {
+  const cards = [
+    { title: 'Farol da Rampa', text: insights.alertText, icon: Target, tone: insights.alertTone },
+    { title: 'Melhor produtor', text: insights.bestText, icon: Trophy, tone: 'success' },
+    { title: 'Ponto crítico', text: insights.riskText, icon: Gauge, tone: 'warning' },
+    { title: 'Tendência curta', text: insights.trendText, icon: Activity, tone: insights.trendTone },
+    { title: 'Pendências', text: insights.boxesText, icon: ClipboardCheck, tone: 'info' },
+  ];
+
+  return (
+    <div className="executive-insight-grid rampa-insight-grid">
+      {cards.map((card) => {
+        const Icon = card.icon;
+        return (
+          <div key={card.title} className={`executive-insight-card insight-${card.tone}`}>
+            <Icon size={18} />
+            <div>
+              <span>{card.title}</span>
+              <strong>{card.text}</strong>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ProducerQualityTable({ rows, total }) {
   const tableRows = [
     ...rows,
@@ -274,7 +358,9 @@ function ProducerQualityTable({ rows, total }) {
               </tr>
             )) : (
               <tr>
-                <td colSpan="6" className="empty-table-cell">Nenhum dado de rampa encontrado para o período selecionado.</td>
+                <td colSpan="6" className="empty-table-cell">
+                  Nenhum dado de rampa encontrado para o período selecionado. Troque ano, mês ou produtor para conferir outra janela.
+                </td>
               </tr>
             )}
           </tbody>
@@ -329,7 +415,7 @@ function DailyQualityChart({ rows }) {
               </div>
             );
           })}
-          {!visibleRows.length ? <div className="empty-panel">Nenhum dado diário encontrado para os filtros atuais.</div> : null}
+          {!visibleRows.length ? <div className="empty-panel smart-empty-panel"><strong>Sem dias importados</strong><span>O gráfico diário será exibido quando a fonte da Rampa trouxer registros no período selecionado.</span></div> : null}
         </div>
       </div>
     </div>
@@ -390,6 +476,8 @@ function RampaBoard({
   onPresent,
   presentationMode = false,
 }) {
+  const insights = buildRampaInsights({ producerRows, dailyRows, semAvaliacaoRows, total });
+
   return (
     <div className={`rampa-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
       <div className="rampa-bi-header">
@@ -422,6 +510,8 @@ function RampaBoard({
           </span>
         ))}
       </div>
+
+      <RampaInsightStrip insights={insights} />
 
       <div className="rampa-bi-kpi-grid">
         <QualityCard label="Verde (%)" value={total.qVerde} meta={5} icon={Leaf} color={QUALITY_COLORS.qVerde} warning={Number(total.qVerde || 0) > 5} />

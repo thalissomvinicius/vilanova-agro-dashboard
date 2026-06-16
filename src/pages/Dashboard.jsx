@@ -2,8 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
+  Activity,
+  Gauge,
   Maximize2,
   MonitorPlay,
+  Target,
+  Trophy,
   X,
 } from 'lucide-react';
 import { useCqoDashboard } from '../utils/cqoData';
@@ -131,6 +135,124 @@ function qualityTone(value, meta, goodWhen = 'low') {
   return { tone: 'danger', color: 'var(--status-danger)', status: 'Fora da meta' };
 }
 
+function buildFieldInsights(model, dailyBunchRows, periodText, loading = false) {
+  if (loading) {
+    return {
+      alertText: 'Carregando base e recalculando metas do período.',
+      alertTone: 'info',
+      bestText: 'Ranking será exibido após a leitura dos dados.',
+      riskText: 'Ponto crítico será calculado com os registros carregados.',
+      trendText: 'Tendência será exibida ao concluir o carregamento.',
+      trendTone: 'info',
+    };
+  }
+
+  if (!model.records?.length) {
+    return {
+      alertText: `Sem coletas em ${periodText}.`,
+      alertTone: 'info',
+      bestText: 'Sem ranking de fazenda no filtro.',
+      riskText: 'Sem fazenda crítica no filtro.',
+      trendText: 'Tendência será exibida quando houver coletas.',
+      trendTone: 'info',
+    };
+  }
+
+  const quality = model.quality || {};
+  const alerts = [
+    { label: 'Cacho maduro', value: quality.cachoMaduroPct, meta: 85, goodWhen: 'high' },
+    { label: 'Cacho passado', value: quality.cachoPassadoPct, meta: 10, goodWhen: 'low' },
+    { label: 'Cacho verde', value: quality.cachoVerdePct, meta: 1, goodWhen: 'low' },
+    { label: 'Cacho avermelhado', value: quality.cachoAvermelhadoPct, meta: 4, goodWhen: 'low' },
+    { label: 'Talo comprido', value: quality.taloCompridoPct, meta: 3, goodWhen: 'low' },
+    { label: 'Cacho estrela', value: quality.cachoEstrelaPct, meta: 2, goodWhen: 'low' },
+  ].filter((item) => {
+    const value = Number(item.value || 0);
+    return item.goodWhen === 'high' ? value < item.meta : value > item.meta;
+  });
+
+  const farmRanking = model.farmRows
+    .map((row) => {
+      const values = qualityValuesFromRow(row);
+      return {
+        label: row.label,
+        maduro: values.maduro,
+        risco: values.passado + values.avermelhado + values.verde,
+        recordsCount: values.samples || row.records?.length || 0,
+      };
+    })
+    .filter((row) => row.recordsCount > 0);
+
+  const bestFarm = [...farmRanking].sort((a, b) => b.maduro - a.maduro)[0];
+  const riskFarm = [...farmRanking].sort((a, b) => b.risco - a.risco)[0];
+  const lastDays = dailyBunchRows.slice(-3);
+  const previousDays = dailyBunchRows.slice(-6, -3);
+  const dayTotal = (rows) => rows.reduce((sum, row) => sum + row.maduro + row.passado + row.verde + row.avermelhado, 0);
+  const dayMaduro = (rows) => rows.reduce((sum, row) => sum + row.maduro, 0);
+  const lastPct = dayTotal(lastDays) ? (dayMaduro(lastDays) / dayTotal(lastDays)) * 100 : 0;
+  const prevPct = dayTotal(previousDays) ? (dayMaduro(previousDays) / dayTotal(previousDays)) * 100 : 0;
+  const trend = previousDays.length ? lastPct - prevPct : 0;
+
+  return {
+    alertText: alerts.length
+      ? `${alerts.length} indicador${alerts.length > 1 ? 'es' : ''} fora da meta em ${periodText}.`
+      : `Todos os principais indicadores dentro da meta em ${periodText}.`,
+    alertTone: alerts.length ? 'danger' : 'success',
+    bestText: bestFarm ? `${bestFarm.label}: ${formatPercent(bestFarm.maduro)} maduro.` : 'Sem ranking de fazenda no filtro.',
+    riskText: riskFarm ? `${riskFarm.label}: ${formatPercent(riskFarm.risco)} soma de riscos.` : 'Sem fazenda crítica no filtro.',
+    trendText: previousDays.length
+      ? `${trend >= 0 ? '+' : ''}${formatNumber(trend, 1)} p.p. de maduro nos últimos 3 dias.`
+      : 'Tendência será exibida com mais dias no filtro.',
+    trendTone: trend >= 0 ? 'success' : 'danger',
+  };
+}
+
+function InsightStrip({ insights }) {
+  const cards = [
+    {
+      title: 'Farol automático',
+      text: insights.alertText,
+      icon: Target,
+      tone: insights.alertTone,
+    },
+    {
+      title: 'Melhor origem',
+      text: insights.bestText,
+      icon: Trophy,
+      tone: 'success',
+    },
+    {
+      title: 'Ponto crítico',
+      text: insights.riskText,
+      icon: Gauge,
+      tone: 'warning',
+    },
+    {
+      title: 'Tendência curta',
+      text: insights.trendText,
+      icon: Activity,
+      tone: insights.trendTone,
+    },
+  ];
+
+  return (
+    <div className="executive-insight-grid">
+      {cards.map((card) => {
+        const Icon = card.icon;
+        return (
+          <div key={card.title} className={`executive-insight-card insight-${card.tone}`}>
+            <Icon size={18} />
+            <div>
+              <span>{card.title}</span>
+              <strong>{card.text}</strong>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function FieldBiKpiCard({ label, value, meta, goodWhen = 'low', loading = false }) {
   const tone = qualityTone(value, meta, goodWhen);
   const signal = tone.tone === 'green' ? '✓' : '!';
@@ -216,7 +338,7 @@ function FieldBiFarmChart({ rows, loading = false }) {
               </div>
             );
           })}
-          {!visibleRows.length && <div className="empty-panel">Nenhum dado de fazenda para os filtros atuais.</div>}
+          {!visibleRows.length && <div className="empty-panel smart-empty-panel"><strong>Sem dados de fazenda</strong><span>Troque o mês, ano ou fazenda para localizar coletas já sincronizadas.</span></div>}
         </div>
       )}
       <div className="field-bi-axis"><span>0%</span><span>50%</span><span>100%</span></div>
@@ -305,7 +427,7 @@ function FieldBiWeekChart({ rows, loading = false }) {
               })}
             </svg>
           ) : (
-            <div className="empty-panel">Nenhum dado semanal para os filtros atuais.</div>
+            <div className="empty-panel smart-empty-panel"><strong>Sem semanas no filtro</strong><span>A visão semanal aparece quando houver coletas dentro do período selecionado.</span></div>
           )}
         </div>
       )}
@@ -331,7 +453,7 @@ function EvaluatorQualityCards({ rows, loading = false }) {
               </div>
             </div>
           ))}
-          {!visibleRows.length && <div className="empty-panel">Nenhum avaliador encontrado nos filtros atuais.</div>}
+          {!visibleRows.length && <div className="empty-panel smart-empty-panel"><strong>Sem avaliadores</strong><span>Nenhuma coleta do período trouxe avaliador válido.</span></div>}
         </>
       )}
     </section>
@@ -415,7 +537,7 @@ function DailyBunchBarChart({ rows, loading = false }) {
               })}
             </svg>
           ) : (
-            <div className="empty-panel">Nenhum dado de corte encontrado para montar o grafico por dia.</div>
+            <div className="empty-panel smart-empty-panel"><strong>Sem barras diárias</strong><span>O gráfico por dia será montado quando houver cachos avaliados no mês selecionado.</span></div>
           )}
         </div>
       )}
@@ -435,6 +557,8 @@ function FieldBiBoard({
   onPresent,
   presentationMode = false,
 }) {
+  const insights = buildFieldInsights(model, dailyBunchRows, periodText, loading);
+
   return (
     <div className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
       <div className="field-bi-header">
@@ -456,6 +580,8 @@ function FieldBiBoard({
         <span>{formatNumber(totals.total)} coletas</span>
         <span>{lastRecord ? `Última coleta: ${lastRecord.date} ${lastRecord.time}` : 'Sem dados no filtro'}</span>
       </div>
+
+      <InsightStrip insights={insights} />
 
       <div className="field-bi-kpi-grid">
         <FieldBiKpiCard loading={loading} label="Cacho Maduro %" value={quality.cachoMaduroPct} meta={85} goodWhen="high" />

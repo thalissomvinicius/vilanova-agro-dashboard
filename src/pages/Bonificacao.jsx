@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   ClipboardCheck,
   FileSpreadsheet,
-  Package,
   Scale,
   Truck,
   Warehouse,

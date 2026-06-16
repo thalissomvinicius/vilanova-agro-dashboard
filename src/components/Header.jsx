@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, LogOut, Moon, RefreshCw, Search, Sun } from 'lucide-react';
+import { Bell, LogOut, MonitorPlay, Moon, RefreshCw, Search, Sun } from 'lucide-react';
 import { ACTIVE_CQO_FARM_IDS, CQO_FARMS } from '../utils/cqoData';
 
 import { useCqoData } from '../utils/cqoData';
@@ -24,6 +24,7 @@ export default function Header({
   triggerManualSync,
   user,
   onLogout,
+  onOpenTvMode,
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const { records } = useCqoData();
@@ -185,6 +186,14 @@ export default function Header({
             title={theme === 'light' ? 'Modo escuro' : 'Modo claro'}
           >
             {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
+
+          <button
+            onClick={onOpenTvMode}
+            className="header-btn header-tv-btn"
+            title="Abrir modo TV"
+          >
+            <MonitorPlay size={18} />
           </button>
 
           <div style={{ position: 'relative' }}>

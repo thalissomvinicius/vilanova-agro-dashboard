@@ -775,6 +775,11 @@ body.sidebar-resizing {
   .grid-cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid-cols-8-4 { grid-template-columns: 1fr; }
   .grid-cols-7-5 { grid-template-columns: 1fr; }
+
+  .executive-insight-grid,
+  .rampa-insight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 1220px) {
@@ -942,5 +947,16 @@ body.sidebar-resizing {
 
   .grid-cols-4 {
     grid-template-columns: 1fr;
+  }
+
+  .executive-insight-grid,
+  .rampa-insight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tv-mode-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    padding-right: 58px;
   }
 }

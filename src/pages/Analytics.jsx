@@ -1,11 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  Award,
   CheckCircle2,
   ClipboardCheck,
   Leaf,
-  MapPin,
   Rows3,
   Scissors,
   Sprout,
@@ -18,7 +16,7 @@ import {
   Weight,
 } from 'lucide-react';
 import CustomChart from '../components/CustomChart';
-import { aggregateRecords, buildCharts, filterRecords, normalizeText, useCqoData } from '../utils/cqoData';
+import { aggregateRecords, buildCharts, filterRecords, useCqoData } from '../utils/cqoData';
 
 function fmt(value, digits = 0) {
   return new Intl.NumberFormat('pt-BR', {
@@ -265,12 +263,6 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
   const taxaMaturacao = totalsCorte.cachosObservados > 0
     ? ((totalsCorte.cachoMaduro / totalsCorte.cachosObservados) * 100).toFixed(1)
     : '0.0';
-  const taxaVerde = totalsCorte.cachosObservados > 0
-    ? ((totalsCorte.cachoVerde / totalsCorte.cachosObservados) * 100).toFixed(1)
-    : '0.0';
-  const taxaPassado = totalsCorte.cachosObservados > 0
-    ? ((totalsCorte.cachoPassado / totalsCorte.cachosObservados) * 100).toFixed(1)
-    : '0.0';
   const mediaLinhasCorte = corteRecords.length > 0
     ? (totalsCorte.linhas / corteRecords.length).toFixed(1)
     : '0';
@@ -296,8 +288,6 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
   ];
 
   const currentTab = availableTabs.some((t) => t.id === activeTab) ? activeTab : 'geral';
-  const hasData = !loading && filtered.length > 0;
-
   return (
     <div className="fade-in page-shell">
       <div className="page-header">

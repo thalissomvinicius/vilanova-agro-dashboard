@@ -12,7 +12,6 @@ import {
   Tractor,
   Truck,
 } from 'lucide-react';
-import CustomChart from '../components/CustomChart';
 import { filterRecords, useCqoData } from '../utils/cqoData';
 import { buildQualidadeOperacional, QUALITY_LOSS_LIMITS } from '../utils/qualidadeOperacionalData';
 
@@ -64,34 +63,6 @@ function QualityMetric({ label, value, meta, goodWhen = 'high', loading = false 
       <small style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
         {typeof meta === 'number' ? `meta ${pct(meta)}` : meta}
       </small>
-    </div>
-  );
-}
-
-function FormulaCard({ title, lines }) {
-  return (
-    <div className="card">
-      <div className="card-header">
-        <div>
-          <h3 className="card-title">{title}</h3>
-          <span className="card-subtitle">Regra portada do BI de Qualidade Operacional Agricola.</span>
-        </div>
-        <ClipboardCheck size={20} style={{ color: 'var(--green-institutional)' }} />
-      </div>
-      <div className="compact-list">
-        {lines.map((line) => (
-          <div className="compact-row" key={line.label}>
-            <div>
-              <strong>{line.label}</strong>
-              <span>{line.formula}</span>
-            </div>
-            <div>
-              <strong>{line.value}</strong>
-              <span>{line.note}</span>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

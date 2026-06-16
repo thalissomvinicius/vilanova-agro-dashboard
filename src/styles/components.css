@@ -1979,6 +1979,213 @@ body.presentation-active {
   color: var(--text-muted);
 }
 
+.smart-empty-panel {
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1.35;
+}
+
+.smart-empty-panel strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 0.92rem;
+}
+
+.smart-empty-panel span {
+  display: block;
+  max-width: 420px;
+}
+
+.executive-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.rampa-insight-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.executive-insight-card {
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.executive-insight-card svg {
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--green-institutional);
+}
+
+.executive-insight-card span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 850;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.executive-insight-card strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.executive-insight-card.insight-success {
+  border-left: 4px solid var(--status-success);
+}
+
+.executive-insight-card.insight-success svg {
+  color: var(--status-success);
+  background: var(--status-success-bg);
+}
+
+.executive-insight-card.insight-warning {
+  border-left: 4px solid var(--orange-institutional);
+}
+
+.executive-insight-card.insight-warning svg {
+  color: var(--orange-institutional);
+  background: var(--status-warning-bg);
+}
+
+.executive-insight-card.insight-danger {
+  border-left: 4px solid var(--status-danger);
+}
+
+.executive-insight-card.insight-danger svg {
+  color: var(--status-danger);
+  background: var(--status-danger-bg);
+}
+
+.executive-insight-card.insight-info {
+  border-left: 4px solid var(--status-info);
+}
+
+.executive-insight-card.insight-info svg {
+  color: var(--status-info);
+  background: var(--status-info-bg);
+}
+
+.header-tv-btn {
+  color: var(--green-institutional);
+}
+
+.tv-mode-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  padding: 10px;
+}
+
+.tv-mode-toolbar {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 64px 8px 12px;
+  border-radius: 8px;
+  background: var(--green-institutional);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+}
+
+.tv-mode-toolbar > div:first-child {
+  min-width: 0;
+  margin-right: auto;
+}
+
+.tv-mode-toolbar span {
+  display: block;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.68rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.tv-mode-toolbar strong {
+  display: block;
+  color: var(--white);
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.tv-mode-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.tv-mode-tabs button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 14px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.tv-mode-tabs button.active {
+  background: var(--orange-institutional);
+  color: var(--white);
+}
+
+.tv-mode-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-top: 10px;
+}
+
+.tv-mode-content .page-shell {
+  min-height: 100%;
+}
+
+.tv-mode-signature {
+  position: fixed;
+  right: 18px;
+  bottom: 10px;
+  z-index: 2147483647;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-sm);
+}
+
 .table-toolbar {
   display: flex;
   align-items: center;
