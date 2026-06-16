@@ -4,7 +4,6 @@ import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 import Analytics from './pages/Analytics';
 import CqoRampa from './pages/CqoRampa';
-import Bonificacao from './pages/Bonificacao';
 import Collections from './pages/Collections';
 import SyncCenter from './pages/SyncCenter';
 import Collaborators from './pages/Collaborators';
@@ -18,7 +17,6 @@ const PAGE_ROUTES = {
   dashboard: '/campo',
   'cqo-carreamento': '/carreamento',
   'cqo-rampa': '/rampa',
-  bonificacao: '/bonificacao',
   coletas: '/coletas',
   inventario: '/inventario',
   mapa: '/mapa',
@@ -195,8 +193,6 @@ export default function App() {
             dateTo={dateTo}
           />
         );
-      case 'bonificacao':
-        return <Bonificacao />;
       case 'coletas':
         return (
           <Collections

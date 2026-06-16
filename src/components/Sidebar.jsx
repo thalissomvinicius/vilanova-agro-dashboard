@@ -11,15 +11,16 @@ import {
   Tractor,
   Truck,
   Users,
-  Warehouse,
 } from 'lucide-react';
 
 export default function Sidebar({ activePage, setActivePage, collapsed, setCollapsed, width }) {
+  const campoItems = [
+    { id: 'dashboard', label: 'Corte (Campo)', icon: LayoutDashboard },
+    { id: 'cqo-carreamento', label: 'Carreamento', icon: Truck },
+  ];
+
   const menuItems = [
-    { id: 'dashboard', label: 'CQO Campo', icon: LayoutDashboard },
-    { id: 'cqo-carreamento', label: 'CQO Carreamento', icon: Truck },
     { id: 'cqo-rampa', label: 'CQO Rampa', icon: Gauge },
-    { id: 'bonificacao', label: 'Bonificacao', icon: Warehouse },
     { id: 'coletas', label: 'Coletas recebidas', icon: Tractor },
     { id: 'inventario', label: 'Inventário parcelas', icon: FileSpreadsheet },
     { id: 'mapa', label: 'Mapa GPS', icon: Map },
@@ -31,6 +32,8 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
   const handleItemClick = (item) => {
     setActivePage(item.id);
   };
+
+  const isCampoActive = campoItems.some((item) => item.id === activePage);
 
   return (
     <aside
@@ -57,6 +60,31 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
       </div>
 
       <nav className="sidebar-menu">
+        <div className={`sidebar-module-group ${isCampoActive ? 'active' : ''}`}>
+          <div className="sidebar-module-heading" title="CQO Campo" aria-label="CQO Campo">
+            <LayoutDashboard />
+            <span>CQO Campo</span>
+          </div>
+          <div className="sidebar-submenu">
+            {campoItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activePage === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleItemClick(item)}
+                  className={`sidebar-submenu-item ${isActive ? 'active' : ''}`}
+                  title={item.label}
+                  aria-label={item.label}
+                >
+                  <Icon />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activePage === item.id;
