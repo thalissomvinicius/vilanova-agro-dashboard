@@ -1168,6 +1168,16 @@ body.presentation-active {
   color: #FFFFFF;
 }
 
+.rampa-bi-logo {
+  width: 128px;
+  height: 44px;
+  object-fit: contain;
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
 .rampa-bi-header h2 {
   color: #FFFFFF;
   font-size: 1.65rem;
@@ -1236,12 +1246,30 @@ body.presentation-active {
   font-weight: 800;
 }
 
+.rampa-bi-kpi-title,
+.rampa-bi-kpi-title span,
+.rampa-bi-kpi-title svg {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF;
+}
+
 .rampa-bi-kpi strong {
   display: block;
   margin-top: 6px;
   font-size: 1.82rem;
   line-height: 1;
   font-weight: 850;
+}
+
+.rampa-bi-kpi.is-unavailable strong {
+  font-size: 1.12rem;
+  color: var(--text-muted) !important;
+  padding-top: 8px;
+}
+
+.rampa-bi-kpi.is-unavailable span:last-child {
+  padding: 0 8px;
+  line-height: 1.2;
 }
 
 .rampa-bi-kpi strong small {
@@ -1277,6 +1305,16 @@ body.presentation-active {
   border-radius: 8px;
 }
 
+.rampa-bi-panel .table-wrapper {
+  overflow-x: auto;
+}
+
+.rampa-bi-panel .rampa-bi-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
 .rampa-bi-panel-title {
   min-height: 34px;
   display: flex;
@@ -1292,12 +1330,24 @@ body.presentation-active {
 .rampa-bi-table th {
   background: #F1F5F9;
   color: #111827;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   text-transform: none;
+  padding: 8px 6px;
+  white-space: nowrap;
 }
 
 .rampa-bi-table td {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
+  padding: 8px 6px;
+  white-space: nowrap;
+}
+
+.rampa-bi-table th:first-child,
+.rampa-bi-table td:first-child {
+  width: 132px;
+  min-width: 0;
+  max-width: 132px;
+  white-space: normal;
 }
 
 .rampa-total-row td {
@@ -1330,15 +1380,37 @@ body.presentation-active {
   flex-shrink: 0;
 }
 
+.rampa-bi-chart-frame {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: stretch;
+  padding: 8px 12px 12px;
+}
+
+.rampa-bi-y-axis {
+  height: 190px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 8px 4px 26px 0;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  text-align: right;
+}
+
 .rampa-bi-day-chart {
   min-height: 228px;
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(34px, 1fr);
+  grid-auto-columns: minmax(38px, 1fr);
   align-items: end;
-  gap: 10px;
-  padding: 18px 18px 12px;
+  gap: 9px;
+  padding: 8px 4px 0;
   overflow-x: auto;
+  background:
+    linear-gradient(to bottom, transparent 0, transparent 7px, var(--border-color) 8px, transparent 9px),
+    linear-gradient(to bottom, transparent 0, transparent 94px, var(--border-color) 95px, transparent 96px),
+    linear-gradient(to bottom, transparent 0, transparent 181px, var(--border-color) 182px, transparent 183px);
 }
 
 .rampa-bi-day {
@@ -1351,7 +1423,7 @@ body.presentation-active {
 
 .rampa-bi-day-stack {
   width: 100%;
-  height: 150px;
+  height: 174px;
   display: flex;
   flex-direction: column-reverse;
   border-radius: 3px 3px 0 0;
@@ -2667,6 +2739,11 @@ body.presentation-active {
 
   .rampa-bi-header {
     flex-direction: column;
+  }
+
+  .rampa-bi-logo {
+    width: 112px;
+    height: 38px;
   }
 
   .rampa-bi-header h2 {

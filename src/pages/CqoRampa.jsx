@@ -29,6 +29,10 @@ function fmtPct(value, digits = 2) {
   return value === null || value === undefined ? 'N/D' : `${fmt(value, digits)}%`;
 }
 
+function hasQualityValue(value) {
+  return value !== null && value !== undefined && Number.isFinite(Number(value));
+}
+
 function weightedAverage(rows, valueKey) {
   const totals = rows.reduce((acc, row) => {
     if (row[valueKey] === null || row[valueKey] === undefined) return acc;
@@ -91,16 +95,16 @@ function aggregateDayRows(rows = []) {
 }
 
 function QualityCard({ label, value, meta, icon: Icon, color, warning = false, note }) {
-  const hasValue = value !== null && value !== undefined;
+  const hasValue = hasQualityValue(value);
   const delta = hasValue && meta !== null && meta !== undefined ? Number(value) - Number(meta) : null;
   return (
-    <div className="card rampa-bi-kpi">
+    <div className={`card rampa-bi-kpi ${hasValue ? '' : 'is-unavailable'}`}>
       <div className="rampa-bi-kpi-title" style={{ background: color }}>
         <Icon size={16} />
         <span>{label}</span>
       </div>
       <strong style={{ color: warning ? 'var(--status-danger)' : color }}>
-        {fmtPct(value)}
+        {hasValue ? fmtPct(value) : 'Sem coluna'}
         {warning && hasValue ? <small>!</small> : null}
       </strong>
       <span>
@@ -140,8 +144,6 @@ function ProducerQualityTable({ rows, total }) {
               <th>Q_Maduro</th>
               <th>Q_Passado</th>
               <th>Q. talo comp.</th>
-              <th>Q_Avermelhado</th>
-              <th>Q_Bucha</th>
               <th>Peso t</th>
             </tr>
           </thead>
@@ -153,8 +155,6 @@ function ProducerQualityTable({ rows, total }) {
                 <td>{fmt(row.qMaduro, 2)}</td>
                 <td>{fmt(row.qPassado, 2)}</td>
                 <td>{fmt(row.qTaloComprido, 2)}</td>
-                <td>{fmt(row.qAvermelhado, 2)}</td>
-                <td>{fmt(row.qBucha, 2)}</td>
                 <td>{fmt(row.pesoT, 2)}</td>
               </tr>
             ))}
@@ -180,33 +180,38 @@ function DailyQualityChart({ rows }) {
         {series.map((item) => (
           <span key={item.key}><i style={{ background: item.color }} />{item.label}</span>
         ))}
-        <span><i style={{ background: QUALITY_COLORS.qAvermelhado }} />Avermelhado indisponível</span>
-        <span><i style={{ background: QUALITY_COLORS.qBucha }} />Bucha indisponível</span>
       </div>
-      <div className="rampa-bi-day-chart">
-        {visibleRows.map((row) => {
-          const total = series.reduce((sum, item) => sum + Number(row[item.key] || 0), 0) || 1;
-          return (
-            <div className="rampa-bi-day" key={row.dayKey}>
-              <div className="rampa-bi-day-stack">
-                {series.map((item) => {
-                  const value = Number(row[item.key] || 0);
-                  return (
-                    <span
-                      key={item.key}
-                      style={{ height: `${Math.max((value / total) * 100, value > 0 ? 2 : 0)}%`, background: item.color }}
-                      title={`${item.label}: ${fmtPct(value)}`}
-                    >
-                      {item.key === 'qMaduro' && value >= 20 ? fmt(value, 0) : ''}
-                    </span>
-                  );
-                })}
+      <div className="rampa-bi-chart-frame">
+        <div className="rampa-bi-y-axis">
+          <span>100</span>
+          <span>50</span>
+          <span>0</span>
+        </div>
+        <div className="rampa-bi-day-chart">
+          {visibleRows.map((row) => {
+            const total = series.reduce((sum, item) => sum + Number(row[item.key] || 0), 0) || 1;
+            return (
+              <div className="rampa-bi-day" key={row.dayKey}>
+                <div className="rampa-bi-day-stack">
+                  {series.map((item) => {
+                    const value = Number(row[item.key] || 0);
+                    return (
+                      <span
+                        key={item.key}
+                        style={{ height: `${Math.max((value / total) * 100, value > 0 ? 2 : 0)}%`, background: item.color }}
+                        title={`${item.label}: ${fmtPct(value)}`}
+                      >
+                        {item.key === 'qMaduro' && value >= 20 ? fmt(value, 0) : ''}
+                      </span>
+                    );
+                  })}
+                </div>
+                <strong>{row.dayLabel}</strong>
               </div>
-              <strong>{row.dayLabel}</strong>
-            </div>
-          );
-        })}
-        {!visibleRows.length ? <div className="empty-panel">Nenhum dado diário encontrado para os filtros atuais.</div> : null}
+            );
+          })}
+          {!visibleRows.length ? <div className="empty-panel">Nenhum dado diário encontrado para os filtros atuais.</div> : null}
+        </div>
       </div>
     </div>
   );
@@ -266,6 +271,7 @@ export default function CqoRampa({ farmFilter = 'all' }) {
   return (
     <div className="fade-in page-shell rampa-bi-page">
       <div className="rampa-bi-header">
+        <img src="/logo.png" alt="Vila Nova Agroindustrial" className="rampa-bi-logo" />
         <div>
           <span className="page-eyebrow">Qualidade de CFF na Rampa</span>
           <h2>Qualidade de CFF na Rampa</h2>
@@ -290,9 +296,9 @@ export default function CqoRampa({ farmFilter = 'all' }) {
         <QualityCard label="Verde (%)" value={total.qVerde} meta={5} icon={Leaf} color={QUALITY_COLORS.qVerde} warning={Number(total.qVerde || 0) > 5} />
         <QualityCard label="Maduro (%)" value={total.qMaduro} meta={80} icon={Truck} color={QUALITY_COLORS.qMaduro} warning={Number(total.qMaduro || 0) < 80} />
         <QualityCard label="Passado (%)" value={total.qPassado} meta={5} icon={AlertTriangle} color={QUALITY_COLORS.qPassado} warning={Number(total.qPassado || 0) > 5} />
-        <QualityCard label="Cacho Averm. (%)" value={total.qAvermelhado} meta={10} icon={AlertTriangle} color={QUALITY_COLORS.qAvermelhado} />
+        <QualityCard label="Cacho Averm. (%)" value={total.qAvermelhado} meta={10} icon={AlertTriangle} color={QUALITY_COLORS.qAvermelhado} note="Aguardando fonte do BI" />
         <QualityCard label="Talo comprido (%)" value={total.qTaloComprido} meta={3} icon={Scale} color={QUALITY_COLORS.qTaloComprido} warning={Number(total.qTaloComprido || 0) > 3} />
-        <QualityCard label="Bucha (%)" value={total.qBucha} meta={0} icon={Box} color={QUALITY_COLORS.qBucha} />
+        <QualityCard label="Bucha (%)" value={total.qBucha} meta={0} icon={Box} color={QUALITY_COLORS.qBucha} note="Aguardando fonte do BI" />
       </div>
 
       <div className="warning-strip rampa-bi-warning">
