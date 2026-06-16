@@ -1,9 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
+  BarChart3,
   CheckCircle2,
   ClipboardCheck,
+  Gauge,
   Leaf,
+  Maximize2,
+  MonitorPlay,
   Rows3,
   Scissors,
   Sprout,
@@ -14,6 +19,7 @@ import {
   Truck,
   Users,
   Weight,
+  X,
 } from 'lucide-react';
 import CustomChart from '../components/CustomChart';
 import { aggregateRecords, buildCharts, filterRecords, useCqoData } from '../utils/cqoData';
@@ -239,10 +245,313 @@ function EmptyState({ areaFilter }) {
   );
 }
 
+function formatPercentValue(value, digits = 1) {
+  return `${Number(value || 0).toFixed(digits).replace('.', ',')}%`;
+}
+
+function formatMonthYear(dateFrom, dateTo) {
+  if (!dateFrom || !dateTo) return 'Período filtrado';
+  const from = new Date(`${dateFrom}T00:00:00`);
+  const to = new Date(`${dateTo}T00:00:00`);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return 'Período filtrado';
+  const isFullYear = from.getMonth() === 0 && from.getDate() === 1 && to.getMonth() === 11 && to.getDate() === 31;
+  if (isFullYear) return String(from.getFullYear());
+  const month = new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(from);
+  return `${month.charAt(0).toUpperCase()}${month.slice(1)}/${from.getFullYear()}`;
+}
+
+function CarreamentoBiKpi({ label, value, meta, tone = 'green', icon: Icon }) {
+  return (
+    <div className={`carreamento-bi-kpi carreamento-bi-kpi-${tone}`}>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <small>{meta}</small>
+      </div>
+      <Icon size={20} />
+    </div>
+  );
+}
+
+function CarreamentoMiniBars({ title, subtitle, rows, color = 'var(--orange-institutional)' }) {
+  const visibleRows = rows.slice(0, 8);
+  const max = Math.max(...visibleRows.map((row) => Number(row.value || 0)), 1);
+
+  return (
+    <section className="carreamento-bi-panel">
+      <div className="carreamento-bi-panel-title">
+        <h3>{title}</h3>
+        <span>{subtitle}</span>
+      </div>
+      <div className="carreamento-bi-bars">
+        {visibleRows.map((row) => (
+          <div className="carreamento-bi-bar-row" key={row.label}>
+            <strong>{row.label}</strong>
+            <div>
+              <span style={{ width: `${Math.max((Number(row.value || 0) / max) * 100, row.value > 0 ? 3 : 0)}%`, background: color }} />
+            </div>
+            <small>{fmt(row.value, 1)}</small>
+          </div>
+        ))}
+        {!visibleRows.length && (
+          <div className="empty-panel smart-empty-panel">
+            <strong>Sem dados no filtro</strong>
+            <span>O gráfico será exibido quando houver coletas de carreamento no período.</span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function buildCarreamentoDayRows(records) {
+  const buckets = new Map();
+  records.forEach((record) => {
+    const key = record.date || 'Sem data';
+    const current = buckets.get(key) || {
+      label: key,
+      plantas: 0,
+      malPosicionado: 0,
+      naoCarreado: 0,
+    };
+    current.plantas += Number(record.totals?.plantasObservadas || 0);
+    current.malPosicionado += Number(record.totals?.cachoMalPosicionado || 0);
+    current.naoCarreado += Number(record.totals?.cachoNaoCarreado || 0);
+    buckets.set(key, current);
+  });
+
+  return Array.from(buckets.values())
+    .map((row) => ({
+      ...row,
+      malPosicionadoPct: row.plantas ? (row.malPosicionado / row.plantas) * 100 : 0,
+      naoCarreadoPct: row.plantas ? (row.naoCarreado / row.plantas) * 100 : 0,
+    }))
+    .slice(-10);
+}
+
+function CarreamentoDailyChart({ rows }) {
+  const chartHeight = 220;
+  const padding = { top: 18, right: 18, bottom: 32, left: 42 };
+  const dayWidth = 82;
+  const width = Math.max(760, padding.left + padding.right + rows.length * dayWidth);
+  const graphHeight = chartHeight - padding.top - padding.bottom;
+  const barWidth = 24;
+
+  return (
+    <section className="carreamento-bi-panel carreamento-bi-daily">
+      <div className="carreamento-bi-panel-title">
+        <h3>Falhas por Dia</h3>
+        <span>Cachos não carreados e mal posicionados sobre plantas observadas.</span>
+      </div>
+      <div className="carreamento-bi-legend">
+        <span><i style={{ background: 'var(--status-danger)' }} />Não carreado %</span>
+        <span><i style={{ background: 'var(--orange-institutional)' }} />Mal posicionado %</span>
+      </div>
+      <div className="carreamento-bi-chart-scroll">
+        {rows.length ? (
+          <svg className="carreamento-bi-svg" viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight}>
+            {[0, 0.5, 1].map((ratio) => {
+              const y = padding.top + graphHeight * (1 - ratio);
+              return (
+                <g key={ratio}>
+                  <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} className="chart-grid-line" />
+                  <text x={padding.left - 8} y={y + 4} textAnchor="end" className="chart-axis-text">{Math.round(ratio * 10)}%</text>
+                </g>
+              );
+            })}
+            {rows.map((row, index) => {
+              const x = padding.left + index * dayWidth + 18;
+              const naoHeight = Math.min((row.naoCarreadoPct / 10) * graphHeight, graphHeight);
+              const malHeight = Math.min((row.malPosicionadoPct / 10) * graphHeight, graphHeight);
+              return (
+                <g key={row.label}>
+                  <rect x={x} y={padding.top + graphHeight - naoHeight} width={barWidth} height={Math.max(naoHeight, row.naoCarreadoPct > 0 ? 2 : 0)} fill="var(--status-danger)" rx="3">
+                    <title>{`${row.label} - Não carreado: ${formatPercentValue(row.naoCarreadoPct)}`}</title>
+                  </rect>
+                  <rect x={x + barWidth + 6} y={padding.top + graphHeight - malHeight} width={barWidth} height={Math.max(malHeight, row.malPosicionadoPct > 0 ? 2 : 0)} fill="var(--orange-institutional)" rx="3">
+                    <title>{`${row.label} - Mal posicionado: ${formatPercentValue(row.malPosicionadoPct)}`}</title>
+                  </rect>
+                  <text x={x + barWidth + 3} y={chartHeight - 10} textAnchor="middle" className="chart-axis-text">{row.label}</text>
+                </g>
+              );
+            })}
+          </svg>
+        ) : (
+          <div className="empty-panel smart-empty-panel">
+            <strong>Sem dias no período</strong>
+            <span>Selecione outro mês ou aguarde novas coletas sincronizadas.</span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function buildCarreamentoFarmRows(records) {
+  const buckets = new Map();
+  records.forEach((record) => {
+    const key = record.farm || 'Sem fazenda';
+    const current = buckets.get(key) || { label: key, plantas: 0, naoCarreado: 0, malPosicionado: 0, total: 0 };
+    current.plantas += Number(record.totals?.plantasObservadas || 0);
+    current.naoCarreado += Number(record.totals?.cachoNaoCarreado || 0);
+    current.malPosicionado += Number(record.totals?.cachoMalPosicionado || 0);
+    current.total += 1;
+    buckets.set(key, current);
+  });
+  return Array.from(buckets.values())
+    .map((row) => ({
+      ...row,
+      value: row.plantas ? ((row.naoCarreado + row.malPosicionado) / row.plantas) * 100 : 0,
+    }))
+    .sort((a, b) => b.value - a.value);
+}
+
+function buildCarreamentoEvaluatorRows(records) {
+  const buckets = new Map();
+  records.forEach((record) => {
+    const key = record.evaluator || 'Sem avaliador';
+    const current = buckets.get(key) || { label: key, total: 0, aprovados: 0, gps: 0 };
+    current.total += 1;
+    if (record.status === 'Aprovado') current.aprovados += 1;
+    if (record.gps) current.gps += 1;
+    buckets.set(key, current);
+  });
+  return Array.from(buckets.values())
+    .map((row) => ({
+      ...row,
+      value: row.total,
+      aprovacaoPct: row.total ? (row.aprovados / row.total) * 100 : 0,
+      gpsPct: row.total ? (row.gps / row.total) * 100 : 0,
+    }))
+    .sort((a, b) => b.total - a.total);
+}
+
+function CarreamentoBiBoard({
+  loading,
+  source,
+  totals,
+  records,
+  periodText,
+  onPresent,
+  presentationMode = false,
+}) {
+  const taxaMalPos = totals.plantasObservadas ? (totals.cachoMalPosicionado / totals.plantasObservadas) * 100 : 0;
+  const taxaNaoCarreado = totals.plantasObservadas ? (totals.cachoNaoCarreado / totals.plantasObservadas) * 100 : 0;
+  const acompanhamentoPct = records.length ? (records.filter((r) => r.acompanhamento?.teve === 'sim').length / records.length) * 100 : 0;
+  const aprovacaoPct = records.length ? (records.filter((r) => r.status === 'Aprovado').length / records.length) * 100 : 0;
+  const gpsPct = records.length ? (records.filter((r) => r.gps).length / records.length) * 100 : 0;
+  const perdaTon = (totals.cachoNaoCarreado * 20) / 1000;
+  const dailyRows = buildCarreamentoDayRows(records);
+  const farmRows = buildCarreamentoFarmRows(records);
+  const evaluatorRows = buildCarreamentoEvaluatorRows(records);
+  const farol = taxaNaoCarreado > 2 || taxaMalPos > 5
+    ? 'Atenção logística: indicador fora da tolerância.'
+    : records.length
+      ? 'Carreamento dentro das tolerâncias principais.'
+      : 'Sem coletas de carreamento no período.';
+
+  return (
+    <div className={`carreamento-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
+      <div className="carreamento-bi-header">
+        <img src="/logo.png" alt="Vila Nova Agroindustrial" />
+        <div>
+          <span>Qualidade Agrícola</span>
+          <h2>CQO Carreamento</h2>
+          <p>Apresentação operacional de transporte, rastreio e perdas logísticas.</p>
+        </div>
+        {!presentationMode && (
+          <button type="button" className="carreamento-bi-present-btn" onClick={onPresent}>
+            <MonitorPlay size={18} />
+            Apresentar
+            <Maximize2 size={15} />
+          </button>
+        )}
+      </div>
+
+      <div className="carreamento-bi-filter-strip">
+        <span>{periodText}</span>
+        <span>{loading ? 'Carregando base' : source}</span>
+        <span>{fmt(records.length)} coletas</span>
+        <span>{fmt(totals.linhas)} linhas</span>
+        <span>{farol}</span>
+      </div>
+
+      <div className="carreamento-bi-kpi-grid">
+        <CarreamentoBiKpi label="Nota CQO" value={loading ? '--' : fmt(totals.carreamentoScore)} meta="Score do carreamento" tone="green" icon={Gauge} />
+        <CarreamentoBiKpi label="Não carreado" value={loading ? '--' : formatPercentValue(taxaNaoCarreado)} meta="Meta máx. 2,00%" tone={taxaNaoCarreado > 2 ? 'danger' : 'green'} icon={ThumbsDown} />
+        <CarreamentoBiKpi label="Mal posicionado" value={loading ? '--' : formatPercentValue(taxaMalPos)} meta="Meta máx. 5,00%" tone={taxaMalPos > 5 ? 'danger' : 'orange'} icon={AlertTriangle} />
+        <CarreamentoBiKpi label="Perda estimada" value={loading ? '--' : `${fmt(perdaTon, 2)} t`} meta={`${fmt(totals.cachoNaoCarreado)} cachos`} tone={perdaTon > 0 ? 'danger' : 'green'} icon={Weight} />
+        <CarreamentoBiKpi label="Acompanhamento" value={loading ? '--' : formatPercentValue(acompanhamentoPct)} meta="Fichas supervisionadas" tone="info" icon={CheckCircle2} />
+        <CarreamentoBiKpi label="GPS" value={loading ? '--' : formatPercentValue(gpsPct)} meta="Rastreabilidade" tone="green" icon={BarChart3} />
+      </div>
+
+      <div className="carreamento-bi-main-grid">
+        <CarreamentoMiniBars
+          title="Risco por Fazenda"
+          subtitle="Soma de não carreado e mal posicionado."
+          rows={farmRows}
+          color="var(--status-danger)"
+        />
+        <CarreamentoDailyChart rows={dailyRows} />
+        <section className="carreamento-bi-panel carreamento-bi-status-panel">
+          <div className="carreamento-bi-panel-title">
+            <h3>Rastreabilidade</h3>
+            <span>Status e acompanhamento das fichas.</span>
+          </div>
+          <div className="carreamento-bi-status-list">
+            <div><span>Aprovação</span><strong>{formatPercentValue(aprovacaoPct)}</strong></div>
+            <div><span>GPS</span><strong>{formatPercentValue(gpsPct)}</strong></div>
+            <div><span>Acompanhamento</span><strong>{formatPercentValue(acompanhamentoPct)}</strong></div>
+            <div><span>Pendências</span><strong>{fmt(records.filter((r) => r.status === 'Pendente validação').length)}</strong></div>
+          </div>
+        </section>
+      </div>
+
+      <div className="carreamento-bi-bottom-grid">
+        <CarreamentoMiniBars
+          title="Ranking de Avaliadores"
+          subtitle="Volume de fichas no período."
+          rows={evaluatorRows}
+          color="var(--green-institutional)"
+        />
+        <section className="carreamento-bi-panel">
+          <div className="carreamento-bi-panel-title">
+            <h3>Resumo Logístico</h3>
+            <span>Base calculada pela coleta sincronizada no app.</span>
+          </div>
+          <div className="carreamento-bi-summary">
+            <div><span>Plantas observadas</span><strong>{fmt(totals.plantasObservadas)}</strong></div>
+            <div><span>Cachos não carreados</span><strong>{fmt(totals.cachoNaoCarreado)}</strong></div>
+            <div><span>Cachos mal posicionados</span><strong>{fmt(totals.cachoMalPosicionado)}</strong></div>
+            <div><span>Peso acumulado</span><strong>{fmt(totals.pesoMedio, 1)} kg</strong></div>
+          </div>
+        </section>
+      </div>
+
+      <div className="developer-signature">Desenvolvedor: Vinicius Dev.</div>
+    </div>
+  );
+}
+
+function CarreamentoPresentationOverlay(props) {
+  return createPortal(
+    <div className="presentation-overlay carreamento-presentation-overlay" role="dialog" aria-modal="true" aria-label="Apresentação CQO Carreamento">
+      <button type="button" className="presentation-close-btn field-bi-close-btn" onClick={props.onClose} title="Fechar apresentação" aria-label="Fechar apresentação">
+        <X size={22} />
+      </button>
+      <div className="presentation-scroll">
+        <CarreamentoBiBoard {...props} presentationMode />
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 // ─── Analytics Page ────────────────────────────────────────────────────────────
 export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, dateFrom, dateTo }) {
   const { loading, error, records: allRecords, source } = useCqoData();
   const [activeTab, setActiveTab] = useState('geral');
+  const [carreamentoPresentationOpen, setCarreamentoPresentationOpen] = useState(false);
 
   const filtered = filterRecords(allRecords, { farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, dateFrom, dateTo });
   const corteRecords = filtered.filter((r) => r.type === 'corte');
@@ -288,17 +597,71 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
   ];
 
   const currentTab = availableTabs.some((t) => t.id === activeTab) ? activeTab : 'geral';
+  const periodText = formatMonthYear(dateFrom, dateTo);
+
+  useEffect(() => {
+    if (!carreamentoPresentationOpen) return undefined;
+
+    document.body.classList.add('presentation-active');
+
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setCarreamentoPresentationOpen(false);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.body.classList.remove('presentation-active');
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [carreamentoPresentationOpen]);
+
+  const openCarreamentoPresentation = () => {
+    setCarreamentoPresentationOpen(true);
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  };
+
+  const closeCarreamentoPresentation = () => {
+    setCarreamentoPresentationOpen(false);
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
   return (
     <div className="fade-in page-shell">
+      {carreamentoPresentationOpen && (
+        <CarreamentoPresentationOverlay
+          loading={loading}
+          source={source}
+          totals={totalsCarreamento}
+          records={carreamentoRecords}
+          periodText={periodText}
+          onClose={closeCarreamentoPresentation}
+        />
+      )}
+
       <div className="page-header">
         <div className="page-title-block">
           <span className="page-eyebrow">{areaFilter === 'carreamento' ? 'CQO Carreamento' : 'CQO Campo'}</span>
           <h2>{areaFilter === 'carreamento' ? 'Painel de Indicadores de Carreamento' : 'Painel de Indicadores de Campo'}</h2>
           <p>{areaFilter === 'carreamento' ? 'Modulo dedicado ao acompanhamento das respostas de carreamento sincronizadas pelo aplicativo.' : 'Dados calculados em tempo real a partir das respostas sincronizadas pelo aplicativo Android. A rampa é tratada em uma visão separada.'}</p>
         </div>
-        <div className="source-card compact">
-          <span>Fonte</span>
-          <strong className={loading ? 'skeleton-text skeleton-sm' : ''}>{loading ? '\u00A0' : source}</strong>
+        <div className="page-actions field-presentation-actions">
+          {areaFilter === 'carreamento' && (
+            <button type="button" className="btn btn-primary" onClick={openCarreamentoPresentation}>
+              <MonitorPlay size={18} />
+              Apresentar
+              <Maximize2 size={15} />
+            </button>
+          )}
+          <div className="source-card compact">
+            <span>Fonte</span>
+            <strong className={loading ? 'skeleton-text skeleton-sm' : ''}>{loading ? '\u00A0' : source}</strong>
+          </div>
         </div>
       </div>
 
