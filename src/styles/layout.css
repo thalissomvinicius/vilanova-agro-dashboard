@@ -150,6 +150,53 @@ body.sidebar-resizing {
   background: rgba(255, 255, 255, 0.25);
 }
 
+.cqo-assessment-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 8px 12px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.cqo-assessment-button {
+  min-width: 0;
+  height: 46px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-sidebar);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 800;
+  transition: all var(--transition-fast);
+}
+
+.cqo-assessment-button svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.cqo-assessment-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--white);
+}
+
+.cqo-assessment-button.active {
+  background: var(--orange-institutional);
+  color: var(--white);
+  box-shadow: 0 4px 12px rgba(232, 145, 0, 0.2);
+}
+
 .sidebar-menu-item {
   display: flex;
   align-items: center;
@@ -240,6 +287,7 @@ body.sidebar-resizing {
 
 .app-sidebar.collapsed .sidebar-brand-info,
 .app-sidebar.collapsed .sidebar-menu-item span,
+.app-sidebar.collapsed .cqo-assessment-label,
 .app-sidebar.collapsed .sidebar-footer-info {
   display: none;
 }
@@ -265,6 +313,19 @@ body.sidebar-resizing {
 
 .app-sidebar.collapsed .sidebar-menu-item.active {
   border: none;
+}
+
+.app-sidebar.collapsed .cqo-assessment-switch {
+  grid-template-columns: 1fr;
+  margin: 0 6px 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.app-sidebar.collapsed .cqo-assessment-button {
+  height: 40px;
+  border-radius: var(--border-radius-full);
 }
 
 .app-sidebar.collapsed .sidebar-footer {
@@ -623,6 +684,7 @@ body.sidebar-resizing {
 
   .app-sidebar:not(.collapsed) .sidebar-brand-info,
   .app-sidebar:not(.collapsed) .sidebar-menu-item span,
+  .app-sidebar:not(.collapsed) .cqo-assessment-label,
   .app-sidebar:not(.collapsed) .sidebar-footer-info {
     display: none;
   }
@@ -631,6 +693,19 @@ body.sidebar-resizing {
   .app-sidebar:not(.collapsed) .sidebar-menu-item,
   .app-sidebar:not(.collapsed) .sidebar-footer {
     justify-content: center;
+  }
+
+  .app-sidebar:not(.collapsed) .cqo-assessment-switch {
+    grid-template-columns: 1fr;
+    margin: 0 6px 12px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .app-sidebar:not(.collapsed) .cqo-assessment-button {
+    height: 40px;
+    border-radius: var(--border-radius-full);
   }
 
   .sidebar-resize-handle {

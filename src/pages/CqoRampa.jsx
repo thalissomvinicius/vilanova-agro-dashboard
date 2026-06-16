@@ -43,7 +43,7 @@ export default function CqoRampa() {
       <div className="page-header">
         <div className="page-title-block">
           <span className="page-eyebrow">CQO Rampa</span>
-          <h2>Indicadores da Rampa</h2>
+          <h2>Avaliação da Rampa</h2>
           <p>Visao consolidada da rampa separada do campo. Esta pagina usa a fonte do sistema e nao o fluxo de coleta do app.</p>
         </div>
         <div className="source-card compact">

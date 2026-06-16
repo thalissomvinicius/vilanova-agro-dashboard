@@ -4,10 +4,7 @@ import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 import CqoRampa from './pages/CqoRampa';
 import Bonificacao from './pages/Bonificacao';
-import FormBuilder from './pages/FormBuilder';
 import Collections from './pages/Collections';
-import Analytics from './pages/Analytics';
-import QualidadeOperacional from './pages/QualidadeOperacional';
 import SyncCenter from './pages/SyncCenter';
 import Collaborators from './pages/Collaborators';
 import Inventory from './pages/Inventory';
@@ -137,8 +134,6 @@ export default function App() {
         return <CqoRampa />;
       case 'bonificacao':
         return <Bonificacao />;
-      case 'formularios':
-        return <FormBuilder />;
       case 'coletas':
         return (
           <Collections
@@ -156,31 +151,6 @@ export default function App() {
         return (
           <Inventory
             farmFilter={farmFilter}
-            searchTerm={searchTerm}
-          />
-        );
-      case 'bi':
-        return (
-          <Analytics
-            farmFilter={farmFilter}
-            areaFilter={areaFilter}
-            periodFilter={periodFilter}
-            cycleFilter={cycleFilter}
-            evaluatorFilter={evaluatorFilter}
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-          />
-        );
-      case 'qualidade-operacional':
-        return (
-          <QualidadeOperacional
-            farmFilter={farmFilter}
-            areaFilter={areaFilter}
-            periodFilter={periodFilter}
-            cycleFilter={cycleFilter}
-            evaluatorFilter={evaluatorFilter}
-            dateFrom={dateFrom}
-            dateTo={dateTo}
             searchTerm={searchTerm}
           />
         );

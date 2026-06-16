@@ -1,9 +1,7 @@
 import React from 'react';
 import {
-  BarChart3,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
   FileSpreadsheet,
   Gauge,
   LayoutDashboard,
@@ -16,16 +14,16 @@ import {
 } from 'lucide-react';
 
 export default function Sidebar({ activePage, setActivePage, collapsed, setCollapsed, width }) {
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard CQO', icon: LayoutDashboard },
+  const assessmentItems = [
+    { id: 'dashboard', label: 'CQO Campo', icon: LayoutDashboard },
     { id: 'cqo-rampa', label: 'CQO Rampa', icon: Gauge },
+  ];
+
+  const menuItems = [
     { id: 'bonificacao', label: 'Bonificacao', icon: Warehouse },
     { id: 'coletas', label: 'Coletas recebidas', icon: Tractor },
     { id: 'inventario', label: 'Inventário parcelas', icon: FileSpreadsheet },
-    { id: 'formularios', label: 'Modelos de formulários', icon: ClipboardList },
     { id: 'mapa', label: 'Mapa GPS', icon: Map },
-    { id: 'bi', label: 'Indicadores', icon: BarChart3 },
-    { id: 'qualidade-operacional', label: 'Qualidade Operacional', icon: Gauge },
     { id: 'sync', label: 'Sincronizações', icon: RefreshCw },
     { id: 'colaboradores', label: 'Colaboradores', icon: Users },
     { id: 'config', label: 'Configurações', icon: Settings },
@@ -60,6 +58,26 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
       </div>
 
       <nav className="sidebar-menu">
+        <div className="cqo-assessment-switch" aria-label="Tipos de avaliação CQO">
+          {assessmentItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activePage === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleItemClick(item)}
+                className={`cqo-assessment-button ${isActive ? 'active' : ''}`}
+                title={item.label}
+                aria-label={item.label}
+              >
+                <Icon />
+                <span className="cqo-assessment-label">{item.label.replace('CQO ', '')}</span>
+              </button>
+            );
+          })}
+        </div>
+
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activePage === item.id;
