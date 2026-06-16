@@ -249,7 +249,7 @@ try {
       taraKg = [Math]::Round([double]$bucket['taraKg'], 2)
       cachos = [Math]::Round([double]$bucket['cachos'], 2)
     }
-  } | Sort-Object monthKey
+  } | Sort-Object { $_['monthKey'] }
 
   $entradaByProduct = $entradaProductMap.GetEnumerator() | ForEach-Object {
     $bucket = $_.Value
@@ -258,7 +258,7 @@ try {
       registros = [Math]::Round([double]$bucket['count'], 2)
       pesoLiquidoKg = [Math]::Round([double]$bucket['pesoLiquidoKg'], 2)
     }
-  } | Sort-Object pesoLiquidoKg -Descending
+  } | Sort-Object { $_['pesoLiquidoKg'] } -Descending
 
   $rampaDataIdx = Get-Index $rampaHeaders @('Data')
   $rampaFazendaIdx = Get-Index $rampaHeaders @('Fazenda')
@@ -303,7 +303,7 @@ try {
       cpMedia = [Math]::Round(([double]$bucket['sumCP'] / $count), 2)
       tcMedia = [Math]::Round(([double]$bucket['sumTC'] / $count), 2)
     }
-  } | Sort-Object monthKey
+  } | Sort-Object { $_['monthKey'] }
 
   $rampaByFarm = $rampaFarmMap.GetEnumerator() | ForEach-Object {
     $bucket = $_.Value
@@ -317,7 +317,7 @@ try {
       cpMedia = [Math]::Round(([double]$bucket['sumCP'] / $count), 2)
       tcMedia = [Math]::Round(([double]$bucket['sumTC'] / $count), 2)
     }
-  } | Sort-Object tcaMedia -Descending
+  } | Sort-Object { $_['registros'] } -Descending
 
   $fatDataIdx = Get-Index $faturamentoHeaders @('Data Faturamento')
   $fatProdutoIdx = Get-Index $faturamentoHeaders @('Produto')
@@ -351,7 +351,7 @@ try {
       pesoBrutoKg = [Math]::Round([double]$bucket['pesoBrutoKg'], 2)
       taraKg = [Math]::Round([double]$bucket['taraKg'], 2)
     }
-  } | Sort-Object monthKey
+  } | Sort-Object { $_['monthKey'] }
 
   $faturamentoByProduct = $faturamentoProductMap.GetEnumerator() | ForEach-Object {
     $bucket = $_.Value
@@ -360,7 +360,7 @@ try {
       registros = [Math]::Round([double]$bucket['count'], 2)
       pesoLiquidoKg = [Math]::Round([double]$bucket['pesoLiquidoKg'], 2)
     }
-  } | Sort-Object pesoLiquidoKg -Descending
+  } | Sort-Object { $_['pesoLiquidoKg'] } -Descending
 
   $tipoFornecedor = @()
   for ($r = 2; $r -le $tipo.Rows; $r++) {
@@ -391,7 +391,7 @@ try {
       unidades = $prices.Count
     }
   }
-  $precoFornecedor = $precoFornecedor | Sort-Object precoMedio -Descending
+  $precoFornecedor = $precoFornecedor | Sort-Object { $_['precoMedio'] } -Descending
 
   $entradaTotalPesoBruto = 0
   $entradaTotalPesoLiquido = 0
@@ -449,7 +449,8 @@ try {
     New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
   }
 
-  $snapshot | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $OutputPath -Encoding UTF8
+  $json = $snapshot | ConvertTo-Json -Depth 10
+  [IO.File]::WriteAllText([IO.Path]::GetFullPath($OutputPath), $json, [Text.UTF8Encoding]::new($false))
 }
 finally {
   if ($wb) { $wb.Close($false) }

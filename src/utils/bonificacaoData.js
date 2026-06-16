@@ -3,7 +3,7 @@ import snapshot from '../data/bonificacaoSnapshot.json';
 
 export const BONIFICACAO_SOURCE = {
   workbook: 'Base Qualidade CFF.xlsx',
-  workbookUpdatedAt: '2026-06-15',
+  workbookUpdatedAt: '2026-06-16',
   files: [
     'Entrada de CFF',
     'CQO - Rampa',
@@ -13,11 +13,11 @@ export const BONIFICACAO_SOURCE = {
   ],
   tables: ['f_Balanca', 'f_CQO', 'f_Faturamento'],
   workbookCounts: {
-    entradaDeCff: 9423,
-    cqoRampa: 9011,
-    faturamento: 18522,
-    tipoFornecedor: 166,
-    precoFornecedor: 145,
+    entradaDeCff: 9422,
+    cqoRampa: 9010,
+    faturamento: 18521,
+    tipoFornecedor: 165,
+    precoFornecedor: 144,
   },
 };
 
@@ -28,14 +28,6 @@ function safeNumber(value) {
 
 function hasMeaningfulValues(points = [], key = 'value') {
   return points.some((point) => safeNumber(point?.[key]) > 0);
-}
-
-function toSeries(points = []) {
-  return points.map((point) => ({
-    label: point.monthLabel || point.month || point.label || '--',
-    value: safeNumber(point.pesoLiquidoKg ?? point.value ?? point.total ?? 0),
-    fill: point.fill || '#234F2A',
-  }));
 }
 
 function fallbackData() {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Building2, ClipboardCheck, Truck } from 'lucide-react';
+import { AlertTriangle, BarChart3, Building2, ClipboardCheck, Leaf, Truck } from 'lucide-react';
 import CustomChart from '../components/CustomChart';
 import { BONIFICACAO_SOURCE, useBonificacaoData } from '../utils/bonificacaoData';
 
@@ -27,16 +27,30 @@ function KpiCard({ title, value, subtitle, icon: Icon, tone = 'green' }) {
   );
 }
 
+function weightedAverage(rows, valueKey) {
+  const totals = rows.reduce((acc, row) => {
+    const weight = Number(row.registros || 0);
+    acc.weight += weight;
+    acc.value += Number(row[valueKey] || 0) * weight;
+    return acc;
+  }, { value: 0, weight: 0 });
+
+  return totals.weight ? totals.value / totals.weight : 0;
+}
+
 export default function CqoRampa() {
   const data = useBonificacaoData();
   const source = data?.available ? data : null;
   const rampa = source?.cqoRampa || {};
-  const byMonth = rampa.byMonth || [];
+  const byMonth = (rampa.byMonth || []).filter((item) => item.monthKey !== 'sem-data');
   const byFarm = rampa.byFarm || [];
   const totalRegistros = rampa.totalRegistros || 0;
-  const avgTca = byMonth.length
-    ? byMonth.reduce((sum, item) => sum + Number(item.tcaMedia || 0), 0) / byMonth.length
-    : 0;
+  const cmMedia = weightedAverage(byMonth, 'cmMedia');
+  const cvMedia = weightedAverage(byMonth, 'cvMedia');
+  const cpMedia = weightedAverage(byMonth, 'cpMedia');
+  const tcMedia = weightedAverage(byMonth, 'tcMedia');
+  const semData = (rampa.byMonth || []).find((item) => item.monthKey === 'sem-data');
+  const topFarmRows = [...byFarm].sort((a, b) => Number(b.registros || 0) - Number(a.registros || 0)).slice(0, 12);
 
   return (
     <div className="fade-in page-shell">
@@ -54,9 +68,16 @@ export default function CqoRampa() {
 
       <div className="grid-container grid-cols-4">
         <KpiCard title="Registros" value={fmt(totalRegistros)} subtitle="linhas do CQO de rampa" icon={ClipboardCheck} tone="green" />
-        <KpiCard title="TCA médio" value={`${fmt(avgTca, 1)}`} subtitle="média dos meses carregados" icon={Truck} tone="orange" />
-        <KpiCard title="Fazendas" value={fmt(byFarm.length)} subtitle="agrupamento por origem" icon={Building2} tone="info" />
-        <KpiCard title="Meses" value={fmt(byMonth.length)} subtitle="série temporal disponível" icon={BarChart3} tone="green" />
+        <KpiCard title="Cacho maduro médio" value={`${fmt(cmMedia, 1)}%`} subtitle="média ponderada por registros" icon={Leaf} tone="green" />
+        <KpiCard title="Cacho verde médio" value={`${fmt(cvMedia, 1)}%`} subtitle="média ponderada por registros" icon={AlertTriangle} tone={cvMedia > 10 ? 'orange' : 'green'} />
+        <KpiCard title="Cacho passado médio" value={`${fmt(cpMedia, 1)}%`} subtitle="média ponderada por registros" icon={Truck} tone={cpMedia > 12 ? 'orange' : 'green'} />
+      </div>
+
+      <div className="grid-container grid-cols-4">
+        <KpiCard title="Talo comprido médio" value={`${fmt(tcMedia, 1)}%`} subtitle="média ponderada por registros" icon={BarChart3} tone={tcMedia > 6 ? 'orange' : 'green'} />
+        <KpiCard title="Origens" value={fmt(byFarm.length)} subtitle="fornecedores/fazendas agrupados" icon={Building2} tone="info" />
+        <KpiCard title="Meses" value={fmt(byMonth.length)} subtitle="série temporal com data" icon={BarChart3} tone="green" />
+        <KpiCard title="Sem data" value={fmt(semData?.registros || 0)} subtitle="linhas fora da série temporal" icon={ClipboardCheck} tone={(semData?.registros || 0) > 0 ? 'orange' : 'green'} />
       </div>
 
       <div className="grid-container grid-cols-2">
@@ -65,20 +86,20 @@ export default function CqoRampa() {
           type="line"
           data={byMonth.map((item) => ({
             label: item.monthLabel,
-            value: Number(item.tcaMedia || 0),
+            value: Number(item.cmMedia || 0),
             fill: '#D98C10',
           }))}
-          title="TCA médio por mês"
+          title="Cacho maduro médio por mês"
         />
         <CustomChart
           loading={false}
           type="bar"
-          data={byFarm.slice(0, 12).map((item) => ({
+          data={topFarmRows.map((item) => ({
             label: item.fazenda || '--',
-            value: Number(item.tcaMedia || 0),
+            value: Number(item.cmMedia || 0),
             fill: '#234F2A',
           }))}
-          title="TCA médio por fazenda"
+          title="Cacho maduro médio por origem"
         />
       </div>
 
