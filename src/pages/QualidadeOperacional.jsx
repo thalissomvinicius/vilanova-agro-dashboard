@@ -23,7 +23,7 @@ function fmt(value, digits = 0) {
   }).format(Number(value || 0));
 }
 
-function pct(value, digits = 1) {
+function pct(value, digits = 2) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return 'N/D';
   return `${fmt(value, digits)}%`;
 }
@@ -128,7 +128,7 @@ function LossWaterfall({ totals, loading }) {
       <div style={{ flex: 1, backgroundColor: 'var(--surface-hover)', height: '16px', borderRadius: '8px', overflow: 'hidden' }}>
         <div style={{ width: `${(val / max) * 100}%`, backgroundColor: color, height: '100%', borderRadius: '8px', transition: 'width 0.5s' }} />
       </div>
-      <div style={{ width: '70px', textAlign: 'right', fontSize: '0.85rem', fontWeight: 600 }}>{fmt(val, 1)} t</div>
+      <div style={{ width: '70px', textAlign: 'right', fontSize: '0.85rem', fontWeight: 600 }}>{fmt(val, 2)} t</div>
     </div>
   );
 
@@ -154,7 +154,7 @@ function FolhaMamandoAlert({ count, pct, loading }) {
           <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--orange-highlight)' }}>Alerta: Folha Mamando</h3>
           <div style={{ display: 'flex', gap: '16px', marginTop: '4px' }}>
             <span style={{ fontSize: '0.85rem' }}><strong>{fmt(count)}</strong> folhas cortadas</span>
-            <span style={{ fontSize: '0.85rem' }}><strong>{pct.toFixed(1)}%</strong> das plantas</span>
+            <span style={{ fontSize: '0.85rem' }}><strong>{pct.toFixed(2).replace('.', ',')}%</strong> das plantas</span>
           </div>
         </div>
       </div>
@@ -589,7 +589,7 @@ export default function QualidadeOperacional({
             />
             <KpiCard
               title="Peso t YTD"
-              value={`${fmt(model.totals.producedTon, 1)} t`}
+              value={`${fmt(model.totals.producedTon, 2)} t`}
               subtitle="base de balanca/producao recebida"
               icon={Truck}
               tone="info"
@@ -666,7 +666,7 @@ export default function QualidadeOperacional({
           <div className="grid-container grid-cols-3">
             <KpiCard title="Perdas corte t" value={`${fmt(model.totals.corteT, 2)} t`} subtitle={cortePctLabel} icon={Tractor} tone="danger" loading={loading} />
             <KpiCard title="Perdas carreamento t" value={`${fmt(model.totals.carreamentoT, 2)} t`} subtitle={carreamentoPctLabel} icon={Truck} tone="orange" loading={loading} />
-            <KpiCard title="Perdas t YTD" value={`${fmt(perdasYtd, 2)} t`} subtitle={`Peso YTD ${fmt(pesoYtd, 1)} t`} icon={BarChart3} tone="info" loading={loading} />
+            <KpiCard title="Perdas t YTD" value={`${fmt(perdasYtd, 2)} t`} subtitle={`Peso YTD ${fmt(pesoYtd, 2)} t`} icon={BarChart3} tone="info" loading={loading} />
           </div>
 
           <RiskMatrix parcelas={model.parcelaRows} loading={loading} />
