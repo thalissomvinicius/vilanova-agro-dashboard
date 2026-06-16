@@ -20,11 +20,34 @@ function formatPercent(value, digits = 2) {
   return `${formatNumber(value, digits)}%`;
 }
 
+function formatMonthYear(dateFrom, dateTo) {
+  if (!dateFrom || !dateTo) return null;
+  const from = new Date(`${dateFrom}T00:00:00`);
+  const to = new Date(`${dateTo}T00:00:00`);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null;
+  const lastDay = new Date(from.getFullYear(), from.getMonth() + 1, 0).getDate();
+  const isFullMonth = from.getDate() === 1
+    && to.getDate() === lastDay
+    && from.getMonth() === to.getMonth()
+    && from.getFullYear() === to.getFullYear();
+  const isFullYear = from.getDate() === 1
+    && from.getMonth() === 0
+    && to.getDate() === 31
+    && to.getMonth() === 11
+    && from.getFullYear() === to.getFullYear();
+
+  if (isFullYear) return String(from.getFullYear());
+  if (!isFullMonth) return null;
+
+  const month = new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(from);
+  return `${month.charAt(0).toUpperCase()}${month.slice(1)}/${from.getFullYear()}`;
+}
+
 function periodLabel(periodFilter, dateFrom, dateTo) {
   if (periodFilter === 'today') return 'Hoje';
   if (periodFilter === 'week') return 'Ultimos 7 dias';
   if (periodFilter === 'month') return 'Este mes';
-  if (periodFilter === 'custom') return `${dateFrom || 'Inicio'} ate ${dateTo || 'Fim'}`;
+  if (periodFilter === 'custom') return formatMonthYear(dateFrom, dateTo) || `${dateFrom || 'Inicio'} ate ${dateTo || 'Fim'}`;
   return 'Todos os tempos';
 }
 

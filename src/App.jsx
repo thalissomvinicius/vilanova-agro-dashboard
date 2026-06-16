@@ -29,6 +29,28 @@ const ROUTE_PAGES = Object.fromEntries(
   Object.entries(PAGE_ROUTES).map(([page, path]) => [path, page])
 );
 
+function currentMonthValue() {
+  return String(new Date().getMonth() + 1).padStart(2, '0');
+}
+
+function monthDateRange(yearValue, monthValue) {
+  const year = Number(yearValue) || new Date().getFullYear();
+
+  if (monthValue === 'all') {
+    return {
+      from: `${year}-01-01`,
+      to: `${year}-12-31`,
+    };
+  }
+
+  const month = Number(monthValue) || new Date().getMonth() + 1;
+  const lastDay = new Date(year, month, 0).getDate();
+  return {
+    from: `${year}-${String(month).padStart(2, '0')}-01`,
+    to: `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
+  };
+}
+
 function pageFromPath(pathname) {
   const normalized = pathname.replace(/\/+$/, '') || '/';
   return ROUTE_PAGES[normalized] || 'dashboard';
@@ -60,16 +82,17 @@ export default function App() {
 
   const [farmFilter, setFarmFilter] = useState('all');
   const [areaFilter] = useState('all');
-  const [periodFilter, setPeriodFilter] = useState('month');
+  const [yearFilter, setYearFilter] = useState(() => String(new Date().getFullYear()));
+  const [monthFilter, setMonthFilter] = useState(currentMonthValue);
   const [cycleFilter, setCycleFilter] = useState('all');
   const [evaluatorFilter, setEvaluatorFilter] = useState('all');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState(() => (
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   ));
+  const periodFilter = 'custom';
+  const { from: dateFrom, to: dateTo } = monthDateRange(yearFilter, monthFilter);
 
   useEffect(() => {
     if (isAppLoading) {
@@ -306,16 +329,14 @@ export default function App() {
         <Header
           farmFilter={farmFilter}
           setFarmFilter={setFarmFilter}
-          periodFilter={periodFilter}
-          setPeriodFilter={setPeriodFilter}
+          yearFilter={yearFilter}
+          setYearFilter={setYearFilter}
+          monthFilter={monthFilter}
+          setMonthFilter={setMonthFilter}
           cycleFilter={cycleFilter}
           setCycleFilter={setCycleFilter}
           evaluatorFilter={evaluatorFilter}
           setEvaluatorFilter={setEvaluatorFilter}
-          dateFrom={dateFrom}
-          setDateFrom={setDateFrom}
-          dateTo={dateTo}
-          setDateTo={setDateTo}
           theme={theme}
           setTheme={setTheme}
           searchTerm={searchTerm}

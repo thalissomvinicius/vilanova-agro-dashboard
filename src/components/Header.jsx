@@ -7,16 +7,14 @@ import { useCqoData } from '../utils/cqoData';
 export default function Header({
   farmFilter,
   setFarmFilter,
-  periodFilter,
-  setPeriodFilter,
+  yearFilter,
+  setYearFilter,
+  monthFilter,
+  setMonthFilter,
   cycleFilter,
   setCycleFilter,
   evaluatorFilter,
   setEvaluatorFilter,
-  dateFrom,
-  setDateFrom,
-  dateTo,
-  setDateTo,
   theme,
   setTheme,
   searchTerm,
@@ -29,6 +27,45 @@ export default function Header({
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const { records } = useCqoData();
+
+  const monthOptions = [
+    { value: '01', label: 'Janeiro' },
+    { value: '02', label: 'Fevereiro' },
+    { value: '03', label: 'Março' },
+    { value: '04', label: 'Abril' },
+    { value: '05', label: 'Maio' },
+    { value: '06', label: 'Junho' },
+    { value: '07', label: 'Julho' },
+    { value: '08', label: 'Agosto' },
+    { value: '09', label: 'Setembro' },
+    { value: '10', label: 'Outubro' },
+    { value: '11', label: 'Novembro' },
+    { value: '12', label: 'Dezembro' },
+  ];
+
+  const yearOptions = React.useMemo(() => {
+    const years = new Set([String(new Date().getFullYear())]);
+    records.forEach((record) => {
+      const candidates = [record.createdAt, record.sentAt, record.raw?.data_avaliacao, record.date];
+      for (const candidate of candidates) {
+        if (!candidate) continue;
+        const date = new Date(candidate);
+        if (!Number.isNaN(date.getTime())) {
+          years.add(String(date.getFullYear()));
+          break;
+        }
+
+        if (typeof candidate === 'string') {
+          const brDate = candidate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+          if (brDate) {
+            years.add(brDate[3]);
+            break;
+          }
+        }
+      }
+    });
+    return Array.from(years).sort((a, b) => Number(b) - Number(a));
+  }, [records]);
 
   const evaluators = React.useMemo(() => {
     const evals = new Set();
@@ -104,44 +141,26 @@ export default function Header({
 
         <select
           className="header-filter-select"
-          value={periodFilter}
-          onChange={(event) => {
-            setPeriodFilter(event.target.value);
-            if (event.target.value !== 'custom') {
-              setDateFrom('');
-              setDateTo('');
-            }
-          }}
-          title="Período pré-definido"
+          value={yearFilter}
+          onChange={(event) => setYearFilter(event.target.value)}
+          title="Selecionar ano"
         >
-          <option value="today">Hoje</option>
-          <option value="week">Últimos 7 dias</option>
-          <option value="month">Este mês</option>
-          <option value="all">Todos os tempos</option>
-          <option value="custom" hidden>Personalizado</option>
+          {yearOptions.map((year) => (
+            <option key={year} value={year}>{year}</option>
+          ))}
         </select>
 
-        <input
-          className="header-date-input"
-          type="date"
-          value={dateFrom}
-          onChange={(event) => {
-            setDateFrom(event.target.value);
-            setPeriodFilter('custom');
-          }}
-          title="Data inicial"
-        />
-
-        <input
-          className="header-date-input"
-          type="date"
-          value={dateTo}
-          onChange={(event) => {
-            setDateTo(event.target.value);
-            setPeriodFilter('custom');
-          }}
-          title="Data final"
-        />
+        <select
+          className="header-filter-select"
+          value={monthFilter}
+          onChange={(event) => setMonthFilter(event.target.value)}
+          title="Selecionar mês"
+        >
+          <option value="all">Todos os meses</option>
+          {monthOptions.map((month) => (
+            <option key={month.value} value={month.value}>{month.label}</option>
+          ))}
+        </select>
       </div>
 
       <div className="header-right">
