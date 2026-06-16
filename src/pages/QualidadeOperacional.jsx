@@ -106,9 +106,9 @@ function MaturationBar({ verde, maduro, passado, loading }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingBottom: '12px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 500 }}>
-        <span style={{ color: 'var(--status-danger)' }}>Verde {verde.toFixed(1)}%</span>
-        <span style={{ color: 'var(--status-success)' }}>Maduro {maduro.toFixed(1)}%</span>
-        <span style={{ color: '#B45309' }}>Passado {passado.toFixed(1)}%</span>
+        <span style={{ color: 'var(--status-danger)' }}>Verde {verde.toFixed(2).replace('.', ',')}%</span>
+        <span style={{ color: 'var(--status-success)' }}>Maduro {maduro.toFixed(2).replace('.', ',')}%</span>
+        <span style={{ color: '#B45309' }}>Passado {passado.toFixed(2).replace('.', ',')}%</span>
       </div>
       <div style={{ display: 'flex', height: '24px', borderRadius: '12px', overflow: 'hidden', backgroundColor: 'var(--surface-hover)' }}>
         <div style={{ width: `${vPct}%`, backgroundColor: 'var(--status-danger)', transition: 'width 0.5s' }} title="Verde" />
@@ -200,11 +200,11 @@ function RiskMatrix({ parcelas, loading }) {
               <td style={{ padding: '12px 16px', fontWeight: 500 }}>{p.label}</td>
               <td style={{ padding: '12px 16px', textAlign: 'center' }}>{p.recordsCount}</td>
               <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: 'var(--status-danger)' }}>{fmt(p.perdasT, 1)} t</td>
-              <td style={{ padding: '12px 16px', textAlign: 'right', backgroundColor: getCellColor(p.cachoVerdePct, 8) }}>{p.cachoVerdePct.toFixed(1)}%</td>
-              <td style={{ padding: '12px 16px', textAlign: 'right', backgroundColor: getCellColor(p.cachoPassadoPct, 5) }}>{p.cachoPassadoPct.toFixed(1)}%</td>
-              <td style={{ padding: '12px 16px', textAlign: 'right', backgroundColor: getCellColor(p.folhaMamandoPct, 2) }}>{p.folhaMamandoPct.toFixed(1)}%</td>
-              <td style={{ padding: '12px 16px', textAlign: 'right', backgroundColor: getCellColor(p.taloCompridoPct, 3) }}>{p.taloCompridoPct.toFixed(1)}%</td>
-              <td style={{ padding: '12px 16px', textAlign: 'right', backgroundColor: getCellColor(p.cachoBrocadoPct, 5) }}>{p.cachoBrocadoPct.toFixed(1)}%</td>
+              <td style={{ padding: '12px 16px', textAlign: 'right', backgroundColor: getCellColor(p.cachoVerdePct, 8) }}>{p.cachoVerdePct.toFixed(2).replace('.', ',')}%</td>
+              <td style={{ padding: '12px 16px', textAlign: 'right', backgroundColor: getCellColor(p.cachoPassadoPct, 5) }}>{p.cachoPassadoPct.toFixed(2).replace('.', ',')}%</td>
+              <td style={{ padding: '12px 16px', textAlign: 'right', backgroundColor: getCellColor(p.folhaMamandoPct, 2) }}>{p.folhaMamandoPct.toFixed(2).replace('.', ',')}%</td>
+              <td style={{ padding: '12px 16px', textAlign: 'right', backgroundColor: getCellColor(p.taloCompridoPct, 3) }}>{p.taloCompridoPct.toFixed(2).replace('.', ',')}%</td>
+              <td style={{ padding: '12px 16px', textAlign: 'right', backgroundColor: getCellColor(p.cachoBrocadoPct, 5) }}>{p.cachoBrocadoPct.toFixed(2).replace('.', ',')}%</td>
             </tr>
           ))}
         </tbody>
