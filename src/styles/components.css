@@ -3234,6 +3234,60 @@ body.presentation-active {
   z-index: 1;
 }
 
+.gps-collection-marker {
+  z-index: 900 !important;
+}
+
+.gps-collection-marker .gps-pin-ring {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--white);
+  border-radius: 999px;
+  background: var(--gps-pin-color, var(--orange-institutional));
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.34), 0 0 0 5px rgba(232, 145, 0, 0.18);
+}
+
+.gps-collection-marker .gps-pin-ring span {
+  width: 9px;
+  height: 9px;
+  display: block;
+  border-radius: 999px;
+  background: var(--white);
+}
+
+.gps-collection-marker strong {
+  position: absolute;
+  left: 30px;
+  top: 5px;
+  min-height: 20px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(24, 34, 48, 0.92);
+  color: var(--white);
+  font-size: 0.65rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.gps-marker-tooltip {
+  border: 0;
+  border-radius: 999px;
+  background: rgba(24, 34, 48, 0.94);
+  color: var(--white);
+  font-family: var(--font-family);
+  font-size: 0.68rem;
+  font-weight: 850;
+  box-shadow: var(--shadow-md);
+}
+
+.gps-marker-tooltip::before {
+  display: none;
+}
+
 .gps-map-overlay {
   z-index: 10;
   width: 306px;

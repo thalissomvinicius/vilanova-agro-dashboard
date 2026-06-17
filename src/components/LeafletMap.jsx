@@ -85,6 +85,32 @@ function markerColor(record, fallbackColor) {
   return fallbackColor || '#F59E0B';
 }
 
+function isValidGpsPoint(point) {
+  const lat = Number(point?.lat);
+  const lng = Number(point?.lng);
+  return Number.isFinite(lat)
+    && Number.isFinite(lng)
+    && Math.abs(lat) > 0.1
+    && Math.abs(lng) > 0.1;
+}
+
+function normalizeLatLng(point) {
+  if (!isValidGpsPoint(point)) return null;
+  return {
+    ...point,
+    lat: Number(point.lat),
+    lng: Number(point.lng),
+  };
+}
+
+function firstValidGpsPoint(record) {
+  return [
+    record?.gps,
+    ...(record?.gpsOccurrences || []),
+    ...(record?.gpsTrack || []),
+  ].map(normalizeLatLng).find(Boolean) || null;
+}
+
 export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -105,17 +131,14 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
 
   const geoRecords = useMemo(() => filteredRecords.filter((record) => {
     if (record.raw?.mapeamento_legado || record.evaluatorMatricula === 'HISTORICO') return false;
-    return (
-      (record.gps && Number.isFinite(record.gps.lat) && Number.isFinite(record.gps.lng))
-      || record.gpsTrack?.some((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
-      || record.gpsOccurrences?.some((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
-    );
+    return Boolean(firstValidGpsPoint(record));
   }), [filteredRecords]);
 
   const trackPoints = useMemo(() => geoRecords.flatMap((record) => {
     const points = record.gpsTrack?.length ? record.gpsTrack : [record.gps];
     return points
-      .filter((point) => point && Number.isFinite(point.lat) && Number.isFinite(point.lng) && Math.abs(point.lat) > 0.1 && Math.abs(point.lng) > 0.1)
+      .map(normalizeLatLng)
+      .filter(Boolean)
       .map((point, index) => ({
         ...point,
         index,
@@ -126,7 +149,8 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
 
   const occurrencePoints = useMemo(() => geoRecords.flatMap((record) => (
     (record.gpsOccurrences?.length ? record.gpsOccurrences : [])
-      .filter((point) => point && Number.isFinite(point.lat) && Number.isFinite(point.lng) && Math.abs(point.lat) > 0.1 && Math.abs(point.lng) > 0.1)
+      .map(normalizeLatLng)
+      .filter(Boolean)
       .map((point, index) => ({
         ...point,
         index,
@@ -134,6 +158,16 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
         weight: Math.max(1, Number(point.quantity || 1)),
       }))
   )), [geoRecords]);
+
+  const allGpsPoints = useMemo(() => {
+    const seen = new Set();
+    return [...trackPoints, ...occurrencePoints].filter((point) => {
+      const key = `${Number(point.lat).toFixed(6)}|${Number(point.lng).toFixed(6)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [trackPoints, occurrencePoints]);
 
   const filteredParcelFeatures = useMemo(() => (
     parcelGeoJson?.features?.filter((feature) => (
@@ -373,18 +407,30 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
 
     geoRecords.forEach((record) => {
       const style = farmStyle(record.farmId);
-      const markerPoint = record.gps || record.gpsTrack?.[0];
+      const markerPoint = firstValidGpsPoint(record);
       if (!markerPoint) return;
       const pinColor = markerColor(record, style.fill);
       const pinIcon = L.divIcon({
-        className: 'custom-div-icon',
-        html: `<div style="background-color:${pinColor};width:14px;height:14px;transform:rotate(45deg);border:2px solid white;box-shadow:0 3px 8px rgba(0,0,0,0.35);"></div>`,
-        iconSize: [14, 14],
-        iconAnchor: [7, 7],
+        className: 'custom-div-icon gps-collection-marker',
+        html: `
+          <div class="gps-pin-ring" style="--gps-pin-color:${pinColor};">
+            <span></span>
+          </div>
+          <strong>GPS</strong>
+        `,
+        iconSize: [52, 34],
+        iconAnchor: [16, 16],
       });
 
       L.marker([markerPoint.lat, markerPoint.lng], { icon: pinIcon })
         .addTo(layers)
+        .bindTooltip(`${record.status} - ${record.gpsOccurrences?.length || record.gpsTrack?.length || 1} ponto(s) GPS`, {
+          permanent: geoRecords.length <= 5,
+          direction: 'top',
+          offset: [0, -14],
+          opacity: 0.95,
+          className: 'gps-marker-tooltip',
+        })
         .bindPopup(`
           <div style="font-family: Inter, Segoe UI, sans-serif; max-width: 240px;">
             <strong style="color:${style.color};font-size:12px;">Coleta #${record.id}</strong><br/>
@@ -418,7 +464,8 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     if (mapLayer === 'route') {
       geoRecords.forEach((record) => {
         const routePoints = (record.gpsTrack || [])
-          .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
+          .map(normalizeLatLng)
+          .filter(Boolean)
           .map((point) => [point.lat, point.lng]);
         if (routePoints.length >= 2) {
           const style = farmStyle(record.farmId);
@@ -436,7 +483,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           .filter((record) => record.farmId === farmId)
           .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
         const routePoints = routeRecords
-          .map((record) => record.gps || record.gpsTrack?.[0])
+          .map(firstValidGpsPoint)
           .filter(Boolean)
           .map((point) => [point.lat, point.lng]);
         if (routePoints.length >= 2) {
@@ -451,19 +498,40 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       });
     }
 
-    if (trackPoints.length > 0) {
-      const bounds = L.latLngBounds(trackPoints.map((point) => [point.lat, point.lng]));
-      map.fitBounds(bounds.pad(0.18), { maxZoom: 16, animate: true });
-    } else if (farmLayerBounds.length > 0) {
-      const bounds = farmLayerBounds.reduce((acc, item) => acc.extend(item), L.latLngBounds([]));
-      map.fitBounds(bounds.pad(0.08), { maxZoom: 14, animate: true });
-    } else if (farmFilter !== 'all') {
-      const selectedFarm = FARMS.find((farm) => farm.id === farmFilter);
-      if (selectedFarm) {
-        map.panTo([selectedFarm.Lat, selectedFarm.Lng]);
+    const applyViewport = () => {
+      if (!mapContainerRef.current) return;
+      map.invalidateSize({ pan: false, debounceMoveend: false });
+
+      const gpsLatLngs = allGpsPoints
+        .map(normalizeLatLng)
+        .filter(Boolean)
+        .map((point) => L.latLng(point.lat, point.lng));
+
+      if (gpsLatLngs.length === 1) {
+        map.setView(gpsLatLngs[0], 17, { animate: false });
+      } else if (gpsLatLngs.length > 1) {
+        const bounds = L.latLngBounds(gpsLatLngs);
+        map.fitBounds(bounds.pad(0.18), { maxZoom: 17, animate: false });
+      } else if (farmLayerBounds.length > 0) {
+        const bounds = farmLayerBounds.reduce((acc, item) => acc.extend(item), L.latLngBounds([]));
+        map.fitBounds(bounds.pad(0.08), { maxZoom: 14, animate: false });
+      } else if (farmFilter !== 'all') {
+        const selectedFarm = FARMS.find((farm) => farm.id === farmFilter);
+        if (selectedFarm) {
+          map.setView([selectedFarm.Lat, selectedFarm.Lng], 14, { animate: false });
+        }
       }
-    }
-  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, geoRecords, trackPoints, heatPoints, parcelGeoJson, filteredParcelFeatures, filteredRecords]);
+    };
+
+    const frame = window.requestAnimationFrame(() => {
+      map.whenReady(() => {
+        applyViewport();
+        window.setTimeout(applyViewport, 120);
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, parcelGeoJson, filteredParcelFeatures, filteredRecords]);
 
   return (
     <div className="card gps-map-card">
