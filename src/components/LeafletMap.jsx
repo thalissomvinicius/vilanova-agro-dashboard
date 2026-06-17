@@ -148,6 +148,20 @@ function occurrenceDisplayPoint(point) {
   };
 }
 
+function occurrenceHeatColor(point, fallbackColor) {
+  const field = String(point?.fieldId || '').toLowerCase();
+  if (field.includes('esquecido') || field.includes('nao_carreado') || field.includes('fruto_solto')) {
+    return '#EF4444';
+  }
+  if (field.includes('verde') || field.includes('passado') || field.includes('avermelhado') || field.includes('mal_posicionado')) {
+    return '#F59E0B';
+  }
+  if (field.includes('talo') || field.includes('folha') || field.includes('estrela') || field.includes('brocado')) {
+    return '#D98C10';
+  }
+  return fallbackColor || '#F59E0B';
+}
+
 export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -475,37 +489,39 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       iconAnchor: [13, 13],
     });
 
-    occurrencePoints.forEach((point, index) => {
-      const style = farmStyle(point.record.farmId);
-      const pinColor = markerColor(point.record, style.fill);
-      const pointLat = Number(point.displayLat || point.lat);
-      const pointLng = Number(point.displayLng || point.lng);
+    if (mapLayer === 'route') {
+      occurrencePoints.forEach((point, index) => {
+        const style = farmStyle(point.record.farmId);
+        const pinColor = occurrenceHeatColor(point, markerColor(point.record, style.fill));
+        const pointLat = Number(point.displayLat || point.lat);
+        const pointLng = Number(point.displayLng || point.lng);
 
-      L.marker([pointLat, pointLng], { icon: gpsPointIcon(point, index, pinColor) })
-        .addTo(layers)
-        .bindTooltip(`${index + 1}. ${point.title}`, {
-          direction: 'top',
-          offset: [0, -12],
-          opacity: 0.95,
-          className: 'gps-marker-tooltip',
-        })
-        .bindPopup(`
-          <div style="font-family: Inter, Segoe UI, sans-serif; max-width: 260px;">
-            <strong style="color:${style.color};font-size:12px;">Ponto GPS ${index + 1}</strong><br/>
-            <span style="font-size:11px;">Ocorrencia: <strong>${point.title}</strong></span><br/>
-            <span style="font-size:11px;">Campo: <strong>${point.fieldId || '--'}</strong></span><br/>
-            <span style="font-size:11px;">Linha: <strong>${point.line}</strong></span><br/>
-            <span style="font-size:11px;">Fazenda: <strong>${point.record.farm}</strong></span><br/>
-            <span style="font-size:11px;">Parcela: <strong>${point.record.parcel}</strong></span><br/>
-            <span style="font-size:11px;">Quantidade: <strong>${point.quantity || 1}</strong></span><br/>
-            <span style="font-size:11px;">GPS original: <strong>${point.label}</strong></span><br/>
-            <span style="font-size:11px;">Status: <strong style="color:${pinColor};">${point.record.status}</strong></span>
-          </div>
-        `);
-    });
+        L.marker([pointLat, pointLng], { icon: gpsPointIcon(point, index, pinColor) })
+          .addTo(layers)
+          .bindTooltip(`${index + 1}. ${point.title}`, {
+            direction: 'top',
+            offset: [0, -12],
+            opacity: 0.95,
+            className: 'gps-marker-tooltip',
+          })
+          .bindPopup(`
+            <div style="font-family: Inter, Segoe UI, sans-serif; max-width: 260px;">
+              <strong style="color:${style.color};font-size:12px;">Ponto GPS ${index + 1}</strong><br/>
+              <span style="font-size:11px;">Ocorrencia: <strong>${point.title}</strong></span><br/>
+              <span style="font-size:11px;">Campo: <strong>${point.fieldId || '--'}</strong></span><br/>
+              <span style="font-size:11px;">Linha: <strong>${point.line}</strong></span><br/>
+              <span style="font-size:11px;">Fazenda: <strong>${point.record.farm}</strong></span><br/>
+              <span style="font-size:11px;">Parcela: <strong>${point.record.parcel}</strong></span><br/>
+              <span style="font-size:11px;">Quantidade: <strong>${point.quantity || 1}</strong></span><br/>
+              <span style="font-size:11px;">GPS original: <strong>${point.label}</strong></span><br/>
+              <span style="font-size:11px;">Status: <strong style="color:${markerColor(point.record, style.fill)};">${point.record.status}</strong></span>
+            </div>
+          `);
+      });
+    }
 
     geoRecords.forEach((record) => {
-      if (record.gpsOccurrences?.length) return;
+      if (record.gpsOccurrences?.length && mapLayer !== 'polygon') return;
       const style = farmStyle(record.farmId);
       const markerPoint = firstValidGpsPoint(record);
       if (!markerPoint) return;
@@ -549,14 +565,29 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     if (mapLayer === 'heat') {
       heatPoints.forEach((point) => {
         const style = farmStyle(point.record.farmId);
-        const radius = 22 + point.heatWeight * 34;
+        const heatColor = occurrenceHeatColor(point, style.fill);
+        const radius = Math.max(24, Math.min(82, 22 + point.heatWeight * 24 + Number(point.accuracy || 0) * 2));
         L.circle([point.lat, point.lng], {
           radius,
-          color: style.color,
-          fillColor: style.fill,
-          fillOpacity: Math.min(0.46, 0.16 + point.heatWeight * 0.13),
-          weight: 0.7,
-          opacity: 0.35,
+          color: heatColor,
+          fillColor: heatColor,
+          fillOpacity: Math.min(0.42, 0.14 + point.heatWeight * 0.09),
+          weight: 1.2,
+          opacity: 0.44,
+        })
+          .addTo(layers)
+          .bindTooltip(`${point.title || 'Ocorrencia'} - linha ${point.line || '--'}`, {
+            direction: 'top',
+            opacity: 0.9,
+            className: 'gps-marker-tooltip',
+          });
+
+        L.circleMarker([point.lat, point.lng], {
+          radius: 4,
+          color: '#FFFFFF',
+          fillColor: heatColor,
+          fillOpacity: 1,
+          weight: 1.5,
         }).addTo(layers);
       });
     }
@@ -685,14 +716,14 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             className={`btn ${mapLayer === 'heat' ? 'btn-primary' : 'btn-secondary'}`}
           >
             <Flame size={14} />
-            <span>Focos de Perda (Calor)</span>
+            <span>Mapa de Calor</span>
           </button>
           <button
             onClick={() => setMapLayer('route')}
             className={`btn ${mapLayer === 'route' ? 'btn-primary' : 'btn-secondary'}`}
           >
             <Route size={14} />
-            <span>Rotas e trilhas GPS</span>
+            <span>GPS detalhado</span>
           </button>
         </div>
 
@@ -707,7 +738,11 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             </div>
           ))}
           <div className="gps-map-note">
-            <span>{occurrencePoints.length ? 'GPS pendente aparece para auditoria; qualidade usa apenas aprovados.' : 'Calor estimado pela trilha'}</span>
+            <span>
+              {mapLayer === 'heat' && 'Calor estimado pelas ruas amostradas; os pontos sao evidencias reais.'}
+              {mapLayer === 'route' && 'GPS detalhado mostra as coordenadas reais numeradas dentro da parcela.'}
+              {mapLayer === 'polygon' && 'Semaforo por parcela; use o calor para ver tendencia espacial da amostra.'}
+            </span>
           </div>
         </div>
       </div>
