@@ -188,6 +188,8 @@ export function buildQualidadeOperacional(records) {
     cachoPassadoPct: safePct(corteTotals.cachoPassado, qualidadeBase),
     cachoAvermelhadoPct: safePct(corteTotals.cachoAvermelhado, qualidadeBase),
     cachoEstrelaPct: safePct(corteTotals.cachoEstrela, qualidadeBase),
+    cachoInfermoPct: safePct(corteTotals.cachoInfermo, qualidadeBase),
+    buchaPct: safePct(corteTotals.bucha, qualidadeBase),
     taloCompridoPct: safePct(corteTotals.taloComprido, qualidadeBase),
   };
 
@@ -264,6 +266,8 @@ export function buildQualidadeOperacional(records) {
       cachoVerdePct: safePct(agg.cachoVerde, base),
       cachoPassadoPct: safePct(agg.cachoPassado, base),
       cachoAvermelhadoPct: safePct(agg.cachoAvermelhado, base),
+      cachoInfermoPct: safePct(agg.cachoInfermo, base),
+      buchaPct: safePct(agg.bucha, base),
       taloCompridoPct: safePct(agg.taloComprido, Math.max(agg.plantasObservadas, 0)),
       cachoEstrelaPct: safePct(agg.cachoEstrela, base),
       corteT: bucket.corteT,
@@ -322,6 +326,8 @@ export function buildQualidadeOperacional(records) {
         { label: 'Passado', value: Number(quality.cachoPassadoPct.toFixed(1)), fill: '#D98C10' },
         { label: 'Avermelhado', value: Number(quality.cachoAvermelhadoPct.toFixed(1)), fill: '#B45309' },
         { label: 'Estrela', value: Number(quality.cachoEstrelaPct.toFixed(1)), fill: '#F2B544' },
+        { label: 'Infermo', value: Number(quality.cachoInfermoPct.toFixed(1)), fill: '#EF4444' },
+        { label: 'Bucha', value: Number(quality.buchaPct.toFixed(1)), fill: '#64748B' },
         { label: 'Talo', value: Number(quality.taloCompridoPct.toFixed(1)), fill: '#64748B' },
       ],
       perdasPorFazenda: farmRows.slice(0, 10).map((item) => ({

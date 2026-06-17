@@ -40,8 +40,6 @@ function lineColumns(record) {
       ['numero_plantas_linha', 'Plantas linha'],
       ['cacho_mal_posicionado', 'Mal posicionado'],
       ['cacho_nao_carreado', 'Não carreado'],
-      ['numero_plantas_observadas', 'Plantas observadas'],
-      ['peso_medio', 'Peso frutos'],
     ];
   }
 
@@ -54,6 +52,12 @@ function lineColumns(record) {
     ['cacho_verde', 'Verde'],
     ['cacho_maduro', 'Maduro'],
     ['cacho_passado', 'Passado'],
+    ['cacho_infermo', 'Infermo'],
+    ['bucha', 'Bucha'],
+    ['cacho_talo_comprido', 'Talo comprido'],
+    ['cacho_estrela', 'Estrela'],
+    ['cacho_avermelhado', 'Avermelhado'],
+    ['cacho_brocado', 'Brocado'],
     ['cacho_mal_posicionado', 'Mal posicionado'],
   ];
 }
@@ -108,9 +112,21 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   }, [filteredRecords]);
 
   const selectedPhotos = selectedRecord
-    ? Object.entries(selectedRecord.raw || {})
+    ? [
+      ...(selectedRecord.attachments || []),
+      ...Object.entries(selectedRecord.raw || {})
       .filter(([, value]) => value && typeof value === 'object' && value.base64)
-      .map(([fieldId, value]) => ({ fieldId, ...value }))
+      .map(([fieldId, value]) => ({
+        id: fieldId,
+        fieldId,
+        fileName: fieldId,
+        mimeType: value.mimeType || 'image/jpeg',
+        base64: value.base64,
+        url: value.url || null,
+        capturedAt: value.capturedAt || value.capturado_em || null,
+        gps: value.gps || null,
+      })),
+    ]
     : [];
 
   const handleReview = async (status) => {
@@ -376,7 +392,10 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                   <div>
                     <span>Formulário</span>
                     <strong>{selectedRecord.form}</strong>
-                    <small>{selectedRecord.lines.length} linha(s) digitada(s)</small>
+                    <small>
+                      {selectedRecord.lines.length} linha(s) digitada(s)
+                      {selectedRecord.type === 'carreamento' && selectedRecord.variety ? ` / ${selectedRecord.variety}` : ''}
+                    </small>
                   </div>
                 </div>
               </div>
@@ -482,16 +501,27 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                   </div>
                   <div className="evidence-grid">
                     {selectedPhotos.map((photo) => (
-                      <div className="evidence-photo" key={photo.fieldId}>
-                        <img src={`data:${photo.mimeType || 'image/jpeg'};base64,${photo.base64}`} alt={photo.fieldId} />
+                      <div className="evidence-photo" key={photo.id || photo.fieldId}>
+                        {photo.base64 || photo.url ? (
+                          <img
+                            src={photo.base64 ? `data:${photo.mimeType || 'image/jpeg'};base64,${photo.base64}` : photo.url}
+                            alt={photo.fieldId}
+                          />
+                        ) : (
+                          <div className="evidence-file-placeholder">
+                            <Download size={18} />
+                            <span>Arquivo sincronizado</span>
+                          </div>
+                        )}
                         <div>
-                          <strong>{photo.fieldId}</strong>
+                          <strong>{photo.fileName || photo.fieldId}</strong>
                           <span>{photo.capturedAt ? new Date(photo.capturedAt).toLocaleString('pt-BR') : 'Sem data'}</span>
                           <span>
                             {photo.gps
-                              ? `${Number(photo.gps.latitude).toFixed(6)}, ${Number(photo.gps.longitude).toFixed(6)}`
+                              ? `${Number(photo.gps.latitude ?? photo.gps.lat).toFixed(6)}, ${Number(photo.gps.longitude ?? photo.gps.lng).toFixed(6)}`
                               : 'Sem GPS'}
                           </span>
+                          {photo.storagePath ? <span>{photo.storagePath}</span> : null}
                         </div>
                       </div>
                     ))}

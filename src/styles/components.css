@@ -4114,6 +4114,19 @@ body.presentation-active {
   display: block;
 }
 
+.evidence-file-placeholder {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .evidence-photo div {
   display: flex;
   flex-direction: column;

@@ -1,9 +1,10 @@
 import React from 'react';
 import { Database, LogOut, Moon, RefreshCcw, ShieldCheck, Sun } from 'lucide-react';
-import { SUPABASE_CONFIG } from '../utils/cqoData';
+import { SUPABASE_CONFIG, useCqoData } from '../utils/cqoData';
 
 export default function Settings({ theme, setTheme, user, onLogout, triggerManualSync, isSyncing }) {
   const maskedKey = `${SUPABASE_CONFIG.anonKey.slice(0, 18)}...${SUPABASE_CONFIG.anonKey.slice(-8)}`;
+  const { records, gpsRows = [], anexos = [], formularios = [], loading } = useCqoData();
 
   return (
     <div className="fade-in page-shell settings-page">
@@ -23,7 +24,7 @@ export default function Settings({ theme, setTheme, user, onLogout, triggerManua
       <div className="settings-status-grid">
         <div><span>Tema atual</span><strong>{theme === 'light' ? 'Claro' : 'Escuro'}</strong></div>
         <div><span>Banco online</span><strong>Supabase</strong></div>
-        <div><span>Coletas</span><strong>mobile_respostas</strong></div>
+        <div><span>Coletas</span><strong>{loading ? 'Carregando' : records.length}</strong></div>
         <div><span>Desenvolvedor</span><strong>Vinicius Dev.</strong></div>
       </div>
 
@@ -58,7 +59,10 @@ export default function Settings({ theme, setTheme, user, onLogout, triggerManua
             <div><span>URL</span><strong>{SUPABASE_CONFIG.url}</strong></div>
             <div><span>Anon key</span><strong>{maskedKey}</strong></div>
             <div><span>Tabela de coletas</span><strong>mobile_respostas</strong></div>
+            <div><span>Pontos GPS</span><strong>{gpsRows.length} em mobile_gps</strong></div>
+            <div><span>Anexos</span><strong>{anexos.length} em mobile_anexos</strong></div>
             <div><span>Formulários</span><strong>mobile_formularios</strong></div>
+            <div><span>Catálogo carregado</span><strong>{formularios.length} versão(ões)</strong></div>
           </div>
           <button className="btn btn-primary" onClick={triggerManualSync} disabled={isSyncing} style={{ marginTop: 18 }}>
             <RefreshCcw className={isSyncing ? 'spin' : ''} size={16} />

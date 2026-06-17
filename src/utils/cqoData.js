@@ -49,11 +49,34 @@ function numberValue(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+const CORTE_OBSERVED_BUNCH_GROUPS = [
+  ['cacho_esquecido_ciclo', 'cacho_esquecido', 'CachoEsquecido'],
+  ['cacho_verde', 'CachoVerde'],
+  ['cacho_maduro', 'CachoMaduro'],
+  ['cacho_passado', 'CachoPassado'],
+  ['cacho_infermo', 'CachoInfermo'],
+  ['bucha', 'Bucha'],
+  ['cacho_talo_comprido', 'TaloComprido'],
+  ['cacho_mal_posicionado', 'CachoMalPosicionado'],
+  ['cacho_estrela', 'cachos_estrela', 'CachoEstrela'],
+  ['cacho_avermelhado', 'cachos_avermelhados', 'CachoAvermelhado'],
+];
+
+function rowValue(row, keys) {
+  const key = keys.find((candidate) => row?.[candidate] !== undefined && row?.[candidate] !== null && row?.[candidate] !== '');
+  return numberValue(key ? row[key] : 0);
+}
+
 function sumRows(rows, keys) {
   return rows.reduce((total, row) => {
-    const key = keys.find((candidate) => row?.[candidate] !== undefined && row?.[candidate] !== null && row?.[candidate] !== '');
-    return total + numberValue(key ? row[key] : 0);
+    return total + rowValue(row, keys);
   }, 0);
+}
+
+function sumRowsByGroups(rows, groups) {
+  return rows.reduce((total, row) => (
+    total + groups.reduce((rowTotal, keys) => rowTotal + rowValue(row, keys), 0)
+  ), 0);
 }
 
 function buildGps(latValue, lngValue, accuracyValue) {
@@ -162,6 +185,29 @@ function normalizeOccurrencePoint(value, index) {
     capturedAt: value?.capturado_em || value?.capturedAt || null,
     source: value?.source || 'ocorrencia',
     occurrence: true,
+  };
+}
+
+function normalizeAttachment(row, index) {
+  const meta = parseJson(row?.dados_json || row?.metadata || row?.metadados || row?.extra);
+  const gps = parseGps(row?.gps || meta?.gps || {
+    latitude: row?.latitude ?? meta?.latitude,
+    longitude: row?.longitude ?? meta?.longitude,
+    precisao: row?.precisao ?? meta?.precisao,
+  });
+
+  return {
+    id: row?.id || `anexo_${index + 1}`,
+    responseId: row?.resposta_id || row?.respostaId || meta?.resposta_id || '',
+    fieldId: row?.campo_id || row?.field_id || meta?.campo_id || meta?.fieldId || `anexo_${index + 1}`,
+    fileName: row?.nome_arquivo || row?.filename || row?.file_name || meta?.nome_arquivo || meta?.fileName || '',
+    mimeType: row?.mime_type || row?.mimetype || row?.tipo_mime || meta?.mimeType || meta?.mime_type || 'image/jpeg',
+    base64: row?.base64 || row?.arquivo_base64 || row?.conteudo_base64 || meta?.base64 || null,
+    url: row?.url || row?.public_url || row?.storage_url || meta?.url || meta?.publicUrl || null,
+    storagePath: row?.storage_path || row?.caminho || row?.path || meta?.storagePath || meta?.storage_path || null,
+    capturedAt: row?.capturado_em || row?.criado_em || meta?.capturedAt || meta?.capturado_em || null,
+    gps,
+    raw: row,
   };
 }
 
@@ -284,7 +330,7 @@ function formatDateTime(value) {
   };
 }
 
-export function normalizeResponse(row, headcount = [], gpsRows = []) {
+export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentRows = []) {
   const data = parseJson(row.dados_json);
 
   // Normalizar a estrutura de dados de legado (Android) para o padrão
@@ -370,9 +416,11 @@ export function normalizeResponse(row, headcount = [], gpsRows = []) {
     type,
     form: type === 'carreamento' ? 'CQO Carreamento e Fruto Solto' : 'CQO Corte',
     formularioId: row.formulario_id,
+    formularioVersao: row.formulario_versao || '',
     status: statusLabel(row.status),
     createdAt: row.criado_em,
     sentAt: row.enviado_em,
+    receivedAt: row.recebido_em,
     date: dateTime.date,
     time: dateTime.time,
     farm: data.nome_fazenda || 'Sem fazenda',
@@ -388,23 +436,35 @@ export function normalizeResponse(row, headcount = [], gpsRows = []) {
     gps: gps || gpsOccurrences[0] || gpsTrack[0] || null,
     gpsTrack,
     gpsOccurrences,
+    attachments: attachmentRows,
     raw: data,
     lines,
+    plantingYear: data.ano_plantio || '',
+    density: data.densidade || '',
+    totalPlantsParcel: numberValue(data.total_plantas_parcela),
+    totalBunchesCarried: numberValue(data.total_cachos_carreados),
+    variety: data.variedade || '',
   };
 
   if (type === 'carreamento') {
+    const plantasLinha = sumRows(lines, ['numero_plantas_linha']);
+    const plantasObservadas = sumRows(lines, ['numero_plantas_observadas']) || plantasLinha || numberValue(data.total_plantas_parcela);
     return {
       ...base,
       totals: {
         linhas: lines.length,
-        plantasLinha: sumRows(lines, ['numero_plantas_linha']),
+        plantasLinha,
         cachoMalPosicionado: sumRows(lines, ['cacho_mal_posicionado']),
         cachoNaoCarreado: sumRows(lines, ['cacho_nao_carreado']),
-        plantasObservadas: sumRows(lines, ['numero_plantas_observadas']),
+        plantasObservadas,
         pesoMedio: sumRows(lines, ['peso_medio']),
+        totalPlantasParcela: numberValue(data.total_plantas_parcela),
+        totalCachosCarreados: numberValue(data.total_cachos_carreados),
       },
     };
   }
+
+  const cachosObservados = sumRowsByGroups(lines, CORTE_OBSERVED_BUNCH_GROUPS);
 
   return {
     ...base,
@@ -412,11 +472,14 @@ export function normalizeResponse(row, headcount = [], gpsRows = []) {
       linhas: lines.length,
       plantasLinha: sumRows(lines, ['numero_plantas_linha']),
       plantasObservadas: sumRows(lines, ['numero_plantas_observadas', 'numero_na_linha']),
-      cachosObservados: sumRows(lines, ['numero_cachos_observados_papel', 'numero_cacho_observado']),
+      cachosObservados,
+      cachosObservadosPapel: sumRows(lines, ['numero_cachos_observados_papel', 'numero_cacho_observado']),
       cachoEsquecido: sumRows(lines, ['cacho_esquecido_ciclo', 'cacho_esquecido']),
       cachoVerde: sumRows(lines, ['cacho_verde']),
       cachoMaduro: sumRows(lines, ['cacho_maduro']),
       cachoPassado: sumRows(lines, ['cacho_passado']),
+      cachoInfermo: sumRows(lines, ['cacho_infermo']),
+      bucha: sumRows(lines, ['bucha']),
       folhaMamando: sumRows(lines, ['folha_mamando']),
       taloComprido: sumRows(lines, ['cacho_talo_comprido']),
       folhaCortada: sumRows(lines, ['folha_cortada_indevida']),
@@ -579,10 +642,10 @@ async function fetchOptionalTable(table, query) {
 }
 
 async function loadSupabaseData() {
-  const [responseResult, headcount, gpsRows] = await Promise.all([
+  const [responseResult, headcount, gpsRows, attachmentRows, formRows] = await Promise.all([
     fetchFirstAvailableTable(
       ['mobile_respostas', 'respostas'],
-      'select=id,formulario_id,usuario_id,dados_json,status,criado_em,enviado_em,erro_msg,tentativas&status=neq.excluido&order=criado_em.desc&limit=1000'
+      'select=*&status=neq.excluido&order=criado_em.desc&limit=1000'
     ),
     fetchSupabaseTable(
       'headcount_colaboradores',
@@ -591,6 +654,14 @@ async function loadSupabaseData() {
     fetchOptionalTable(
       'mobile_gps',
       'select=id,resposta_id,campo_id,latitude,longitude,precisao,altitude,capturado_em&order=capturado_em.asc&limit=10000'
+    ),
+    fetchOptionalTable(
+      'mobile_anexos',
+      'select=*&limit=10000'
+    ),
+    fetchOptionalTable(
+      'mobile_formularios',
+      'select=*&limit=500'
     ),
   ]);
 
@@ -602,9 +673,27 @@ async function loadSupabaseData() {
     return acc;
   }, {});
 
+  const attachmentsByResponse = attachmentRows
+    .map((row, index) => normalizeAttachment(row, index))
+    .reduce((acc, attachment) => {
+      const key = attachment.responseId;
+      if (!key) return acc;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(attachment);
+      return acc;
+    }, {});
+
   return {
-    records: responseResult.rows.map((row) => normalizeResponse(row, headcount, gpsByResponse[row.id] || [])),
+    records: responseResult.rows.map((row) => normalizeResponse(
+      row,
+      headcount,
+      gpsByResponse[row.id] || [],
+      attachmentsByResponse[row.id] || []
+    )),
     headcount,
+    formularios: formRows,
+    anexos: attachmentRows,
+    gpsRows,
     source: `Supabase / ${responseResult.table}`,
     error: '',
   };
@@ -614,6 +703,9 @@ function sampleData(error = '') {
   return {
     records: [],
     headcount: [],
+    formularios: [],
+    anexos: [],
+    gpsRows: [],
     source: 'Supabase indisponivel',
     error,
   };
@@ -637,6 +729,9 @@ export function refreshCqoData() {
       loading: true,
       records: [],
       headcount: [],
+      formularios: [],
+      anexos: [],
+      gpsRows: [],
       source: 'Atualizando...',
       error: '',
     })
@@ -671,6 +766,9 @@ export function useCqoData() {
       loading: true,
       records: [],
       headcount: [],
+      formularios: [],
+      anexos: [],
+      gpsRows: [],
       source: 'Carregando',
       error: '',
     };
@@ -820,6 +918,8 @@ export function aggregateRecords(records) {
     acc.cachoVerde += record.totals.cachoVerde || 0;
     acc.cachoMaduro += record.totals.cachoMaduro || 0;
     acc.cachoPassado += record.totals.cachoPassado || 0;
+    acc.cachoInfermo += record.totals.cachoInfermo || 0;
+    acc.bucha += record.totals.bucha || 0;
     acc.cachoMalPosicionado += record.totals.cachoMalPosicionado || 0;
     acc.cachoNaoCarreado += record.totals.cachoNaoCarreado || 0;
     acc.pesoMedio += record.totals.pesoMedio || 0;
@@ -853,6 +953,8 @@ export function aggregateRecords(records) {
     cachoVerde: 0,
     cachoMaduro: 0,
     cachoPassado: 0,
+    cachoInfermo: 0,
+    bucha: 0,
     cachoMalPosicionado: 0,
     cachoNaoCarreado: 0,
     pesoMedio: 0,

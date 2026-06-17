@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, CheckCircle2, Clock, Database, RefreshCcw, Server } from 'lucide-react';
+import { AlertCircle, Camera, CheckCircle2, Clock, Database, FileText, MapPin, RefreshCcw, Server } from 'lucide-react';
 import { useCqoData } from '../utils/cqoData';
 
 function formatDateTime(value) {
@@ -27,7 +27,7 @@ function SyncMetric({ title, value, subtitle, icon: Icon, tone = 'green', loadin
 }
 
 export default function SyncCenter({ isSyncing, triggerManualSync }) {
-  const { loading, records, source, error } = useCqoData();
+  const { loading, records, source, error, gpsRows = [], anexos = [], formularios = [] } = useCqoData();
   const synced = records.filter((record) => record.status === 'Sincronizado').length;
   const failed = records.filter((record) => record.status === 'Falha').length;
   const pending = records.filter((record) => record.status === 'Pendente').length;
@@ -95,6 +95,33 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
         />
       </div>
 
+      <div className="grid-container grid-cols-3">
+        <SyncMetric
+          title="Pontos GPS"
+          value={gpsRows.length}
+          subtitle="mobile_gps vinculados às fichas"
+          icon={MapPin}
+          tone="info"
+          loading={loading}
+        />
+        <SyncMetric
+          title="Anexos"
+          value={anexos.length}
+          subtitle="mobile_anexos sincronizados"
+          icon={Camera}
+          tone="orange"
+          loading={loading}
+        />
+        <SyncMetric
+          title="Formulários"
+          value={formularios.length}
+          subtitle="Catálogo mobile_formularios"
+          icon={FileText}
+          tone="green"
+          loading={loading}
+        />
+      </div>
+
       <div className="sync-flow-grid">
         <div>
           <Server size={20} />
@@ -106,7 +133,7 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
           <Database size={20} />
           <span>Banco online</span>
           <strong>Supabase</strong>
-          <small>mobile_respostas e headcount.</small>
+          <small>mobile_respostas, mobile_gps, mobile_anexos, mobile_formularios e headcount.</small>
         </div>
         <div>
           <CheckCircle2 size={20} />

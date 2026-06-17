@@ -944,6 +944,8 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
                 <QualityBar label="Cachos verdes" value={totalsCorte.cachoVerde} max={Math.max(totalsCorte.cachosObservados, 1)} color="#F59E0B" loading={loading} />
                 <QualityBar label="Cachos passados" value={totalsCorte.cachoPassado} max={Math.max(totalsCorte.cachosObservados, 1)} color="#EF4444" loading={loading} />
                 <QualityBar label="Cachos esquecidos" value={totalsCorte.cachoEsquecido} max={Math.max(totalsCorte.cachosObservados, 1)} color="var(--orange-institutional)" loading={loading} />
+                <QualityBar label="Cachos infermos" value={totalsCorte.cachoInfermo || 0} max={Math.max(totalsCorte.cachosObservados, 1)} color="#EF4444" loading={loading} />
+                <QualityBar label="Bucha" value={totalsCorte.bucha || 0} max={Math.max(totalsCorte.cachosObservados, 1)} color="#64748B" loading={loading} />
                 <QualityBar label="Cachos estrela" value={totalsCorte.cachoEstrela || 0} max={Math.max(totalsCorte.cachosObservados, 1)} color="#8B5CF6" loading={loading} />
                 <QualityBar label="Cachos brocados" value={totalsCorte.cachoBrocado || 0} max={Math.max(totalsCorte.cachosObservados, 1)} color="#DC2626" loading={loading} />
                 <QualityBar label="Cachos avermelhados" value={totalsCorte.cachoAvermelhado || 0} max={Math.max(totalsCorte.cachosObservados, 1)} color="#B45309" loading={loading} />
