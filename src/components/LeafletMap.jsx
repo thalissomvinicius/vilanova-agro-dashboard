@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import { Flame, Layers, Map, Route, Satellite } from 'lucide-react';
+import { Flame, Layers, Map as MapIcon, Route, Satellite } from 'lucide-react';
 import { FARMS } from '../utils/mockData';
 import { filterRecords, useCqoData, aggregateRecords } from '../utils/cqoData';
 
@@ -162,6 +162,45 @@ function occurrenceHeatColor(point, fallbackColor) {
   return fallbackColor || '#F59E0B';
 }
 
+function occurrenceSeverity(point) {
+  const field = String(point?.fieldId || '').toLowerCase();
+  if (field.includes('esquecido') || field.includes('nao_carreado') || field.includes('fruto_solto')) return 3;
+  if (field.includes('verde') || field.includes('passado') || field.includes('avermelhado') || field.includes('mal_posicionado')) return 2;
+  return 1;
+}
+
+function heatRiskColor(score) {
+  if (score >= 30) return '#EF4444';
+  if (score >= 14) return '#F59E0B';
+  return '#D98C10';
+}
+
+function heatRiskLabel(score) {
+  if (score >= 30) return 'Alta incidência estimada';
+  if (score >= 14) return 'Incidência moderada estimada';
+  return 'Incidência baixa estimada';
+}
+
+function normalizeParcelCode(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function shapeParcelCode(props = {}) {
+  let shapeParcel = props.ID_PARCELA || props.IDE || props.ide || props.parcela || props.parcelId || '';
+  if (shapeParcel && props.farmId && String(shapeParcel).startsWith(`${props.farmId}-`)) {
+    shapeParcel = String(shapeParcel).replace(`${props.farmId}-`, '');
+  }
+  return shapeParcel;
+}
+
+function parcelHeatKey(farmId, parcel) {
+  return `${farmId || 'default'}|${normalizeParcelCode(parcel)}`;
+}
+
 export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -247,6 +286,32 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       farmFilter === 'all' || feature.properties?.farmId === farmFilter
     )) || []
   ), [parcelGeoJson, farmFilter]);
+
+  const heatByParcel = useMemo(() => {
+    const summaries = new globalThis.Map();
+
+    occurrencePoints.forEach((point) => {
+      const key = parcelHeatKey(point.record.farmId, point.record.parcel);
+      const current = summaries.get(key) || {
+        farmId: point.record.farmId,
+        farm: point.record.farm,
+        parcel: point.record.parcel,
+        points: 0,
+        uniqueCoords: new Set(),
+        lines: new Set(),
+        score: 0,
+        records: new Set(),
+      };
+      current.points += 1;
+      current.uniqueCoords.add(`${point.lat.toFixed(6)}|${point.lng.toFixed(6)}`);
+      current.lines.add(point.line || '--');
+      current.score += occurrenceSeverity(point) * Math.max(1, Number(point.quantity || 1));
+      current.records.add(point.record.id);
+      summaries.set(key, current);
+    });
+
+    return summaries;
+  }, [occurrencePoints]);
 
   const heatPoints = useMemo(() => {
     const sourcePoints = occurrencePoints.length ? occurrencePoints : trackPoints;
@@ -386,15 +451,25 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           let fillOpacity = mapLayer === 'polygon' ? 0.12 : 0.03;
           let weight = mapLayer === 'heat' ? 2 : 1.4;
 
-          let shapeParcel = props.ID_PARCELA || props.IDE || props.ide || props.parcela || props.parcelId || '';
-          if (shapeParcel && props.farmId && shapeParcel.startsWith(props.farmId + '-')) {
-            shapeParcel = shapeParcel.replace(props.farmId + '-', '');
+          const shapeParcel = shapeParcelCode(props);
+          const heatSummary = heatByParcel.get(parcelHeatKey(props.farmId, shapeParcel));
+
+          if (mapLayer === 'heat') {
+            if (heatSummary) {
+              fillColor = heatRiskColor(heatSummary.score);
+              fillOpacity = 0.56;
+              weight = 2.8;
+            } else {
+              fillColor = '#CBD5E1';
+              fillOpacity = 0.08;
+              weight = 1;
+            }
           }
 
           if (mapLayer === 'polygon' && shapeParcel) {
             const parcelRecords = filteredRecords.filter((r) =>
                reviewState(r) === 'approved' &&
-               String(r.parcel).toLowerCase() === String(shapeParcel).toLowerCase() &&
+               normalizeParcelCode(r.parcel) === normalizeParcelCode(shapeParcel) &&
                r.farmId === props.farmId
             );
             if (parcelRecords.length > 0) {
@@ -410,7 +485,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           }
 
           return {
-            color: style.color,
+            color: mapLayer === 'heat' && heatSummary ? heatRiskColor(heatSummary.score) : style.color,
             fillColor,
             fillOpacity,
             weight,
@@ -421,16 +496,14 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           const props = feature.properties || {};
           const style = farmStyle(props.farmId);
           
-          let shapeParcel = props.ID_PARCELA || props.IDE || props.ide || props.parcela || props.parcelId || '';
-          if (shapeParcel && props.farmId && shapeParcel.startsWith(props.farmId + '-')) {
-            shapeParcel = shapeParcel.replace(props.farmId + '-', '');
-          }
+          const shapeParcel = shapeParcelCode(props);
+          const heatSummary = heatByParcel.get(parcelHeatKey(props.farmId, shapeParcel));
           
           let scoreText = '';
           if (mapLayer === 'polygon' && shapeParcel) {
             const parcelRecords = filteredRecords.filter((r) =>
                reviewState(r) === 'approved' &&
-               String(r.parcel).toLowerCase() === String(shapeParcel).toLowerCase() &&
+               normalizeParcelCode(r.parcel) === normalizeParcelCode(shapeParcel) &&
                r.farmId === props.farmId
             );
             if (parcelRecords.length > 0) {
@@ -439,11 +512,20 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             }
           }
 
+          const heatText = mapLayer === 'heat' && heatSummary
+            ? `
+              <span style="font-size:11px;">Mapa de calor: <strong style="color:${heatRiskColor(heatSummary.score)}">${heatRiskLabel(heatSummary.score)}</strong></span><br/>
+              <span style="font-size:11px;">Amostragem: <strong>${heatSummary.points} pontos / ${heatSummary.lines.size} rua(s)</strong></span><br/>
+              <span style="font-size:11px;">Aplicação: <strong>parcela completa por estimativa</strong></span><br/>
+            `
+            : '';
+
           layer.bindPopup(`
             <div style="font-family: Inter, Segoe UI, sans-serif; max-width: 220px;">
               <strong style="color:${style.color};font-size:13px;">${props.farmName || 'Fazenda'}</strong><br/>
               <span style="font-size:11px;">Parcela: <strong>${shapeParcel || '--'}</strong></span><br/>
               ${scoreText}
+              ${heatText}
               <span style="font-size:11px;">Fonte: shapefile</span>
             </div>
           `);
@@ -567,6 +649,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
 
     if (mapLayer === 'heat') {
       heatPoints.forEach((point) => {
+        if (heatByParcel.has(parcelHeatKey(point.record.farmId, point.record.parcel))) return;
         const style = farmStyle(point.record.farmId);
         const heatColor = occurrenceHeatColor(point, style.fill);
         const radius = Math.max(24, Math.min(82, 22 + point.heatWeight * 24 + Number(point.accuracy || 0) * 2));
@@ -665,7 +748,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, parcelGeoJson, filteredParcelFeatures, filteredRecords]);
+  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, filteredParcelFeatures, filteredRecords]);
 
   return (
     <div className="card gps-map-card">
@@ -679,7 +762,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             className={baseLayer === 'standard' ? 'active' : ''}
             onClick={() => setBaseLayer('standard')}
           >
-            <Map size={13} />
+            <MapIcon size={13} />
             Padrão
           </button>
           <button
@@ -760,7 +843,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           ))}
           <div className="gps-map-note">
             <span>
-              {mapLayer === 'heat' && 'Calor estimado pelas ruas amostradas; os pontos sao evidencias reais.'}
+              {mapLayer === 'heat' && 'Calor aplicado na parcela completa com base nas ruas amostradas.'}
               {mapLayer === 'route' && 'GPS detalhado mostra as coordenadas reais numeradas dentro da parcela.'}
               {mapLayer === 'polygon' && 'Semaforo por parcela; use o calor para ver tendencia espacial da amostra.'}
             </span>
