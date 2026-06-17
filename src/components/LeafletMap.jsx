@@ -71,6 +71,20 @@ function recordWeight(record) {
   return Math.max(1, Math.min(10, lines + Math.floor(observed / 20)));
 }
 
+function reviewState(record) {
+  const status = String(record?.status || '').toLowerCase();
+  if (status.includes('aprov')) return 'approved';
+  if (status.includes('reprov')) return 'rejected';
+  return 'pending';
+}
+
+function markerColor(record, fallbackColor) {
+  const state = reviewState(record);
+  if (state === 'approved') return '#22C55E';
+  if (state === 'rejected') return '#EF4444';
+  return fallbackColor || '#F59E0B';
+}
+
 export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -268,7 +282,8 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           }
 
           if (mapLayer === 'polygon' && shapeParcel) {
-            const parcelRecords = filteredRecords.filter((r) => 
+            const parcelRecords = filteredRecords.filter((r) =>
+               reviewState(r) === 'approved' &&
                String(r.parcel).toLowerCase() === String(shapeParcel).toLowerCase() &&
                r.farmId === props.farmId
             );
@@ -303,7 +318,8 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           
           let scoreText = '';
           if (mapLayer === 'polygon' && shapeParcel) {
-            const parcelRecords = filteredRecords.filter((r) => 
+            const parcelRecords = filteredRecords.filter((r) =>
+               reviewState(r) === 'approved' &&
                String(r.parcel).toLowerCase() === String(shapeParcel).toLowerCase() &&
                r.farmId === props.farmId
             );
@@ -359,9 +375,10 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       const style = farmStyle(record.farmId);
       const markerPoint = record.gps || record.gpsTrack?.[0];
       if (!markerPoint) return;
+      const pinColor = markerColor(record, style.fill);
       const pinIcon = L.divIcon({
         className: 'custom-div-icon',
-        html: `<div style="background-color:${style.fill};width:14px;height:14px;transform:rotate(45deg);border:2px solid white;box-shadow:0 3px 8px rgba(0,0,0,0.35);"></div>`,
+        html: `<div style="background-color:${pinColor};width:14px;height:14px;transform:rotate(45deg);border:2px solid white;box-shadow:0 3px 8px rgba(0,0,0,0.35);"></div>`,
         iconSize: [14, 14],
         iconAnchor: [7, 7],
       });
@@ -378,7 +395,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             <span style="font-size:11px;">Ocorrencias GPS: <strong>${record.gpsOccurrences?.length || 0}</strong></span><br/>
             <span style="font-size:11px;">Pontos da trilha: <strong>${record.gpsTrack?.length || 1}</strong></span><br/>
             <span style="font-size:11px;">GPS: <strong>${markerPoint.label}</strong></span><br/>
-            <span style="font-size:11px;">Status: <strong>${record.status}</strong></span>
+            <span style="font-size:11px;">Status: <strong style="color:${pinColor};">${record.status}</strong></span>
           </div>
         `);
     });
@@ -522,7 +539,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             </div>
           ))}
           <div className="gps-map-note">
-            <span>{occurrencePoints.length ? 'Calor por ocorrencia georreferenciada' : 'Calor estimado pela trilha'}</span>
+            <span>{occurrencePoints.length ? 'GPS pendente aparece para auditoria; qualidade usa apenas aprovados.' : 'Calor estimado pela trilha'}</span>
           </div>
         </div>
       </div>
