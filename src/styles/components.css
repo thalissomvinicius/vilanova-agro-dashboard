@@ -3403,7 +3403,7 @@ body.presentation-active {
   line-height: 1.35;
 }
 
-.gps-map-stats > div:not(.gps-map-stats-total):not(.gps-map-note) {
+.gps-map-stats > div:not(.gps-map-stats-total):not(.gps-map-note):not(.gps-sample-grid):not(.gps-heat-legend) {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -3412,17 +3412,107 @@ body.presentation-active {
   opacity: 0.82;
 }
 
-.gps-map-stats > div:not(.gps-map-stats-total):not(.gps-map-note) span:first-child {
+.gps-map-stats > div:not(.gps-map-stats-total):not(.gps-map-note):not(.gps-sample-grid):not(.gps-heat-legend) span:first-child {
   width: 9px;
   height: 9px;
   border-radius: 2px;
   flex-shrink: 0;
 }
 
+.gps-sample-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 9px 0;
+}
+
+.gps-sample-grid div {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.06);
+}
+
+[data-theme='light'] .gps-sample-grid div {
+  background: rgba(245, 247, 249, 0.78);
+}
+
+.gps-sample-grid strong {
+  display: block;
+  color: inherit;
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.gps-sample-grid span {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
 .gps-map-note {
   margin-top: 9px;
   color: var(--text-muted);
   line-height: 1.35;
+}
+
+.gps-heat-legend {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.gps-heat-legend div {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  color: inherit;
+}
+
+.gps-heat-legend strong {
+  min-width: 0;
+  color: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.gps-legend-dot,
+.gps-legend-heat,
+.gps-legend-line {
+  display: block;
+  justify-self: center;
+}
+
+.gps-legend-dot-real {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--white);
+  border-radius: 999px;
+  background: var(--orange-institutional);
+  box-shadow: 0 0 0 3px rgba(232, 145, 0, 0.2);
+}
+
+.gps-legend-heat {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.54) 0 35%, rgba(245, 158, 11, 0.24) 36% 100%);
+}
+
+.gps-legend-line {
+  width: 18px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--green-institutional);
 }
 
 .segmented-control {

@@ -279,10 +279,13 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       total: geoRecords.length,
       gpsPoints: trackPoints.length,
       occurrencePoints: occurrencePoints.length,
+      sampledLines: new Set(occurrencePoints.map((point) => `${point.record.id}|${point.line}`)).size,
+      sampledParcels: new Set(geoRecords.map((record) => `${record.farmId}|${record.parcel}`)).size,
+      uniqueGpsPoints: allGpsPoints.length,
       byFarm,
       lineCount: geoRecords.reduce((sum, record) => sum + Number(record?.totals?.linhas || record?.lines?.length || 0), 0),
     };
-  }, [geoRecords, trackPoints, occurrencePoints]);
+  }, [geoRecords, trackPoints, occurrencePoints, allGpsPoints]);
 
   useEffect(() => {
     if (!mapContainerRef.current) return undefined;
@@ -729,7 +732,25 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
 
         <div className="gps-map-stats">
           <div className="gps-map-stats-total">
-            {geoStats.occurrencePoints} ocorrencias / {geoStats.gpsPoints} pontos GPS / {geoStats.total} coletas
+            {geoStats.total} coletas / {geoStats.sampledParcels} parcelas
+          </div>
+          <div className="gps-sample-grid">
+            <div>
+              <strong>{geoStats.sampledLines}</strong>
+              <span>ruas amostradas</span>
+            </div>
+            <div>
+              <strong>{geoStats.occurrencePoints}</strong>
+              <span>pontos reais</span>
+            </div>
+            <div>
+              <strong>{geoStats.uniqueGpsPoints}</strong>
+              <span>coord. unicas</span>
+            </div>
+            <div>
+              <strong>{geoStats.gpsPoints}</strong>
+              <span>trilha GPS</span>
+            </div>
           </div>
           {Object.entries(FARM_STYLES).filter(([id]) => id !== 'default').map(([id, style]) => (
             <div key={id}>
@@ -743,6 +764,20 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
               {mapLayer === 'route' && 'GPS detalhado mostra as coordenadas reais numeradas dentro da parcela.'}
               {mapLayer === 'polygon' && 'Semaforo por parcela; use o calor para ver tendencia espacial da amostra.'}
             </span>
+          </div>
+          <div className="gps-heat-legend" aria-label="Legenda do mapa CQO">
+            <div>
+              <span className="gps-legend-dot gps-legend-dot-real" />
+              <strong>GPS real</strong>
+            </div>
+            <div>
+              <span className="gps-legend-heat" />
+              <strong>estimativa por calor</strong>
+            </div>
+            <div>
+              <span className="gps-legend-line" />
+              <strong>rua/trilha amostrada</strong>
+            </div>
           </div>
         </div>
       </div>
