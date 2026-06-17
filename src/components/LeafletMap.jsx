@@ -218,9 +218,9 @@ function formatInteger(value) {
 
 function popupMetric(label, value, tone = '') {
   return `
-    <div style="padding:7px 8px;border:1px solid #E5E7EB;border-radius:7px;background:#F8FAFC;">
-      <span style="display:block;color:#64748B;font-size:10px;font-weight:800;text-transform:uppercase;line-height:1.2;">${label}</span>
-      <strong style="display:block;color:${tone || '#182230'};font-size:13px;line-height:1.25;margin-top:2px;">${value}</strong>
+    <div class="parcel-popup-metric">
+      <span>${label}</span>
+      <strong style="color:${tone || '#182230'};">${value}</strong>
     </div>
   `;
 }
@@ -235,10 +235,10 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, heatSumm
 
   const heatBlock = heatSummary
     ? `
-      <div style="margin-top:9px;padding:8px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.18);">
-        <strong style="display:block;color:${heatRiskColor(heatSummary.score)};font-size:12px;margin-bottom:5px;">${heatRiskLabel(heatSummary.score)}</strong>
-        <span style="display:block;font-size:11px;color:#475569;line-height:1.35;">${heatSummary.points} ocorrencias mapeadas, ${heatSummary.uniqueCoords.size} coordenadas unicas e ${heatSummary.lines.size} rua(s) amostrada(s).</span>
-        <span style="display:block;font-size:11px;color:#475569;line-height:1.35;margin-top:3px;">Aplicacao: parcela completa por estimativa CQO.</span>
+      <div class="parcel-popup-heat">
+        <strong style="color:${heatRiskColor(heatSummary.score)};">${heatRiskLabel(heatSummary.score)}</strong>
+        <span>${heatSummary.points} ocorrencias mapeadas, ${heatSummary.uniqueCoords.size} coordenadas unicas e ${heatSummary.lines.size} rua(s) amostrada(s).</span>
+        <span>Aplicacao: parcela completa por estimativa CQO.</span>
       </div>
     `
     : '';
@@ -273,23 +273,21 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, heatSumm
   ].join('');
 
   return `
-    <div style="font-family: Inter, Segoe UI, sans-serif; width: 330px; max-width: 330px;">
-      <strong style="color:${style.color};font-size:14px;">${props.farmName || 'Fazenda'}</strong>
-      <span style="display:block;font-size:11px;color:#475569;margin-top:3px;">Parcela: <strong>${shapeParcel || '--'}</strong> | Fonte: shapefile</span>
-      <span style="display:block;font-size:11px;color:#64748B;margin-top:2px;">Clique da parcela: numeros consolidados, nao ponto GPS.</span>
-      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:10px;">
-        ${mainMetrics}
+    <div class="parcel-popup-card">
+      <div class="parcel-popup-head">
+        <strong style="color:${style.color};">${props.farmName || 'Fazenda'}</strong>
+        <span>Parcela: <b>${shapeParcel || '--'}</b> | Fonte: shapefile</span>
+        <small>Clique da parcela: numeros consolidados, nao ponto GPS.</small>
       </div>
-      ${heatBlock}
-      <div style="margin-top:10px;color:#182230;font-size:11px;font-weight:850;text-transform:uppercase;">Indicadores da parcela</div>
-      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px;">
-        ${cutMetrics}
+      <div class="parcel-popup-scroll">
+        <div class="parcel-popup-grid">${mainMetrics}</div>
+        ${heatBlock}
+        <div class="parcel-popup-section">Indicadores da parcela</div>
+        <div class="parcel-popup-grid">${cutMetrics}</div>
+        <div class="parcel-popup-section">Percentuais</div>
+        <div class="parcel-popup-grid">${rateMetrics}</div>
+        ${mapLayer === 'heat' ? '<span class="parcel-popup-note">Mapa de calor aplica a amostragem sobre a parcela completa.</span>' : ''}
       </div>
-      <div style="margin-top:10px;color:#182230;font-size:11px;font-weight:850;text-transform:uppercase;">Percentuais</div>
-      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px;">
-        ${rateMetrics}
-      </div>
-      ${mapLayer === 'heat' ? '<span style="display:block;color:#64748B;font-size:10px;line-height:1.35;margin-top:9px;">Mapa de calor aplica a amostragem sobre a parcela completa.</span>' : ''}
     </div>
   `;
 }
@@ -608,7 +606,10 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             mapLayer,
           }), {
             maxWidth: 360,
-            minWidth: 330,
+            minWidth: 320,
+            autoPan: true,
+            autoPanPaddingTopLeft: [24, 120],
+            autoPanPaddingBottomRight: [380, 70],
           });
           if (layer.getBounds) farmLayerBounds.push(layer.getBounds());
         },
