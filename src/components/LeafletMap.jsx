@@ -201,6 +201,99 @@ function parcelHeatKey(farmId, parcel) {
   return `${farmId || 'default'}|${normalizeParcelCode(parcel)}`;
 }
 
+function formatDecimal(value, digits = 1) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return '0';
+  return parsed.toLocaleString('pt-BR', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+
+function formatInteger(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return '0';
+  return parsed.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+}
+
+function popupMetric(label, value, tone = '') {
+  return `
+    <div style="padding:7px 8px;border:1px solid #E5E7EB;border-radius:7px;background:#F8FAFC;">
+      <span style="display:block;color:#64748B;font-size:10px;font-weight:800;text-transform:uppercase;line-height:1.2;">${label}</span>
+      <strong style="display:block;color:${tone || '#182230'};font-size:13px;line-height:1.25;margin-top:2px;">${value}</strong>
+    </div>
+  `;
+}
+
+function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, heatSummary, mapLayer }) {
+  const totals = parcelRecords.length ? aggregateRecords(parcelRecords) : null;
+  const score = totals?.generalScore ?? 0;
+  const scoreColor = totals ? getScoreColor(score) : '#94A3B8';
+  const statusText = totals
+    ? `${formatInteger(totals.aprovados)} aprovado(s) / ${formatInteger(totals.reprovados)} reprovado(s)`
+    : 'Sem coleta aprovada';
+
+  const heatBlock = heatSummary
+    ? `
+      <div style="margin-top:9px;padding:8px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.18);">
+        <strong style="display:block;color:${heatRiskColor(heatSummary.score)};font-size:12px;margin-bottom:5px;">${heatRiskLabel(heatSummary.score)}</strong>
+        <span style="display:block;font-size:11px;color:#475569;line-height:1.35;">${heatSummary.points} ocorrencias mapeadas, ${heatSummary.uniqueCoords.size} coordenadas unicas e ${heatSummary.lines.size} rua(s) amostrada(s).</span>
+        <span style="display:block;font-size:11px;color:#475569;line-height:1.35;margin-top:3px;">Aplicacao: parcela completa por estimativa CQO.</span>
+      </div>
+    `
+    : '';
+
+  const mainMetrics = [
+    popupMetric('Nota CQO', totals ? score : 'N/D', scoreColor),
+    popupMetric('Coletas', formatInteger(parcelRecords.length)),
+    popupMetric('Status', statusText),
+    popupMetric('Linhas', formatInteger(totals?.linhas || 0)),
+  ].join('');
+
+  const cutMetrics = [
+    popupMetric('Plantas obs.', formatInteger(totals?.plantasObservadas || 0)),
+    popupMetric('Cachos obs.', formatInteger(totals?.cachosObservados || 0)),
+    popupMetric('Cacho esquecido', formatInteger(totals?.cachoEsquecido || 0), '#EF4444'),
+    popupMetric('Fruto solto/perda', `${formatDecimal(totals?.lostFrutosTon || 0, 2)} t`, '#EF4444'),
+    popupMetric('Maduro', formatInteger(totals?.cachoMaduro || 0)),
+    popupMetric('Verde', formatInteger(totals?.cachoVerde || 0), '#F59E0B'),
+    popupMetric('Passado', formatInteger(totals?.cachoPassado || 0), '#F59E0B'),
+    popupMetric('Avermelhado', formatInteger(totals?.cachoAvermelhado || 0), '#EF4444'),
+    popupMetric('Talo comprido', formatInteger(totals?.taloComprido || 0), '#D98C10'),
+    popupMetric('Estrela', formatInteger(totals?.cachoEstrela || 0), '#D98C10'),
+    popupMetric('Brocado', formatInteger(totals?.cachoBrocado || 0), '#D98C10'),
+    popupMetric('Mal posicionado', formatInteger(totals?.cachoMalPosicionado || 0), '#F59E0B'),
+  ].join('');
+
+  const rateMetrics = [
+    popupMetric('Perda corte', `${formatDecimal(totals?.perdaCorteRate || 0, 1)}%`, '#EF4444'),
+    popupMetric('Verde %', `${formatDecimal(totals?.cachoVerdeRate || 0, 1)}%`),
+    popupMetric('Passado %', `${formatDecimal(totals?.cachoPassadoRate || 0, 1)}%`),
+    popupMetric('Talo %', `${formatDecimal(totals?.taloCompridoRate || 0, 1)}%`),
+  ].join('');
+
+  return `
+    <div style="font-family: Inter, Segoe UI, sans-serif; width: 330px; max-width: 330px;">
+      <strong style="color:${style.color};font-size:14px;">${props.farmName || 'Fazenda'}</strong>
+      <span style="display:block;font-size:11px;color:#475569;margin-top:3px;">Parcela: <strong>${shapeParcel || '--'}</strong> | Fonte: shapefile</span>
+      <span style="display:block;font-size:11px;color:#64748B;margin-top:2px;">Clique da parcela: numeros consolidados, nao ponto GPS.</span>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:10px;">
+        ${mainMetrics}
+      </div>
+      ${heatBlock}
+      <div style="margin-top:10px;color:#182230;font-size:11px;font-weight:850;text-transform:uppercase;">Indicadores da parcela</div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px;">
+        ${cutMetrics}
+      </div>
+      <div style="margin-top:10px;color:#182230;font-size:11px;font-weight:850;text-transform:uppercase;">Percentuais</div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px;">
+        ${rateMetrics}
+      </div>
+      ${mapLayer === 'heat' ? '<span style="display:block;color:#64748B;font-size:10px;line-height:1.35;margin-top:9px;">Mapa de calor aplica a amostragem sobre a parcela completa.</span>' : ''}
+    </div>
+  `;
+}
+
 export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -498,37 +591,25 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           
           const shapeParcel = shapeParcelCode(props);
           const heatSummary = heatByParcel.get(parcelHeatKey(props.farmId, shapeParcel));
-          
-          let scoreText = '';
-          if (mapLayer === 'polygon' && shapeParcel) {
-            const parcelRecords = filteredRecords.filter((r) =>
-               reviewState(r) === 'approved' &&
-               normalizeParcelCode(r.parcel) === normalizeParcelCode(shapeParcel) &&
-               r.farmId === props.farmId
-            );
-            if (parcelRecords.length > 0) {
-              const totals = aggregateRecords(parcelRecords);
-              scoreText = `<span style="font-size:11px;">Nota CQO: <strong style="color:${getScoreColor(totals.generalScore)}">${totals.generalScore}</strong></span><br/>`;
-            }
-          }
+          const parcelRecords = shapeParcel
+            ? filteredRecords.filter((r) =>
+              reviewState(r) === 'approved' &&
+              normalizeParcelCode(r.parcel) === normalizeParcelCode(shapeParcel) &&
+              r.farmId === props.farmId
+            )
+            : [];
 
-          const heatText = mapLayer === 'heat' && heatSummary
-            ? `
-              <span style="font-size:11px;">Mapa de calor: <strong style="color:${heatRiskColor(heatSummary.score)}">${heatRiskLabel(heatSummary.score)}</strong></span><br/>
-              <span style="font-size:11px;">Amostragem: <strong>${heatSummary.points} pontos / ${heatSummary.lines.size} rua(s)</strong></span><br/>
-              <span style="font-size:11px;">Aplicação: <strong>parcela completa por estimativa</strong></span><br/>
-            `
-            : '';
-
-          layer.bindPopup(`
-            <div style="font-family: Inter, Segoe UI, sans-serif; max-width: 220px;">
-              <strong style="color:${style.color};font-size:13px;">${props.farmName || 'Fazenda'}</strong><br/>
-              <span style="font-size:11px;">Parcela: <strong>${shapeParcel || '--'}</strong></span><br/>
-              ${scoreText}
-              ${heatText}
-              <span style="font-size:11px;">Fonte: shapefile</span>
-            </div>
-          `);
+          layer.bindPopup(parcelNumbersPopup({
+            props,
+            shapeParcel,
+            style,
+            parcelRecords,
+            heatSummary,
+            mapLayer,
+          }), {
+            maxWidth: 360,
+            minWidth: 330,
+          });
           if (layer.getBounds) farmLayerBounds.push(layer.getBounds());
         },
       }).addTo(layers);
@@ -626,7 +707,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       L.marker([markerPoint.lat, markerPoint.lng], { icon: pinIcon })
         .addTo(layers)
         .bindTooltip(`${record.status} - ${record.gpsOccurrences?.length || record.gpsTrack?.length || 1} ponto(s) GPS`, {
-          permanent: geoRecords.length <= 5,
+          permanent: geoRecords.length <= 5 && !record.gpsOccurrences?.length,
           direction: 'top',
           offset: [0, -14],
           opacity: 0.95,
