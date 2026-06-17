@@ -111,6 +111,43 @@ function firstValidGpsPoint(record) {
   ].map(normalizeLatLng).find(Boolean) || null;
 }
 
+function occurrenceTitle(point) {
+  return point?.title
+    || point?.titulo
+    || point?.occurrence_meta?.titulo
+    || point?.fieldId
+    || point?.campo_id
+    || 'Ocorrencia GPS';
+}
+
+function occurrenceField(point) {
+  return point?.fieldId
+    || point?.campo_id
+    || point?.occurrence_meta?.campo_id
+    || '';
+}
+
+function occurrenceLine(point) {
+  return point?.line
+    || point?.linha
+    || point?.linha_index
+    || point?.occurrence_meta?.linha
+    || '--';
+}
+
+function occurrenceDisplayPoint(point) {
+  if (!point?.duplicateTotal || point.duplicateTotal <= 1) return point;
+  const angle = ((point.duplicateIndex || 0) / point.duplicateTotal) * Math.PI * 2;
+  const offsetMeters = 1.8;
+  const latOffset = (Math.cos(angle) * offsetMeters) / 111320;
+  const lngOffset = (Math.sin(angle) * offsetMeters) / (111320 * Math.cos((point.lat * Math.PI) / 180));
+  return {
+    ...point,
+    displayLat: point.lat + latOffset,
+    displayLng: point.lng + lngOffset,
+  };
+}
+
 export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -147,17 +184,39 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       }));
   }), [geoRecords]);
 
-  const occurrencePoints = useMemo(() => geoRecords.flatMap((record) => (
-    (record.gpsOccurrences?.length ? record.gpsOccurrences : [])
-      .map(normalizeLatLng)
-      .filter(Boolean)
-      .map((point, index) => ({
+  const occurrencePoints = useMemo(() => {
+    const points = geoRecords.flatMap((record) => (
+      (record.gpsOccurrences?.length ? record.gpsOccurrences : [])
+        .map(normalizeLatLng)
+        .filter(Boolean)
+        .map((point, index) => ({
+          ...point,
+          index,
+          record,
+          title: occurrenceTitle(point),
+          fieldId: occurrenceField(point),
+          line: occurrenceLine(point),
+          weight: Math.max(1, Number(point.quantity || 1)),
+        }))
+    ));
+
+    const duplicateGroups = points.reduce((acc, point) => {
+      const key = `${point.record.id}|${point.lat.toFixed(7)}|${point.lng.toFixed(7)}`;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(point);
+      return acc;
+    }, {});
+
+    return points.map((point) => {
+      const key = `${point.record.id}|${point.lat.toFixed(7)}|${point.lng.toFixed(7)}`;
+      const group = duplicateGroups[key] || [];
+      return occurrenceDisplayPoint({
         ...point,
-        index,
-        record,
-        weight: Math.max(1, Number(point.quantity || 1)),
-      }))
-  )), [geoRecords]);
+        duplicateIndex: group.indexOf(point),
+        duplicateTotal: group.length,
+      });
+    });
+  }, [geoRecords]);
 
   const allGpsPoints = useMemo(() => {
     const seen = new Set();
@@ -405,7 +464,48 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       });
     }
 
+    const gpsPointIcon = (point, index, pinColor) => L.divIcon({
+      className: 'custom-div-icon gps-occurrence-marker',
+      html: `
+        <span style="--gps-point-color:${pinColor};">
+          ${index + 1}
+        </span>
+      `,
+      iconSize: [26, 26],
+      iconAnchor: [13, 13],
+    });
+
+    occurrencePoints.forEach((point, index) => {
+      const style = farmStyle(point.record.farmId);
+      const pinColor = markerColor(point.record, style.fill);
+      const pointLat = Number(point.displayLat || point.lat);
+      const pointLng = Number(point.displayLng || point.lng);
+
+      L.marker([pointLat, pointLng], { icon: gpsPointIcon(point, index, pinColor) })
+        .addTo(layers)
+        .bindTooltip(`${index + 1}. ${point.title}`, {
+          direction: 'top',
+          offset: [0, -12],
+          opacity: 0.95,
+          className: 'gps-marker-tooltip',
+        })
+        .bindPopup(`
+          <div style="font-family: Inter, Segoe UI, sans-serif; max-width: 260px;">
+            <strong style="color:${style.color};font-size:12px;">Ponto GPS ${index + 1}</strong><br/>
+            <span style="font-size:11px;">Ocorrencia: <strong>${point.title}</strong></span><br/>
+            <span style="font-size:11px;">Campo: <strong>${point.fieldId || '--'}</strong></span><br/>
+            <span style="font-size:11px;">Linha: <strong>${point.line}</strong></span><br/>
+            <span style="font-size:11px;">Fazenda: <strong>${point.record.farm}</strong></span><br/>
+            <span style="font-size:11px;">Parcela: <strong>${point.record.parcel}</strong></span><br/>
+            <span style="font-size:11px;">Quantidade: <strong>${point.quantity || 1}</strong></span><br/>
+            <span style="font-size:11px;">GPS original: <strong>${point.label}</strong></span><br/>
+            <span style="font-size:11px;">Status: <strong style="color:${pinColor};">${point.record.status}</strong></span>
+          </div>
+        `);
+    });
+
     geoRecords.forEach((record) => {
+      if (record.gpsOccurrences?.length) return;
       const style = farmStyle(record.farmId);
       const markerPoint = firstValidGpsPoint(record);
       if (!markerPoint) return;

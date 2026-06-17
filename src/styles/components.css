@@ -3288,6 +3288,25 @@ body.presentation-active {
   display: none;
 }
 
+.gps-occurrence-marker span {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--white);
+  border-radius: 999px;
+  background: var(--gps-point-color, var(--orange-institutional));
+  color: var(--white);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 7px 16px rgba(15, 23, 42, 0.34), 0 0 0 4px rgba(232, 145, 0, 0.16);
+}
+
+.gps-occurrence-marker:hover span {
+  transform: scale(1.1);
+}
+
 .gps-map-overlay {
   z-index: 10;
   width: 306px;
