@@ -14,7 +14,7 @@ import {
   Trash2,
   User,
 } from 'lucide-react';
-import { filterRecords, updateResponseReviewStatus, deleteResponseRecord, useCqoData } from '../utils/cqoData';
+import { filterRecords, updateResponseReviewStatus, deleteResponseRecord, refreshCqoData, useCqoData } from '../utils/cqoData';
 import { exportDashboardRecord } from '../utils/reportExporter';
 
 function statusBadge(status) {
@@ -121,6 +121,9 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
       const label = status === 'aprovado' ? 'Aprovado' : 'Reprovado';
       setReviewOverrides((prev) => ({ ...prev, [selectedRecord.id]: label }));
       setSelectedRecord((prev) => (prev ? { ...prev, status: label } : prev));
+      await refreshCqoData().catch((syncError) => {
+        console.warn('Nao foi possivel atualizar o cache global apos validacao:', syncError);
+      });
     } catch (reviewError) {
       window.alert(`Não foi possível atualizar a validação: ${reviewError.message}`);
     } finally {
@@ -137,6 +140,9 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
       await deleteResponseRecord(selectedRecord.id);
       setDeletedRecords(prev => new Set(prev).add(selectedRecord.id));
       setSelectedRecord(null);
+      await refreshCqoData().catch((syncError) => {
+        console.warn('Nao foi possivel atualizar o cache global apos exclusao:', syncError);
+      });
     } catch (error) {
       window.alert(`Não foi possível excluir a ficha: ${error.message}`);
     } finally {
