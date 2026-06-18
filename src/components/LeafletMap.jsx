@@ -169,16 +169,16 @@ function occurrenceSeverity(point) {
   return 1;
 }
 
-function heatRiskColor(score) {
-  if (score >= 30) return '#EF4444';
-  if (score >= 14) return '#F59E0B';
+function heatRiskColorByHa(scorePerHa) {
+  if (scorePerHa >= 6) return '#EF4444';
+  if (scorePerHa >= 2.5) return '#F59E0B';
   return '#D98C10';
 }
 
-function heatRiskLabel(score) {
-  if (score >= 30) return 'Alta incidência estimada';
-  if (score >= 14) return 'Incidência moderada estimada';
-  return 'Incidência baixa estimada';
+function heatRiskLabelByHa(scorePerHa) {
+  if (scorePerHa >= 6) return 'Alta incidencia por hectare';
+  if (scorePerHa >= 2.5) return 'Incidencia moderada por hectare';
+  return 'Incidencia baixa por hectare';
 }
 
 function normalizeParcelCode(value) {
@@ -199,6 +199,44 @@ function shapeParcelCode(props = {}) {
 
 function parcelHeatKey(farmId, parcel) {
   return `${farmId || 'default'}|${normalizeParcelCode(parcel)}`;
+}
+
+function numericProp(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  const parsed = Number(String(value || '').replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parcelAreaHa(props = {}) {
+  return numericProp(
+    props.HECTARE_PA
+    || props.HECTARES
+    || props.HECTARE
+    || props.AREA_HA
+    || props.areaHa
+  );
+}
+
+function parcelPlants(props = {}) {
+  return numericProp(
+    props.N_PLANTA
+    || props.TOTAL_PLANTAS
+    || props.PLANTAS
+    || props.plantas
+  );
+}
+
+function parcelDensity(props = {}) {
+  const density = numericProp(props.DENSIDADE || props.DENSITY || props.densidade);
+  if (density) return density;
+  const areaHa = parcelAreaHa(props);
+  const plants = parcelPlants(props);
+  return areaHa > 0 ? plants / areaHa : 0;
+}
+
+function perHa(value, areaHa) {
+  const parsed = Number(value || 0);
+  return areaHa > 0 ? parsed / areaHa : 0;
 }
 
 function formatDecimal(value, digits = 1) {
@@ -227,8 +265,13 @@ function popupMetric(label, value, tone = '') {
 
 function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, heatSummary, mapLayer }) {
   const totals = parcelRecords.length ? aggregateRecords(parcelRecords) : null;
+  const areaHa = parcelAreaHa(props);
+  const plantsShape = parcelPlants(props);
+  const densityShape = parcelDensity(props);
   const score = totals?.generalScore ?? 0;
   const scoreColor = totals ? getScoreColor(score) : '#94A3B8';
+  const heatScorePerHa = heatSummary ? perHa(heatSummary.score, areaHa) : 0;
+  const lostCachos = (totals?.cachoEsquecido || 0) + (totals?.cachoNaoCarreado || 0);
   const statusText = totals
     ? `${formatInteger(totals.aprovados)} aprovado(s) / ${formatInteger(totals.reprovados)} reprovado(s)`
     : 'Sem coleta aprovada';
@@ -236,9 +279,10 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, heatSumm
   const heatBlock = heatSummary
     ? `
       <div class="parcel-popup-heat">
-        <strong style="color:${heatRiskColor(heatSummary.score)};">${heatRiskLabel(heatSummary.score)}</strong>
+        <strong style="color:${heatRiskColorByHa(heatScorePerHa)};">${heatRiskLabelByHa(heatScorePerHa)}</strong>
         <span>${heatSummary.points} ocorrencias mapeadas, ${heatSummary.uniqueCoords.size} coordenadas unicas e ${heatSummary.lines.size} rua(s) amostrada(s).</span>
-        <span>Aplicacao: parcela completa por estimativa CQO.</span>
+        <span>Peso do calor: ${formatDecimal(heatScorePerHa, 2)} ponto(s)/ha.</span>
+        <span>Aplicacao: amostragem validada para a parcela inteira.</span>
       </div>
     `
     : '';
@@ -248,6 +292,17 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, heatSumm
     popupMetric('Coletas', formatInteger(parcelRecords.length)),
     popupMetric('Status', statusText),
     popupMetric('Linhas', formatInteger(totals?.linhas || 0)),
+    popupMetric('Area shape', areaHa ? `${formatDecimal(areaHa, 2)} ha` : 'N/D'),
+    popupMetric('Plantas shape', plantsShape ? formatInteger(plantsShape) : 'N/D'),
+  ].join('');
+
+  const hectareMetrics = [
+    popupMetric('Densidade', densityShape ? `${formatDecimal(densityShape, 0)} pl/ha` : 'N/D'),
+    popupMetric('Plantas obs./ha', areaHa ? formatDecimal(perHa(totals?.plantasObservadas || 0, areaHa), 1) : 'N/D'),
+    popupMetric('Ocorrencias/ha', areaHa && heatSummary ? formatDecimal(perHa(heatSummary.points, areaHa), 2) : 'N/D', '#D98C10'),
+    popupMetric('Peso calor/ha', areaHa && heatSummary ? formatDecimal(heatScorePerHa, 2) : 'N/D', heatSummary ? heatRiskColorByHa(heatScorePerHa) : ''),
+    popupMetric('Cachos perda/ha', areaHa ? formatDecimal(perHa(lostCachos, areaHa), 2) : 'N/D', '#EF4444'),
+    popupMetric('Perda fruta/ha', areaHa ? `${formatDecimal(perHa(totals?.lostFrutosTon || 0, areaHa), 3)} t/ha` : 'N/D', '#EF4444'),
   ].join('');
 
   const cutMetrics = [
@@ -282,11 +337,13 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, heatSumm
       <div class="parcel-popup-scroll">
         <div class="parcel-popup-grid">${mainMetrics}</div>
         ${heatBlock}
+        <div class="parcel-popup-section">Estimativa por hectare</div>
+        <div class="parcel-popup-grid">${hectareMetrics}</div>
         <div class="parcel-popup-section">Indicadores da parcela</div>
         <div class="parcel-popup-grid">${cutMetrics}</div>
         <div class="parcel-popup-section">Percentuais</div>
         <div class="parcel-popup-grid">${rateMetrics}</div>
-        ${mapLayer === 'heat' ? '<span class="parcel-popup-note">Mapa de calor aplica a amostragem sobre a parcela completa.</span>' : ''}
+        ${mapLayer === 'heat' ? '<span class="parcel-popup-note">Mapa de calor normalizado por hectare e aplicado ao poligono completo da parcela.</span>' : ''}
       </div>
     </div>
   `;
@@ -544,12 +601,27 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
 
           const shapeParcel = shapeParcelCode(props);
           const heatSummary = heatByParcel.get(parcelHeatKey(props.farmId, shapeParcel));
+          const areaHa = parcelAreaHa(props);
+          const parcelRecords = shapeParcel
+            ? filteredRecords.filter((r) =>
+              reviewState(r) === 'approved' &&
+              normalizeParcelCode(r.parcel) === normalizeParcelCode(shapeParcel) &&
+              r.farmId === props.farmId
+            )
+            : [];
+          const parcelTotals = parcelRecords.length ? aggregateRecords(parcelRecords) : null;
 
           if (mapLayer === 'heat') {
             if (heatSummary) {
-              fillColor = heatRiskColor(heatSummary.score);
+              const scorePerHa = perHa(heatSummary.score, areaHa);
+              fillColor = heatRiskColorByHa(scorePerHa);
               fillOpacity = 0.56;
               weight = 2.8;
+            } else if (parcelTotals && areaHa > 0 && parcelTotals.lostCachosQty > 0) {
+              const lossPerHa = perHa(parcelTotals.lostCachosQty, areaHa);
+              fillColor = heatRiskColorByHa(lossPerHa);
+              fillOpacity = 0.42;
+              weight = 2.2;
             } else {
               fillColor = '#CBD5E1';
               fillOpacity = 0.08;
@@ -558,14 +630,8 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           }
 
           if (mapLayer === 'polygon' && shapeParcel) {
-            const parcelRecords = filteredRecords.filter((r) =>
-               reviewState(r) === 'approved' &&
-               normalizeParcelCode(r.parcel) === normalizeParcelCode(shapeParcel) &&
-               r.farmId === props.farmId
-            );
-            if (parcelRecords.length > 0) {
-              const totals = aggregateRecords(parcelRecords);
-              fillColor = getScoreColor(totals.generalScore);
+            if (parcelTotals) {
+              fillColor = getScoreColor(parcelTotals.generalScore);
               fillOpacity = 0.55;
               weight = 2;
             } else {
@@ -576,7 +642,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           }
 
           return {
-            color: mapLayer === 'heat' && heatSummary ? heatRiskColor(heatSummary.score) : style.color,
+            color: mapLayer === 'heat' && heatSummary ? heatRiskColorByHa(perHa(heatSummary.score, areaHa)) : style.color,
             fillColor,
             fillOpacity,
             weight,
@@ -925,7 +991,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           ))}
           <div className="gps-map-note">
             <span>
-              {mapLayer === 'heat' && 'Calor aplicado na parcela completa com base nas ruas amostradas.'}
+              {mapLayer === 'heat' && 'Calor por hectare aplicado na parcela completa com base nas ruas amostradas.'}
               {mapLayer === 'route' && 'GPS detalhado mostra as coordenadas reais numeradas dentro da parcela.'}
               {mapLayer === 'polygon' && 'Semaforo por parcela; use o calor para ver tendencia espacial da amostra.'}
             </span>
