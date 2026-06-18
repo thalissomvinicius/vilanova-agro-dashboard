@@ -239,6 +239,12 @@ function perHa(value, areaHa) {
   return areaHa > 0 ? parsed / areaHa : 0;
 }
 
+function percentOf(value, total) {
+  const parsedValue = Number(value || 0);
+  const parsedTotal = Number(total || 0);
+  return parsedTotal > 0 ? (parsedValue / parsedTotal) * 100 : 0;
+}
+
 function formatDecimal(value, digits = 1) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return '0';
@@ -263,68 +269,52 @@ function popupMetric(label, value, tone = '') {
   `;
 }
 
-function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, heatSummary, mapLayer }) {
+function popupPercentRow(label, value, tone = '') {
+  return `
+    <div class="parcel-popup-percent-row">
+      <span>${label}</span>
+      <strong style="color:${tone || '#182230'};">${value}</strong>
+    </div>
+  `;
+}
+
+function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, heatSummary }) {
   const totals = parcelRecords.length ? aggregateRecords(parcelRecords) : null;
   const areaHa = parcelAreaHa(props);
-  const plantsShape = parcelPlants(props);
   const densityShape = parcelDensity(props);
   const score = totals?.generalScore ?? 0;
   const scoreColor = totals ? getScoreColor(score) : '#94A3B8';
   const heatScorePerHa = heatSummary ? perHa(heatSummary.score, areaHa) : 0;
-  const lostCachos = (totals?.cachoEsquecido || 0) + (totals?.cachoNaoCarreado || 0);
   const statusText = totals
-    ? `${formatInteger(totals.aprovados)} aprovado(s) / ${formatInteger(totals.reprovados)} reprovado(s)`
+    ? `${formatInteger(totals.aprovados)} aprov. / ${formatInteger(totals.reprovados)} reprov.`
     : 'Sem coleta aprovada';
 
   const heatBlock = heatSummary
     ? `
       <div class="parcel-popup-heat">
         <strong style="color:${heatRiskColorByHa(heatScorePerHa)};">${heatRiskLabelByHa(heatScorePerHa)}</strong>
-        <span>${heatSummary.points} ocorrencias mapeadas, ${heatSummary.uniqueCoords.size} coordenadas unicas e ${heatSummary.lines.size} rua(s) amostrada(s).</span>
-        <span>Peso do calor: ${formatDecimal(heatScorePerHa, 2)} ponto(s)/ha.</span>
-        <span>Aplicacao: amostragem validada para a parcela inteira.</span>
+        <span>${formatDecimal(heatScorePerHa, 2)} ponto(s)/ha - ${heatSummary.lines.size} rua(s) amostrada(s).</span>
       </div>
     `
     : '';
 
   const mainMetrics = [
-    popupMetric('Nota CQO', totals ? score : 'N/D', scoreColor),
-    popupMetric('Coletas', formatInteger(parcelRecords.length)),
-    popupMetric('Status', statusText),
-    popupMetric('Linhas', formatInteger(totals?.linhas || 0)),
-    popupMetric('Area shape', areaHa ? `${formatDecimal(areaHa, 2)} ha` : 'N/D'),
-    popupMetric('Plantas shape', plantsShape ? formatInteger(plantsShape) : 'N/D'),
-  ].join('');
-
-  const hectareMetrics = [
-    popupMetric('Densidade', densityShape ? `${formatDecimal(densityShape, 0)} pl/ha` : 'N/D'),
-    popupMetric('Plantas obs./ha', areaHa ? formatDecimal(perHa(totals?.plantasObservadas || 0, areaHa), 1) : 'N/D'),
-    popupMetric('Ocorrencias/ha', areaHa && heatSummary ? formatDecimal(perHa(heatSummary.points, areaHa), 2) : 'N/D', '#D98C10'),
-    popupMetric('Peso calor/ha', areaHa && heatSummary ? formatDecimal(heatScorePerHa, 2) : 'N/D', heatSummary ? heatRiskColorByHa(heatScorePerHa) : ''),
-    popupMetric('Cachos perda/ha', areaHa ? formatDecimal(perHa(lostCachos, areaHa), 2) : 'N/D', '#EF4444'),
+    popupMetric('Nota CQO', totals ? `${formatDecimal(score, 0)}%` : 'N/D', scoreColor),
+    popupMetric('Area', areaHa ? `${formatDecimal(areaHa, 2)} ha` : 'N/D'),
+    popupMetric('Linhas amostradas', formatInteger(totals?.linhas || 0)),
+    popupMetric('Plantas obs.', formatInteger(totals?.plantasObservadas || 0)),
+    popupMetric('Cachos obs.', formatInteger(totals?.cachosObservados || 0)),
     popupMetric('Perda fruta/ha', areaHa ? `${formatDecimal(perHa(totals?.lostFrutosTon || 0, areaHa), 3)} t/ha` : 'N/D', '#EF4444'),
   ].join('');
 
-  const cutMetrics = [
-    popupMetric('Plantas obs.', formatInteger(totals?.plantasObservadas || 0)),
-    popupMetric('Cachos obs.', formatInteger(totals?.cachosObservados || 0)),
-    popupMetric('Cacho esquecido', formatInteger(totals?.cachoEsquecido || 0), '#EF4444'),
-    popupMetric('Fruto solto/perda', `${formatDecimal(totals?.lostFrutosTon || 0, 2)} t`, '#EF4444'),
-    popupMetric('Maduro', formatInteger(totals?.cachoMaduro || 0)),
-    popupMetric('Verde', formatInteger(totals?.cachoVerde || 0), '#F59E0B'),
-    popupMetric('Passado', formatInteger(totals?.cachoPassado || 0), '#F59E0B'),
-    popupMetric('Avermelhado', formatInteger(totals?.cachoAvermelhado || 0), '#EF4444'),
-    popupMetric('Talo comprido', formatInteger(totals?.taloComprido || 0), '#D98C10'),
-    popupMetric('Estrela', formatInteger(totals?.cachoEstrela || 0), '#D98C10'),
-    popupMetric('Brocado', formatInteger(totals?.cachoBrocado || 0), '#D98C10'),
-    popupMetric('Mal posicionado', formatInteger(totals?.cachoMalPosicionado || 0), '#F59E0B'),
-  ].join('');
-
-  const rateMetrics = [
-    popupMetric('Perda corte', `${formatDecimal(totals?.perdaCorteRate || 0, 1)}%`, '#EF4444'),
-    popupMetric('Verde %', `${formatDecimal(totals?.cachoVerdeRate || 0, 1)}%`),
-    popupMetric('Passado %', `${formatDecimal(totals?.cachoPassadoRate || 0, 1)}%`),
-    popupMetric('Talo %', `${formatDecimal(totals?.taloCompridoRate || 0, 1)}%`),
+  const percentMetrics = [
+    popupPercentRow('Cacho maduro', `${formatDecimal(percentOf(totals?.cachoMaduro, totals?.cachosObservados), 1)}%`, '#22C55E'),
+    popupPercentRow('Perda corte', `${formatDecimal(totals?.perdaCorteRate || 0, 1)}%`, '#EF4444'),
+    popupPercentRow('Cacho verde', `${formatDecimal(totals?.cachoVerdeRate || 0, 1)}%`, '#F59E0B'),
+    popupPercentRow('Cacho passado', `${formatDecimal(totals?.cachoPassadoRate || 0, 1)}%`, '#F59E0B'),
+    popupPercentRow('Avermelhado', `${formatDecimal(percentOf(totals?.cachoAvermelhado, totals?.cachosObservados), 1)}%`, '#EF4444'),
+    popupPercentRow('Talo comprido', `${formatDecimal(totals?.taloCompridoRate || 0, 1)}%`, '#D98C10'),
+    popupPercentRow('Nao carreado', `${formatDecimal(totals?.cachoNaoCarreadoRate || 0, 1)}%`, '#EF4444'),
   ].join('');
 
   return `
@@ -332,18 +322,13 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, heatSumm
       <div class="parcel-popup-head">
         <strong style="color:${style.color};">${props.farmName || 'Fazenda'}</strong>
         <span>Parcela: <b>${shapeParcel || '--'}</b> | Fonte: shapefile</span>
-        <small>Clique da parcela: numeros consolidados, nao ponto GPS.</small>
+        <small>${formatInteger(parcelRecords.length)} coleta(s) | ${statusText} | ${densityShape ? `${formatDecimal(densityShape, 0)} pl/ha` : 'densidade N/D'}</small>
       </div>
       <div class="parcel-popup-scroll">
         <div class="parcel-popup-grid">${mainMetrics}</div>
         ${heatBlock}
-        <div class="parcel-popup-section">Estimativa por hectare</div>
-        <div class="parcel-popup-grid">${hectareMetrics}</div>
-        <div class="parcel-popup-section">Indicadores da parcela</div>
-        <div class="parcel-popup-grid">${cutMetrics}</div>
-        <div class="parcel-popup-section">Percentuais</div>
-        <div class="parcel-popup-grid">${rateMetrics}</div>
-        ${mapLayer === 'heat' ? '<span class="parcel-popup-note">Mapa de calor normalizado por hectare e aplicado ao poligono completo da parcela.</span>' : ''}
+        <div class="parcel-popup-section">Percentuais principais</div>
+        <div class="parcel-popup-percent-list">${percentMetrics}</div>
       </div>
     </div>
   `;
@@ -669,7 +654,6 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             style,
             parcelRecords,
             heatSummary,
-            mapLayer,
           }), {
             maxWidth: 360,
             minWidth: 320,
