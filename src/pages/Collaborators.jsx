@@ -101,6 +101,11 @@ export default function Collaborators() {
 
   const active = rows.filter((row) => row.status === 'ATIVO').length;
   const departments = new Set(rows.map((row) => row.departamento).filter(Boolean)).size;
+  const availableStatuses = [...new Set(rows.map((row) => row.status).filter(Boolean))].sort();
+  const source = rows[0]?.source || '';
+  const referenceDate = rows[0]?.reference_date || '';
+  const sourceFile = rows[0]?.source_file || '';
+  const isSnapshotSource = source === 'headcount_import_snapshots';
 
   return (
     <div className="fade-in page-shell collaborators-page">
@@ -108,7 +113,12 @@ export default function Collaborators() {
         <div>
           <span className="page-eyebrow">Gestão operacional</span>
           <h2>Colaboradores</h2>
-          <p>Consulta da base de headcount usada pelo app e pelo dashboard para autenticar matrículas e identificar avaliadores.</p>
+          <p>
+            {isSnapshotSource
+              ? `Snapshot bruto do Headcount importado para o Supabase${referenceDate ? ` (${referenceDate})` : ''}.`
+              : 'Consulta da base de headcount usada pelo app e pelo dashboard para autenticar matrículas e identificar avaliadores.'}
+          </p>
+          {sourceFile ? <small className="hero-meta-line">Fonte: {sourceFile}</small> : null}
         </div>
         <div className="operational-hero-stats">
           <div><span>Total</span><strong>{rows.length}</strong></div>
@@ -147,6 +157,9 @@ export default function Collaborators() {
             <select className="header-filter-select" value={status} onChange={(event) => setStatus(event.target.value)}>
               <option value="ATIVO">Ativos</option>
               <option value="all">Todos</option>
+              {availableStatuses.filter((item) => item !== 'ATIVO').map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
             </select>
           </label>
         </div>
@@ -192,14 +205,16 @@ export default function Collaborators() {
                   <td style={{ textAlign: 'center' }}>
                     <button
                       className="btn btn-secondary btn-icon"
+                      disabled={row.source !== 'headcount_colaboradores'}
                       onClick={() => {
+                        if (row.source !== 'headcount_colaboradores') return;
                         setEditingCollab(row);
                         setEditStatus(row.status || 'ATIVO');
                         setEditSenha(row.senha || '');
                         setSaveError('');
                         setSaveSuccess(false);
                       }}
-                      title="Configurar acesso e senha"
+                      title={row.source === 'headcount_colaboradores' ? 'Configurar acesso e senha' : 'Snapshot bruto: edição feita na tabela de acesso'}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',

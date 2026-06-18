@@ -540,10 +540,88 @@ export async function authenticateDashboardUser(matricula, senha) {
 }
 
 export async function loadHeadcountData() {
-  return fetchSupabaseTable(
-    'headcount_colaboradores',
-    'select=matricula,nome,departamento,cargo,gestor,status,senha,reference_date,updated_at&order=nome.asc&limit=3000'
-  );
+  const snapshot = await loadHeadcountSnapshotData();
+  if (snapshot.rows.length) return snapshot.rows;
+
+  return fetchLegacyHeadcountData();
+}
+
+function pickHeadcountValue(row, keys) {
+  const normalizedEntries = Object.entries(row || {}).reduce((acc, [key, value]) => {
+    acc[normalizeText(key)] = value;
+    return acc;
+  }, {});
+
+  for (const key of keys) {
+    if (row?.[key] !== undefined && row?.[key] !== null && row?.[key] !== '') return row[key];
+    const normalized = normalizeText(key);
+    if (normalizedEntries[normalized] !== undefined && normalizedEntries[normalized] !== null && normalizedEntries[normalized] !== '') {
+      return normalizedEntries[normalized];
+    }
+  }
+
+  return '';
+}
+
+function normalizeHeadcountStatus(value) {
+  const text = String(value || '').trim();
+  if (!text) return 'SEM STATUS';
+  const normalized = normalizeText(text);
+  if (normalized.includes('ferias')) return 'FERIAS';
+  if (normalized.includes('demit') || normalized.includes('deslig') || normalized.includes('inativo')) return 'INATIVO';
+  if (normalized.includes('ativo')) return 'ATIVO';
+  return text.toUpperCase();
+}
+
+function normalizeHeadcountSnapshotRow(row, snapshot) {
+  const matricula = String(pickHeadcountValue(row, ['MATRÍCULA', 'MATRICULA', 'matricula'])).trim();
+  const nome = String(pickHeadcountValue(row, ['NOME', 'nome'])).trim();
+
+  return {
+    matricula,
+    nome,
+    departamento: String(pickHeadcountValue(row, ['DEPARTAMENTO', 'departamento'])).trim(),
+    cargo: String(pickHeadcountValue(row, ['FUNÇÃO', 'FUNCAO', 'FUNCAO/CARGO', 'CARGO', 'funcao', 'cargo'])).trim(),
+    gestor: String(pickHeadcountValue(row, ['GESTOR', 'gestor'])).trim(),
+    status: normalizeHeadcountStatus(pickHeadcountValue(row, ['STATUS AGR', 'STATUS_AGR', 'STATUS', 'status'])),
+    senha: '',
+    reference_date: snapshot?.reference_month || '',
+    updated_at: snapshot?.updated_at || snapshot?.imported_at || '',
+    source_file: snapshot?.source_file || '',
+    source_sheet: snapshot?.source_sheet || '',
+    source: 'headcount_import_snapshots',
+  };
+}
+
+async function loadHeadcountSnapshotData() {
+  const query = new URLSearchParams({
+    select: 'import_key,fonte,reference_month,source_file,source_sheet,total_rows,columns_json,rows_json,imported_at,updated_at',
+    fonte: 'eq.headcount_agricola',
+    order: 'reference_month.desc',
+    limit: '1',
+  }).toString();
+
+  try {
+    const snapshots = await fetchSupabaseTable('headcount_import_snapshots', query);
+    const snapshot = snapshots[0];
+    const rawRows = Array.isArray(snapshot?.rows_json) ? snapshot.rows_json : [];
+    const rows = rawRows
+      .map((row) => normalizeHeadcountSnapshotRow(row, snapshot))
+      .filter((row) => row.matricula || row.nome)
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    return { snapshot, rows };
+  } catch {
+    return { snapshot: null, rows: [] };
+  }
+}
+
+async function fetchLegacyHeadcountData(query = 'select=matricula,nome,departamento,cargo,gestor,status,senha,reference_date,updated_at&order=nome.asc&limit=3000') {
+  const rows = await fetchSupabaseTable('headcount_colaboradores', query);
+  return rows.map((row) => ({
+    ...row,
+    source: 'headcount_colaboradores',
+  }));
 }
 
 export async function updateCollaborator({ matricula, status, senha }) {
@@ -647,10 +725,7 @@ async function loadSupabaseData() {
       ['mobile_respostas', 'respostas'],
       'select=*&status=neq.excluido&order=criado_em.desc&limit=1000'
     ),
-    fetchSupabaseTable(
-      'headcount_colaboradores',
-      'select=matricula,nome,cargo,departamento,gestor,status&status=eq.ATIVO&limit=2000'
-    ),
+    loadHeadcountData(),
     fetchOptionalTable(
       'mobile_gps',
       'select=id,resposta_id,campo_id,latitude,longitude,precisao,altitude,capturado_em&order=capturado_em.asc&limit=10000'

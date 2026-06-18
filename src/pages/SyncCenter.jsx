@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, Camera, CheckCircle2, Clock, Database, FileText, MapPin, RefreshCcw, Server } from 'lucide-react';
+import { AlertCircle, Camera, CheckCircle2, Clock, Database, FileText, MapPin, RefreshCcw, Server, Users } from 'lucide-react';
 import { useCqoData } from '../utils/cqoData';
 
 function formatDateTime(value) {
@@ -27,11 +27,14 @@ function SyncMetric({ title, value, subtitle, icon: Icon, tone = 'green', loadin
 }
 
 export default function SyncCenter({ isSyncing, triggerManualSync }) {
-  const { loading, records, source, error, gpsRows = [], anexos = [], formularios = [] } = useCqoData();
+  const { loading, records, source, error, gpsRows = [], anexos = [], formularios = [], headcount = [] } = useCqoData();
   const synced = records.filter((record) => record.status === 'Sincronizado').length;
   const failed = records.filter((record) => record.status === 'Falha').length;
   const pending = records.filter((record) => record.status === 'Pendente').length;
   const lastRecord = records[0];
+  const headcountSource = headcount[0]?.source === 'headcount_import_snapshots'
+    ? `Snapshot ${headcount[0]?.reference_date || ''}`.trim()
+    : 'headcount_colaboradores';
 
   return (
     <div className="fade-in page-shell sync-page">
@@ -95,7 +98,7 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
         />
       </div>
 
-      <div className="grid-container grid-cols-3">
+      <div className="grid-container grid-cols-4">
         <SyncMetric
           title="Pontos GPS"
           value={gpsRows.length}
@@ -118,6 +121,14 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
           subtitle="Catálogo mobile_formularios"
           icon={FileText}
           tone="green"
+          loading={loading}
+        />
+        <SyncMetric
+          title="Headcount"
+          value={headcount.length}
+          subtitle={headcountSource}
+          icon={Users}
+          tone="info"
           loading={loading}
         />
       </div>
