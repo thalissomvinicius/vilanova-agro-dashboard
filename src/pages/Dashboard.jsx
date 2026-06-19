@@ -2,12 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
-  Activity,
-  Gauge,
   Maximize2,
   MonitorPlay,
-  Target,
-  Trophy,
   X,
 } from 'lucide-react';
 import { parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
@@ -22,37 +18,6 @@ function formatNumber(value, digits = 0) {
 
 function formatPercent(value, digits = 2) {
   return `${formatNumber(value, digits)}%`;
-}
-
-function formatMonthYear(dateFrom, dateTo) {
-  if (!dateFrom || !dateTo) return null;
-  const from = new Date(`${dateFrom}T00:00:00`);
-  const to = new Date(`${dateTo}T00:00:00`);
-  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null;
-  const lastDay = new Date(from.getFullYear(), from.getMonth() + 1, 0).getDate();
-  const isFullMonth = from.getDate() === 1
-    && to.getDate() === lastDay
-    && from.getMonth() === to.getMonth()
-    && from.getFullYear() === to.getFullYear();
-  const isFullYear = from.getDate() === 1
-    && from.getMonth() === 0
-    && to.getDate() === 31
-    && to.getMonth() === 11
-    && from.getFullYear() === to.getFullYear();
-
-  if (isFullYear) return String(from.getFullYear());
-  if (!isFullMonth) return null;
-
-  const month = new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(from);
-  return `${month.charAt(0).toUpperCase()}${month.slice(1)}/${from.getFullYear()}`;
-}
-
-function periodLabel(periodFilter, dateFrom, dateTo) {
-  if (periodFilter === 'today') return 'Hoje';
-  if (periodFilter === 'week') return 'Ultimos 7 dias';
-  if (periodFilter === 'month') return 'Este mes';
-  if (periodFilter === 'custom') return formatMonthYear(dateFrom, dateTo) || `${dateFrom || 'Inicio'} ate ${dateTo || 'Fim'}`;
-  return 'Todos os tempos';
 }
 
 function weekNumberLabel(label) {
@@ -134,124 +99,6 @@ function qualityTone(value, meta, goodWhen = 'low') {
   if (numeric <= meta) return { tone: 'green', color: 'var(--status-success)', status: 'Dentro da meta' };
   if (numeric <= meta * 1.25) return { tone: 'orange', color: 'var(--status-warning)', status: 'Atencao' };
   return { tone: 'danger', color: 'var(--status-danger)', status: 'Fora da meta' };
-}
-
-function buildFieldInsights(model, dailyBunchRows, periodText, loading = false) {
-  if (loading) {
-    return {
-      alertText: 'Carregando base e recalculando metas do período.',
-      alertTone: 'info',
-      bestText: 'Ranking será exibido após a leitura dos dados.',
-      riskText: 'Ponto crítico será calculado com os registros carregados.',
-      trendText: 'Tendência será exibida ao concluir o carregamento.',
-      trendTone: 'info',
-    };
-  }
-
-  if (!model.records?.length) {
-    return {
-      alertText: `Sem coletas em ${periodText}.`,
-      alertTone: 'info',
-      bestText: 'Sem ranking de fazenda no filtro.',
-      riskText: 'Sem fazenda crítica no filtro.',
-      trendText: 'Tendência será exibida quando houver coletas.',
-      trendTone: 'info',
-    };
-  }
-
-  const quality = model.quality || {};
-  const alerts = [
-    { label: 'Cacho maduro', value: quality.cachoMaduroPct, meta: 85, goodWhen: 'high' },
-    { label: 'Cacho passado', value: quality.cachoPassadoPct, meta: 10, goodWhen: 'low' },
-    { label: 'Cacho verde', value: quality.cachoVerdePct, meta: 1, goodWhen: 'low' },
-    { label: 'Cacho avermelhado', value: quality.cachoAvermelhadoPct, meta: 4, goodWhen: 'low' },
-    { label: 'Talo comprido', value: quality.taloCompridoPct, meta: 3, goodWhen: 'low' },
-    { label: 'Cacho estrela', value: quality.cachoEstrelaPct, meta: 2, goodWhen: 'low' },
-  ].filter((item) => {
-    const value = Number(item.value || 0);
-    return item.goodWhen === 'high' ? value < item.meta : value > item.meta;
-  });
-
-  const farmRanking = model.farmRows
-    .map((row) => {
-      const values = qualityValuesFromRow(row);
-      return {
-        label: row.label,
-        maduro: values.maduro,
-        risco: values.passado + values.avermelhado + values.verde,
-        recordsCount: values.samples || row.records?.length || 0,
-      };
-    })
-    .filter((row) => row.recordsCount > 0);
-
-  const bestFarm = [...farmRanking].sort((a, b) => b.maduro - a.maduro)[0];
-  const riskFarm = [...farmRanking].sort((a, b) => b.risco - a.risco)[0];
-  const lastDays = dailyBunchRows.slice(-3);
-  const previousDays = dailyBunchRows.slice(-6, -3);
-  const dayTotal = (rows) => rows.reduce((sum, row) => sum + row.maduro + row.passado + row.verde + row.avermelhado, 0);
-  const dayMaduro = (rows) => rows.reduce((sum, row) => sum + row.maduro, 0);
-  const lastPct = dayTotal(lastDays) ? (dayMaduro(lastDays) / dayTotal(lastDays)) * 100 : 0;
-  const prevPct = dayTotal(previousDays) ? (dayMaduro(previousDays) / dayTotal(previousDays)) * 100 : 0;
-  const trend = previousDays.length ? lastPct - prevPct : 0;
-
-  return {
-    alertText: alerts.length
-      ? `${alerts.length} indicador${alerts.length > 1 ? 'es' : ''} fora da meta em ${periodText}.`
-      : `Todos os principais indicadores dentro da meta em ${periodText}.`,
-    alertTone: alerts.length ? 'danger' : 'success',
-    bestText: bestFarm ? `${bestFarm.label}: ${formatPercent(bestFarm.maduro)} maduro.` : 'Sem ranking de fazenda no filtro.',
-    riskText: riskFarm ? `${riskFarm.label}: ${formatPercent(riskFarm.risco)} soma de riscos.` : 'Sem fazenda crítica no filtro.',
-    trendText: previousDays.length
-      ? `${trend >= 0 ? '+' : ''}${formatNumber(trend, 1)} p.p. de maduro nos últimos 3 dias.`
-      : 'Tendência será exibida com mais dias no filtro.',
-    trendTone: trend >= 0 ? 'success' : 'danger',
-  };
-}
-
-function InsightStrip({ insights }) {
-  const cards = [
-    {
-      title: 'Farol automático',
-      text: insights.alertText,
-      icon: Target,
-      tone: insights.alertTone,
-    },
-    {
-      title: 'Melhor origem',
-      text: insights.bestText,
-      icon: Trophy,
-      tone: 'success',
-    },
-    {
-      title: 'Ponto crítico',
-      text: insights.riskText,
-      icon: Gauge,
-      tone: 'warning',
-    },
-    {
-      title: 'Tendência curta',
-      text: insights.trendText,
-      icon: Activity,
-      tone: insights.trendTone,
-    },
-  ];
-
-  return (
-    <div className="executive-insight-grid">
-      {cards.map((card) => {
-        const Icon = card.icon;
-        return (
-          <div key={card.title} className={`executive-insight-card insight-${card.tone}`}>
-            <Icon size={18} />
-            <div>
-              <span>{card.title}</span>
-              <strong>{card.text}</strong>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
 }
 
 function FieldBiKpiCard({ label, value, meta, goodWhen = 'low', loading = false }) {
@@ -549,17 +396,11 @@ function DailyBunchBarChart({ rows, loading = false }) {
 function FieldBiBoard({
   loading,
   model,
-  totals,
   quality,
   dailyBunchRows,
-  periodText,
-  source,
-  lastRecord,
   onPresent,
   presentationMode = false,
 }) {
-  const insights = buildFieldInsights(model, dailyBunchRows, periodText, loading);
-
   return (
     <div className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
       <div className="field-bi-header">
@@ -573,16 +414,6 @@ function FieldBiBoard({
           </button>
         )}
       </div>
-
-      <div className="field-bi-filter-strip">
-        <span>{periodText}</span>
-        <span>{loading ? 'Carregando base' : source}</span>
-        <span>{formatNumber(model.corteRecords.length)} corte / {formatNumber(model.carreamentoRecords.length)} carreamento</span>
-        <span>{formatNumber(totals.total)} coletas</span>
-        <span>{lastRecord ? `Última coleta: ${lastRecord.date} ${lastRecord.time}` : 'Sem dados no filtro'}</span>
-      </div>
-
-      <InsightStrip insights={insights} />
 
       <div className="field-bi-kpi-grid">
         <FieldBiKpiCard loading={loading} label="Cacho Maduro %" value={quality.cachoMaduroPct} meta={85} goodWhen="high" />
@@ -606,7 +437,7 @@ function FieldBiBoard({
   );
 }
 
-function PresentationOverlay({ loading, model, totals, quality, dailyBunchRows, periodText, source, lastRecord, onClose }) {
+function PresentationOverlay({ loading, model, quality, dailyBunchRows, onClose }) {
   return createPortal(
     <div className="presentation-overlay" role="dialog" aria-modal="true" aria-label="Apresentacao em tela cheia">
       <button type="button" className="presentation-close-btn field-bi-close-btn" onClick={onClose} title="Fechar apresentacao" aria-label="Fechar apresentacao">
@@ -616,12 +447,8 @@ function PresentationOverlay({ loading, model, totals, quality, dailyBunchRows, 
         <FieldBiBoard
           loading={loading}
           model={model}
-          totals={totals}
           quality={quality}
           dailyBunchRows={dailyBunchRows}
-          periodText={periodText}
-          source={source}
-          lastRecord={lastRecord}
           presentationMode
         />
       </div>
@@ -632,7 +459,7 @@ function PresentationOverlay({ loading, model, totals, quality, dailyBunchRows, 
 
 export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, searchTerm }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
-  const { loading, records, totals, source, error } = useCqoDashboard({
+  const { loading, records, error } = useCqoDashboard({
     farmFilter,
     areaFilter,
     periodFilter,
@@ -646,9 +473,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
 
   const model = useMemo(() => buildQualidadeOperacional(records), [records]);
   const dailyBunchRows = useMemo(() => buildDailyBunchRows(records), [records]);
-  const lastRecord = records[0];
   const quality = model.quality;
-  const periodText = periodLabel(periodFilter, dateFrom, dateTo);
 
   useEffect(() => {
     if (!presentationOpen) return undefined;
@@ -688,12 +513,8 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
         <PresentationOverlay
           loading={loading}
           model={model}
-          totals={totals}
           quality={quality}
           dailyBunchRows={dailyBunchRows}
-          periodText={periodText}
-          source={source}
-          lastRecord={lastRecord}
           onClose={closePresentation}
         />
       )}
@@ -708,12 +529,8 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
       <FieldBiBoard
         loading={loading}
         model={model}
-        totals={totals}
         quality={quality}
         dailyBunchRows={dailyBunchRows}
-        periodText={periodText}
-        source={source}
-        lastRecord={lastRecord}
         onPresent={openPresentation}
       />
     </div>
