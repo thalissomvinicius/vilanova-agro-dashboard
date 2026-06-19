@@ -63,7 +63,9 @@ function numberValue(value) {
 
 function normalizedRowEntries(row) {
   return Object.entries(row || {}).reduce((acc, [key, value]) => {
-    acc[normalizeText(key)] = value;
+    const normalized = normalizeText(key);
+    acc[normalized] = value;
+    acc[normalized.replace(/-/g, '')] = value;
     return acc;
   }, {});
 }
@@ -75,6 +77,10 @@ function pickRowValue(row, keys) {
     const normalized = normalizeText(key);
     if (normalizedEntries[normalized] !== undefined && normalizedEntries[normalized] !== null && normalizedEntries[normalized] !== '') {
       return normalizedEntries[normalized];
+    }
+    const compact = normalized.replace(/-/g, '');
+    if (normalizedEntries[compact] !== undefined && normalizedEntries[compact] !== null && normalizedEntries[compact] !== '') {
+      return normalizedEntries[compact];
     }
   }
   return '';
@@ -95,15 +101,14 @@ const CORTE_OBSERVED_BUNCH_GROUPS = [
   ['cacho_passado', 'CachoPassado'],
   ['cacho_infermo', 'CachoInfermo'],
   ['bucha', 'Bucha'],
-  ['cacho_talo_comprido', 'TaloComprido'],
+  ['cacho_talo_comprido', 'TaloComprido', 'CachoTaloComprido'],
   ['cacho_mal_posicionado', 'CachoMalPosicionado'],
   ['cacho_estrela', 'cachos_estrela', 'CachoEstrela'],
   ['cacho_avermelhado', 'cachos_avermelhados', 'CachoAvermelhado'],
 ];
 
 function rowValue(row, keys) {
-  const key = keys.find((candidate) => row?.[candidate] !== undefined && row?.[candidate] !== null && row?.[candidate] !== '');
-  return numberValue(key ? row[key] : 0);
+  return numberValue(pickRowValue(row, keys));
 }
 
 function sumRows(rows, keys) {
@@ -413,14 +418,14 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
         if (newLine.cacho_passado === undefined) newLine.cacho_passado = line.CachoPassado;
         if (newLine.folha_mamando === undefined) newLine.folha_mamando = line.FolhaMamando;
         if (newLine.cacho_talo_comprido === undefined) newLine.cacho_talo_comprido = line.TaloComprido;
-        if (newLine.folha_cortada_indevida === undefined) newLine.folha_cortada_indevida = line.FolhaCortada;
+        if (newLine.folha_cortada_indevida === undefined) newLine.folha_cortada_indevida = line.FolhaCortada || line.folhaCortadaIndev || line.FolhaCortadaIndev;
         if (newLine.cacho_mal_posicionado === undefined) newLine.cacho_mal_posicionado = line.CachoMalPosicionado;
         if (newLine.cacho_estrela === undefined) newLine.cacho_estrela = line.CachoEstrela || line.cachos_estrela;
         if (newLine.cacho_brocado === undefined) newLine.cacho_brocado = line.CachoBrocado || line.cachos_brocados;
         if (newLine.cacho_avermelhado === undefined) newLine.cacho_avermelhado = line.CachoAvermelhado || line.cachos_avermelhados;
         
         // Carreamento
-        if (newLine.cacho_nao_carreado === undefined) newLine.cacho_nao_carreado = line.CachoNaoCarreado;
+        if (newLine.cacho_nao_carreado === undefined) newLine.cacho_nao_carreado = line.CachoNaoCarreado || line.Cachonaocarreado;
         if (newLine.peso_medio === undefined) newLine.peso_medio = line.PesoMedio || line.pesoMedio;
         
         return newLine;
@@ -534,7 +539,7 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
       bucha: sumRows(lines, ['bucha']),
       folhaMamando: sumRows(lines, ['folha_mamando']),
       taloComprido: sumRows(lines, ['cacho_talo_comprido']),
-      folhaCortada: sumRows(lines, ['folha_cortada_indevida']),
+      folhaCortada: sumRows(lines, ['folha_cortada_indevida', 'folhaCortadaIndev', 'FolhaCortadaIndev']),
       cachoMalPosicionado: sumRows(lines, ['cacho_mal_posicionado']),
       cachoEstrela: sumRows(lines, ['cacho_estrela', 'cachos_estrela']),
       cachoBrocado: sumRows(lines, ['cacho_brocado', 'cachos_brocados']),
@@ -746,7 +751,7 @@ function buildCorteSnapshotLine(row, index) {
     bucha: rowNumber(row, ['Bucha', 'bucha']),
     folha_mamando: rowNumber(row, ['FolhaMamando', 'folha_mamando']),
     cacho_talo_comprido: rowNumber(row, ['TaloComprido', 'CachoTaloComprido', 'cacho_talo_comprido']),
-    folha_cortada_indevida: rowNumber(row, ['FolhaCortada', 'folha_cortada_indevida']),
+    folha_cortada_indevida: rowNumber(row, ['FolhaCortada', 'folhaCortadaIndev', 'FolhaCortadaIndev', 'folha_cortada_indevida']),
     cacho_mal_posicionado: rowNumber(row, ['cachoMalOosicionado', 'CachoMalPosicionado', 'cacho_mal_posicionado']),
     cacho_estrela: rowNumber(row, ['CachoEstrela', 'cacho_estrela', 'cachos_estrela']),
     cacho_brocado: rowNumber(row, ['CachoBrocado', 'cacho_brocado', 'cachos_brocados']),
@@ -763,7 +768,7 @@ function buildCarreamentoSnapshotLine(row, index) {
     numero_plantas_linha: rowNumber(row, ['NumeroPlantasLinha', 'numero_plantas_linha', 'NumeroPlantas']),
     numero_plantas_observadas: rowNumber(row, ['NumeroPlantasObservadas', 'numero_plantas_observadas', 'numero_na_linha']),
     cacho_mal_posicionado: rowNumber(row, ['cachoMalOosicionado', 'CachoMalPosicionado', 'cacho_mal_posicionado']),
-    cacho_nao_carreado: rowNumber(row, ['CachoNaoCarreado', 'cacho_nao_carreado', 'CachoNaoCarriado']),
+    cacho_nao_carreado: rowNumber(row, ['CachoNaoCarreado', 'Cachonaocarreado', 'cacho_nao_carreado', 'CachoNaoCarriado']),
     peso_medio: rowNumber(row, ['PesoMedio', 'peso_medio']),
     linha_json: row,
   };
