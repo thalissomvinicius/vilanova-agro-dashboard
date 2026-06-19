@@ -90,6 +90,7 @@ export default function Header({
     });
 
     (bonificacaoData?.cqoRampa?.byProducerDay || []).forEach((row) => addYearFromValue(years, row.dayKey));
+    (bonificacaoData?.cqoRampa?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));
     (bonificacaoData?.entradaDeCff?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));
     (bonificacaoData?.faturamento?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));
 
@@ -105,7 +106,19 @@ export default function Header({
     });
     return Array.from(fiscals).sort();
   }, [records]);
-  const showSourceFilter = activePage !== 'cqo-rampa';
+  const isRampaPage = activePage === 'cqo-rampa';
+  const sourceOptions = isRampaPage
+    ? [
+        { value: 'all', label: 'Excel + SQL' },
+        { value: 'excel', label: 'Só Excel' },
+        { value: 'sql', label: 'Só SQL' },
+      ]
+    : [
+        { value: 'all', label: 'App + Excel' },
+        { value: 'app', label: 'Só App' },
+        { value: 'excel', label: 'Só Excel' },
+      ];
+  const visibleSourceFilter = isRampaPage && sourceFilter === 'app' ? 'all' : sourceFilter === 'sql' && !isRampaPage ? 'all' : sourceFilter;
 
   const notifications = [
     { id: 1, text: 'Dashboard preparado para ler coletas CQO do Supabase.', time: 'Agora' },
@@ -178,21 +191,19 @@ export default function Header({
           </select>
         </label>
 
-        {showSourceFilter ? (
-          <label className="header-filter-control header-filter-control-source">
-            <span>Fonte</span>
-            <select
-              className="header-filter-select"
-              value={sourceFilter}
-              onChange={(event) => setSourceFilter(event.target.value)}
-              title="Selecionar fonte dos dados de campo"
-            >
-              <option value="all">App + Excel</option>
-              <option value="app">Só App</option>
-              <option value="excel">Só Excel</option>
-            </select>
-          </label>
-        ) : null}
+        <label className="header-filter-control header-filter-control-source">
+          <span>Fonte</span>
+          <select
+            className="header-filter-select"
+            value={visibleSourceFilter}
+            onChange={(event) => setSourceFilter(event.target.value)}
+            title={isRampaPage ? 'Selecionar fonte dos dados da Rampa' : 'Selecionar fonte dos dados de campo'}
+          >
+            {sourceOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
 
         <label className="header-filter-control header-filter-control-short">
           <span>Ano</span>

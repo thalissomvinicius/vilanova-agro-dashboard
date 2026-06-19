@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Activity, AlertTriangle, Box, ClipboardCheck, Gauge, Leaf, Maximize2, MonitorPlay, Scale, Target, Trophy, Truck, X } from 'lucide-react';
-import { BONIFICACAO_SOURCE, useBonificacaoData } from '../utils/bonificacaoData';
+import { useBonificacaoData } from '../utils/bonificacaoData';
 
 const RAMPA_PRODUCERS = [
   { id: 'fe-em-deus', name: 'FÉ EM DEUS' },
@@ -30,6 +30,29 @@ function fmtPct(value, digits = 2) {
   return value === null || value === undefined ? 'N/D' : `${fmt(value, digits)}%`;
 }
 
+function numericValue(value) {
+  const parsed = Number(String(value ?? '').replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function firstNumeric(row, keys = []) {
+  for (const key of keys) {
+    if (row?.[key] !== undefined && row?.[key] !== null && row?.[key] !== '') {
+      return numericValue(row[key]);
+    }
+  }
+  return 0;
+}
+
+function normalizeProducerName(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function hasQualityValue(value) {
   return value !== null && value !== undefined && Number.isFinite(Number(value));
 }
@@ -46,14 +69,62 @@ function weightedAverage(rows, valueKey) {
   return totals.weight ? totals.value / totals.weight : null;
 }
 
+function buildQualityTotal(rows = []) {
+  return {
+    qVerde: weightedAverage(rows, 'qVerde'),
+    qMaduro: weightedAverage(rows, 'qMaduro'),
+    qPassado: weightedAverage(rows, 'qPassado'),
+    qTaloComprido: weightedAverage(rows, 'qTaloComprido'),
+    qAvermelhado: weightedAverage(rows, 'qAvermelhado'),
+    qBucha: weightedAverage(rows, 'qBucha'),
+    pesoT: rows.reduce((sum, row) => sum + Number(row.pesoT || 0), 0),
+  };
+}
+
 function selectedProducerNames(farmFilter) {
   if (farmFilter === 'all') return RAMPA_PRODUCERS.map((producer) => producer.name);
   return RAMPA_PRODUCERS.filter((producer) => producer.id === farmFilter).map((producer) => producer.name);
 }
 
 function filterByProducer(rows = [], names = []) {
-  const allowed = new Set(names);
-  return rows.filter((row) => allowed.has(row.fornecedor || row.fazenda));
+  const allowed = new Set(names.map(normalizeProducerName));
+  return rows.filter((row) => allowed.has(normalizeProducerName(row.fornecedor || row.fazenda)));
+}
+
+function normalizeRampaFarmRows(rows = []) {
+  return rows.map((row) => ({
+    fornecedor: row.fornecedor || row.fazenda || 'Sem origem',
+    registros: firstNumeric(row, ['registros', 'totalRegistros', 'tickets']),
+    qVerde: firstNumeric(row, ['qVerde', 'cvMedia', 'verdeMedia']),
+    qMaduro: firstNumeric(row, ['qMaduro', 'cmMedia', 'maduroMedia']),
+    qPassado: firstNumeric(row, ['qPassado', 'cpMedia', 'passadoMedia']),
+    qTaloComprido: firstNumeric(row, ['qTaloComprido', 'tcMedia', 'taloCompridoMedia']),
+    qAvermelhado: row.qAvermelhado ?? row.caMedia ?? null,
+    qBucha: row.qBucha ?? row.buchaMedia ?? null,
+    pesoT: firstNumeric(row, ['pesoT', 'pesoTon', 'pesoLiquidoT']),
+    sourceLevel: 'farm',
+  }));
+}
+
+function normalizeRampaMonthRows(rows = []) {
+  return rows.map((row) => {
+    const monthKey = row.monthKey || row.mesKey || row.mes_referencia || '';
+    return {
+      dayKey: monthKey && /^\d{4}-\d{2}$/.test(monthKey) ? `${monthKey}-01` : row.dayKey || 'sem-data',
+      monthKey,
+      dayLabel: row.monthLabel || row.dayLabel || monthKey || 'Sem mes',
+      registros: firstNumeric(row, ['registros', 'totalRegistros', 'tickets']),
+      qVerde: firstNumeric(row, ['qVerde', 'cvMedia', 'verdeMedia']),
+      qMaduro: firstNumeric(row, ['qMaduro', 'cmMedia', 'maduroMedia']),
+      qPassado: firstNumeric(row, ['qPassado', 'cpMedia', 'passadoMedia']),
+      qTaloComprido: firstNumeric(row, ['qTaloComprido', 'tcMedia', 'taloCompridoMedia']),
+      qAvermelhado: row.qAvermelhado ?? row.caMedia ?? null,
+      qBucha: row.qBucha ?? row.buchaMedia ?? null,
+      pesoT: firstNumeric(row, ['pesoT', 'pesoTon', 'pesoLiquidoT']),
+      isMonthly: true,
+      sourceLevel: 'month',
+    };
+  }).sort((a, b) => String(a.dayKey).localeCompare(String(b.dayKey)));
 }
 
 function parseDateBoundary(value, endOfDay = false) {
@@ -68,32 +139,49 @@ function dateFromDayKey(dayKey) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function dateRangeFromRow(row) {
+  const start = dateFromDayKey(row.dayKey);
+  if (!start) return null;
+
+  if (row.isMonthly || row.monthKey) {
+    return {
+      start,
+      end: new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999),
+    };
+  }
+
+  return {
+    start,
+    end: new Date(start.getFullYear(), start.getMonth(), start.getDate(), 23, 59, 59, 999),
+  };
+}
+
 function latestDateFromRows(rows = []) {
   return rows.reduce((latest, row) => {
-    const date = dateFromDayKey(row.dayKey);
-    if (!date) return latest;
-    if (!latest || date > latest) return date;
+    const range = dateRangeFromRow(row);
+    if (!range?.end) return latest;
+    if (!latest || range.end > latest) return range.end;
     return latest;
   }, null);
 }
 
 function isWithinPeriod(row, periodFilter = 'month', dateFrom = '', dateTo = '', referenceDate = null) {
-  const date = dateFromDayKey(row.dayKey);
-  if (!date) return periodFilter === 'all' || periodFilter === 'season';
+  const range = dateRangeFromRow(row);
+  if (!range) return periodFilter === 'all' || periodFilter === 'season';
 
   if (periodFilter === 'custom') {
     const from = parseDateBoundary(dateFrom);
     const to = parseDateBoundary(dateTo, true);
-    return (!from || date >= from) && (!to || date <= to);
+    return (!from || range.end >= from) && (!to || range.start <= to);
   }
 
   if (periodFilter === 'all' || periodFilter === 'season') return true;
 
   const now = referenceDate || new Date();
-  const diffDays = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24);
-  if (periodFilter === 'today') return date.toDateString() === now.toDateString();
+  const diffDays = (now.getTime() - range.start.getTime()) / (1000 * 60 * 60 * 24);
+  if (periodFilter === 'today') return range.start.toDateString() === now.toDateString();
   if (periodFilter === 'week') return diffDays >= 0 && diffDays <= 7;
-  if (periodFilter === 'month') return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  if (periodFilter === 'month') return range.start.getMonth() === now.getMonth() && range.start.getFullYear() === now.getFullYear();
 
   return true;
 }
@@ -372,6 +460,9 @@ function ProducerQualityTable({ rows, total }) {
 
 function DailyQualityChart({ rows }) {
   const visibleRows = rows.slice(-15);
+  const chartTitle = rows.some((row) => row.isMonthly)
+    ? 'Qualidade do CFF por Mês [%]'
+    : 'Qualidade do CFF Dia[%]';
   const series = [
     { key: 'qVerde', label: 'Verde', color: QUALITY_COLORS.qVerde },
     { key: 'qMaduro', label: 'Maduro', color: QUALITY_COLORS.qMaduro },
@@ -380,7 +471,7 @@ function DailyQualityChart({ rows }) {
 
   return (
     <div className="card rampa-bi-panel">
-      <div className="rampa-bi-panel-title">Qualidade do CFF Dia[%]</div>
+      <div className="rampa-bi-panel-title">{chartTitle}</div>
       <div className="rampa-bi-legend">
         {series.map((item) => (
           <span key={item.key}><i style={{ background: item.color }} />{item.label}</span>
@@ -466,6 +557,43 @@ function RampaDeveloperSignature() {
   return <div className="developer-signature">Desenvolvedor: Vinicius Dev.</div>;
 }
 
+function formatSourceDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('pt-BR');
+}
+
+function rampaSourceInfo(data, sourceFilter) {
+  if (sourceFilter === 'sql') {
+    return {
+      title: 'SQL direto',
+      subtitle: 'Aguardando acesso ao banco da Rampa',
+      description: 'Apuração preparada para receber a conexão SQL direta da Rampa.',
+      notice: 'Fonte SQL ainda não está conectada. Use Excel ou Excel + SQL para visualizar o snapshot disponível.',
+    };
+  }
+
+  const updatedAt = formatSourceDate(data.snapshotUpdatedAt || data.generatedAt || data.importedAt);
+  const title = data.online ? 'Excel / Supabase' : 'Excel / base local';
+  const isSummarySnapshot = !(data.cqoRampa?.byProducerDay || []).length && (data.cqoRampa?.byMonth || []).length;
+  const summaryNotice = isSummarySnapshot
+    ? 'Snapshot atual traz resumo por mês e por produtor; a tabela de produtor fica consolidada até recebermos detalhe diário ou SQL direto.'
+    : '';
+
+  return {
+    title,
+    subtitle: updatedAt ? `Atualizado em ${updatedAt}` : 'Snapshot Excel',
+    description: data.online
+      ? 'Apuração baseada no snapshot Excel enviado ao Supabase: CQO - Rampa cruzado com Entrada de CFF.'
+      : 'Apuração baseada no snapshot Excel local: CQO - Rampa cruzado com Entrada de CFF.',
+    notice: [
+      sourceFilter === 'all' ? 'Filtro preparado para Excel + SQL; no momento a Rampa usa o snapshot Excel disponível.' : '',
+      summaryNotice,
+    ].filter(Boolean).join(' '),
+  };
+}
+
 function RampaBoard({
   data,
   producerNames,
@@ -474,9 +602,12 @@ function RampaBoard({
   semAvaliacaoRows,
   total,
   onPresent,
+  sourceFilter,
   presentationMode = false,
 }) {
   const insights = buildRampaInsights({ producerRows, dailyRows, semAvaliacaoRows, total });
+  const sourceInfo = rampaSourceInfo(data, sourceFilter);
+  const producerTableTotal = buildQualityTotal(producerRows);
 
   return (
     <div className={`rampa-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
@@ -485,13 +616,13 @@ function RampaBoard({
         <div>
           <span className="page-eyebrow">Qualidade de CFF na Rampa</span>
           <h2>Qualidade de CFF na Rampa</h2>
-          <p>Apuração baseada na fonte BI: CQO - Rampa cruzado com Entrada de CFF por ticket e produtor.</p>
+          <p>{sourceInfo.description}</p>
         </div>
         <div className="rampa-bi-header-actions">
           <div className="source-card compact">
             <span>Fonte</span>
-            <strong>{BONIFICACAO_SOURCE.workbook}</strong>
-            <small>{data.generatedAt ? `Atualizado em ${new Date(data.generatedAt).toLocaleString('pt-BR')}` : 'Snapshot local'}</small>
+            <strong>{sourceInfo.title}</strong>
+            <small>{sourceInfo.subtitle}</small>
           </div>
           {!presentationMode && (
             <button type="button" className="rampa-bi-present-btn" onClick={onPresent}>
@@ -502,6 +633,13 @@ function RampaBoard({
           )}
         </div>
       </div>
+
+      {sourceInfo.notice ? (
+        <div className="warning-strip rampa-bi-warning">
+          <AlertTriangle size={16} />
+          <span>{sourceInfo.notice}</span>
+        </div>
+      ) : null}
 
       <div className="rampa-bi-producer-strip">
         {RAMPA_PRODUCERS.map((producer) => (
@@ -528,7 +666,7 @@ function RampaBoard({
       </div>
 
       <div className="rampa-bi-grid">
-        <ProducerQualityTable rows={producerRows} total={total} />
+        <ProducerQualityTable rows={producerRows} total={producerTableTotal} />
         <DailyQualityChart rows={dailyRows} />
       </div>
 
@@ -563,14 +701,22 @@ function RampaPresentationOverlay(props) {
   );
 }
 
-export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', dateFrom = '', dateTo = '' }) {
+export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', dateFrom = '', dateTo = '', sourceFilter = 'all' }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
   const data = useBonificacaoData();
   const rampa = data?.cqoRampa || {};
+  const useExcelSnapshot = sourceFilter !== 'sql';
   const producerNames = selectedProducerNames(farmFilter);
-  const producerDayRows = filterByProducer(rampa.byProducerDay || [], producerNames);
-  const semAvaliacaoDayRows = filterByProducer(rampa.semAvaliacaoByDay || [], producerNames);
-  const referenceDate = latestDateFromRows([...producerDayRows, ...semAvaliacaoDayRows]);
+  const detailedProducerRows = useExcelSnapshot ? (rampa.byProducerDay || []) : [];
+  const hasDetailedProducerRows = detailedProducerRows.length > 0;
+  const farmSummaryRows = useExcelSnapshot ? normalizeRampaFarmRows(rampa.byFarm || []) : [];
+  const monthSummaryRows = useExcelSnapshot ? normalizeRampaMonthRows(rampa.byMonth || []) : [];
+  const producerSourceRows = hasDetailedProducerRows ? detailedProducerRows : farmSummaryRows;
+  const producerDayRows = filterByProducer(producerSourceRows, producerNames);
+  const semAvaliacaoDayRows = hasDetailedProducerRows
+    ? filterByProducer(rampa.semAvaliacaoByDay || [], producerNames)
+    : [];
+  const referenceDate = latestDateFromRows([...producerDayRows, ...semAvaliacaoDayRows, ...monthSummaryRows]);
   const filteredProducerDayRows = filterByPeriod(
     producerDayRows,
     periodFilter,
@@ -585,18 +731,26 @@ export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', d
     dateTo,
     referenceDate
   );
-  const producerRows = aggregateProducerRows(filteredProducerDayRows);
-  const dailyRows = aggregateDayRows(filteredProducerDayRows);
+  const filteredMonthRows = filterByPeriod(
+    monthSummaryRows,
+    periodFilter,
+    dateFrom,
+    dateTo,
+    referenceDate
+  );
+  const producerRows = hasDetailedProducerRows
+    ? aggregateProducerRows(filteredProducerDayRows)
+    : producerDayRows;
+  const dailyRows = hasDetailedProducerRows
+    ? aggregateDayRows(filteredProducerDayRows)
+    : filteredMonthRows;
   const semAvaliacaoRows = aggregateSemAvaliacaoRows(filteredSemAvaliacaoDayRows);
-  const total = {
-    qVerde: weightedAverage(producerRows, 'qVerde'),
-    qMaduro: weightedAverage(producerRows, 'qMaduro'),
-    qPassado: weightedAverage(producerRows, 'qPassado'),
-    qTaloComprido: weightedAverage(producerRows, 'qTaloComprido'),
-    qAvermelhado: weightedAverage(producerRows, 'qAvermelhado'),
-    qBucha: weightedAverage(producerRows, 'qBucha'),
-    pesoT: producerRows.reduce((sum, row) => sum + Number(row.pesoT || 0), 0),
-  };
+  const totalBaseRows = hasDetailedProducerRows
+    ? producerRows
+    : dailyRows.length
+    ? dailyRows
+    : producerRows;
+  const total = buildQualityTotal(totalBaseRows);
 
   useEffect(() => {
     if (!presentationOpen) return undefined;
@@ -640,6 +794,7 @@ export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', d
           dailyRows={dailyRows}
           semAvaliacaoRows={semAvaliacaoRows}
           total={total}
+          sourceFilter={sourceFilter}
           onClose={closePresentation}
         />
       )}
@@ -651,6 +806,7 @@ export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', d
         dailyRows={dailyRows}
         semAvaliacaoRows={semAvaliacaoRows}
         total={total}
+        sourceFilter={sourceFilter}
         onPresent={openPresentation}
       />
     </div>

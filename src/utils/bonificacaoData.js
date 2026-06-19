@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import snapshot from '../data/bonificacaoSnapshot.json';
+import { SUPABASE_CONFIG } from './cqoData';
 
 export const BONIFICACAO_SOURCE = {
   workbook: 'Base Qualidade CFF.xlsx',
   workbookUpdatedAt: '2026-06-16',
+  importTable: 'bonificacao_import_snapshots',
+  importKey: 'bonificacao_qualidade_cff',
   files: [
     'Entrada de CFF',
     'CQO - Rampa',
@@ -35,6 +38,13 @@ function fallbackData() {
   return {
     available: false,
     source: BONIFICACAO_SOURCE.workbook,
+    sourceLabel: 'Base local indisponivel',
+    sourceOrigin: 'excel',
+    sourceTransport: 'local',
+    sourceKind: 'excel-local',
+    online: false,
+    snapshotUpdatedAt: null,
+    importedAt: null,
     ...BONIFICACAO_SOURCE,
     entradaDeCff: {
       totalRegistros: counts.entradaDeCff,
@@ -71,7 +81,50 @@ function fallbackData() {
   };
 }
 
-function normalizeSnapshot(snapshot) {
+function parseJson(value) {
+  if (!value) return null;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+async function fetchBonificacaoSnapshot() {
+  const query = new URLSearchParams({
+    select: 'snapshot_json,source_path,imported_at,updated_at',
+    import_key: `eq.${BONIFICACAO_SOURCE.importKey}`,
+    order: 'updated_at.desc',
+    limit: '1',
+  }).toString();
+
+  const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/${BONIFICACAO_SOURCE.importTable}?${query}`, {
+    headers: {
+      apikey: SUPABASE_CONFIG.anonKey,
+      Authorization: `Bearer ${SUPABASE_CONFIG.anonKey}`,
+      Accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`${BONIFICACAO_SOURCE.importTable}: HTTP ${response.status}`);
+  }
+
+  const rows = await response.json();
+  const row = rows?.[0];
+  if (!row?.snapshot_json) return null;
+
+  return {
+    snapshot: parseJson(row.snapshot_json),
+    sourcePath: row.source_path,
+    importedAt: row.imported_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function normalizeSnapshot(rawSnapshot, metadata = {}) {
+  const snapshot = parseJson(rawSnapshot);
   if (!snapshot || typeof snapshot !== 'object') {
     return fallbackData();
   }
@@ -83,8 +136,15 @@ function normalizeSnapshot(snapshot) {
 
   return {
     available: true,
-    source: snapshot.sourcePath || BONIFICACAO_SOURCE.workbook,
-    generatedAt: snapshot.generatedAt || null,
+    source: metadata.sourcePath || snapshot.sourcePath || BONIFICACAO_SOURCE.workbook,
+    sourceLabel: metadata.online ? 'Excel / Supabase' : 'Excel / JSON local',
+    sourceOrigin: 'excel',
+    sourceTransport: metadata.online ? 'supabase' : 'local',
+    sourceKind: metadata.online ? 'excel-supabase' : 'excel-local',
+    online: Boolean(metadata.online),
+    generatedAt: snapshot.generatedAt || metadata.importedAt || null,
+    snapshotUpdatedAt: metadata.updatedAt || metadata.importedAt || snapshot.generatedAt || null,
+    importedAt: metadata.importedAt || null,
     workbook: BONIFICACAO_SOURCE.workbook,
     workbookUpdatedAt: BONIFICACAO_SOURCE.workbookUpdatedAt,
     files: BONIFICACAO_SOURCE.files,
@@ -133,18 +193,41 @@ export function useBonificacaoData() {
   useEffect(() => {
     let mounted = true;
 
-    fetch('/bonificacaoSnapshot.json')
-      .then((response) => (response.ok ? response.json() : null))
-      .then((json) => {
-        if (mounted && json) {
-          setState(normalizeSnapshot(json));
+    fetchBonificacaoSnapshot()
+      .then((onlineSnapshot) => {
+        if (!mounted) return null;
+        if (onlineSnapshot?.snapshot) {
+          setState(normalizeSnapshot(onlineSnapshot.snapshot, {
+            online: true,
+            sourcePath: onlineSnapshot.sourcePath,
+            importedAt: onlineSnapshot.importedAt,
+            updatedAt: onlineSnapshot.updatedAt,
+          }));
+          return null;
         }
+
+        return fetch('/bonificacaoSnapshot.json')
+          .then((response) => (response.ok ? response.json() : null))
+          .then((json) => {
+            if (mounted && json) {
+              setState(normalizeSnapshot(json));
+            }
+          });
       })
-      .catch(() => {
-        if (mounted) {
-          setState(fallbackData());
-        }
-      });
+      .catch(() => (
+        fetch('/bonificacaoSnapshot.json')
+          .then((response) => (response.ok ? response.json() : null))
+          .then((json) => {
+            if (mounted && json) {
+              setState(normalizeSnapshot(json));
+            } else if (mounted) {
+              setState(fallbackData());
+            }
+          })
+          .catch(() => {
+            if (mounted) setState(fallbackData());
+          })
+      ));
 
     return () => {
       mounted = false;

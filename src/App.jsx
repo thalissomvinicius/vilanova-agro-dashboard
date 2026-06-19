@@ -37,7 +37,7 @@ const ROUTE_PAGES = Object.fromEntries(
 
 const FILTER_STORAGE_KEY = 'vilanova_dashboard_filters';
 const VALID_MONTHS = new Set(['all', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']);
-const VALID_SOURCE_FILTERS = new Set(['all', 'app', 'excel']);
+const VALID_SOURCE_FILTERS = new Set(['all', 'app', 'excel', 'sql']);
 
 function currentMonthValue() {
   return String(new Date().getMonth() + 1).padStart(2, '0');
@@ -183,6 +183,7 @@ function TvModeOverlay({
             periodFilter={commonProps.periodFilter}
             dateFrom={commonProps.dateFrom}
             dateTo={commonProps.dateTo}
+            sourceFilter={commonProps.sourceFilter === 'app' ? 'all' : commonProps.sourceFilter}
           />
         )}
       </div>
@@ -241,6 +242,7 @@ export default function App() {
     dateFrom,
     dateTo,
   }), [farmFilter, yearFilter, monthFilter, cycleFilter, evaluatorFilter, sourceFilter, searchTerm, dateFrom, dateTo]);
+  const fieldSourceFilter = sourceFilter === 'sql' ? 'all' : sourceFilter;
   const commonDashboardProps = {
     theme,
     farmFilter,
@@ -248,7 +250,7 @@ export default function App() {
     periodFilter,
     cycleFilter,
     evaluatorFilter,
-    sourceFilter,
+    sourceFilter: fieldSourceFilter,
     dateFrom: activeFilters.dateFrom,
     dateTo: activeFilters.dateTo,
     searchTerm,
@@ -306,8 +308,8 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(activeFilters));
     const routeFilters = activePage === 'cqo-rampa'
-      ? { ...activeFilters, sourceFilter: 'all' }
-      : activeFilters;
+      ? activeFilters
+      : { ...activeFilters, sourceFilter: activeFilters.sourceFilter === 'sql' ? 'all' : activeFilters.sourceFilter };
     const nextPath = `${pathFromPage(activePage)}${buildSearch(routeFilters)}`;
     const currentPath = `${window.location.pathname}${window.location.search}`;
     if (currentPath !== nextPath) {
@@ -433,7 +435,7 @@ export default function App() {
             periodFilter={periodFilter}
             cycleFilter={cycleFilter}
             evaluatorFilter={evaluatorFilter}
-            sourceFilter={sourceFilter}
+            sourceFilter={fieldSourceFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
           />
@@ -452,6 +454,7 @@ export default function App() {
             periodFilter={periodFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
+            sourceFilter={sourceFilter === 'app' ? 'all' : sourceFilter}
           />
         );
       case 'coletas':
@@ -462,7 +465,7 @@ export default function App() {
             periodFilter={periodFilter}
             cycleFilter={cycleFilter}
             evaluatorFilter={evaluatorFilter}
-            sourceFilter={sourceFilter}
+            sourceFilter={fieldSourceFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
             searchTerm={searchTerm}
@@ -522,7 +525,7 @@ export default function App() {
                 periodFilter={periodFilter}
                 cycleFilter={cycleFilter}
                 evaluatorFilter={evaluatorFilter}
-                sourceFilter={sourceFilter}
+                sourceFilter={fieldSourceFilter}
                 dateFrom={dateFrom}
                 dateTo={dateTo}
               />

@@ -51,7 +51,7 @@ function SourceChip({ label, value }) {
     <div className="compact-row">
       <div>
         <strong>{label}</strong>
-        <span>Fonte local estudada</span>
+        <span>Fonte Excel mapeada</span>
       </div>
       <div>
         <strong>{value}</strong>
@@ -71,11 +71,12 @@ export default function Bonificacao() {
         <div className="page-title-block">
           <span className="page-eyebrow">Bonificacao e Qualidade</span>
           <h2>Base Qualidade CFF</h2>
-          <p>Consolidacao do workbook de rampa, faturamento e entrada de CFF. Quando o snapshot da fonte publica estiver disponivel, os graficos sao preenchidos automaticamente.</p>
+          <p>Consolidacao do workbook de rampa, faturamento e entrada de CFF. O painel busca primeiro o snapshot online no Supabase e usa a base local apenas como fallback.</p>
         </div>
         <div className="source-card compact">
-          <span>Workbook</span>
-          <strong>{data.workbook}</strong>
+          <span>Fonte</span>
+          <strong>{data.sourceLabel || 'Excel / Supabase'}</strong>
+          <small>{data.workbook}</small>
         </div>
       </div>
 
@@ -116,7 +117,7 @@ export default function Bonificacao() {
             <DataBox title="Tabela" value="f_Balanca" subtitle="Entrada de CFF / balanca" />
             <DataBox title="Tabela" value="f_CQO" subtitle="avaliacao de rampa" />
             <DataBox title="Tabela" value="f_Faturamento" subtitle="pesagem e saidas" />
-            <DataBox title="Status" value={data.available ? 'Snapshot' : 'Base'} subtitle={data.available ? 'arquivo publico encontrado' : 'aguardando snapshot' } />
+            <DataBox title="Status" value={data.online ? 'Online' : data.available ? 'Local' : 'Base'} subtitle={data.online ? 'bonificacao_import_snapshots' : data.available ? 'fallback JSON local' : 'aguardando snapshot'} />
           </div>
         </div>
       </div>
@@ -156,7 +157,7 @@ export default function Bonificacao() {
             <DataBox title="Arquivo" value={BONIFICACAO_SOURCE.workbookUpdatedAt} subtitle="ultima referencia local estudada" />
             <DataBox title="Tabelas" value={BONIFICACAO_SOURCE.tables.length} subtitle="modelo interno identificado" />
             <DataBox title="Arquivos" value={BONIFICACAO_SOURCE.files.length} subtitle="fontes principais mapeadas" />
-            <DataBox title="Status" value={data.available ? 'Online' : 'Local'} subtitle="snapshot da fonte opcional" />
+            <DataBox title="Status" value={data.online ? 'Online' : 'Local'} subtitle={data.online ? 'snapshot Supabase ativo' : 'fallback local'} />
           </div>
         </div>
 
@@ -164,7 +165,7 @@ export default function Bonificacao() {
           <div className="card-header">
             <div>
               <h3 className="card-title">Notas de uso</h3>
-              <span className="card-subtitle">O painel usa o snapshot compilado em `src/data/bonificacaoSnapshot.json` e pode aceitar uma atualizacao externa depois.</span>
+              <span className="card-subtitle">O painel usa `bonificacao_import_snapshots` quando disponivel e preserva o JSON local como contingencia.</span>
             </div>
             <BarChart3 size={20} style={{ color: 'var(--status-info)' }} />
           </div>
