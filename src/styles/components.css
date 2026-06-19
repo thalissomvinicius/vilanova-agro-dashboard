@@ -1400,9 +1400,105 @@ body.presentation-active {
   color: var(--green-institutional);
 }
 
-.field-bi-kpi-orange strong,
+.field-bi-kpi-orange strong {
+  color: var(--orange-institutional);
+}
+
 .field-bi-kpi-danger strong {
   color: var(--status-danger);
+}
+
+.field-bi-insight-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.field-bi-insight-card {
+  min-width: 0;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.field-bi-insight-icon {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--white);
+  background: var(--green-institutional);
+  font-size: 0.9rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.field-bi-insight-card div {
+  min-width: 0;
+}
+
+.field-bi-insight-card small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.field-bi-insight-card strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  font-weight: 900;
+  line-height: 1.18;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-bi-insight-card em {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-style: normal;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-bi-insight-success {
+  box-shadow: inset 4px 0 0 var(--green-institutional), var(--shadow-sm);
+}
+
+.field-bi-insight-warning {
+  box-shadow: inset 4px 0 0 var(--orange-institutional), var(--shadow-sm);
+}
+
+.field-bi-insight-danger {
+  box-shadow: inset 4px 0 0 var(--status-danger), var(--shadow-sm);
+}
+
+.field-bi-insight-warning .field-bi-insight-icon {
+  background: var(--orange-institutional);
+}
+
+.field-bi-insight-danger .field-bi-insight-icon {
+  background: var(--status-danger);
 }
 
 .field-bi-main-grid {
@@ -1545,22 +1641,63 @@ body.presentation-active {
 .field-bi-evaluators {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   padding: 8px 10px;
 }
 
+.field-bi-evaluator-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.field-bi-evaluator-head h3 {
+  margin: 0;
+  text-align: left;
+  font-size: 0.96rem;
+  font-weight: 900;
+}
+
+.field-bi-evaluator-head span {
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+  text-align: right;
+}
+
 .field-bi-evaluator-card {
-  padding: 8px 12px;
+  padding: 8px 10px;
   border: 1px solid var(--border-color);
   background: var(--bg-secondary);
   box-shadow: inset 4px 0 0 var(--green-institutional);
 }
 
 .field-bi-evaluator-card strong {
-  display: block;
-  margin-bottom: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 6px;
   color: var(--green-institutional);
   font-size: 0.76rem;
+}
+
+.field-bi-evaluator-card strong span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-bi-evaluator-card strong em {
+  flex-shrink: 0;
+  color: var(--text-primary);
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 900;
 }
 
 .field-bi-evaluator-card div {
@@ -1581,6 +1718,35 @@ body.presentation-active {
   color: var(--text-primary);
   font-size: 0.78rem;
   font-weight: 500;
+}
+
+.field-bi-evaluator-card > small {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.field-bi-evaluator-success {
+  box-shadow: inset 4px 0 0 var(--green-institutional);
+}
+
+.field-bi-evaluator-warning {
+  box-shadow: inset 4px 0 0 var(--orange-institutional);
+}
+
+.field-bi-evaluator-danger {
+  box-shadow: inset 4px 0 0 var(--status-danger);
+}
+
+.field-bi-evaluator-warning strong {
+  color: var(--orange-institutional);
+}
+
+.field-bi-evaluator-danger strong {
+  color: var(--status-danger);
 }
 
 .field-bi-daily-panel {
@@ -1748,6 +1914,10 @@ body.presentation-active {
 
 .presentation-overlay .field-bi-control-bar {
   padding-top: 8px;
+}
+
+.presentation-overlay .field-bi-insight-strip {
+  margin-top: 10px;
 }
 
 .presentation-overlay .field-bi-kpi {
@@ -5408,6 +5578,10 @@ body.presentation-active {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .field-bi-insight-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .field-bi-main-grid {
     grid-template-columns: 1fr;
   }
@@ -5580,6 +5754,15 @@ body.presentation-active {
 
   .field-bi-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .field-bi-insight-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .field-bi-insight-card strong,
+  .field-bi-insight-card em {
+    white-space: normal;
   }
 
   .field-bi-kpi strong {

@@ -143,12 +143,12 @@ function qualityTone(value, meta, goodWhen = 'low') {
   const numeric = Number(value || 0);
   if (goodWhen === 'high') {
     if (numeric >= meta) return { tone: 'green', color: 'var(--status-success)', status: 'Dentro da meta' };
-    if (numeric >= meta * 0.95) return { tone: 'orange', color: 'var(--status-warning)', status: 'Atencao' };
+    if (numeric >= meta * 0.95) return { tone: 'orange', color: 'var(--status-warning)', status: 'Atenção' };
     return { tone: 'danger', color: 'var(--status-danger)', status: 'Fora da meta' };
   }
 
   if (numeric <= meta) return { tone: 'green', color: 'var(--status-success)', status: 'Dentro da meta' };
-  if (numeric <= meta * 1.25) return { tone: 'orange', color: 'var(--status-warning)', status: 'Atencao' };
+  if (numeric <= meta * 1.25) return { tone: 'orange', color: 'var(--status-warning)', status: 'Atenção' };
   return { tone: 'danger', color: 'var(--status-danger)', status: 'Fora da meta' };
 }
 
@@ -161,7 +161,7 @@ function FieldBiKpiCard({ label, value, meta, goodWhen = 'low', loading = false 
       <strong className={loading ? 'skeleton-text' : ''}>
         {loading ? '\u00A0' : `${formatPercent(value)}${signal}`}
       </strong>
-      <small>Meta: {formatPercent(meta)}</small>
+      <small>Meta: {formatPercent(meta)} · {tone.status}</small>
     </div>
   );
 }
@@ -191,6 +191,15 @@ const BI_SERIES = [
   { key: 'avermelhado', sourceKey: 'cachoAvermelhadoPct', label: 'CA %', fullLabel: 'Cacho Avermelhado %', color: 'var(--status-danger)' },
 ];
 
+const FIELD_KPI_TARGETS = [
+  { key: 'cachoMaduroPct', label: 'Maduro', meta: 85, goodWhen: 'high' },
+  { key: 'cachoPassadoPct', label: 'Passado', meta: 10 },
+  { key: 'cachoVerdePct', label: 'Verde', meta: 1 },
+  { key: 'cachoAvermelhadoPct', label: 'Avermelhado', meta: 4 },
+  { key: 'taloCompridoPct', label: 'Talo comprido', meta: 3 },
+  { key: 'cachoEstrelaPct', label: 'Estrela', meta: 2 },
+];
+
 function qualityValuesFromRow(row) {
   if (row.qualidade) {
     const base = Math.max(row.qualidade.cachosObservados || 0, 0);
@@ -210,6 +219,127 @@ function qualityValuesFromRow(row) {
     avermelhado: Number(row.cachoAvermelhadoPct || 0),
     samples: row.recordsCount || 0,
   };
+}
+
+function formatSigned(value, digits = 1) {
+  const numeric = Number(value || 0);
+  const sign = numeric > 0 ? '+' : '';
+  return `${sign}${formatNumber(numeric, digits)}`;
+}
+
+function dailyMaturePct(row) {
+  const total = BI_SERIES.reduce((sum, item) => sum + Number(row[item.key] || 0), 0);
+  return safePct(row.maduro, total);
+}
+
+function riskFromValues(values) {
+  return Number(values.passado || 0) + Number(values.verde || 0) + Number(values.avermelhado || 0);
+}
+
+function buildPresentationInsights(model, dailyBunchRows) {
+  const quality = model.quality || {};
+  const statusRows = FIELD_KPI_TARGETS.map((item) => ({
+    ...item,
+    value: Number(quality[item.key] || 0),
+    status: qualityTone(quality[item.key], item.meta, item.goodWhen),
+  }));
+  const outOfTarget = statusRows.filter((item) => item.status.tone === 'danger');
+  const warningRows = statusRows.filter((item) => item.status.tone === 'orange');
+  const relevantProblems = [...outOfTarget, ...warningRows].slice(0, 3).map((item) => item.label.toLowerCase());
+
+  const farmsWithQuality = (model.farmRows || [])
+    .map((row) => {
+      const values = qualityValuesFromRow(row);
+      return {
+        ...row,
+        values,
+        risk: riskFromValues(values),
+      };
+    })
+    .filter((row) => row.values.samples > 0);
+
+  const bestFarm = [...farmsWithQuality].sort((a, b) => b.values.maduro - a.values.maduro)[0];
+  const criticalFarm = [...farmsWithQuality].sort((a, b) => b.risk - a.risk)[0];
+  const recentDays = (dailyBunchRows || []).filter((row) => {
+    const total = BI_SERIES.reduce((sum, item) => sum + Number(row[item.key] || 0), 0);
+    return total > 0;
+  });
+  const lastThree = recentDays.slice(-3);
+  const previousThree = recentDays.slice(-6, -3);
+  const lastAvg = lastThree.length
+    ? lastThree.reduce((sum, row) => sum + dailyMaturePct(row), 0) / lastThree.length
+    : 0;
+  const previousAvg = previousThree.length
+    ? previousThree.reduce((sum, row) => sum + dailyMaturePct(row), 0) / previousThree.length
+    : lastAvg;
+  const trendDelta = lastAvg - previousAvg;
+  const trendTone = recentDays.length < 2 ? 'neutral' : trendDelta >= 0 ? 'success' : trendDelta > -1 ? 'warning' : 'danger';
+  const trendTitle = recentDays.length < 2
+    ? 'Aguardando série'
+    : `${formatSigned(trendDelta)} p.p. de maduro`;
+  const trendDetail = recentDays.length < 2
+    ? 'precisa de mais dias no filtro'
+    : 'comparando os últimos 3 dias';
+
+  return [
+    {
+      key: 'farol',
+      tone: outOfTarget.length ? 'danger' : warningRows.length ? 'warning' : 'success',
+      label: 'Farol automático',
+      value: outOfTarget.length
+        ? `${outOfTarget.length} indicador(es) fora da meta`
+        : warningRows.length
+          ? `${warningRows.length} indicador(es) em atenção`
+          : 'Todos os indicadores na meta',
+      detail: relevantProblems.length ? relevantProblems.join(', ') : 'sem ponto crítico no filtro',
+      icon: outOfTarget.length ? '!' : '✓',
+    },
+    {
+      key: 'melhor-fazenda',
+      tone: 'success',
+      label: 'Melhor fazenda',
+      value: bestFarm ? `${bestFarm.label}: ${formatPercent(bestFarm.values.maduro)}` : 'Sem fazenda',
+      detail: bestFarm ? 'maior percentual de cacho maduro' : 'sem amostra no período',
+      icon: '1',
+    },
+    {
+      key: 'critico',
+      tone: criticalFarm && criticalFarm.risk > 8 ? 'danger' : criticalFarm && criticalFarm.risk > 4 ? 'warning' : 'success',
+      label: 'Ponto crítico',
+      value: criticalFarm ? `${criticalFarm.label}: ${formatPercent(criticalFarm.risk)}` : 'Sem risco',
+      detail: 'passado + verde + avermelhado',
+      icon: '!',
+    },
+    {
+      key: 'tendencia',
+      tone: trendTone,
+      label: 'Tendência curta',
+      value: trendTitle,
+      detail: trendDetail,
+      icon: '↗',
+    },
+  ];
+}
+
+function QualityExecutiveStrip({ insights, loading = false }) {
+  return (
+    <div className="field-bi-insight-strip">
+      {loading ? [1, 2, 3, 4].map((item) => (
+        <div className="field-bi-insight-card" key={item}>
+          <div className="skeleton-chart" style={{ height: 54 }} />
+        </div>
+      )) : insights.map((item) => (
+        <div className={`field-bi-insight-card field-bi-insight-${item.tone}`} key={item.key}>
+          <span className="field-bi-insight-icon">{item.icon}</span>
+          <div>
+            <small>{item.label}</small>
+            <strong>{item.value}</strong>
+            <em>{item.detail}</em>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function FieldBiLegend() {
@@ -353,21 +483,44 @@ function FieldBiWeekChart({ rows, loading = false }) {
 }
 
 function FiscalQualityCards({ rows, loading = false }) {
-  const visibleRows = rows.slice(0, 4);
+  const visibleRows = rows
+    .map((row) => {
+      const risk = riskFromValues({
+        passado: row.cachoPassadoPct,
+        verde: row.cachoVerdePct,
+        avermelhado: row.cachoAvermelhadoPct,
+      });
+      return {
+        ...row,
+        risk,
+        tone: risk > 8 ? 'danger' : risk > 4 ? 'warning' : 'success',
+      };
+    })
+    .sort((a, b) => b.risk - a.risk || b.recordsCount - a.recordsCount)
+    .slice(0, 4);
+
   return (
     <section className="field-bi-panel field-bi-evaluators">
       {loading ? (
         <div className="skeleton-chart" style={{ height: 196 }} />
       ) : (
         <>
+          <div className="field-bi-evaluator-head">
+            <h3>Fiscal responsável</h3>
+            <span>ranking por risco de qualidade</span>
+          </div>
           {visibleRows.map((row) => (
-            <div className="field-bi-evaluator-card" key={row.label}>
-              <strong>{row.label}</strong>
+            <div className={`field-bi-evaluator-card field-bi-evaluator-${row.tone}`} key={row.label}>
+              <strong>
+                <span>{row.label}</span>
+                <em>{formatPercent(row.risk)} risco</em>
+              </strong>
               <div>
                 <span><b>{formatPercent(row.cachoPassadoPct)}</b>Cacho passado %</span>
                 <span><b>{formatPercent(row.cachoVerdePct)}</b>Cacho verde %</span>
                 <span><b>{formatPercent(row.cachoMaduroPct)}</b>Cacho maduro %</span>
               </div>
+              <small>{formatNumber(row.recordsCount)} coleta(s) · {row.tone === 'danger' ? 'prioridade alta' : row.tone === 'warning' ? 'acompanhar' : 'controlado'}</small>
             </div>
           ))}
           {!visibleRows.length && <div className="empty-panel smart-empty-panel"><strong>Sem fiscais</strong><span>Nenhuma coleta do período trouxe fiscal responsável válido.</span></div>}
@@ -602,10 +755,11 @@ function FieldBiBoard({
   setBoardMode,
   totalSection,
   setTotalSection,
+  presentationInsights,
   onPresent,
   presentationMode = false,
 }) {
-  const isTotalMode = boardMode === 'total';
+  const isTotalMode = !presentationMode && boardMode === 'total';
 
   return (
     <div className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
@@ -627,46 +781,50 @@ function FieldBiBoard({
         )}
       </div>
 
-      <div className="field-bi-control-bar">
-        <div className="field-bi-mode-switch" role="group" aria-label="Modo de visualização CQO Campo">
-          <button type="button" className={!isTotalMode ? 'active' : ''} onClick={() => setBoardMode('meeting')}>
-            <MonitorPlay size={15} />
-            Dados de apresentação
-          </button>
-          <button type="button" className={isTotalMode ? 'active' : ''} onClick={() => setBoardMode('total')}>
-            <SlidersHorizontal size={15} />
-            Dados totais
-          </button>
-        </div>
-
-        {isTotalMode ? (
-          <div className="field-total-filters">
-            <label>
-              <span>Exibir</span>
-              <select value={totalSection} onChange={(event) => setTotalSection(event.target.value)}>
-                {TOTAL_SECTION_OPTIONS.map((option) => (
-                  <option key={option.id} value={option.id}>{option.label}</option>
-                ))}
-              </select>
-            </label>
-            {setDateFrom && setDateTo ? (
-              <>
-                <label>
-                  <span>De</span>
-                  <input type="date" value={dateFrom || ''} onChange={(event) => setDateFrom(event.target.value)} />
-                </label>
-                <label>
-                  <span>Até</span>
-                  <input type="date" value={dateTo || ''} onChange={(event) => setDateTo(event.target.value)} />
-                </label>
-              </>
-            ) : null}
+      {!presentationMode ? (
+        <div className="field-bi-control-bar">
+          <div className="field-bi-mode-switch" role="group" aria-label="Modo de visualização CQO Campo">
+            <button type="button" className={!isTotalMode ? 'active' : ''} onClick={() => setBoardMode('meeting')}>
+              <MonitorPlay size={15} />
+              Dados de apresentação
+            </button>
+            <button type="button" className={isTotalMode ? 'active' : ''} onClick={() => setBoardMode('total')}>
+              <SlidersHorizontal size={15} />
+              Dados totais
+            </button>
           </div>
-        ) : null}
-      </div>
+
+          {isTotalMode ? (
+            <div className="field-total-filters">
+              <label>
+                <span>Exibir</span>
+                <select value={totalSection} onChange={(event) => setTotalSection(event.target.value)}>
+                  {TOTAL_SECTION_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+              {setDateFrom && setDateTo ? (
+                <>
+                  <label>
+                    <span>De</span>
+                    <input type="date" value={dateFrom || ''} onChange={(event) => setDateFrom(event.target.value)} />
+                  </label>
+                  <label>
+                    <span>Até</span>
+                    <input type="date" value={dateTo || ''} onChange={(event) => setDateTo(event.target.value)} />
+                  </label>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {!isTotalMode ? (
         <>
+          <QualityExecutiveStrip insights={presentationInsights} loading={loading} />
+
           <div className="field-bi-kpi-grid">
             <FieldBiKpiCard loading={loading} label="Cacho Maduro %" value={quality.cachoMaduroPct} meta={85} goodWhen="high" />
             <FieldBiKpiCard loading={loading} label="Cacho passado %" value={quality.cachoPassadoPct} meta={10} />
@@ -725,6 +883,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
 
   const model = useMemo(() => buildQualidadeOperacional(records), [records]);
   const dailyBunchRows = useMemo(() => buildDailyBunchRows(records), [records]);
+  const presentationInsights = useMemo(() => buildPresentationInsights(model, dailyBunchRows), [model, dailyBunchRows]);
   const quality = model.quality;
   const periodText = periodLabel(dateFrom, dateTo);
   const updateText = updateLabel(lastSyncTime);
@@ -744,6 +903,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
     setBoardMode,
     totalSection,
     setTotalSection,
+    presentationInsights,
   };
 
   useEffect(() => {
