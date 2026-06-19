@@ -2,8 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
+  CalendarDays,
   Maximize2,
   MonitorPlay,
+  RefreshCw,
+  SlidersHorizontal,
   X,
 } from 'lucide-react';
 import { parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
@@ -18,6 +21,54 @@ function formatNumber(value, digits = 0) {
 
 function formatPercent(value, digits = 2) {
   return `${formatNumber(value, digits)}%`;
+}
+
+function formatDateBr(value) {
+  if (!value) return '';
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('pt-BR').format(date);
+}
+
+function formatMonthYear(dateFrom, dateTo) {
+  if (!dateFrom || !dateTo) return null;
+  const from = new Date(`${dateFrom}T00:00:00`);
+  const to = new Date(`${dateTo}T00:00:00`);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null;
+  const lastDay = new Date(from.getFullYear(), from.getMonth() + 1, 0).getDate();
+  const isFullMonth = from.getDate() === 1
+    && to.getDate() === lastDay
+    && from.getMonth() === to.getMonth()
+    && from.getFullYear() === to.getFullYear();
+  const isFullYear = from.getDate() === 1
+    && from.getMonth() === 0
+    && to.getDate() === 31
+    && to.getMonth() === 11
+    && from.getFullYear() === to.getFullYear();
+
+  if (isFullYear) return String(from.getFullYear());
+  if (!isFullMonth) return null;
+
+  const month = new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(from);
+  return `${month.charAt(0).toUpperCase()}${month.slice(1)}/${from.getFullYear()}`;
+}
+
+function periodLabel(dateFrom, dateTo) {
+  if (!dateFrom && !dateTo) return 'Todos os tempos';
+  return formatMonthYear(dateFrom, dateTo)
+    || `${formatDateBr(dateFrom) || 'Início'} a ${formatDateBr(dateTo) || 'Fim'}`;
+}
+
+function updateLabel(lastSyncTime) {
+  const today = new Intl.DateTimeFormat('pt-BR').format(new Date());
+  return lastSyncTime ? `${today} ${lastSyncTime}` : new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date());
+}
+
+function safePct(num, den) {
+  return den > 0 ? (Number(num || 0) / den) * 100 : 0;
 }
 
 function weekNumberLabel(label) {
@@ -114,6 +165,24 @@ function FieldBiKpiCard({ label, value, meta, goodWhen = 'low', loading = false 
     </div>
   );
 }
+
+function FieldTotalMetricCard({ label, value, detail, tone = 'neutral', loading = false }) {
+  return (
+    <div className={`field-total-metric field-total-metric-${tone}`}>
+      <span>{label}</span>
+      <strong className={loading ? 'skeleton-text' : ''}>{loading ? '\u00A0' : value}</strong>
+      {detail ? <small>{detail}</small> : null}
+    </div>
+  );
+}
+
+const TOTAL_SECTION_OPTIONS = [
+  { id: 'qualidade', label: 'Qualidade' },
+  { id: 'falhas', label: 'Falhas' },
+  { id: 'amostragem', label: 'Amostragem' },
+  { id: 'perdas', label: 'Perdas' },
+  { id: 'todos', label: 'Tudo' },
+];
 
 const BI_SERIES = [
   { key: 'maduro', sourceKey: 'cachoMaduroPct', label: 'CM %', fullLabel: 'Cacho maduro %', color: 'var(--orange-institutional)' },
@@ -393,19 +462,162 @@ function DailyBunchBarChart({ rows, loading = false }) {
   );
 }
 
+function buildTotalMetricGroups(model) {
+  const totals = model.corteTotals || {};
+  const baseCachos = Math.max(totals.cachosObservados || 0, 0);
+  const basePlantas = Math.max(totals.plantasObservadas || 0, 0);
+  const quality = model.quality || {};
+  const lossBase = model.totals?.producedTon || 0;
+
+  return [
+    {
+      id: 'qualidade',
+      title: 'Qualidade dos cachos',
+      cards: [
+        { label: 'Cacho maduro', value: formatPercent(quality.cachoMaduroPct), detail: `${formatNumber(totals.cachoMaduro)} cachos`, tone: 'success' },
+        { label: 'Cacho passado', value: formatPercent(quality.cachoPassadoPct), detail: `${formatNumber(totals.cachoPassado)} cachos`, tone: quality.cachoPassadoPct > 10 ? 'danger' : 'neutral' },
+        { label: 'Cacho verde', value: formatPercent(quality.cachoVerdePct), detail: `${formatNumber(totals.cachoVerde)} cachos`, tone: quality.cachoVerdePct > 1 ? 'warning' : 'neutral' },
+        { label: 'Cacho avermelhado', value: formatPercent(quality.cachoAvermelhadoPct), detail: `${formatNumber(totals.cachoAvermelhado)} cachos`, tone: quality.cachoAvermelhadoPct > 4 ? 'danger' : 'neutral' },
+        { label: 'Cacho estrela', value: formatPercent(quality.cachoEstrelaPct), detail: `${formatNumber(totals.cachoEstrela)} cachos`, tone: quality.cachoEstrelaPct > 2 ? 'danger' : 'neutral' },
+        { label: 'Cacho infermo', value: formatPercent(quality.cachoInfermoPct), detail: `${formatNumber(totals.cachoInfermo)} cachos`, tone: 'neutral' },
+        { label: 'Bucha', value: formatPercent(quality.buchaPct), detail: `${formatNumber(totals.bucha)} cachos`, tone: 'neutral' },
+        { label: 'Cacho brocado', value: formatPercent(safePct(totals.cachoBrocado, baseCachos)), detail: `${formatNumber(totals.cachoBrocado)} cachos`, tone: 'warning' },
+      ],
+    },
+    {
+      id: 'falhas',
+      title: 'Falhas e ocorrências do corte',
+      cards: [
+        { label: 'Cacho esquecido', value: formatNumber(totals.cachoEsquecido), detail: `${formatPercent(safePct(totals.cachoEsquecido, baseCachos))} dos cachos`, tone: 'danger' },
+        { label: 'Talo comprido', value: formatNumber(totals.taloComprido), detail: `${formatPercent(safePct(totals.taloComprido, basePlantas))} das plantas`, tone: quality.taloCompridoPct > 3 ? 'danger' : 'warning' },
+        { label: 'Folha cortada indevida', value: formatNumber(totals.folhaCortada), detail: `${formatPercent(safePct(totals.folhaCortada, basePlantas))} das plantas`, tone: 'warning' },
+        { label: 'Folha mamando', value: formatNumber(totals.folhaMamando), detail: `${formatPercent(safePct(totals.folhaMamando, basePlantas))} das plantas`, tone: 'warning' },
+        { label: 'Mal posicionado', value: formatNumber(totals.cachoMalPosicionado), detail: `${formatPercent(safePct(totals.cachoMalPosicionado, baseCachos))} dos cachos`, tone: 'warning' },
+        { label: 'Bucha', value: formatNumber(totals.bucha), detail: `${formatPercent(safePct(totals.bucha, baseCachos))} dos cachos`, tone: 'neutral' },
+      ],
+    },
+    {
+      id: 'amostragem',
+      title: 'Amostragem e auditoria',
+      cards: [
+        { label: 'Fichas de corte', value: formatNumber(model.corteRecords.length), detail: 'coletas no filtro', tone: 'success' },
+        { label: 'Linhas avaliadas', value: formatNumber(totals.linhas), detail: 'linhas/ruas amostradas', tone: 'neutral' },
+        { label: 'Plantas observadas', value: formatNumber(totals.plantasObservadas), detail: 'base da auditoria', tone: 'neutral' },
+        { label: 'Cachos observados', value: formatNumber(totals.cachosObservados), detail: 'base de maturação', tone: 'neutral' },
+        { label: 'Registros com GPS', value: `${formatNumber(totals.gps)} / ${formatNumber(totals.total)}`, detail: `${formatNumber(totals.gpsRate)}% das fichas`, tone: 'success' },
+        { label: 'Pontos GPS', value: formatNumber(totals.gpsPoints), detail: `${formatNumber(totals.gpsOccurrences)} ocorrências`, tone: 'neutral' },
+      ],
+    },
+    {
+      id: 'perdas',
+      title: 'Perdas estimadas',
+      cards: [
+        { label: 'Perda corte', value: `${formatNumber(model.totals?.corteT, 2)} t`, detail: lossBase ? `${formatPercent(model.lossRates?.cortePct || 0)} da produção` : 'sem base de produção', tone: 'danger' },
+        { label: 'Cachos estimados', value: formatNumber(model.totals?.estimatedCachos), detail: 'estimativa por amostragem', tone: 'warning' },
+        { label: 'Produção base', value: `${formatNumber(lossBase, 2)} t`, detail: lossBase ? 'base calculada' : 'não informada', tone: 'neutral' },
+        { label: 'Score corte', value: formatNumber(totals.corteScore), detail: 'nota técnica do corte', tone: totals.corteScore >= 85 ? 'success' : 'warning' },
+      ],
+    },
+  ];
+}
+
+function FieldTotalDataPanel({ model, selectedSection, loading = false }) {
+  const groups = buildTotalMetricGroups(model)
+    .filter((group) => selectedSection === 'todos' || group.id === selectedSection);
+  const farmRows = model.farmRows.slice(0, 8);
+
+  return (
+    <div className={`field-total-panel ${groups.length === 1 ? 'is-single-section' : ''}`}>
+      {groups.map((group) => (
+        <section className="field-total-section" key={group.id}>
+          <h3>{group.title}</h3>
+          <div className="field-total-metric-grid">
+            {group.cards.map((card) => (
+              <FieldTotalMetricCard
+                key={`${group.id}-${card.label}`}
+                loading={loading}
+                {...card}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+
+      <section className="field-total-section field-total-table-section">
+        <h3>Resumo por fazenda</h3>
+        <div className="field-total-table-wrap">
+          <table className="field-total-table">
+            <thead>
+              <tr>
+                <th>Fazenda</th>
+                <th>Coletas</th>
+                <th>Maduro</th>
+                <th>Verde</th>
+                <th>Passado</th>
+                <th>Avermelhado</th>
+                <th>Cacho esquecido</th>
+              </tr>
+            </thead>
+            <tbody>
+              {farmRows.map((row) => {
+                const values = qualityValuesFromRow(row);
+                const totals = row.qualidade || {};
+                return (
+                  <tr key={row.label}>
+                    <td>{row.label}</td>
+                    <td>{formatNumber(row.records?.length || row.recordsCount || 0)}</td>
+                    <td>{formatPercent(values.maduro)}</td>
+                    <td>{formatPercent(values.verde)}</td>
+                    <td>{formatPercent(values.passado)}</td>
+                    <td>{formatPercent(values.avermelhado)}</td>
+                    <td>{formatNumber(totals.cachoEsquecido)}</td>
+                  </tr>
+                );
+              })}
+              {!farmRows.length ? (
+                <tr>
+                  <td colSpan="7">Sem fazendas no filtro atual.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function FieldBiBoard({
   loading,
   model,
   quality,
   dailyBunchRows,
+  periodText,
+  updateText,
+  dateFrom,
+  dateTo,
+  setDateFrom,
+  setDateTo,
+  boardMode,
+  setBoardMode,
+  totalSection,
+  setTotalSection,
   onPresent,
   presentationMode = false,
 }) {
+  const isTotalMode = boardMode === 'total';
+
   return (
     <div className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
       <div className="field-bi-header">
         <img src="/logo.png" alt="Vila Nova Agroindustrial" className="field-bi-logo" />
-        <h2>Qualidade Agrícola</h2>
+        <div className="field-bi-title-block">
+          <h2>Qualidade Agrícola</h2>
+          <div className="field-bi-meta-line">
+            <span><CalendarDays size={14} />{periodText}</span>
+            <span><RefreshCw size={14} />Atualizado: {updateText}</span>
+          </div>
+        </div>
         {!presentationMode && (
           <button type="button" className="field-bi-present-btn" onClick={onPresent}>
             <MonitorPlay size={18} />
@@ -415,50 +627,90 @@ function FieldBiBoard({
         )}
       </div>
 
-      <div className="field-bi-kpi-grid">
-        <FieldBiKpiCard loading={loading} label="Cacho Maduro %" value={quality.cachoMaduroPct} meta={85} goodWhen="high" />
-        <FieldBiKpiCard loading={loading} label="Cacho passado %" value={quality.cachoPassadoPct} meta={10} />
-        <FieldBiKpiCard loading={loading} label="Cacho verde %" value={quality.cachoVerdePct} meta={1} />
-        <FieldBiKpiCard loading={loading} label="Cacho Avermelhado %" value={quality.cachoAvermelhadoPct} meta={4} />
-        <FieldBiKpiCard loading={loading} label="Cacho Talo Compri. %" value={quality.taloCompridoPct} meta={3} />
-        <FieldBiKpiCard loading={loading} label="Cacho Estrela %" value={quality.cachoEstrelaPct} meta={2} />
+      <div className="field-bi-control-bar">
+        <div className="field-bi-mode-switch" role="group" aria-label="Modo de visualização CQO Campo">
+          <button type="button" className={!isTotalMode ? 'active' : ''} onClick={() => setBoardMode('meeting')}>
+            <MonitorPlay size={15} />
+            Dados de apresentação
+          </button>
+          <button type="button" className={isTotalMode ? 'active' : ''} onClick={() => setBoardMode('total')}>
+            <SlidersHorizontal size={15} />
+            Dados totais
+          </button>
+        </div>
+
+        {isTotalMode ? (
+          <div className="field-total-filters">
+            <label>
+              <span>Exibir</span>
+              <select value={totalSection} onChange={(event) => setTotalSection(event.target.value)}>
+                {TOTAL_SECTION_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+            {setDateFrom && setDateTo ? (
+              <>
+                <label>
+                  <span>De</span>
+                  <input type="date" value={dateFrom || ''} onChange={(event) => setDateFrom(event.target.value)} />
+                </label>
+                <label>
+                  <span>Até</span>
+                  <input type="date" value={dateTo || ''} onChange={(event) => setDateTo(event.target.value)} />
+                </label>
+              </>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
-      <div className="field-bi-main-grid">
-        <FieldBiFarmChart rows={model.farmRows} loading={loading} />
-        <FieldBiWeekChart rows={model.weekRows} loading={loading} />
-        <EvaluatorQualityCards rows={model.evaluatorRows} loading={loading} />
-      </div>
+      {!isTotalMode ? (
+        <>
+          <div className="field-bi-kpi-grid">
+            <FieldBiKpiCard loading={loading} label="Cacho Maduro %" value={quality.cachoMaduroPct} meta={85} goodWhen="high" />
+            <FieldBiKpiCard loading={loading} label="Cacho passado %" value={quality.cachoPassadoPct} meta={10} />
+            <FieldBiKpiCard loading={loading} label="Cacho verde %" value={quality.cachoVerdePct} meta={1} />
+            <FieldBiKpiCard loading={loading} label="Cacho Avermelhado %" value={quality.cachoAvermelhadoPct} meta={4} />
+            <FieldBiKpiCard loading={loading} label="Cacho Talo Compri. %" value={quality.taloCompridoPct} meta={3} />
+            <FieldBiKpiCard loading={loading} label="Cacho Estrela %" value={quality.cachoEstrelaPct} meta={2} />
+          </div>
 
-      <DailyBunchBarChart rows={dailyBunchRows} loading={loading} />
+          <div className="field-bi-main-grid">
+            <FieldBiFarmChart rows={model.farmRows} loading={loading} />
+            <FieldBiWeekChart rows={model.weekRows} loading={loading} />
+            <EvaluatorQualityCards rows={model.evaluatorRows} loading={loading} />
+          </div>
+
+          <DailyBunchBarChart rows={dailyBunchRows} loading={loading} />
+        </>
+      ) : (
+        <FieldTotalDataPanel model={model} selectedSection={totalSection} loading={loading} />
+      )}
 
       <div className="developer-signature">Desenvolvedor: Vinicius Dev.</div>
     </div>
   );
 }
 
-function PresentationOverlay({ loading, model, quality, dailyBunchRows, onClose }) {
+function PresentationOverlay(props) {
   return createPortal(
     <div className="presentation-overlay" role="dialog" aria-modal="true" aria-label="Apresentacao em tela cheia">
-      <button type="button" className="presentation-close-btn field-bi-close-btn" onClick={onClose} title="Fechar apresentacao" aria-label="Fechar apresentacao">
+      <button type="button" className="presentation-close-btn field-bi-close-btn" onClick={props.onClose} title="Fechar apresentacao" aria-label="Fechar apresentacao">
         <X size={22} />
       </button>
       <div className="presentation-scroll">
-        <FieldBiBoard
-          loading={loading}
-          model={model}
-          quality={quality}
-          dailyBunchRows={dailyBunchRows}
-          presentationMode
-        />
+        <FieldBiBoard {...props} presentationMode />
       </div>
     </div>,
     document.body
   );
 }
 
-export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, searchTerm }) {
+export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, setDateFrom, setDateTo, searchTerm, lastSyncTime }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
+  const [boardMode, setBoardMode] = useState('meeting');
+  const [totalSection, setTotalSection] = useState('qualidade');
   const { loading, records, error } = useCqoDashboard({
     farmFilter,
     areaFilter,
@@ -474,6 +726,25 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
   const model = useMemo(() => buildQualidadeOperacional(records), [records]);
   const dailyBunchRows = useMemo(() => buildDailyBunchRows(records), [records]);
   const quality = model.quality;
+  const periodText = periodLabel(dateFrom, dateTo);
+  const updateText = updateLabel(lastSyncTime);
+
+  const boardProps = {
+    loading,
+    model,
+    quality,
+    dailyBunchRows,
+    periodText,
+    updateText,
+    dateFrom,
+    dateTo,
+    setDateFrom,
+    setDateTo,
+    boardMode,
+    setBoardMode,
+    totalSection,
+    setTotalSection,
+  };
 
   useEffect(() => {
     if (!presentationOpen) return undefined;
@@ -511,10 +782,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
     <div className="fade-in page-shell field-bi-page">
       {presentationOpen && (
         <PresentationOverlay
-          loading={loading}
-          model={model}
-          quality={quality}
-          dailyBunchRows={dailyBunchRows}
+          {...boardProps}
           onClose={closePresentation}
         />
       )}
@@ -527,10 +795,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
       )}
 
       <FieldBiBoard
-        loading={loading}
-        model={model}
-        quality={quality}
-        dailyBunchRows={dailyBunchRows}
+        {...boardProps}
         onPresent={openPresentation}
       />
     </div>

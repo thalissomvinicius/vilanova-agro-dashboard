@@ -250,6 +250,7 @@ export default function App() {
     dateFrom: activeFilters.dateFrom,
     dateTo: activeFilters.dateTo,
     searchTerm,
+    lastSyncTime,
   };
 
   const applyYearFilter = (nextYear) => {
@@ -418,6 +419,8 @@ export default function App() {
           <Dashboard
             {...commonDashboardProps}
             areaFilter="corte"
+            setDateFrom={applyDateFrom}
+            setDateTo={applyDateTo}
           />
         );
       case 'cqo-carreamento':
