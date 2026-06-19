@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Map,
   RefreshCw,
+  Scale,
   Settings,
   Tractor,
   Truck,
@@ -18,6 +19,7 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
   const campoItems = [
     { id: 'dashboard', label: 'Corte (Campo)', icon: LayoutDashboard },
     { id: 'cqo-carreamento', label: 'Carreamento', icon: Truck },
+    { id: 'perdas-agricola', label: 'Perdas Agrícola', icon: Scale },
   ];
 
   const menuItems = [

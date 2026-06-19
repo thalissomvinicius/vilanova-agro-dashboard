@@ -6,6 +6,7 @@ import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 import Analytics from './pages/Analytics';
 import CqoRampa from './pages/CqoRampa';
+import LossesAgricola from './pages/LossesAgricola';
 import Collections from './pages/Collections';
 import SyncCenter from './pages/SyncCenter';
 import Collaborators from './pages/Collaborators';
@@ -19,6 +20,7 @@ import { refreshCqoData } from './utils/cqoData';
 const PAGE_ROUTES = {
   dashboard: '/campo',
   'cqo-carreamento': '/carreamento',
+  'perdas-agricola': '/perdas',
   'cqo-rampa': '/rampa',
   coletas: '/coletas',
   inventario: '/inventario',
@@ -434,6 +436,13 @@ export default function App() {
             sourceFilter={sourceFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
+          />
+        );
+      case 'perdas-agricola':
+        return (
+          <LossesAgricola
+            {...commonDashboardProps}
+            areaFilter={areaFilter}
           />
         );
       case 'cqo-rampa':
