@@ -90,6 +90,7 @@ export default function Header({
     });
 
     (bonificacaoData?.cqoRampa?.byProducerDay || []).forEach((row) => addYearFromValue(years, row.dayKey));
+    (bonificacaoData?.cqoRampa?.byDay || []).forEach((row) => addYearFromValue(years, row.dayKey));
     (bonificacaoData?.cqoRampa?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));
     (bonificacaoData?.entradaDeCff?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));
     (bonificacaoData?.faturamento?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));

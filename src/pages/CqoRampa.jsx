@@ -127,6 +127,25 @@ function normalizeRampaMonthRows(rows = []) {
   }).sort((a, b) => String(a.dayKey).localeCompare(String(b.dayKey)));
 }
 
+function normalizeRampaDayRows(rows = []) {
+  return rows.map((row) => ({
+    dayKey: row.dayKey || row.dataKey || row.data_avaliacao || row.date || 'sem-data',
+    dayLabel: row.dayLabel || row.label || row.dia || '',
+    registros: firstNumeric(row, ['registros', 'totalRegistros', 'tickets']),
+    qVerde: firstNumeric(row, ['qVerde', 'cvMedia', 'verdeMedia']),
+    qMaduro: firstNumeric(row, ['qMaduro', 'cmMedia', 'maduroMedia']),
+    qPassado: firstNumeric(row, ['qPassado', 'cpMedia', 'passadoMedia']),
+    qTaloComprido: firstNumeric(row, ['qTaloComprido', 'tcMedia', 'taloCompridoMedia']),
+    qAvermelhado: row.qAvermelhado ?? row.caMedia ?? null,
+    qBucha: row.qBucha ?? row.buchaMedia ?? null,
+    pesoT: firstNumeric(row, ['pesoT', 'pesoTon', 'pesoLiquidoT']),
+    sourceLevel: 'day',
+  })).map((row) => ({
+    ...row,
+    dayLabel: row.dayLabel || (row.dayKey && row.dayKey !== 'sem-data' ? row.dayKey.slice(-2) : 'Sem data'),
+  })).sort((a, b) => String(a.dayKey).localeCompare(String(b.dayKey)));
+}
+
 function parseDateBoundary(value, endOfDay = false) {
   if (!value) return null;
   const date = new Date(`${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}`);
@@ -374,11 +393,15 @@ function ProducerQualityTable({ rows, total }) {
   );
 }
 
-function DailyQualityChart({ rows }) {
+function DailyQualityChart({ rows, mode = 'day' }) {
   const visibleRows = rows.slice(-15);
-  const chartTitle = rows.some((row) => row.isMonthly)
+  const chartTitle = mode === 'month' || rows.some((row) => row.isMonthly)
     ? 'Qualidade do CFF por Mês [%]'
     : 'Qualidade do CFF Dia[%]';
+  const emptyTitle = mode === 'month' ? 'Sem meses no período' : 'Sem dias importados';
+  const emptyText = mode === 'month'
+    ? 'Ajuste ano, mês ou intervalo de datas para uma janela que exista no snapshot da Rampa.'
+    : 'O gráfico diário será exibido quando a fonte da Rampa trouxer registros por dia no período selecionado.';
   const series = [
     { key: 'qVerde', label: 'Verde', color: QUALITY_COLORS.qVerde },
     { key: 'qMaduro', label: 'Maduro', color: QUALITY_COLORS.qMaduro },
@@ -393,38 +416,44 @@ function DailyQualityChart({ rows }) {
           <span key={item.key}><i style={{ background: item.color }} />{item.label}</span>
         ))}
       </div>
-      <div className="rampa-bi-chart-frame">
-        <div className="rampa-bi-y-axis">
-          <span>100</span>
-          <span>50</span>
-          <span>0</span>
-        </div>
-        <div className="rampa-bi-day-chart">
-          {visibleRows.map((row) => {
-            const total = series.reduce((sum, item) => sum + Number(row[item.key] || 0), 0) || 1;
-            return (
-              <div className="rampa-bi-day" key={row.dayKey}>
-                <div className="rampa-bi-day-stack">
-                  {series.map((item) => {
-                    const value = Number(row[item.key] || 0);
-                    return (
-                      <span
-                        key={item.key}
-                        style={{ height: `${Math.max((value / total) * 100, value > 0 ? 2 : 0)}%`, background: item.color }}
-                        title={`${item.label}: ${fmtPct(value)}`}
-                      >
-                        {item.key === 'qMaduro' && value >= 20 ? fmt(value, 0) : ''}
-                      </span>
-                    );
-                  })}
+      {visibleRows.length ? (
+        <div className="rampa-bi-chart-frame">
+          <div className="rampa-bi-y-axis">
+            <span>100</span>
+            <span>50</span>
+            <span>0</span>
+          </div>
+          <div className="rampa-bi-day-chart">
+            {visibleRows.map((row) => {
+              const total = series.reduce((sum, item) => sum + Number(row[item.key] || 0), 0) || 1;
+              return (
+                <div className="rampa-bi-day" key={row.dayKey}>
+                  <div className="rampa-bi-day-stack">
+                    {series.map((item) => {
+                      const value = Number(row[item.key] || 0);
+                      return (
+                        <span
+                          key={item.key}
+                          style={{ height: `${Math.max((value / total) * 100, value > 0 ? 2 : 0)}%`, background: item.color }}
+                          title={`${item.label}: ${fmtPct(value)}`}
+                        >
+                          {item.key === 'qMaduro' && value >= 20 ? fmt(value, 0) : ''}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <strong>{row.dayLabel}</strong>
                 </div>
-                <strong>{row.dayLabel}</strong>
-              </div>
-            );
-          })}
-          {!visibleRows.length ? <div className="empty-panel smart-empty-panel"><strong>Sem dias importados</strong><span>O gráfico diário será exibido quando a fonte da Rampa trouxer registros no período selecionado.</span></div> : null}
+              );
+            })}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="rampa-bi-chart-empty smart-empty-panel">
+          <strong>{emptyTitle}</strong>
+          <span>{emptyText}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -540,6 +569,7 @@ function RampaBoard({
   producerNames,
   producerRows,
   dailyRows,
+  chartMode,
   semAvaliacaoRows,
   total,
   onPresent,
@@ -601,7 +631,7 @@ function RampaBoard({
 
       <div className="rampa-bi-grid">
         <ProducerQualityTable rows={producerRows} total={producerTableTotal} />
-        <DailyQualityChart rows={dailyRows} />
+        <DailyQualityChart rows={dailyRows} mode={chartMode} />
       </div>
 
       <div className="rampa-bi-grid rampa-bi-grid-bottom">
@@ -644,13 +674,15 @@ export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', d
   const detailedProducerRows = useExcelSnapshot ? (rampa.byProducerDay || []) : [];
   const hasDetailedProducerRows = detailedProducerRows.length > 0;
   const farmSummaryRows = useExcelSnapshot ? normalizeRampaFarmRows(rampa.byFarm || []) : [];
+  const daySummaryRows = useExcelSnapshot ? normalizeRampaDayRows(rampa.byDay || []) : [];
   const monthSummaryRows = useExcelSnapshot ? normalizeRampaMonthRows(rampa.byMonth || []) : [];
+  const hasDailySummaryRows = daySummaryRows.length > 0;
   const producerSourceRows = hasDetailedProducerRows ? detailedProducerRows : farmSummaryRows;
   const producerDayRows = filterByProducer(producerSourceRows, producerNames);
   const semAvaliacaoDayRows = hasDetailedProducerRows
     ? filterByProducer(rampa.semAvaliacaoByDay || [], producerNames)
     : [];
-  const referenceDate = latestDateFromRows([...producerDayRows, ...semAvaliacaoDayRows, ...monthSummaryRows]);
+  const referenceDate = latestDateFromRows([...producerDayRows, ...daySummaryRows, ...semAvaliacaoDayRows, ...monthSummaryRows]);
   const filteredProducerDayRows = filterByPeriod(
     producerDayRows,
     periodFilter,
@@ -672,18 +704,37 @@ export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', d
     dateTo,
     referenceDate
   );
+  const filteredDaySummaryRows = filterByPeriod(
+    daySummaryRows,
+    periodFilter,
+    dateFrom,
+    dateTo,
+    referenceDate
+  );
+  const hasPeriodData = hasDetailedProducerRows
+    ? filteredProducerDayRows.length > 0
+    : hasDailySummaryRows
+    ? filteredDaySummaryRows.length > 0
+    : filteredMonthRows.length > 0;
   const producerRows = hasDetailedProducerRows
     ? aggregateProducerRows(filteredProducerDayRows)
-    : producerDayRows;
+    : hasPeriodData
+    ? producerDayRows
+    : [];
   const dailyRows = hasDetailedProducerRows
     ? aggregateDayRows(filteredProducerDayRows)
+    : hasDailySummaryRows
+    ? filteredDaySummaryRows
     : filteredMonthRows;
   const semAvaliacaoRows = aggregateSemAvaliacaoRows(filteredSemAvaliacaoDayRows);
+  const chartMode = hasDetailedProducerRows || hasDailySummaryRows ? 'day' : 'month';
   const totalBaseRows = hasDetailedProducerRows
     ? producerRows
+    : hasDailySummaryRows
+    ? filteredDaySummaryRows
     : dailyRows.length
     ? dailyRows
-    : producerRows;
+    : [];
   const total = buildQualityTotal(totalBaseRows);
 
   useEffect(() => {
@@ -726,6 +777,7 @@ export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', d
           producerNames={producerNames}
           producerRows={producerRows}
           dailyRows={dailyRows}
+          chartMode={chartMode}
           semAvaliacaoRows={semAvaliacaoRows}
           total={total}
           sourceFilter={sourceFilter}
@@ -738,6 +790,7 @@ export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', d
         producerNames={producerNames}
         producerRows={producerRows}
         dailyRows={dailyRows}
+        chartMode={chartMode}
         semAvaliacaoRows={semAvaliacaoRows}
         total={total}
         sourceFilter={sourceFilter}

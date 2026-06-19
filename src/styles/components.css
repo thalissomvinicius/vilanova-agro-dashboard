@@ -2748,6 +2748,14 @@ body.presentation-active {
     linear-gradient(to bottom, transparent 0, transparent 181px, var(--border-color) 182px, transparent 183px);
 }
 
+.rampa-bi-chart-empty {
+  min-height: 174px;
+  margin: 6px 12px 6px;
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg-secondary) 72%, #FFFFFF 28%);
+}
+
 .rampa-bi-day {
   min-width: 34px;
   display: flex;
