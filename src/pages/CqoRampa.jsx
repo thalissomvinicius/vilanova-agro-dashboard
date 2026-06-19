@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Activity, AlertTriangle, Box, ClipboardCheck, Gauge, Leaf, Maximize2, MonitorPlay, Scale, Target, Trophy, Truck, X } from 'lucide-react';
+import { AlertTriangle, Box, ClipboardCheck, Leaf, Maximize2, MonitorPlay, Scale, Truck, X } from 'lucide-react';
 import { useBonificacaoData } from '../utils/bonificacaoData';
 
 const RAMPA_PRODUCERS = [
@@ -319,90 +319,6 @@ function QualityCard({ label, value, meta, icon: Icon, color, warning = false, n
   );
 }
 
-function buildRampaInsights({ producerRows, dailyRows, semAvaliacaoRows, total }) {
-  if (!producerRows.length && !dailyRows.length) {
-    return {
-      alertText: 'Sem dados de Rampa no período selecionado.',
-      alertTone: 'info',
-      bestText: 'Sem ranking de produtor no filtro.',
-      riskText: 'Sem produtor crítico no filtro.',
-      trendText: 'Tendência será exibida com dados importados.',
-      trendTone: 'info',
-      boxesText: 'Sem caixas pendentes no filtro.',
-    };
-  }
-
-  const alerts = [
-    { label: 'Verde', value: total.qVerde, meta: 5, goodWhen: 'low' },
-    { label: 'Maduro', value: total.qMaduro, meta: 80, goodWhen: 'high' },
-    { label: 'Passado', value: total.qPassado, meta: 5, goodWhen: 'low' },
-    { label: 'Talo comprido', value: total.qTaloComprido, meta: 3, goodWhen: 'low' },
-  ].filter((item) => {
-    if (!hasQualityValue(item.value)) return false;
-    const value = Number(item.value);
-    return item.goodWhen === 'high' ? value < item.meta : value > item.meta;
-  });
-
-  const bestProducer = [...producerRows]
-    .filter((row) => hasQualityValue(row.qMaduro))
-    .sort((a, b) => Number(b.qMaduro || 0) - Number(a.qMaduro || 0))[0];
-  const riskProducer = [...producerRows]
-    .map((row) => ({
-      ...row,
-      risco: Number(row.qPassado || 0) + Number(row.qVerde || 0) + Number(row.qTaloComprido || 0),
-    }))
-    .sort((a, b) => b.risco - a.risco)[0];
-
-  const lastDays = dailyRows.slice(-3);
-  const previousDays = dailyRows.slice(-6, -3);
-  const avg = (rows, key) => rows.length
-    ? rows.reduce((sum, row) => sum + Number(row[key] || 0), 0) / rows.length
-    : 0;
-  const trend = previousDays.length ? avg(lastDays, 'qMaduro') - avg(previousDays, 'qMaduro') : 0;
-  const caixas = semAvaliacaoRows.reduce((sum, row) => sum + Number(row.caixasSemAvaliacao || 0), 0);
-
-  return {
-    alertText: alerts.length
-      ? `${alerts.length} indicador${alerts.length > 1 ? 'es' : ''} fora da meta na Rampa.`
-      : 'Rampa dentro das metas principais disponíveis.',
-    alertTone: alerts.length ? 'danger' : 'success',
-    bestText: bestProducer ? `${bestProducer.fornecedor}: ${fmtPct(bestProducer.qMaduro)} maduro.` : 'Sem ranking de produtor no filtro.',
-    riskText: riskProducer ? `${riskProducer.fornecedor}: ${fmtPct(riskProducer.risco)} soma de riscos.` : 'Sem produtor crítico no filtro.',
-    trendText: previousDays.length
-      ? `${trend >= 0 ? '+' : ''}${fmt(trend, 1)} p.p. de maduro nos últimos 3 dias.`
-      : 'Tendência será exibida com mais dias importados.',
-    trendTone: trend >= 0 ? 'success' : 'danger',
-    boxesText: caixas ? `${fmt(caixas)} caixas sem avaliação no filtro.` : 'Sem caixas pendentes no filtro.',
-  };
-}
-
-function RampaInsightStrip({ insights }) {
-  const cards = [
-    { title: 'Farol da Rampa', text: insights.alertText, icon: Target, tone: insights.alertTone },
-    { title: 'Melhor produtor', text: insights.bestText, icon: Trophy, tone: 'success' },
-    { title: 'Ponto crítico', text: insights.riskText, icon: Gauge, tone: 'warning' },
-    { title: 'Tendência curta', text: insights.trendText, icon: Activity, tone: insights.trendTone },
-    { title: 'Pendências', text: insights.boxesText, icon: ClipboardCheck, tone: 'info' },
-  ];
-
-  return (
-    <div className="executive-insight-grid rampa-insight-grid">
-      {cards.map((card) => {
-        const Icon = card.icon;
-        return (
-          <div key={card.title} className={`executive-insight-card insight-${card.tone}`}>
-            <Icon size={18} />
-            <div>
-              <span>{card.title}</span>
-              <strong>{card.text}</strong>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 function ProducerQualityTable({ rows, total }) {
   const tableRows = [
     ...rows,
@@ -513,7 +429,7 @@ function DailyQualityChart({ rows }) {
   );
 }
 
-function SemAvaliacaoTable({ rows }) {
+function SemAvaliacaoTable({ rows, updateLabel }) {
   const total = rows.reduce((sum, row) => sum + Number(row.caixasSemAvaliacao || 0), 0);
   return (
     <div className="card rampa-bi-panel">
@@ -548,6 +464,10 @@ function SemAvaliacaoTable({ rows }) {
             )}
           </tbody>
         </table>
+      </div>
+      <div className="rampa-bi-panel-stamp">
+        <span>Data Atualização</span>
+        <strong>{updateLabel}</strong>
       </div>
     </div>
   );
@@ -594,6 +514,27 @@ function rampaSourceInfo(data, sourceFilter) {
   };
 }
 
+function RampaProducerFilterPanel({ producerNames, sourceInfo }) {
+  return (
+    <aside className="rampa-bi-provider-card">
+      <div className="rampa-bi-provider-title">Fornecedor</div>
+      <div className="rampa-bi-provider-list">
+        {RAMPA_PRODUCERS.map((producer) => {
+          const active = producerNames.includes(producer.name);
+          return (
+            <div key={producer.id} className={active ? 'active' : ''}>
+              <span />
+              <strong>{producer.name}</strong>
+            </div>
+          );
+        })}
+      </div>
+      <p>Para filtrar um fornecedor, use o filtro de Fazenda no topo do sistema.</p>
+      <small>{sourceInfo.title}</small>
+    </aside>
+  );
+}
+
 function RampaBoard({
   data,
   producerNames,
@@ -605,9 +546,9 @@ function RampaBoard({
   sourceFilter,
   presentationMode = false,
 }) {
-  const insights = buildRampaInsights({ producerRows, dailyRows, semAvaliacaoRows, total });
   const sourceInfo = rampaSourceInfo(data, sourceFilter);
   const producerTableTotal = buildQualityTotal(producerRows);
+  const updateLabel = formatSourceDate(data.snapshotUpdatedAt || data.generatedAt || data.importedAt) || '--';
 
   return (
     <div className={`rampa-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
@@ -641,28 +582,21 @@ function RampaBoard({
         </div>
       ) : null}
 
-      <div className="rampa-bi-producer-strip">
-        {RAMPA_PRODUCERS.map((producer) => (
-          <span key={producer.id} className={producerNames.includes(producer.name) ? 'active' : ''}>
-            {producer.name}
-          </span>
-        ))}
-      </div>
-
-      <RampaInsightStrip insights={insights} />
-
-      <div className="rampa-bi-kpi-grid">
-        <QualityCard label="Verde (%)" value={total.qVerde} meta={5} icon={Leaf} color={QUALITY_COLORS.qVerde} warning={Number(total.qVerde || 0) > 5} />
-        <QualityCard label="Maduro (%)" value={total.qMaduro} meta={80} icon={Truck} color={QUALITY_COLORS.qMaduro} warning={Number(total.qMaduro || 0) < 80} />
-        <QualityCard label="Passado (%)" value={total.qPassado} meta={5} icon={AlertTriangle} color={QUALITY_COLORS.qPassado} warning={Number(total.qPassado || 0) > 5} />
-        <QualityCard label="Cacho Averm. (%)" value={total.qAvermelhado} meta={10} icon={AlertTriangle} color={QUALITY_COLORS.qAvermelhado} note="Aguardando fonte do BI" unavailable />
-        <QualityCard label="Talo comprido (%)" value={total.qTaloComprido} meta={3} icon={Scale} color={QUALITY_COLORS.qTaloComprido} warning={Number(total.qTaloComprido || 0) > 3} />
-        <QualityCard label="Bucha (%)" value={total.qBucha} meta={0} icon={Box} color={QUALITY_COLORS.qBucha} note="Aguardando fonte do BI" unavailable />
-      </div>
-
-      <div className="warning-strip rampa-bi-warning">
-        <AlertTriangle size={16} />
-        <span>A planilha local não contém as colunas Q_Avermelhado e Q_Bucha que aparecem no BI remoto; por isso estes campos ficam como N/D até recebermos a fonte completa.</span>
+      <div className="rampa-bi-control-kpi-grid">
+        <RampaProducerFilterPanel producerNames={producerNames} sourceInfo={sourceInfo} />
+        <div className="rampa-bi-kpi-area">
+          <div className="rampa-bi-kpi-grid">
+            <QualityCard label="Verde (%)" value={total.qVerde} meta={5} icon={Leaf} color={QUALITY_COLORS.qVerde} warning={Number(total.qVerde || 0) > 5} />
+            <QualityCard label="Maduro (%)" value={total.qMaduro} meta={80} icon={Truck} color={QUALITY_COLORS.qMaduro} warning={Number(total.qMaduro || 0) < 80} />
+            <QualityCard label="Passado (%)" value={total.qPassado} meta={5} icon={AlertTriangle} color={QUALITY_COLORS.qPassado} warning={Number(total.qPassado || 0) > 5} />
+            <QualityCard label="Cacho Averm. (%)" value={total.qAvermelhado} meta={10} icon={AlertTriangle} color={QUALITY_COLORS.qAvermelhado} note="Aguardando fonte do BI" unavailable />
+            <QualityCard label="Talo comprido (%)" value={total.qTaloComprido} meta={3} icon={Scale} color={QUALITY_COLORS.qTaloComprido} warning={Number(total.qTaloComprido || 0) > 3} />
+            <QualityCard label="Bucha (%)" value={total.qBucha} meta={0} icon={Box} color={QUALITY_COLORS.qBucha} note="Aguardando fonte do BI" unavailable />
+          </div>
+          <div className="rampa-bi-instruction-line">
+            <span>Para filtrar um fornecedor para envio de informações, selecione a Fazenda no topo e acompanhe as métricas abaixo.</span>
+          </div>
+        </div>
       </div>
 
       <div className="rampa-bi-grid">
@@ -679,7 +613,7 @@ function RampaBoard({
             <span>caixas sem avaliação nos produtores selecionados</span>
           </div>
         </div>
-        <SemAvaliacaoTable rows={semAvaliacaoRows} />
+        <SemAvaliacaoTable rows={semAvaliacaoRows} updateLabel={updateLabel} />
       </div>
 
       <RampaDeveloperSignature />
