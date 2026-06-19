@@ -102,6 +102,16 @@ function resolveRecordDate(record) {
   return null;
 }
 
+function latestCollectionLabel(records) {
+  const latest = records.reduce((latestDate, record) => {
+    const date = resolveRecordDate(record);
+    if (!date) return latestDate;
+    return !latestDate || date > latestDate ? date : latestDate;
+  }, null);
+
+  return latest ? new Intl.DateTimeFormat('pt-BR').format(latest) : '--';
+}
+
 function buildDailyBunchRows(records) {
   const buckets = new Map();
 
@@ -610,6 +620,7 @@ function FieldBiBoard({
   dailyBunchRows,
   periodText,
   updateText,
+  latestCollectionText,
   dateFrom,
   dateTo,
   setDateFrom,
@@ -632,6 +643,7 @@ function FieldBiBoard({
           <div className="field-bi-meta-line">
             <span><CalendarDays size={14} />{periodText}</span>
             <span><RefreshCw size={14} />Atualizado: {updateText}</span>
+            <span><CalendarDays size={14} />Última coleta: {latestCollectionText}</span>
           </div>
         </div>
         {!presentationMode && (
@@ -746,6 +758,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
   const quality = model.quality;
   const periodText = periodLabel(dateFrom, dateTo);
   const updateText = updateLabel(lastSyncTime);
+  const latestCollectionText = loading ? 'Carregando...' : latestCollectionLabel(records);
 
   const boardProps = {
     loading,
@@ -754,6 +767,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
     dailyBunchRows,
     periodText,
     updateText,
+    latestCollectionText,
     dateFrom,
     dateTo,
     setDateFrom,
