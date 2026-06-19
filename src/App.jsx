@@ -89,7 +89,7 @@ function searchFilters() {
     yearFilter: params.get('ano') || undefined,
     monthFilter: params.get('mes') || undefined,
     cycleFilter: params.get('ciclo') || undefined,
-    evaluatorFilter: params.get('avaliador') || undefined,
+    evaluatorFilter: params.get('fiscal') || params.get('avaliador') || undefined,
     sourceFilter: params.get('fonte') || undefined,
     searchTerm: params.get('busca') || undefined,
     dateFrom: params.get('dataInicio') || params.get('de') || undefined,
@@ -136,7 +136,7 @@ function buildSearch(filters) {
   if (filters.yearFilter) params.set('ano', filters.yearFilter);
   if (filters.monthFilter) params.set('mes', filters.monthFilter);
   if (filters.cycleFilter !== 'all') params.set('ciclo', filters.cycleFilter);
-  if (filters.evaluatorFilter !== 'all') params.set('avaliador', filters.evaluatorFilter);
+  if (filters.evaluatorFilter !== 'all') params.set('fiscal', filters.evaluatorFilter);
   if (filters.sourceFilter !== 'all') params.set('fonte', filters.sourceFilter);
   if (filters.searchTerm) params.set('busca', filters.searchTerm);
   if (filters.dateFrom) params.set('dataInicio', filters.dateFrom);

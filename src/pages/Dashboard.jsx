@@ -352,7 +352,7 @@ function FieldBiWeekChart({ rows, loading = false }) {
   );
 }
 
-function EvaluatorQualityCards({ rows, loading = false }) {
+function FiscalQualityCards({ rows, loading = false }) {
   const visibleRows = rows.slice(0, 4);
   return (
     <section className="field-bi-panel field-bi-evaluators">
@@ -370,7 +370,7 @@ function EvaluatorQualityCards({ rows, loading = false }) {
               </div>
             </div>
           ))}
-          {!visibleRows.length && <div className="empty-panel smart-empty-panel"><strong>Sem avaliadores</strong><span>Nenhuma coleta do período trouxe avaliador válido.</span></div>}
+          {!visibleRows.length && <div className="empty-panel smart-empty-panel"><strong>Sem fiscais</strong><span>Nenhuma coleta do período trouxe fiscal responsável válido.</span></div>}
         </>
       )}
     </section>
@@ -679,7 +679,7 @@ function FieldBiBoard({
           <div className="field-bi-main-grid">
             <FieldBiFarmChart rows={model.farmRows} loading={loading} />
             <FieldBiWeekChart rows={model.weekRows} loading={loading} />
-            <EvaluatorQualityCards rows={model.evaluatorRows} loading={loading} />
+            <FiscalQualityCards rows={model.evaluatorRows} loading={loading} />
           </div>
 
           <DailyBunchBarChart rows={dailyBunchRows} loading={loading} />

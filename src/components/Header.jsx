@@ -96,14 +96,14 @@ export default function Header({
     return Array.from(years).sort((a, b) => Number(b) - Number(a));
   }, [records, bonificacaoData, yearFilter]);
 
-  const evaluators = React.useMemo(() => {
-    const evals = new Set();
+  const fiscalResponsibles = React.useMemo(() => {
+    const fiscals = new Set();
     records.forEach(r => {
-      if (ACTIVE_CQO_FARM_IDS.includes(r.farmId) && r.evaluator && r.evaluator !== 'Sem avaliador') {
-        evals.add(r.evaluator);
+      if (ACTIVE_CQO_FARM_IDS.includes(r.farmId) && r.fiscal && r.fiscal !== '--') {
+        fiscals.add(r.fiscal);
       }
     });
-    return Array.from(evals).sort();
+    return Array.from(fiscals).sort();
   }, [records]);
   const showSourceFilter = activePage !== 'cqo-rampa';
 
@@ -164,16 +164,16 @@ export default function Header({
         </label>
 
         <label className="header-filter-control header-filter-control-wide">
-          <span>Avaliador</span>
+          <span>Fiscal Resp.</span>
           <select
             className="header-filter-select"
             value={evaluatorFilter}
             onChange={(event) => setEvaluatorFilter(event.target.value)}
-            title="Selecionar avaliador"
+            title="Selecionar fiscal responsável da equipe"
           >
-            <option value="all">Todos os avaliadores</option>
-            {evaluators.map((ev) => (
-              <option key={ev} value={ev}>{ev}</option>
+            <option value="all">Todos os fiscais</option>
+            {fiscalResponsibles.map((fiscal) => (
+              <option key={fiscal} value={fiscal}>{fiscal}</option>
             ))}
           </select>
         </label>

@@ -214,7 +214,7 @@ export function buildQualidadeOperacional(records) {
   const byFarm = new Map();
   const byMonth = new Map();
   const byParcela = new Map();
-  const byEvaluator = new Map();
+  const byFiscal = new Map();
   const byWeek = new Map();
   const byDay = new Map();
 
@@ -224,7 +224,8 @@ export function buildQualidadeOperacional(records) {
     pushBucket(byParcela, record.parcel || 'Sem parcela', record, loss);
     
     // Novas agregações para o painel estilo Power BI
-    pushBucket(byEvaluator, shortLabel(record.evaluator || record.evaluatorRole || 'Sem auditor'), record, loss);
+    const fiscalLabel = record.fiscal && record.fiscal !== '--' ? record.fiscal : 'Sem fiscal';
+    pushBucket(byFiscal, shortLabel(fiscalLabel), record, loss);
     pushBucket(byWeek, weekKey(record), record, loss);
     
     const dKey = `${dayKey(record)} - ${record.farm || 'Sem fazenda'} - ${record.parcel || 'Sem parcela'}`;
@@ -288,7 +289,7 @@ export function buildQualidadeOperacional(records) {
     };
   };
 
-  const evaluatorRows = Array.from(byEvaluator.values())
+  const evaluatorRows = Array.from(byFiscal.values())
     .map(formatQualityRow)
     .sort((a, b) => b.recordsCount - a.recordsCount);
 

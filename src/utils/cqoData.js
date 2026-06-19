@@ -44,6 +44,18 @@ export function normalizeText(value) {
     .replace(/^-+|-+$/g, '');
 }
 
+function formatPersonName(value) {
+  const text = String(value || '').trim().replace(/\s+/g, ' ');
+  if (!text || text === '--') return '';
+  if (/^\d+$/.test(text)) return text;
+
+  return text.split(' ').map((part) => {
+    const lower = part.toLowerCase();
+    if (['de', 'da', 'do', 'dos', 'das', 'e'].includes(lower)) return lower;
+    return `${lower.charAt(0).toUpperCase()}${lower.slice(1)}`;
+  }).join(' ');
+}
+
 function numberValue(value) {
   const parsed = Number(String(value ?? '0').replace(',', '.'));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -465,7 +477,7 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
     evaluatorMatricula: matricula,
     evaluator: collaborator?.nome || matricula || 'Sem avaliador',
     evaluatorRole: collaborator?.cargo || '',
-    fiscal: data.fiscal_resp || '--',
+    fiscal: formatPersonName(data.fiscal_resp) || '--',
     observation: data.observacao || '',
     acompanhamento,
     gps: gps || gpsOccurrences[0] || gpsTrack[0] || null,
@@ -1206,7 +1218,7 @@ export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all',
     const farmOk = farmFilter === 'all' || record.farmId === farmFilter;
     const areaOk = areaFilter === 'all' || record.type === areaFilter;
     const cycleOk = cycleFilter === 'all' || String(record.cycle) === String(cycleFilter);
-    const evaluatorOk = evaluatorFilter === 'all' || record.evaluator === evaluatorFilter;
+    const evaluatorOk = evaluatorFilter === 'all' || normalizeText(record.fiscal) === normalizeText(evaluatorFilter);
     const sourceOk = sourceFilter === 'all' || record.source === sourceFilter;
     const statusOk = statusFilter === 'all' || normalizeText(record.status) === normalizeText(statusFilter);
     const periodOk = isWithinPeriod(record, periodFilter, dateFrom, dateTo);
