@@ -1363,8 +1363,8 @@ body.presentation-active {
 }
 
 .field-bi-kpi {
-  min-height: 82px;
-  padding: 6px 10px 9px;
+  min-height: 88px;
+  padding: 7px 10px 12px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--bg-card);
@@ -1382,7 +1382,7 @@ body.presentation-active {
 
 .field-bi-kpi strong {
   display: block;
-  margin: 2px 0 0;
+  margin: 3px 0 0;
   font-size: clamp(1.45rem, 2.35vw, 2.12rem);
   line-height: 1;
   font-weight: 500;
@@ -1391,9 +1391,10 @@ body.presentation-active {
 
 .field-bi-kpi small {
   display: block;
+  margin-top: 5px;
   color: var(--text-secondary);
-  font-size: 0.78rem;
-  line-height: 1.2;
+  font-size: 0.74rem;
+  line-height: 1.24;
 }
 
 .field-bi-kpi-green strong {
@@ -1442,6 +1443,12 @@ body.presentation-active {
   font-weight: 650;
 }
 
+.field-bi-legend {
+  gap: 5px 8px;
+  font-size: 0.58rem;
+  line-height: 1.1;
+}
+
 .field-bi-legend span,
 .field-daily-legend span {
   display: inline-flex;
@@ -1449,10 +1456,14 @@ body.presentation-active {
   gap: 4px;
 }
 
+.field-bi-legend span {
+  white-space: nowrap;
+}
+
 .field-bi-legend i,
 .field-daily-legend i {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 999px;
   flex-shrink: 0;
 }
@@ -1460,26 +1471,25 @@ body.presentation-active {
 .field-bi-farm-chart {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 8px;
   margin-top: 10px;
 }
 
 .field-bi-farm-row {
   display: grid;
-  grid-template-columns: minmax(76px, 108px) minmax(0, 1fr);
+  grid-template-columns: minmax(96px, 126px) minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: 7px;
 }
 
 .field-bi-farm-row strong {
   color: var(--text-secondary);
-  font-size: 0.75rem;
+  font-size: 0.66rem;
   font-weight: 700;
+  line-height: 1.08;
   text-align: right;
   text-transform: uppercase;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .field-bi-farm-bars {
@@ -1492,6 +1502,7 @@ body.presentation-active {
 .field-bi-farm-bar-line {
   position: relative;
   height: 14px;
+  padding-right: 44px;
 }
 
 .field-bi-farm-bar-line span {
@@ -1505,13 +1516,15 @@ body.presentation-active {
   top: -1px;
   right: 0;
   color: var(--text-secondary);
-  font-size: 0.7rem;
+  font-size: 0.66rem;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .field-bi-axis {
   display: flex;
   justify-content: space-between;
-  margin: 8px 24px 0 112px;
+  margin: 8px 50px 0 132px;
   color: var(--text-secondary);
   font-size: 0.72rem;
 }
@@ -1814,7 +1827,7 @@ body.presentation-active {
 }
 
 .presentation-overlay .field-bi-kpi {
-  min-height: 78px;
+  min-height: 86px;
 }
 
 .presentation-overlay .field-bi-panel {

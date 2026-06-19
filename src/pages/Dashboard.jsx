@@ -193,9 +193,9 @@ const TOTAL_SECTION_OPTIONS = [
 ];
 
 const BI_SERIES = [
-  { key: 'maduro', sourceKey: 'cachoMaduroPct', label: 'CM %', fullLabel: 'Cacho maduro %', color: 'var(--orange-institutional)' },
-  { key: 'passado', sourceKey: 'cachoPassadoPct', label: 'CP %', fullLabel: 'Cacho passado %', color: 'var(--text-primary)' },
-  { key: 'verde', sourceKey: 'cachoVerdePct', label: 'CV %', fullLabel: 'Cacho verde %', color: 'var(--green-institutional)' },
+  { key: 'maduro', sourceKey: 'cachoMaduroPct', label: 'CM %', fullLabel: 'Cacho Maduro %', color: 'var(--orange-institutional)' },
+  { key: 'passado', sourceKey: 'cachoPassadoPct', label: 'CP %', fullLabel: 'Cacho Passado %', color: 'var(--text-primary)' },
+  { key: 'verde', sourceKey: 'cachoVerdePct', label: 'CV %', fullLabel: 'Cacho Verde %', color: 'var(--green-institutional)' },
   { key: 'avermelhado', sourceKey: 'cachoAvermelhadoPct', label: 'CA %', fullLabel: 'Cacho Avermelhado %', color: 'var(--status-danger)' },
 ];
 
@@ -228,7 +228,7 @@ function FieldBiLegend() {
   return (
     <div className="field-bi-legend">
       {BI_SERIES.map((item) => (
-        <span key={item.key}><i style={{ background: item.color }} />{item.label}</span>
+        <span key={item.key}><i style={{ background: item.color }} />{item.fullLabel}</span>
       ))}
     </div>
   );
@@ -336,7 +336,7 @@ function FieldBiWeekChart({ rows, loading = false }) {
                         className="field-bi-bar-label"
                         transform={`rotate(-90 ${groupX + barWidth / 2} ${padding.top + graphHeight - ((Math.min(values.maduro, 100) / 100) * graphHeight / 2)})`}
                       >
-                        {formatNumber(values.maduro, 0)}
+                        {formatPercent(values.maduro, 0)}
                       </text>
                     )}
                     <text x={groupX + barWidth / 2} y={chartHeight - 12} textAnchor="middle" className="chart-axis-text">
