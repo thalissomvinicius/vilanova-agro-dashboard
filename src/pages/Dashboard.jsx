@@ -10,7 +10,7 @@ import {
   Trophy,
   X,
 } from 'lucide-react';
-import { useCqoDashboard } from '../utils/cqoData';
+import { parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
 import { buildQualidadeOperacional } from '../utils/qualidadeOperacionalData';
 
 function formatNumber(value, digits = 0) {
@@ -60,26 +60,27 @@ function weekNumberLabel(label) {
   return match ? String(Number(match[1])) : label;
 }
 
+function localDateKey(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
 function resolveRecordDate(record) {
   const candidates = [
-    record.createdAt,
-    record.sentAt,
     record.raw?.data_avaliacao,
+    record.raw?.data,
+    record.raw?.Data,
+    record.sentAt,
+    record.createdAt,
     record.date,
   ];
 
   for (const candidate of candidates) {
-    if (!candidate) continue;
-    const direct = new Date(candidate);
-    if (!Number.isNaN(direct.getTime())) return direct;
-
-    if (typeof candidate === 'string') {
-      const brDate = candidate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-      if (brDate) {
-        const parsed = new Date(Number(brDate[3]), Number(brDate[2]) - 1, Number(brDate[1]));
-        if (!Number.isNaN(parsed.getTime())) return parsed;
-      }
-    }
+    const date = parseRecordDateValue(candidate);
+    if (date) return date;
   }
 
   return null;
@@ -92,7 +93,7 @@ function buildDailyBunchRows(records) {
     .filter((record) => record.type === 'corte')
     .forEach((record) => {
       const date = resolveRecordDate(record);
-      const sortKey = date ? date.toISOString().slice(0, 10) : `sem-data-${record.id}`;
+      const sortKey = date ? localDateKey(date) : `sem-data-${record.id}`;
       const label = date
         ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`
         : 'Sem data';

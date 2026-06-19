@@ -349,11 +349,14 @@ function statusLabel(status) {
 
 function formatDateTime(value) {
   if (!value) return { date: '--', time: '--' };
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return { date: String(value), time: '--' };
+  const date = parseRecordDateValue(value);
+  if (!date || Number.isNaN(date.getTime())) return { date: String(value), time: '--' };
+  const hasTime = typeof value !== 'string'
+    || /(?:T|\s)\d{2}:\d{2}/.test(value)
+    || /^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}/.test(value);
   return {
     date: date.toLocaleDateString('pt-BR'),
-    time: date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    time: hasTime ? date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--',
   };
 }
 
@@ -431,7 +434,7 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
   const gps = findGps(data, type);
   const gpsOccurrences = findGpsOccurrences(data, gpsRows);
   const gpsTrack = findGpsTrack(data, gps, gpsRows);
-  const dateTime = formatDateTime(row.criado_em || data.data_avaliacao);
+  const dateTime = formatDateTime(data.data_avaliacao || row.criado_em);
   const matricula = data.matricula_avaliador || row.usuario_id || '';
   const collaborator = headcount.find((item) => String(item.matricula) === String(matricula));
   const acompanhamento = data.acompanhamento && typeof data.acompanhamento === 'object'
@@ -1104,7 +1107,7 @@ function parseDateBoundary(value, endOfDay = false) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function parseRecordDateValue(value) {
+export function parseRecordDateValue(value) {
   if (!value) return null;
 
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
@@ -1122,6 +1125,17 @@ function parseRecordDateValue(value) {
         Number(brDate[5] || 0),
         Number(brDate[6] || 0)
       );
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    const isoOnly = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoOnly) {
+      const parsed = new Date(Number(isoOnly[1]), Number(isoOnly[2]) - 1, Number(isoOnly[3]), 12, 0, 0);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:?\d{2})$/.test(value)) {
+      const parsed = new Date(value);
       return Number.isNaN(parsed.getTime()) ? null : parsed;
     }
 
@@ -1337,24 +1351,17 @@ function formatEvaluatorName(name) {
 
 function resolveRecordDate(record) {
   const candidates = [
-    record.createdAt,
-    record.sentAt,
     record.raw?.data_avaliacao,
+    record.raw?.data,
+    record.raw?.Data,
+    record.sentAt,
+    record.createdAt,
     record.date,
   ];
 
   for (const candidate of candidates) {
-    if (!candidate) continue;
-    const direct = new Date(candidate);
-    if (!Number.isNaN(direct.getTime())) return direct;
-
-    if (typeof candidate === 'string') {
-      const match = candidate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-      if (match) {
-        const parsed = new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
-        if (!Number.isNaN(parsed.getTime())) return parsed;
-      }
-    }
+    const date = parseRecordDateValue(candidate);
+    if (date) return date;
   }
 
   return null;

@@ -1,4 +1,4 @@
-import { aggregateRecords } from './cqoData';
+import { aggregateRecords, parseRecordDateValue } from './cqoData';
 
 export const QUALITY_LOSS_LIMITS = {
   cortePct: 1.6,
@@ -34,17 +34,28 @@ function safePct(num, den) {
   return den > 0 ? (num / den) * 100 : 0;
 }
 
+function recordDate(record) {
+  return parseRecordDateValue(
+    record.raw?.data_avaliacao
+    || record.raw?.data
+    || record.raw?.Data
+    || record.sentAt
+    || record.createdAt
+    || record.date
+  );
+}
+
 function monthKey(record) {
-  const date = new Date(record.createdAt || record.sentAt || record.raw?.data_avaliacao || '');
-  if (!Number.isNaN(date.getTime())) {
+  const date = recordDate(record);
+  if (date && !Number.isNaN(date.getTime())) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
   }
   return record.date || 'Sem data';
 }
 
 function weekKey(record) {
-  const date = new Date(record.createdAt || record.sentAt || record.raw?.data_avaliacao || '');
-  if (!Number.isNaN(date.getTime())) {
+  const date = recordDate(record);
+  if (date && !Number.isNaN(date.getTime())) {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     const dayNum = d.getUTCDay() || 7;
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
@@ -56,8 +67,8 @@ function weekKey(record) {
 }
 
 function dayKey(record) {
-  const date = new Date(record.createdAt || record.sentAt || record.raw?.data_avaliacao || '');
-  if (!Number.isNaN(date.getTime())) {
+  const date = recordDate(record);
+  if (date && !Number.isNaN(date.getTime())) {
     return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
   }
   return 'Sem data';
