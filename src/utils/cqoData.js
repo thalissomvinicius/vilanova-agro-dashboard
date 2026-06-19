@@ -49,6 +49,33 @@ function numberValue(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function normalizedRowEntries(row) {
+  return Object.entries(row || {}).reduce((acc, [key, value]) => {
+    acc[normalizeText(key)] = value;
+    return acc;
+  }, {});
+}
+
+function pickRowValue(row, keys) {
+  const normalizedEntries = normalizedRowEntries(row);
+  for (const key of keys) {
+    if (row?.[key] !== undefined && row?.[key] !== null && row?.[key] !== '') return row[key];
+    const normalized = normalizeText(key);
+    if (normalizedEntries[normalized] !== undefined && normalizedEntries[normalized] !== null && normalizedEntries[normalized] !== '') {
+      return normalizedEntries[normalized];
+    }
+  }
+  return '';
+}
+
+function rowText(row, keys) {
+  return String(pickRowValue(row, keys) ?? '').trim();
+}
+
+function rowNumber(row, keys) {
+  return numberValue(pickRowValue(row, keys));
+}
+
 const CORTE_OBSERVED_BUNCH_GROUPS = [
   ['cacho_esquecido_ciclo', 'cacho_esquecido', 'CachoEsquecido'],
   ['cacho_verde', 'CachoVerde'],
@@ -649,6 +676,178 @@ export async function updateCollaborator({ matricula, status, senha }) {
   return response.json();
 }
 
+function cqoSnapshotDate(row) {
+  return rowText(row, ['data_avaliacao_iso', 'DataAvaliacao', 'Data Avaliacao', 'Data', 'data']);
+}
+
+function cqoSnapshotMonth(row) {
+  return rowText(row, ['mes_referencia_iso', 'MesReferencia', 'Mês Referência', 'Mes Referencia', 'DataMes']);
+}
+
+function cqoSnapshotFarm(row) {
+  return rowText(row, ['NomeFazenda', 'Nome Fazenda', 'Fazenda', 'fazenda']);
+}
+
+function cqoSnapshotParcel(row) {
+  return rowText(row, ['parcela_normalizada', 'ParcelaNormalizada', 'Parcela', 'parcela']);
+}
+
+function cqoSnapshotEvaluator(row) {
+  return rowText(row, ['MatriculaAvaliadores', 'Matricula Avaliadores', 'MatriculaDigitador', 'Matrícula', 'Matricula']);
+}
+
+function cqoSnapshotFiscal(row) {
+  return rowText(row, ['Fiscal Resp', 'FiscalResp', 'Fiscal', 'fiscal_resp']);
+}
+
+function cqoSnapshotCycle(row) {
+  return rowText(row, ['ciclo_mes', 'CicloMes', 'Ciclo', 'Mes', 'Mês', 'mes_referencia_iso']) || '--';
+}
+
+function buildCorteSnapshotLine(row, index) {
+  return {
+    rua_index: rowText(row, ['rua_index', 'Rua', 'RuaIndex']) || String(index + 1),
+    lado_linha: rowText(row, ['lado_linha', 'LadoLinha', 'Lado']),
+    linha: rowText(row, ['linha', 'Linha']) || String(index + 1),
+    matricula_colaborador: rowText(row, ['matricula_colaborador', 'MatriculaColaborador', 'MatriculaCortador']),
+    numero_plantas_linha: rowNumber(row, ['NumeroPlantasLinha', 'numero_plantas_linha', 'NumeroPlantas']),
+    numero_plantas_observadas: rowNumber(row, ['NumeroPlantasObservadas', 'numero_plantas_observadas', 'numero_na_linha']),
+    numero_cachos_observados_papel: rowNumber(row, ['NumeroCahosObservados', 'NumeroCachosObservados', 'NumeroCachosAvaliados', 'numero_cachos_observados_papel']),
+    cacho_esquecido_ciclo: rowNumber(row, ['CachoEsquecidoCiclo', 'CachoEsquecido', 'cacho_esquecido_ciclo']),
+    cacho_verde: rowNumber(row, ['CachoVerde', 'cacho_verde']),
+    cacho_maduro: rowNumber(row, ['CachoMaduro', 'cacho_maduro']),
+    cacho_passado: rowNumber(row, ['CachoPassado', 'cacho_passado']),
+    cacho_infermo: rowNumber(row, ['CachoInfermo', 'cacho_infermo']),
+    bucha: rowNumber(row, ['Bucha', 'bucha']),
+    folha_mamando: rowNumber(row, ['FolhaMamando', 'folha_mamando']),
+    cacho_talo_comprido: rowNumber(row, ['TaloComprido', 'CachoTaloComprido', 'cacho_talo_comprido']),
+    folha_cortada_indevida: rowNumber(row, ['FolhaCortada', 'folha_cortada_indevida']),
+    cacho_mal_posicionado: rowNumber(row, ['cachoMalOosicionado', 'CachoMalPosicionado', 'cacho_mal_posicionado']),
+    cacho_estrela: rowNumber(row, ['CachoEstrela', 'cacho_estrela', 'cachos_estrela']),
+    cacho_brocado: rowNumber(row, ['CachoBrocado', 'cacho_brocado', 'cachos_brocados']),
+    cacho_avermelhado: rowNumber(row, ['CachoAvermelhado', 'cacho_avermelhado', 'cachos_avermelhados']),
+    linha_json: row,
+  };
+}
+
+function buildCarreamentoSnapshotLine(row, index) {
+  return {
+    rua_index: rowText(row, ['rua_index', 'Rua', 'RuaIndex']) || String(index + 1),
+    lado_linha: rowText(row, ['lado_linha', 'LadoLinha', 'Lado']),
+    linha: rowText(row, ['linha', 'Linha']) || String(index + 1),
+    numero_plantas_linha: rowNumber(row, ['NumeroPlantasLinha', 'numero_plantas_linha', 'NumeroPlantas']),
+    numero_plantas_observadas: rowNumber(row, ['NumeroPlantasObservadas', 'numero_plantas_observadas', 'numero_na_linha']),
+    cacho_mal_posicionado: rowNumber(row, ['cachoMalOosicionado', 'CachoMalPosicionado', 'cacho_mal_posicionado']),
+    cacho_nao_carreado: rowNumber(row, ['CachoNaoCarreado', 'cacho_nao_carreado', 'CachoNaoCarriado']),
+    peso_medio: rowNumber(row, ['PesoMedio', 'peso_medio']),
+    linha_json: row,
+  };
+}
+
+function cqoSnapshotGroupKey(row, type) {
+  return [
+    type,
+    normalizeText(cqoSnapshotFarm(row)),
+    normalizeText(cqoSnapshotParcel(row)),
+    cqoSnapshotDate(row) || cqoSnapshotMonth(row) || 'sem-data',
+    cqoSnapshotEvaluator(row) || 'sem-avaliador',
+    cqoSnapshotFiscal(row) || 'sem-fiscal',
+  ].join('|');
+}
+
+function groupCqoSnapshotRows(rows, type, snapshot) {
+  const groups = new Map();
+
+  rows.forEach((row, index) => {
+    const key = cqoSnapshotGroupKey(row, type);
+    const current = groups.get(key) || {
+      index: groups.size + 1,
+      type,
+      rows: [],
+      firstRow: row,
+    };
+    current.rows.push({ row, index });
+    groups.set(key, current);
+  });
+
+  return Array.from(groups.values()).map((group) => {
+    const first = group.firstRow;
+    const date = cqoSnapshotDate(first) || cqoSnapshotMonth(first) || snapshot?.imported_at || snapshot?.updated_at || new Date().toISOString();
+    const lines = group.rows.map(({ row, index }) => (
+      type === 'carreamento' ? buildCarreamentoSnapshotLine(row, index) : buildCorteSnapshotLine(row, index)
+    ));
+    const data = {
+      nome_polo: rowText(first, ['NomePolo', 'Nome Polo', 'Polo']),
+      nome_fazenda: cqoSnapshotFarm(first),
+      parcela: cqoSnapshotParcel(first),
+      parcela_original: rowText(first, ['parcela_original', 'Parcela', 'parcela']),
+      data_avaliacao: date,
+      ciclo_mes: cqoSnapshotCycle(first),
+      matricula_avaliador: cqoSnapshotEvaluator(first),
+      fiscal_resp: cqoSnapshotFiscal(first),
+      observacao: rowText(first, ['Observacao', 'Observação', 'observacao']),
+      mapeamento_legado: false,
+      fonte_excel: {
+        tabela: 'cqo_import_snapshots',
+        import_key: snapshot?.import_key || '',
+        source_file: snapshot?.source_file || '',
+        source_path: snapshot?.source_path || '',
+        file_last_write_time: snapshot?.file_last_write_time || '',
+      },
+    };
+
+    if (type === 'carreamento') {
+      data.ano_plantio = rowText(first, ['ano_plantio', 'AnoPlantio', 'Ano']);
+      data.densidade = rowText(first, ['densidade', 'Densidade']);
+      data.total_plantas_parcela = rowText(first, ['total_plantas_parcela', 'TotalPlantasParcela']);
+      data.total_cachos_carreados = rowText(first, ['total_cachos_carreados', 'TotalCachosCarreados']);
+      data.variedade = rowText(first, ['variedade', 'Variedade']);
+      data.linhas_carreamento = lines;
+    } else {
+      data.linhas_corte = lines;
+    }
+
+    return {
+      id: `excel-${type}-${group.index}`,
+      formulario_id: type === 'carreamento' ? 'excel_cqo_carreamento' : 'excel_cqo_corte',
+      formulario_versao: 'excel-snapshot',
+      usuario_id: data.matricula_avaliador,
+      status: 'aprovado',
+      criado_em: date,
+      enviado_em: date,
+      recebido_em: snapshot?.imported_at || snapshot?.updated_at || date,
+      dados_json: data,
+      excel_rows: group.rows.map(({ row }) => row),
+      source: 'cqo_import_snapshots',
+    };
+  });
+}
+
+async function loadCqoImportSnapshotRows() {
+  const query = new URLSearchParams({
+    select: 'import_key,fonte,source_file,source_path,file_last_write_time,corte_total_rows,carreamento_total_rows,corte_columns_json,carreamento_columns_json,corte_rows_json,carreamento_rows_json,imported_at,updated_at',
+    import_key: 'eq.cqo_1_digitacao_cqo',
+    limit: '1',
+  }).toString();
+
+  try {
+    const snapshots = await fetchSupabaseTable('cqo_import_snapshots', query);
+    const snapshot = snapshots[0];
+    if (!snapshot) return { rows: [], snapshot: null };
+    const corteRows = Array.isArray(snapshot.corte_rows_json) ? snapshot.corte_rows_json : [];
+    const carreamentoRows = Array.isArray(snapshot.carreamento_rows_json) ? snapshot.carreamento_rows_json : [];
+    return {
+      snapshot,
+      rows: [
+        ...groupCqoSnapshotRows(corteRows, 'corte', snapshot),
+        ...groupCqoSnapshotRows(carreamentoRows, 'carreamento', snapshot),
+      ],
+    };
+  } catch {
+    return { rows: [], snapshot: null };
+  }
+}
+
 export async function updateResponseReviewStatus(responseId, status) {
   const normalizedStatus = normalizeText(status) === 'aprovado' ? 'aprovado' : 'reprovado';
   const response = await fetch(`${SUPABASE_URL}/rest/v1/mobile_respostas?id=eq.${encodeURIComponent(responseId)}`, {
@@ -720,7 +919,7 @@ async function fetchOptionalTable(table, query) {
 }
 
 async function loadSupabaseData() {
-  const [responseResult, headcount, gpsRows, attachmentRows, formRows] = await Promise.all([
+  const [responseResult, headcount, gpsRows, attachmentRows, formRows, cqoImport] = await Promise.all([
     fetchFirstAvailableTable(
       ['mobile_respostas', 'respostas'],
       'select=*&status=neq.excluido&order=criado_em.desc&limit=1000'
@@ -738,6 +937,7 @@ async function loadSupabaseData() {
       'mobile_formularios',
       'select=*&limit=500'
     ),
+    loadCqoImportSnapshotRows(),
   ]);
 
   const gpsByResponse = gpsRows.reduce((acc, point) => {
@@ -758,17 +958,34 @@ async function loadSupabaseData() {
       return acc;
     }, {});
 
-  return {
-    records: responseResult.rows.map((row) => normalizeResponse(
+  const mobileRecords = responseResult.rows.map((row) => normalizeResponse(
       row,
       headcount,
       gpsByResponse[row.id] || [],
       attachmentsByResponse[row.id] || []
-    )),
+  ));
+  const excelRecords = cqoImport.rows.map((row) => normalizeResponse(row, headcount));
+  const records = [...mobileRecords, ...excelRecords]
+    .sort((a, b) => {
+      const dateA = parseRecordDateValue(a.raw?.data_avaliacao || a.createdAt)?.getTime() || 0;
+      const dateB = parseRecordDateValue(b.raw?.data_avaliacao || b.createdAt)?.getTime() || 0;
+      return dateB - dateA;
+    });
+
+  return {
+    records,
+    mobileRecords,
+    excelRecords,
     headcount,
     formularios: formRows,
     anexos: attachmentRows,
     gpsRows,
+    cqoImport: {
+      snapshot: cqoImport.snapshot,
+      records: excelRecords.length,
+      corteRows: Number(cqoImport.snapshot?.corte_total_rows || 0),
+      carreamentoRows: Number(cqoImport.snapshot?.carreamento_total_rows || 0),
+    },
     source: `Supabase / ${responseResult.table}`,
     error: '',
   };
@@ -777,10 +994,13 @@ async function loadSupabaseData() {
 function sampleData(error = '') {
   return {
     records: [],
+    mobileRecords: [],
+    excelRecords: [],
     headcount: [],
     formularios: [],
     anexos: [],
     gpsRows: [],
+    cqoImport: { snapshot: null, records: 0, corteRows: 0, carreamentoRows: 0 },
     source: 'Supabase indisponivel',
     error,
   };
@@ -803,10 +1023,13 @@ export function refreshCqoData() {
     listener({
       loading: true,
       records: [],
+      mobileRecords: [],
+      excelRecords: [],
       headcount: [],
       formularios: [],
       anexos: [],
       gpsRows: [],
+      cqoImport: { snapshot: null, records: 0, corteRows: 0, carreamentoRows: 0 },
       source: 'Atualizando...',
       error: '',
     })

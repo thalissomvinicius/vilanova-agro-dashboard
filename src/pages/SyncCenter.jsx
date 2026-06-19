@@ -27,14 +27,28 @@ function SyncMetric({ title, value, subtitle, icon: Icon, tone = 'green', loadin
 }
 
 export default function SyncCenter({ isSyncing, triggerManualSync }) {
-  const { loading, records, source, error, gpsRows = [], anexos = [], formularios = [], headcount = [] } = useCqoData();
-  const synced = records.filter((record) => record.status === 'Sincronizado').length;
-  const failed = records.filter((record) => record.status === 'Falha').length;
-  const pending = records.filter((record) => record.status === 'Pendente').length;
-  const lastRecord = records[0];
+  const {
+    loading,
+    records,
+    mobileRecords = [],
+    excelRecords = [],
+    cqoImport = {},
+    source,
+    error,
+    gpsRows = [],
+    anexos = [],
+    formularios = [],
+    headcount = [],
+  } = useCqoData();
+  const appRecords = mobileRecords.length ? mobileRecords : records.filter((record) => record.raw?.fonte_excel === undefined);
+  const synced = appRecords.filter((record) => record.status === 'Sincronizado').length;
+  const failed = appRecords.filter((record) => record.status === 'Falha').length;
+  const pending = appRecords.filter((record) => record.status === 'Pendente').length;
+  const lastRecord = appRecords[0];
   const headcountSource = headcount[0]?.source === 'headcount_import_snapshots'
     ? `Snapshot ${headcount[0]?.reference_date || ''}`.trim()
     : 'headcount_colaboradores';
+  const cqoSnapshot = cqoImport.snapshot;
 
   return (
     <div className="fade-in page-shell sync-page">
@@ -74,8 +88,8 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
         />
         <SyncMetric
           title="Coletas recebidas"
-          value={records.length}
-          subtitle="Total no banco online"
+          value={appRecords.length}
+          subtitle="mobile_respostas do app"
           icon={Database}
           tone="green"
           loading={loading}
@@ -99,6 +113,14 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
       </div>
 
       <div className="grid-container grid-cols-4">
+        <SyncMetric
+          title="CQO Excel"
+          value={excelRecords.length}
+          subtitle={cqoSnapshot?.source_file || 'cqo_import_snapshots'}
+          icon={Database}
+          tone="orange"
+          loading={loading}
+        />
         <SyncMetric
           title="Pontos GPS"
           value={gpsRows.length}
@@ -128,6 +150,33 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
           value={headcount.length}
           subtitle={headcountSource}
           icon={Users}
+          tone="info"
+          loading={loading}
+        />
+      </div>
+
+      <div className="grid-container grid-cols-3">
+        <SyncMetric
+          title="Corte Excel"
+          value={cqoImport.corteRows || 0}
+          subtitle="linhas em corte_rows_json"
+          icon={FileText}
+          tone="green"
+          loading={loading}
+        />
+        <SyncMetric
+          title="Carreamento Excel"
+          value={cqoImport.carreamentoRows || 0}
+          subtitle="linhas em carreamento_rows_json"
+          icon={FileText}
+          tone="orange"
+          loading={loading}
+        />
+        <SyncMetric
+          title="Snapshot CQO"
+          value={formatDateTime(cqoSnapshot?.updated_at || cqoSnapshot?.imported_at)}
+          subtitle="cqo_1_digitacao_cqo"
+          icon={Clock}
           tone="info"
           loading={loading}
         />
