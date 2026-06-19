@@ -26,6 +26,30 @@ const BASE_LAYER_NOTES = {
   sentinel: 'Imagem recente/agronômica Sentinel-2: gratuita, mas limitada a 10 m/pixel.',
 };
 
+const RISK_METRICS = [
+  { id: 'nota', label: 'Nota CQO', unit: '%', goodWhen: 'high', meta: 90 },
+  { id: 'perda_t_ha', label: 'Perda estimada t/ha', unit: 't/ha', goodWhen: 'low', meta: 0.08 },
+  { id: 'cachos_ha', label: 'Cachos perdidos/ha', unit: 'cachos/ha', goodWhen: 'low', meta: 4 },
+  { id: 'perda_corte', label: 'Perda corte %', unit: '%', goodWhen: 'low', meta: 1 },
+  { id: 'nao_carreado', label: 'Não carreado %', unit: '%', goodWhen: 'low', meta: 0.4 },
+  { id: 'maduro', label: 'Cacho maduro %', unit: '%', goodWhen: 'high', meta: 85 },
+  { id: 'verde', label: 'Cacho verde %', unit: '%', goodWhen: 'low', meta: 1 },
+  { id: 'passado', label: 'Cacho passado %', unit: '%', goodWhen: 'low', meta: 10 },
+  { id: 'avermelhado', label: 'Cacho avermelhado %', unit: '%', goodWhen: 'low', meta: 4 },
+  { id: 'talo', label: 'Talo comprido %', unit: '%', goodWhen: 'low', meta: 3 },
+];
+
+const RISK_COLORS = {
+  good: '#22C55E',
+  attention: '#F59E0B',
+  critical: '#EF4444',
+  neutral: '#CBD5E1',
+};
+
+function activeRiskMetric(metricId) {
+  return RISK_METRICS.find((metric) => metric.id === metricId) || RISK_METRICS[1];
+}
+
 const defaultIcon = L.icon({
   iconUrl: markerIcon,
   iconRetinaUrl: markerIconRetina,
@@ -169,16 +193,11 @@ function occurrenceSeverity(point) {
   return 1;
 }
 
-function heatRiskColorByHa(scorePerHa) {
-  if (scorePerHa >= 6) return '#EF4444';
-  if (scorePerHa >= 2.5) return '#F59E0B';
-  return '#D98C10';
-}
-
-function heatRiskLabelByHa(scorePerHa) {
-  if (scorePerHa >= 6) return 'Alta incidencia por hectare';
-  if (scorePerHa >= 2.5) return 'Incidencia moderada por hectare';
-  return 'Incidencia baixa por hectare';
+function riskStatusLabel(color) {
+  if (color === RISK_COLORS.critical) return 'Crítico';
+  if (color === RISK_COLORS.attention) return 'Atenção';
+  if (color === RISK_COLORS.good) return 'Dentro da meta';
+  return 'Sem avaliação';
 }
 
 function normalizeParcelCode(value) {
@@ -199,6 +218,12 @@ function shapeParcelCode(props = {}) {
 
 function parcelHeatKey(farmId, parcel) {
   return `${farmId || 'default'}|${normalizeParcelCode(parcel)}`;
+}
+
+function parcelRecordMatches(record, props, shapeParcel) {
+  return reviewState(record) === 'approved'
+    && normalizeParcelCode(record.parcel) === normalizeParcelCode(shapeParcel)
+    && record.farmId === props.farmId;
 }
 
 function numericProp(value) {
@@ -260,6 +285,103 @@ function formatInteger(value) {
   return parsed.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
 }
 
+function metricValue(metric, totals, areaHa) {
+  if (!totals) return null;
+
+  switch (metric.id) {
+    case 'nota':
+      return Number(totals.generalScore || 0);
+    case 'perda_t_ha':
+      if (!(areaHa > 0)) return null;
+      return perHa(totals.lostFrutosTon || 0, areaHa);
+    case 'cachos_ha':
+      if (!(areaHa > 0)) return null;
+      return perHa(totals.lostCachosQty || 0, areaHa);
+    case 'perda_corte':
+      return Number(totals.perdaCorteRate || 0);
+    case 'nao_carreado':
+      return Number(totals.cachoNaoCarreadoRate || 0);
+    case 'maduro':
+      return percentOf(totals.cachoMaduro, totals.cachosObservados);
+    case 'verde':
+      return Number(totals.cachoVerdeRate || 0);
+    case 'passado':
+      return Number(totals.cachoPassadoRate || 0);
+    case 'avermelhado':
+      return percentOf(totals.cachoAvermelhado, totals.cachosObservados);
+    case 'talo':
+      return Number(totals.taloCompridoRate || 0);
+    default:
+      return 0;
+  }
+}
+
+function metricColor(metric, value, hasData) {
+  if (!hasData || value === null || value === undefined || !Number.isFinite(Number(value))) {
+    return RISK_COLORS.neutral;
+  }
+
+  const numeric = Number(value);
+  if (metric.goodWhen === 'high') {
+    if (numeric >= metric.meta) return RISK_COLORS.good;
+    if (numeric >= metric.meta * 0.88) return RISK_COLORS.attention;
+    return RISK_COLORS.critical;
+  }
+
+  if (numeric <= metric.meta) return RISK_COLORS.good;
+  if (numeric <= metric.meta * 2.2) return RISK_COLORS.attention;
+  return RISK_COLORS.critical;
+}
+
+function metricRiskScore(metric, value) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return -Infinity;
+  const numeric = Number(value);
+  return metric.goodWhen === 'high' ? metric.meta - numeric : numeric - metric.meta;
+}
+
+function formatMetricValue(metric, value) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return 'N/D';
+  if (metric.unit === 't/ha') return `${formatDecimal(value, 3)} t/ha`;
+  if (metric.unit === 'cachos/ha') return `${formatDecimal(value, 1)} cachos/ha`;
+  if (metric.unit === '%') return `${formatDecimal(value, metric.id === 'nota' ? 0 : 1)}%`;
+  return formatDecimal(value, 1);
+}
+
+function buildParcelSummary({ feature, records, heatSummary, metric }) {
+  const props = feature?.properties || {};
+  const shapeParcel = shapeParcelCode(props);
+  const parcelRecords = shapeParcel
+    ? records.filter((record) => parcelRecordMatches(record, props, shapeParcel))
+    : [];
+  const totals = parcelRecords.length ? aggregateRecords(parcelRecords) : null;
+  const areaHa = parcelAreaHa(props);
+  const value = metricValue(metric, totals, areaHa);
+  const color = metricColor(metric, value, Boolean(totals));
+  const excelCount = parcelRecords.filter((record) => record.source === 'excel').length;
+  const appCount = parcelRecords.filter((record) => record.source === 'app').length;
+  const firstDate = parcelRecords.map((record) => record.date).filter(Boolean).sort()[0] || '';
+  const lastDate = parcelRecords.map((record) => record.date).filter(Boolean).sort().slice(-1)[0] || '';
+
+  return {
+    key: parcelHeatKey(props.farmId, shapeParcel),
+    props,
+    shapeParcel,
+    records: parcelRecords,
+    totals,
+    areaHa,
+    heatSummary,
+    metric,
+    value,
+    color,
+    status: riskStatusLabel(color),
+    riskScore: metricRiskScore(metric, value),
+    excelCount,
+    appCount,
+    firstDate,
+    lastDate,
+  };
+}
+
 function popupMetric(label, value, tone = '') {
   return `
     <div class="parcel-popup-metric">
@@ -278,29 +400,44 @@ function popupPercentRow(label, value, tone = '') {
   `;
 }
 
-function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, heatSummary }) {
+function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }) {
   const totals = parcelRecords.length ? aggregateRecords(parcelRecords) : null;
   const areaHa = parcelAreaHa(props);
   const densityShape = parcelDensity(props);
   const score = totals?.generalScore ?? 0;
   const scoreColor = totals ? getScoreColor(score) : '#94A3B8';
-  const heatScorePerHa = heatSummary ? perHa(heatSummary.score, areaHa) : 0;
+  const selectedMetric = metric || RISK_METRICS[1];
+  const selectedValue = metricValue(selectedMetric, totals, areaHa);
+  const selectedColor = metricColor(selectedMetric, selectedValue, Boolean(totals));
   const statusText = totals
     ? `${formatInteger(totals.aprovados)} aprov. / ${formatInteger(totals.reprovados)} reprov.`
     : 'Sem coleta aprovada';
+  const excelCount = parcelRecords.filter((record) => record.source === 'excel').length;
+  const appCount = parcelRecords.filter((record) => record.source === 'app').length;
+  const dateValues = parcelRecords.map((record) => record.date).filter(Boolean).sort();
+  const dateRange = dateValues.length
+    ? `${dateValues[0]}${dateValues[0] !== dateValues[dateValues.length - 1] ? ` a ${dateValues[dateValues.length - 1]}` : ''}`
+    : 'Sem data';
 
-  const heatBlock = heatSummary
+  const riskBlock = totals
     ? `
       <div class="parcel-popup-heat">
-        <strong style="color:${heatRiskColorByHa(heatScorePerHa)};">${heatRiskLabelByHa(heatScorePerHa)}</strong>
-        <span>${formatDecimal(heatScorePerHa, 2)} ponto(s)/ha - ${heatSummary.lines.size} rua(s) amostrada(s).</span>
+        <strong style="color:${selectedColor};">${riskStatusLabel(selectedColor)} - ${selectedMetric.label}</strong>
+        <span>${formatMetricValue(selectedMetric, selectedValue)} aplicado na parcela completa a partir da amostragem.</span>
       </div>
     `
-    : '';
+    : `
+      <div class="parcel-popup-heat parcel-popup-heat-neutral">
+        <strong>Sem avaliação no período</strong>
+        <span>Esta parcela não tem coleta aprovada ou registro Excel dentro dos filtros atuais.</span>
+      </div>
+    `;
 
   const mainMetrics = [
     popupMetric('Nota CQO', totals ? `${formatDecimal(score, 0)}%` : 'N/D', scoreColor),
     popupMetric('Area', areaHa ? `${formatDecimal(areaHa, 2)} ha` : 'N/D'),
+    popupMetric('Periodo', dateRange),
+    popupMetric('Fonte', totals ? `${excelCount} Excel / ${appCount} App` : 'N/D'),
     popupMetric('Linhas amostradas', formatInteger(totals?.linhas || 0)),
     popupMetric('Plantas obs.', formatInteger(totals?.plantasObservadas || 0)),
     popupMetric('Cachos obs.', formatInteger(totals?.cachosObservados || 0)),
@@ -326,7 +463,7 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, heatSumm
       </div>
       <div class="parcel-popup-scroll">
         <div class="parcel-popup-grid">${mainMetrics}</div>
-        ${heatBlock}
+        ${riskBlock}
         <div class="parcel-popup-section">Percentuais principais</div>
         <div class="parcel-popup-percent-list">${percentMetrics}</div>
       </div>
@@ -334,24 +471,27 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, heatSumm
   `;
 }
 
-export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, sourceFilter = 'all', dateFrom, dateTo }) {
+export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter = 'all', sourceFilter = 'all', dateFrom, dateTo }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const layerGroupRef = useRef(null);
-  const [mapLayer, setMapLayer] = useState('polygon');
+  const [mapLayer, setMapLayer] = useState('heat');
   const [baseLayer, setBaseLayer] = useState('standard');
+  const [riskMetricId, setRiskMetricId] = useState('perda_t_ha');
   const [parcelGeoJson, setParcelGeoJson] = useState(null);
   const { records } = useCqoData();
+  const selectedRiskMetric = useMemo(() => activeRiskMetric(riskMetricId), [riskMetricId]);
 
   const filteredRecords = useMemo(() => filterRecords(records, {
     farmFilter,
     areaFilter,
     periodFilter,
     cycleFilter,
+    evaluatorFilter,
     sourceFilter,
     dateFrom,
     dateTo,
-  }), [records, farmFilter, areaFilter, periodFilter, cycleFilter, sourceFilter, dateFrom, dateTo]);
+  }), [records, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo]);
 
   const geoRecords = useMemo(() => filteredRecords.filter((record) => {
     if (record.raw?.mapeamento_legado || record.evaluatorMatricula === 'HISTORICO') return false;
@@ -447,6 +587,34 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     return summaries;
   }, [occurrencePoints]);
 
+  const parcelSummaries = useMemo(() => (
+    filteredParcelFeatures
+      .map((feature) => buildParcelSummary({
+        feature,
+        records: filteredRecords,
+        heatSummary: heatByParcel.get(parcelHeatKey(
+          feature?.properties?.farmId,
+          shapeParcelCode(feature?.properties || {})
+        )),
+        metric: selectedRiskMetric,
+      }))
+  ), [filteredParcelFeatures, filteredRecords, heatByParcel, selectedRiskMetric]);
+
+  const parcelSummaryByKey = useMemo(() => {
+    const map = new globalThis.Map();
+    parcelSummaries.forEach((summary) => {
+      map.set(summary.key, summary);
+    });
+    return map;
+  }, [parcelSummaries]);
+
+  const rankedParcels = useMemo(() => (
+    parcelSummaries
+      .filter((summary) => summary.totals && Number.isFinite(summary.riskScore))
+      .sort((a, b) => b.riskScore - a.riskScore)
+      .slice(0, 5)
+  ), [parcelSummaries]);
+
   const heatPoints = useMemo(() => {
     const sourcePoints = occurrencePoints.length ? occurrencePoints : trackPoints;
     return sourcePoints.filter((point) => {
@@ -468,23 +636,29 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   }, [occurrencePoints, trackPoints, farmFilter]);
 
   const geoStats = useMemo(() => {
-    const byFarm = geoRecords.reduce((acc, record) => {
+    const approvedRecords = filteredRecords.filter((record) => reviewState(record) === 'approved');
+    const byFarm = approvedRecords.reduce((acc, record) => {
       const key = record.farmId || 'default';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
 
     return {
-      total: geoRecords.length,
+      total: approvedRecords.length,
       gpsPoints: trackPoints.length,
       occurrencePoints: occurrencePoints.length,
       sampledLines: new Set(occurrencePoints.map((point) => `${point.record.id}|${point.line}`)).size,
-      sampledParcels: new Set(geoRecords.map((record) => `${record.farmId}|${record.parcel}`)).size,
+      sampledParcels: parcelSummaries.filter((summary) => summary.totals).length,
       uniqueGpsPoints: allGpsPoints.length,
       byFarm,
-      lineCount: geoRecords.reduce((sum, record) => sum + Number(record?.totals?.linhas || record?.lines?.length || 0), 0),
+      lineCount: approvedRecords.reduce((sum, record) => sum + Number(record?.totals?.linhas || record?.lines?.length || 0), 0),
+      excelRecords: approvedRecords.filter((record) => record.source === 'excel').length,
+      appRecords: approvedRecords.filter((record) => record.source === 'app').length,
+      evaluatedHa: parcelSummaries
+        .filter((summary) => summary.totals)
+        .reduce((sum, summary) => sum + Number(summary.areaHa || 0), 0),
     };
-  }, [geoRecords, trackPoints, occurrencePoints, allGpsPoints]);
+  }, [filteredRecords, trackPoints, occurrencePoints, allGpsPoints, parcelSummaries]);
 
   useEffect(() => {
     if (!mapContainerRef.current) return undefined;
@@ -586,28 +760,14 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           let weight = mapLayer === 'heat' ? 2 : 1.4;
 
           const shapeParcel = shapeParcelCode(props);
-          const heatSummary = heatByParcel.get(parcelHeatKey(props.farmId, shapeParcel));
-          const areaHa = parcelAreaHa(props);
-          const parcelRecords = shapeParcel
-            ? filteredRecords.filter((r) =>
-              reviewState(r) === 'approved' &&
-              normalizeParcelCode(r.parcel) === normalizeParcelCode(shapeParcel) &&
-              r.farmId === props.farmId
-            )
-            : [];
-          const parcelTotals = parcelRecords.length ? aggregateRecords(parcelRecords) : null;
+          const summary = parcelSummaryByKey.get(parcelHeatKey(props.farmId, shapeParcel));
+          const parcelTotals = summary?.totals || null;
 
           if (mapLayer === 'heat') {
-            if (heatSummary) {
-              const scorePerHa = perHa(heatSummary.score, areaHa);
-              fillColor = heatRiskColorByHa(scorePerHa);
-              fillOpacity = 0.56;
-              weight = 2.8;
-            } else if (parcelTotals && areaHa > 0 && parcelTotals.lostCachosQty > 0) {
-              const lossPerHa = perHa(parcelTotals.lostCachosQty, areaHa);
-              fillColor = heatRiskColorByHa(lossPerHa);
-              fillOpacity = 0.42;
-              weight = 2.2;
+            if (parcelTotals && summary) {
+              fillColor = summary.color;
+              fillOpacity = 0.62;
+              weight = 2.5;
             } else {
               fillColor = '#CBD5E1';
               fillOpacity = 0.08;
@@ -628,7 +788,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           }
 
           return {
-            color: mapLayer === 'heat' && heatSummary ? heatRiskColorByHa(perHa(heatSummary.score, areaHa)) : style.color,
+            color: mapLayer === 'heat' && summary?.totals ? summary.color : style.color,
             fillColor,
             fillOpacity,
             weight,
@@ -640,21 +800,15 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           const style = farmStyle(props.farmId);
           
           const shapeParcel = shapeParcelCode(props);
-          const heatSummary = heatByParcel.get(parcelHeatKey(props.farmId, shapeParcel));
-          const parcelRecords = shapeParcel
-            ? filteredRecords.filter((r) =>
-              reviewState(r) === 'approved' &&
-              normalizeParcelCode(r.parcel) === normalizeParcelCode(shapeParcel) &&
-              r.farmId === props.farmId
-            )
-            : [];
+          const summary = parcelSummaryByKey.get(parcelHeatKey(props.farmId, shapeParcel));
+          const parcelRecords = summary?.records || [];
 
           layer.bindPopup(parcelNumbersPopup({
             props,
             shapeParcel,
             style,
             parcelRecords,
-            heatSummary,
+            metric: selectedRiskMetric,
           }), {
             maxWidth: 360,
             minWidth: 320,
@@ -780,7 +934,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
         `);
     });
 
-    if (mapLayer === 'heat') {
+    if (mapLayer === 'heat' && !parcelGeoJson?.features?.length) {
       heatPoints.forEach((point) => {
         if (heatByParcel.has(parcelHeatKey(point.record.farmId, point.record.parcel))) return;
         const style = farmStyle(point.record.farmId);
@@ -881,7 +1035,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, filteredParcelFeatures, filteredRecords]);
+  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, selectedRiskMetric, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, filteredParcelFeatures, parcelSummaryByKey]);
 
   return (
     <div className="card gps-map-card">
@@ -935,7 +1089,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             className={`btn ${mapLayer === 'heat' ? 'btn-primary' : 'btn-secondary'}`}
           >
             <Flame size={14} />
-            <span>Mapa de Calor</span>
+            <span>Risco por parcela</span>
           </button>
           <button
             onClick={() => setMapLayer('route')}
@@ -946,28 +1100,72 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           </button>
         </div>
 
+        {mapLayer !== 'route' ? (
+          <label className="gps-metric-control">
+            <span>Indicador</span>
+            <select value={riskMetricId} onChange={(event) => setRiskMetricId(event.target.value)}>
+              {RISK_METRICS.map((metric) => (
+                <option key={metric.id} value={metric.id}>{metric.label}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
         <div className="gps-map-stats">
           <div className="gps-map-stats-total">
-            {geoStats.total} coletas / {geoStats.sampledParcels} parcelas
+            {geoStats.total} coletas / {geoStats.sampledParcels} parcelas avaliadas
           </div>
           <div className="gps-sample-grid">
             <div>
-              <strong>{geoStats.sampledLines}</strong>
-              <span>ruas amostradas</span>
+              <strong>{geoStats.lineCount}</strong>
+              <span>linhas amostradas</span>
             </div>
             <div>
-              <strong>{geoStats.occurrencePoints}</strong>
-              <span>pontos reais</span>
+              <strong>{formatDecimal(geoStats.evaluatedHa, 1)}</strong>
+              <span>hectares avaliados</span>
             </div>
             <div>
-              <strong>{geoStats.uniqueGpsPoints}</strong>
-              <span>coord. unicas</span>
+              <strong>{geoStats.excelRecords}</strong>
+              <span>coletas Excel</span>
             </div>
             <div>
               <strong>{geoStats.gpsPoints}</strong>
-              <span>trilha GPS</span>
+              <span>pontos GPS app</span>
             </div>
           </div>
+          {mapLayer === 'heat' ? (
+            <div className="gps-risk-ranking">
+              <strong>Top parcelas críticas</strong>
+              {rankedParcels.length ? rankedParcels.map((summary, index) => (
+                <button
+                  type="button"
+                  key={summary.key}
+                  className="gps-risk-row"
+                  onClick={() => {
+                    const map = mapInstanceRef.current;
+                    if (!map) return;
+                    const layer = layerGroupRef.current;
+                    layer?.eachLayer((item) => {
+                      if (item.feature?.properties) {
+                        const props = item.feature.properties;
+                        const key = parcelHeatKey(props.farmId, shapeParcelCode(props));
+                        if (key === summary.key && item.getBounds) {
+                          map.fitBounds(item.getBounds().pad(0.22), { maxZoom: 17, animate: true });
+                          item.openPopup();
+                        }
+                      }
+                    });
+                  }}
+                >
+                  <span>{index + 1}</span>
+                  <em>{summary.props.farmName || summary.props.farmId} / {summary.shapeParcel}</em>
+                  <b style={{ color: summary.color }}>{formatMetricValue(selectedRiskMetric, summary.value)}</b>
+                </button>
+              )) : (
+                <small>Nenhuma parcela avaliada no filtro.</small>
+              )}
+            </div>
+          ) : null}
           {Object.entries(FARM_STYLES).filter(([id]) => id !== 'default').map(([id, style]) => (
             <div key={id}>
               <span style={{ backgroundColor: style.fill }} />
@@ -976,24 +1174,43 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           ))}
           <div className="gps-map-note">
             <span>
-              {mapLayer === 'heat' && 'Calor por hectare aplicado na parcela completa com base nas ruas amostradas.'}
+              {mapLayer === 'heat' && `${selectedRiskMetric.label} aplicado na parcela completa com base na amostragem filtrada.`}
               {mapLayer === 'route' && 'GPS detalhado mostra as coordenadas reais numeradas dentro da parcela.'}
               {mapLayer === 'polygon' && 'Semaforo por parcela; use o calor para ver tendencia espacial da amostra.'}
             </span>
           </div>
           <div className="gps-heat-legend" aria-label="Legenda do mapa CQO">
-            <div>
-              <span className="gps-legend-dot gps-legend-dot-real" />
-              <strong>GPS real</strong>
-            </div>
-            <div>
-              <span className="gps-legend-heat" />
-              <strong>estimativa por calor</strong>
-            </div>
-            <div>
-              <span className="gps-legend-line" />
-              <strong>rua/trilha amostrada</strong>
-            </div>
+            {mapLayer === 'route' ? (
+              <>
+                <div>
+                  <span className="gps-legend-dot gps-legend-dot-real" />
+                  <strong>GPS real</strong>
+                </div>
+                <div>
+                  <span className="gps-legend-line" />
+                  <strong>rua/trilha amostrada</strong>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <span className="gps-legend-risk gps-risk-good" />
+                  <strong>Dentro da meta</strong>
+                </div>
+                <div>
+                  <span className="gps-legend-risk gps-risk-attention" />
+                  <strong>Atenção</strong>
+                </div>
+                <div>
+                  <span className="gps-legend-risk gps-risk-critical" />
+                  <strong>Crítico</strong>
+                </div>
+                <div>
+                  <span className="gps-legend-risk gps-risk-neutral" />
+                  <strong>Sem avaliação</strong>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
