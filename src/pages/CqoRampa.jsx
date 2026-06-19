@@ -209,6 +209,14 @@ function filterByPeriod(rows = [], periodFilter, dateFrom, dateTo, referenceDate
   return rows.filter((row) => isWithinPeriod(row, periodFilter, dateFrom, dateTo, referenceDate));
 }
 
+function hasComparableDate(row) {
+  return Boolean(dateRangeFromRow(row));
+}
+
+function hasRampaQuality(row) {
+  return ['qVerde', 'qMaduro', 'qPassado', 'qTaloComprido'].some((key) => Number(row?.[key] || 0) > 0);
+}
+
 function aggregateDayRows(rows = []) {
   const buckets = new Map();
 
@@ -394,7 +402,7 @@ function ProducerQualityTable({ rows, total }) {
 }
 
 function DailyQualityChart({ rows, mode = 'day' }) {
-  const visibleRows = rows.slice(-15);
+  const visibleRows = mode === 'month' ? rows.slice(-12) : rows.slice(-15);
   const chartTitle = mode === 'month' || rows.some((row) => row.isMonthly)
     ? 'Qualidade do CFF por Mês [%]'
     : 'Qualidade do CFF Dia[%]';
@@ -574,6 +582,7 @@ function RampaBoard({
   total,
   onPresent,
   sourceFilter,
+  periodFallbackActive = false,
   presentationMode = false,
 }) {
   const sourceInfo = rampaSourceInfo(data, sourceFilter);
@@ -609,6 +618,13 @@ function RampaBoard({
         <div className="warning-strip rampa-bi-warning">
           <AlertTriangle size={16} />
           <span>{sourceInfo.notice}</span>
+        </div>
+      ) : null}
+
+      {periodFallbackActive ? (
+        <div className="warning-strip rampa-bi-warning">
+          <AlertTriangle size={16} />
+          <span>O período selecionado não tem registros na fonte da Rampa; exibindo o acumulado disponível do snapshot para evitar leitura zerada.</span>
         </div>
       ) : null}
 
@@ -677,6 +693,8 @@ export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', d
   const daySummaryRows = useExcelSnapshot ? normalizeRampaDayRows(rampa.byDay || []) : [];
   const monthSummaryRows = useExcelSnapshot ? normalizeRampaMonthRows(rampa.byMonth || []) : [];
   const hasDailySummaryRows = daySummaryRows.length > 0;
+  const usableDaySummaryRows = daySummaryRows.filter((row) => hasComparableDate(row) && Number(row.registros || 0) > 0 && hasRampaQuality(row));
+  const usableMonthSummaryRows = monthSummaryRows.filter((row) => hasComparableDate(row) && Number(row.registros || 0) > 0 && hasRampaQuality(row));
   const producerSourceRows = hasDetailedProducerRows ? detailedProducerRows : farmSummaryRows;
   const producerDayRows = filterByProducer(producerSourceRows, producerNames);
   const semAvaliacaoDayRows = hasDetailedProducerRows
@@ -716,22 +734,36 @@ export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', d
     : hasDailySummaryRows
     ? filteredDaySummaryRows.length > 0
     : filteredMonthRows.length > 0;
+  const periodFallbackActive = useExcelSnapshot && !hasPeriodData && (
+    hasDetailedProducerRows
+    || hasDailySummaryRows
+    || usableMonthSummaryRows.length > 0
+  );
+  const effectiveProducerDayRows = periodFallbackActive && hasDetailedProducerRows
+    ? producerDayRows
+    : filteredProducerDayRows;
+  const effectiveDaySummaryRows = periodFallbackActive && hasDailySummaryRows
+    ? usableDaySummaryRows
+    : filteredDaySummaryRows;
+  const effectiveMonthRows = periodFallbackActive && !hasDailySummaryRows
+    ? usableMonthSummaryRows
+    : filteredMonthRows;
   const producerRows = hasDetailedProducerRows
-    ? aggregateProducerRows(filteredProducerDayRows)
-    : hasPeriodData
+    ? aggregateProducerRows(effectiveProducerDayRows)
+    : hasPeriodData || periodFallbackActive
     ? producerDayRows
     : [];
   const dailyRows = hasDetailedProducerRows
-    ? aggregateDayRows(filteredProducerDayRows)
+    ? aggregateDayRows(effectiveProducerDayRows)
     : hasDailySummaryRows
-    ? filteredDaySummaryRows
-    : filteredMonthRows;
+    ? effectiveDaySummaryRows
+    : effectiveMonthRows;
   const semAvaliacaoRows = aggregateSemAvaliacaoRows(filteredSemAvaliacaoDayRows);
   const chartMode = hasDetailedProducerRows || hasDailySummaryRows ? 'day' : 'month';
   const totalBaseRows = hasDetailedProducerRows
     ? producerRows
     : hasDailySummaryRows
-    ? filteredDaySummaryRows
+    ? effectiveDaySummaryRows
     : dailyRows.length
     ? dailyRows
     : [];
@@ -781,6 +813,7 @@ export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', d
           semAvaliacaoRows={semAvaliacaoRows}
           total={total}
           sourceFilter={sourceFilter}
+          periodFallbackActive={periodFallbackActive}
           onClose={closePresentation}
         />
       )}
@@ -794,6 +827,7 @@ export default function CqoRampa({ farmFilter = 'all', periodFilter = 'month', d
         semAvaliacaoRows={semAvaliacaoRows}
         total={total}
         sourceFilter={sourceFilter}
+        periodFallbackActive={periodFallbackActive}
         onPresent={openPresentation}
       />
     </div>
