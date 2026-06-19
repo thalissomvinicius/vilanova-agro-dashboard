@@ -98,7 +98,8 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   });
 
   const collectionStats = useMemo(() => {
-    const withGps = filteredRecords.filter((record) => record.gps || record.gpsOccurrences?.length).length;
+    const gpsEligible = filteredRecords.filter((record) => record.gpsApplicable !== false).length;
+    const withGps = filteredRecords.filter((record) => record.gpsApplicable !== false && (record.gps || record.gpsOccurrences?.length)).length;
     const approved = filteredRecords.filter((record) => record.status === 'Aprovado' || record.status === 'Sincronizado').length;
     const corte = filteredRecords.filter((record) => record.type === 'corte').length;
     const carreamento = filteredRecords.filter((record) => record.type === 'carreamento').length;
@@ -107,10 +108,18 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
       total: filteredRecords.length,
       approved,
       withGps,
+      gpsEligible,
       corte,
       carreamento,
     };
   }, [filteredRecords]);
+
+  const sourceLabel = useMemo(() => {
+    if (loading) return 'Carregando...';
+    if (sourceFilter === 'excel') return 'Excel / cqo_import_snapshots';
+    if (sourceFilter === 'app') return 'Supabase / mobile_respostas';
+    return source || 'App + Excel';
+  }, [loading, source, sourceFilter]);
 
   const selectedPhotos = selectedRecord
     ? [
@@ -188,7 +197,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
         </div>
         <div className="operational-hero-stats">
           <div><span>Registros</span><strong>{formatNumber(collectionStats.total)}</strong></div>
-          <div><span>Com GPS</span><strong>{formatNumber(collectionStats.withGps)}</strong></div>
+          <div><span>GPS app</span><strong>{formatNumber(collectionStats.withGps)}</strong></div>
           <div><span>Corte</span><strong>{formatNumber(collectionStats.corte)}</strong></div>
           <div><span>Carream.</span><strong>{formatNumber(collectionStats.carreamento)}</strong></div>
         </div>
@@ -222,7 +231,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
         </label>
           <div className="source-card compact">
             <span>Fonte</span>
-            <strong>{loading ? 'Carregando...' : source}</strong>
+            <strong>{sourceLabel}</strong>
           </div>
       </div>
 
@@ -235,7 +244,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
 
       <div className="collection-summary-strip">
         <div><CheckCircle2 size={16} /><span>Aprovadas/sincronizadas</span><strong>{formatNumber(collectionStats.approved)}</strong></div>
-        <div><MapPin size={16} /><span>Rastreáveis por GPS</span><strong>{formatNumber(collectionStats.withGps)}</strong></div>
+        <div><MapPin size={16} /><span>GPS app</span><strong>{formatNumber(collectionStats.withGps)} / {formatNumber(collectionStats.gpsEligible)}</strong></div>
         <div><ClipboardList size={16} /><span>Auditoria filtrada</span><strong>{formatNumber(collectionStats.total)}</strong></div>
       </div>
 
@@ -327,7 +336,9 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                       <span className={`badge ${statusBadge(record.status)}`}>{record.status}</span>
                     </td>
                     <td>
-                      {record.gps ? (
+                      {record.source === 'excel' ? (
+                        <span className="muted-cell">Excel sem GPS</span>
+                      ) : record.gps ? (
                         <span className="gps-chip">
                           <MapPin size={12} />
                           {record.gpsOccurrences?.length
@@ -451,9 +462,15 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
               <div className="detail-footer-grid">
                 <div>
                   <span className="footer-label">GPS</span>
-                  <strong>{selectedRecord.gps?.label || 'Não capturado'}</strong>
+                  <strong>
+                    {selectedRecord.source === 'excel'
+                      ? 'Não se aplica'
+                      : selectedRecord.gps?.label || 'Não capturado'}
+                  </strong>
                   <small>
-                    {selectedRecord.gpsOccurrences?.length
+                    {selectedRecord.source === 'excel'
+                      ? 'Registro histórico do Excel não possui GPS'
+                      : selectedRecord.gpsOccurrences?.length
                       ? `${selectedRecord.gpsOccurrences.length} ocorrencia(s) georreferenciada(s)`
                       : `${selectedRecord.gpsTrack?.length || 0} ponto(s) de trilha`}
                   </small>
@@ -472,7 +489,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 </div>
               </div>
 
-              {selectedRecord.gpsOccurrences?.length ? (
+              {selectedRecord.source !== 'excel' && selectedRecord.gpsOccurrences?.length ? (
                 <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 18 }}>
                   <div className="card-header" style={{ padding: '14px 16px', marginBottom: 0 }}>
                     <div>

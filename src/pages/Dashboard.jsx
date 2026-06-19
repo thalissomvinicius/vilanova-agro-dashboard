@@ -530,7 +530,12 @@ function buildTotalMetricGroups(model) {
         { label: 'Linhas avaliadas', value: formatNumber(totals.linhas), detail: 'linhas/ruas amostradas', tone: 'neutral' },
         { label: 'Plantas observadas', value: formatNumber(totals.plantasObservadas), detail: 'base da auditoria', tone: 'neutral' },
         { label: 'Cachos observados', value: formatNumber(totals.cachosObservados), detail: 'base de maturação', tone: 'neutral' },
-        { label: 'Registros com GPS', value: `${formatNumber(totals.gps)} / ${formatNumber(totals.total)}`, detail: `${formatNumber(totals.gpsRate)}% das fichas`, tone: 'success' },
+        {
+          label: 'Registros com GPS',
+          value: `${formatNumber(totals.gps)} / ${formatNumber(totals.gpsEligible)}`,
+          detail: totals.gpsEligible === totals.total ? `${formatNumber(totals.gpsRate)}% das fichas` : `${formatNumber(totals.gpsRate)}% das coletas do app`,
+          tone: 'success',
+        },
         { label: 'Pontos GPS', value: formatNumber(totals.gpsPoints), detail: `${formatNumber(totals.gpsOccurrences)} ocorrências`, tone: 'neutral' },
       ],
     },

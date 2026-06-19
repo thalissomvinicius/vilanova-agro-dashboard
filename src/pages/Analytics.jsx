@@ -149,12 +149,15 @@ function RankingAvaliadores({ records, loading }) {
     records.forEach((r) => {
       const key = r.evaluator || r.evaluatorMatricula || 'Desconhecido';
       if (!map.has(key)) {
-        map.set(key, { nome: key, total: 0, aprovados: 0, comGps: 0 });
+        map.set(key, { nome: key, total: 0, aprovados: 0, gpsEligible: 0, comGps: 0 });
       }
       const entry = map.get(key);
       entry.total += 1;
       if (r.status === 'Aprovado') entry.aprovados += 1;
-      if (r.gps) entry.comGps += 1;
+      if (r.gpsApplicable !== false) {
+        entry.gpsEligible += 1;
+        if (r.gps) entry.comGps += 1;
+      }
     });
     return Array.from(map.values())
       .sort((a, b) => b.total - a.total)
@@ -202,7 +205,7 @@ function RankingAvaliadores({ records, loading }) {
       {ranking.map((item, idx) => {
         const barPct = (item.total / maxTotal) * 100;
         const aprPct = item.total > 0 ? ((item.aprovados / item.total) * 100).toFixed(0) : 0;
-        const gpsPct = item.total > 0 ? ((item.comGps / item.total) * 100).toFixed(0) : 0;
+        const gpsPct = item.gpsEligible > 0 ? ((item.comGps / item.gpsEligible) * 100).toFixed(0) : null;
         const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : <span style={{display: 'inline-block', width: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600}}>{idx + 1}º</span>;
         
         return (
@@ -218,7 +221,7 @@ function RankingAvaliadores({ records, loading }) {
             </div>
             <span style={{ textAlign: 'right', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{item.total}</span>
             <span style={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 600, color: Number(aprPct) >= 80 ? 'var(--status-success)' : Number(aprPct) >= 50 ? 'var(--status-warning)' : 'var(--status-danger)' }}>{aprPct}%</span>
-            <span style={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 600, color: Number(gpsPct) >= 80 ? 'var(--status-info)' : 'var(--text-muted)' }}>{gpsPct}%</span>
+            <span style={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 600, color: gpsPct !== null && Number(gpsPct) >= 80 ? 'var(--status-info)' : 'var(--text-muted)' }}>{gpsPct === null ? 'N/D' : `${gpsPct}%`}</span>
           </div>
         );
       })}
@@ -246,6 +249,7 @@ function EmptyState({ areaFilter }) {
 }
 
 function formatPercentValue(value, digits = 1) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return 'N/D';
   return `${Number(value || 0).toFixed(digits).replace('.', ',')}%`;
 }
 
@@ -410,10 +414,13 @@ function buildCarreamentoEvaluatorRows(records) {
   const buckets = new Map();
   records.forEach((record) => {
     const key = record.evaluator || 'Sem avaliador';
-    const current = buckets.get(key) || { label: key, total: 0, aprovados: 0, gps: 0 };
+    const current = buckets.get(key) || { label: key, total: 0, aprovados: 0, gpsEligible: 0, gps: 0 };
     current.total += 1;
     if (record.status === 'Aprovado') current.aprovados += 1;
-    if (record.gps) current.gps += 1;
+    if (record.gpsApplicable !== false) {
+      current.gpsEligible += 1;
+      if (record.gps) current.gps += 1;
+    }
     buckets.set(key, current);
   });
   return Array.from(buckets.values())
@@ -421,7 +428,7 @@ function buildCarreamentoEvaluatorRows(records) {
       ...row,
       value: row.total,
       aprovacaoPct: row.total ? (row.aprovados / row.total) * 100 : 0,
-      gpsPct: row.total ? (row.gps / row.total) * 100 : 0,
+      gpsPct: row.gpsEligible ? (row.gps / row.gpsEligible) * 100 : null,
     }))
     .sort((a, b) => b.total - a.total);
 }
@@ -439,7 +446,9 @@ function CarreamentoBiBoard({
   const taxaNaoCarreado = totals.plantasObservadas ? (totals.cachoNaoCarreado / totals.plantasObservadas) * 100 : 0;
   const acompanhamentoPct = records.length ? (records.filter((r) => r.acompanhamento?.teve === 'sim').length / records.length) * 100 : 0;
   const aprovacaoPct = records.length ? (records.filter((r) => r.status === 'Aprovado').length / records.length) * 100 : 0;
-  const gpsPct = records.length ? (records.filter((r) => r.gps).length / records.length) * 100 : 0;
+  const gpsEligibleRecords = records.filter((r) => r.gpsApplicable !== false);
+  const gpsPct = gpsEligibleRecords.length ? (gpsEligibleRecords.filter((r) => r.gps).length / gpsEligibleRecords.length) * 100 : null;
+  const gpsMeta = gpsEligibleRecords.length ? 'Rastreabilidade app' : 'Excel sem GPS';
   const perdaTon = (totals.cachoNaoCarreado * 20) / 1000;
   const dailyRows = buildCarreamentoDayRows(records);
   const farmRows = buildCarreamentoFarmRows(records);
@@ -482,7 +491,7 @@ function CarreamentoBiBoard({
         <CarreamentoBiKpi label="Mal posicionado" value={loading ? '--' : formatPercentValue(taxaMalPos)} meta="Meta máx. 5,00%" tone={taxaMalPos > 5 ? 'danger' : 'orange'} icon={AlertTriangle} />
         <CarreamentoBiKpi label="Perda estimada" value={loading ? '--' : `${fmt(perdaTon, 2)} t`} meta={`${fmt(totals.cachoNaoCarreado)} cachos`} tone={perdaTon > 0 ? 'danger' : 'green'} icon={Weight} />
         <CarreamentoBiKpi label="Acompanhamento" value={loading ? '--' : formatPercentValue(acompanhamentoPct)} meta="Fichas supervisionadas" tone="info" icon={CheckCircle2} />
-        <CarreamentoBiKpi label="GPS" value={loading ? '--' : formatPercentValue(gpsPct)} meta="Rastreabilidade" tone="green" icon={BarChart3} />
+        <CarreamentoBiKpi label="GPS" value={loading ? '--' : formatPercentValue(gpsPct)} meta={gpsMeta} tone="green" icon={BarChart3} />
       </div>
 
       <div className="carreamento-bi-main-grid">
@@ -770,7 +779,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
             {areaFilter !== 'carreamento' && (
               <KpiCard title="Cachos Observados" value={fmt(totalsGeral.cachosObservados)} subtitle="Cachos auditados nas linhas" icon={CheckCircle2} tone="info" loading={loading} />
             )}
-            <KpiCard title="Linhas Avaliadas" value={fmt(totalsGeral.linhas)} subtitle={`${fmt(totalsGeral.gpsPoints)} pontos GPS no trajeto`} icon={Rows3} tone="orange" loading={loading} />
+            <KpiCard title="Linhas Avaliadas" value={fmt(totalsGeral.linhas)} subtitle={totalsGeral.gpsEligible ? `${fmt(totalsGeral.gpsPoints)} pontos GPS no trajeto` : 'Excel sem GPS'} icon={Rows3} tone="orange" loading={loading} />
             <KpiCard title="Plantas Observadas" value={fmt(totalsGeral.plantasObservadas)} subtitle="Base para cálculo de perdas" icon={Sprout} tone="green" loading={loading} />
           </div>
 
@@ -966,7 +975,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
                 <StatusBadgeRow label="Talo comprido" value={totalsCorte.taloComprido || 0} total={totalsCorte.plantasObservadas} color="var(--orange-institutional)" loading={loading} />
                 <StatusBadgeRow label="Cachos brocados" value={totalsCorte.cachoBrocado || 0} total={totalsCorte.plantasObservadas} color="var(--status-danger)" loading={loading} />
                 <StatusBadgeRow label="Com acompanhamento" value={corteRecords.filter((r) => r.acompanhamento?.teve === 'sim').length} total={corteRecords.length} color="var(--status-success)" loading={loading} />
-                <StatusBadgeRow label="Com registro GPS" value={corteRecords.filter((r) => r.gps).length} total={corteRecords.length} color="var(--status-info)" loading={loading} />
+                <StatusBadgeRow label="Com registro GPS app" value={corteRecords.filter((r) => r.gpsApplicable !== false && r.gps).length} total={corteRecords.filter((r) => r.gpsApplicable !== false).length} color="var(--status-info)" loading={loading} />
               </div>
             </div>
           </div>
@@ -1160,7 +1169,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
                 <StatusBadgeRow label="Reprovados" value={carreamentoRecords.filter((r) => r.status === 'Reprovado').length} total={carreamentoRecords.length} color="var(--status-danger)" loading={loading} />
                 <StatusBadgeRow label="Pendente validação" value={carreamentoRecords.filter((r) => r.status === 'Pendente validação').length} total={carreamentoRecords.length} color="var(--status-warning)" loading={loading} />
                 <StatusBadgeRow label="Falha de sincronização" value={carreamentoRecords.filter((r) => r.status === 'Falha').length} total={carreamentoRecords.length} color="var(--status-danger)" loading={loading} />
-                <StatusBadgeRow label="Com GPS" value={carreamentoRecords.filter((r) => r.gps).length} total={carreamentoRecords.length} color="var(--status-info)" loading={loading} />
+                <StatusBadgeRow label="Com GPS app" value={carreamentoRecords.filter((r) => r.gpsApplicable !== false && r.gps).length} total={carreamentoRecords.filter((r) => r.gpsApplicable !== false).length} color="var(--status-info)" loading={loading} />
                 <StatusBadgeRow label="Com acompanhamento" value={carreamentoRecords.filter((r) => r.acompanhamento?.teve === 'sim').length} total={carreamentoRecords.length} color="var(--status-info)" loading={loading} />
               </div>
             </div>

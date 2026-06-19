@@ -455,6 +455,9 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
   const isExcelSource = Boolean(data.fonte_excel)
     || row.source === 'cqo_import_snapshots'
     || String(row.formulario_id || '').startsWith('excel_');
+  const effectiveGps = isExcelSource ? null : (gps || gpsOccurrences[0] || gpsTrack[0] || null);
+  const effectiveGpsTrack = isExcelSource ? [] : gpsTrack;
+  const effectiveGpsOccurrences = isExcelSource ? [] : gpsOccurrences;
 
   const base = {
     id: row.id,
@@ -480,9 +483,11 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
     fiscal: formatPersonName(data.fiscal_resp) || '--',
     observation: data.observacao || '',
     acompanhamento,
-    gps: gps || gpsOccurrences[0] || gpsTrack[0] || null,
-    gpsTrack,
-    gpsOccurrences,
+    gps: effectiveGps,
+    gpsTrack: effectiveGpsTrack,
+    gpsOccurrences: effectiveGpsOccurrences,
+    gpsApplicable: !isExcelSource,
+    gpsUnavailableReason: isExcelSource ? 'Registro historico do Excel sem GPS.' : '',
     attachments: attachmentRows,
     raw: data,
     lines,
@@ -1253,9 +1258,12 @@ export function aggregateRecords(records) {
     acc.cachoMalPosicionado += record.totals.cachoMalPosicionado || 0;
     acc.cachoNaoCarreado += record.totals.cachoNaoCarreado || 0;
     acc.pesoMedio += record.totals.pesoMedio || 0;
-    acc.gps += record.gps ? 1 : 0;
-    acc.gpsPoints += record.gpsTrack?.length || 0;
-    acc.gpsOccurrences += record.gpsOccurrences?.length || 0;
+    if (record.gpsApplicable !== false) {
+      acc.gpsEligible += 1;
+      acc.gps += record.gps ? 1 : 0;
+      acc.gpsPoints += record.gpsTrack?.length || 0;
+      acc.gpsOccurrences += record.gpsOccurrences?.length || 0;
+    }
     
     // Novos acumulados adicionados para corrigir a agregação global
     acc.cachoBrocado += record.totals.cachoBrocado || 0;
@@ -1288,6 +1296,7 @@ export function aggregateRecords(records) {
     cachoMalPosicionado: 0,
     cachoNaoCarreado: 0,
     pesoMedio: 0,
+    gpsEligible: 0,
     gps: 0,
     gpsPoints: 0,
     gpsOccurrences: 0,
@@ -1309,7 +1318,7 @@ export function aggregateRecords(records) {
   totals.syncRate = totals.total ? Math.round((totals.sincronizados / totals.total) * 100) : 0;
   totals.validationRate = totals.total ? Math.round(((totals.aprovados + totals.reprovados) / totals.total) * 100) : 0;
   totals.approvalRate = (totals.aprovados + totals.reprovados) ? Math.round((totals.aprovados / (totals.aprovados + totals.reprovados)) * 100) : 0;
-  totals.gpsRate = totals.total ? Math.round((totals.gps / totals.total) * 100) : 0;
+  totals.gpsRate = totals.gpsEligible ? Math.round((totals.gps / totals.gpsEligible) * 100) : 0;
   totals.perdaCorteRate = totals.cachosObservados ? ((totals.cachoEsquecido / totals.cachosObservados) * 100).toFixed(1) : '0.0';
   totals.mediaPesoFrutos = totals.carreamento ? (totals.pesoMedio / totals.carreamento).toFixed(1) : '0.0';
 
