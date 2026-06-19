@@ -35,6 +35,7 @@ const ROUTE_PAGES = Object.fromEntries(
 
 const FILTER_STORAGE_KEY = 'vilanova_dashboard_filters';
 const VALID_MONTHS = new Set(['all', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']);
+const VALID_SOURCE_FILTERS = new Set(['all', 'app', 'excel']);
 
 function currentMonthValue() {
   return String(new Date().getMonth() + 1).padStart(2, '0');
@@ -89,6 +90,7 @@ function searchFilters() {
     monthFilter: params.get('mes') || undefined,
     cycleFilter: params.get('ciclo') || undefined,
     evaluatorFilter: params.get('avaliador') || undefined,
+    sourceFilter: params.get('fonte') || undefined,
     searchTerm: params.get('busca') || undefined,
     dateFrom: params.get('dataInicio') || params.get('de') || undefined,
     dateTo: params.get('dataFim') || params.get('ate') || undefined,
@@ -114,6 +116,7 @@ function compactFilters(filters) {
     monthFilter,
     cycleFilter: filters.cycleFilter || 'all',
     evaluatorFilter: filters.evaluatorFilter || 'all',
+    sourceFilter: VALID_SOURCE_FILTERS.has(String(filters.sourceFilter || '')) ? String(filters.sourceFilter) : 'all',
     searchTerm: filters.searchTerm || '',
     dateFrom,
     dateTo,
@@ -134,6 +137,7 @@ function buildSearch(filters) {
   if (filters.monthFilter) params.set('mes', filters.monthFilter);
   if (filters.cycleFilter !== 'all') params.set('ciclo', filters.cycleFilter);
   if (filters.evaluatorFilter !== 'all') params.set('avaliador', filters.evaluatorFilter);
+  if (filters.sourceFilter !== 'all') params.set('fonte', filters.sourceFilter);
   if (filters.searchTerm) params.set('busca', filters.searchTerm);
   if (filters.dateFrom) params.set('dataInicio', filters.dateFrom);
   if (filters.dateTo) params.set('dataFim', filters.dateTo);
@@ -215,6 +219,7 @@ export default function App() {
   const [dateTo, setDateTo] = useState(bootFilters.dateTo);
   const [cycleFilter, setCycleFilter] = useState(bootFilters.cycleFilter);
   const [evaluatorFilter, setEvaluatorFilter] = useState(bootFilters.evaluatorFilter);
+  const [sourceFilter, setSourceFilter] = useState(bootFilters.sourceFilter);
   const [searchTerm, setSearchTerm] = useState(bootFilters.searchTerm);
   const [isSyncing, setIsSyncing] = useState(false);
   const [tvModeOpen, setTvModeOpen] = useState(false);
@@ -229,10 +234,11 @@ export default function App() {
     monthFilter,
     cycleFilter,
     evaluatorFilter,
+    sourceFilter,
     searchTerm,
     dateFrom,
     dateTo,
-  }), [farmFilter, yearFilter, monthFilter, cycleFilter, evaluatorFilter, searchTerm, dateFrom, dateTo]);
+  }), [farmFilter, yearFilter, monthFilter, cycleFilter, evaluatorFilter, sourceFilter, searchTerm, dateFrom, dateTo]);
   const commonDashboardProps = {
     theme,
     farmFilter,
@@ -240,6 +246,7 @@ export default function App() {
     periodFilter,
     cycleFilter,
     evaluatorFilter,
+    sourceFilter,
     dateFrom: activeFilters.dateFrom,
     dateTo: activeFilters.dateTo,
     searchTerm,
@@ -295,7 +302,10 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(activeFilters));
-    const nextPath = `${pathFromPage(activePage)}${buildSearch(activeFilters)}`;
+    const routeFilters = activePage === 'cqo-rampa'
+      ? { ...activeFilters, sourceFilter: 'all' }
+      : activeFilters;
+    const nextPath = `${pathFromPage(activePage)}${buildSearch(routeFilters)}`;
     const currentPath = `${window.location.pathname}${window.location.search}`;
     if (currentPath !== nextPath) {
       const method = window.location.pathname !== pathFromPage(activePage) ? 'pushState' : 'replaceState';
@@ -317,6 +327,7 @@ export default function App() {
       setDateTo(nextFilters.dateTo);
       setCycleFilter(nextFilters.cycleFilter);
       setEvaluatorFilter(nextFilters.evaluatorFilter);
+      setSourceFilter(nextFilters.sourceFilter);
       setSearchTerm(nextFilters.searchTerm);
     };
 
@@ -417,6 +428,7 @@ export default function App() {
             periodFilter={periodFilter}
             cycleFilter={cycleFilter}
             evaluatorFilter={evaluatorFilter}
+            sourceFilter={sourceFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
           />
@@ -438,6 +450,7 @@ export default function App() {
             periodFilter={periodFilter}
             cycleFilter={cycleFilter}
             evaluatorFilter={evaluatorFilter}
+            sourceFilter={sourceFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
             searchTerm={searchTerm}
@@ -497,6 +510,7 @@ export default function App() {
                 periodFilter={periodFilter}
                 cycleFilter={cycleFilter}
                 evaluatorFilter={evaluatorFilter}
+                sourceFilter={sourceFilter}
                 dateFrom={dateFrom}
                 dateTo={dateTo}
               />
@@ -563,6 +577,9 @@ export default function App() {
           setCycleFilter={setCycleFilter}
           evaluatorFilter={evaluatorFilter}
           setEvaluatorFilter={setEvaluatorFilter}
+          sourceFilter={sourceFilter}
+          setSourceFilter={setSourceFilter}
+          activePage={activePage}
           theme={theme}
           setTheme={setTheme}
           searchTerm={searchTerm}

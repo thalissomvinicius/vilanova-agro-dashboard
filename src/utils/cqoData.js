@@ -440,6 +440,9 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
   const acompanhamento = data.acompanhamento && typeof data.acompanhamento === 'object'
     ? data.acompanhamento
     : { teve: 'nao', matricula: '', nome: '' };
+  const isExcelSource = Boolean(data.fonte_excel)
+    || row.source === 'cqo_import_snapshots'
+    || String(row.formulario_id || '').startsWith('excel_');
 
   const base = {
     id: row.id,
@@ -453,6 +456,8 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
     receivedAt: row.recebido_em,
     date: dateTime.date,
     time: dateTime.time,
+    source: isExcelSource ? 'excel' : 'app',
+    sourceLabel: isExcelSource ? 'Excel / Supabase' : 'App / Supabase',
     farm: data.nome_fazenda || 'Sem fazenda',
     farmId: normalizeText(data.nome_fazenda || 'sem-fazenda'),
     parcel: data.parcela || '--',
@@ -1194,7 +1199,7 @@ function isWithinPeriod(record, periodFilter, dateFrom = '', dateTo = '') {
   return true;
 }
 
-export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all', periodFilter = 'month', cycleFilter = 'all', evaluatorFilter = 'all', dateFrom = '', dateTo = '', searchTerm = '', statusFilter = 'all' } = {}) {
+export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all', periodFilter = 'month', cycleFilter = 'all', evaluatorFilter = 'all', sourceFilter = 'all', dateFrom = '', dateTo = '', searchTerm = '', statusFilter = 'all' } = {}) {
   const search = normalizeText(searchTerm);
   return records.filter((record) => {
     const activeFarmOk = ACTIVE_CQO_FARM_IDS.includes(record.farmId);
@@ -1202,6 +1207,7 @@ export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all',
     const areaOk = areaFilter === 'all' || record.type === areaFilter;
     const cycleOk = cycleFilter === 'all' || String(record.cycle) === String(cycleFilter);
     const evaluatorOk = evaluatorFilter === 'all' || record.evaluator === evaluatorFilter;
+    const sourceOk = sourceFilter === 'all' || record.source === sourceFilter;
     const statusOk = statusFilter === 'all' || normalizeText(record.status) === normalizeText(statusFilter);
     const periodOk = isWithinPeriod(record, periodFilter, dateFrom, dateTo);
     const haystack = normalizeText([
@@ -1215,7 +1221,7 @@ export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all',
       record.fiscal,
     ].join(' '));
     const searchOk = !search || haystack.includes(search);
-    return activeFarmOk && farmOk && areaOk && cycleOk && evaluatorOk && statusOk && periodOk && searchOk;
+    return activeFarmOk && farmOk && areaOk && cycleOk && evaluatorOk && sourceOk && statusOk && periodOk && searchOk;
   });
 }
 

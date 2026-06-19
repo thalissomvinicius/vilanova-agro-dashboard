@@ -43,6 +43,8 @@ export default function Header({
   setCycleFilter,
   evaluatorFilter,
   setEvaluatorFilter,
+  sourceFilter,
+  setSourceFilter,
   theme,
   setTheme,
   searchTerm,
@@ -53,6 +55,7 @@ export default function Header({
   user,
   onLogout,
   onOpenTvMode,
+  activePage,
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const { records } = useCqoData();
@@ -102,6 +105,7 @@ export default function Header({
     });
     return Array.from(evals).sort();
   }, [records]);
+  const showSourceFilter = activePage !== 'cqo-rampa';
 
   const notifications = [
     { id: 1, text: 'Dashboard preparado para ler coletas CQO do Supabase.', time: 'Agora' },
@@ -173,6 +177,22 @@ export default function Header({
             ))}
           </select>
         </label>
+
+        {showSourceFilter ? (
+          <label className="header-filter-control header-filter-control-source">
+            <span>Fonte</span>
+            <select
+              className="header-filter-select"
+              value={sourceFilter}
+              onChange={(event) => setSourceFilter(event.target.value)}
+              title="Selecionar fonte dos dados de campo"
+            >
+              <option value="all">App + Excel</option>
+              <option value="app">Só App</option>
+              <option value="excel">Só Excel</option>
+            </select>
+          </label>
+        ) : null}
 
         <label className="header-filter-control header-filter-control-short">
           <span>Ano</span>

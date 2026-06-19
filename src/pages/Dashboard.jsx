@@ -630,7 +630,7 @@ function PresentationOverlay({ loading, model, totals, quality, dailyBunchRows, 
   );
 }
 
-export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, dateFrom, dateTo, searchTerm }) {
+export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, searchTerm }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
   const { loading, records, totals, source, error } = useCqoDashboard({
     farmFilter,
@@ -638,6 +638,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
     periodFilter,
     cycleFilter,
     evaluatorFilter,
+    sourceFilter,
     dateFrom,
     dateTo,
     searchTerm,

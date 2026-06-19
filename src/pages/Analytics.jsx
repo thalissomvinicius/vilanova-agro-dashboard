@@ -548,12 +548,12 @@ function CarreamentoPresentationOverlay(props) {
 }
 
 // ─── Analytics Page ────────────────────────────────────────────────────────────
-export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, dateFrom, dateTo }) {
+export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo }) {
   const { loading, error, records: allRecords, source } = useCqoData();
   const [activeTab, setActiveTab] = useState('geral');
   const [carreamentoPresentationOpen, setCarreamentoPresentationOpen] = useState(false);
 
-  const filtered = filterRecords(allRecords, { farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, dateFrom, dateTo });
+  const filtered = filterRecords(allRecords, { farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo });
   const corteRecords = filtered.filter((r) => r.type === 'corte');
   const carreamentoRecords = filtered.filter((r) => r.type === 'carreamento');
 

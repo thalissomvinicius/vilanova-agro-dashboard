@@ -462,6 +462,7 @@ export default function QualidadeOperacional({
   periodFilter,
   cycleFilter,
   evaluatorFilter,
+  sourceFilter = 'all',
   dateFrom,
   dateTo,
   searchTerm,
@@ -475,10 +476,11 @@ export default function QualidadeOperacional({
     periodFilter,
     cycleFilter,
     evaluatorFilter,
+    sourceFilter,
     dateFrom,
     dateTo,
     searchTerm,
-  }), [allRecords, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, dateFrom, dateTo, searchTerm]);
+  }), [allRecords, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo, searchTerm]);
 
   const model = useMemo(() => buildQualidadeOperacional(filtered), [filtered]);
   const lossPctLabel = model.hasProductionBase ? pct(model.lossRates.totalPct) : 'N/D';

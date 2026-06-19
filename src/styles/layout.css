@@ -546,13 +546,14 @@ body.sidebar-resizing {
 .header-filters {
   display: grid;
   grid-template-columns:
-    minmax(150px, 1.08fr)
-    minmax(116px, 0.72fr)
-    minmax(176px, 1fr)
-    minmax(78px, 0.48fr)
-    minmax(102px, 0.58fr)
-    minmax(124px, 0.68fr)
-    minmax(124px, 0.68fr);
+    minmax(132px, 1fr)
+    minmax(96px, 0.6fr)
+    minmax(146px, 0.92fr)
+    minmax(98px, 0.58fr)
+    minmax(70px, 0.42fr)
+    minmax(94px, 0.5fr)
+    minmax(116px, 0.62fr)
+    minmax(116px, 0.62fr);
   align-items: center;
   gap: 6px;
   grid-area: filters;
@@ -597,6 +598,10 @@ body.sidebar-resizing {
 }
 
 .header-filter-control-date {
+  min-width: 0;
+}
+
+.header-filter-control-source {
   min-width: 0;
 }
 

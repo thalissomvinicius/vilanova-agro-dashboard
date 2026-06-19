@@ -334,7 +334,7 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, heatSumm
   `;
 }
 
-export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo }) {
+export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, sourceFilter = 'all', dateFrom, dateTo }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const layerGroupRef = useRef(null);
@@ -348,9 +348,10 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     areaFilter,
     periodFilter,
     cycleFilter,
+    sourceFilter,
     dateFrom,
     dateTo,
-  }), [records, farmFilter, areaFilter, periodFilter, cycleFilter, dateFrom, dateTo]);
+  }), [records, farmFilter, areaFilter, periodFilter, cycleFilter, sourceFilter, dateFrom, dateTo]);
 
   const geoRecords = useMemo(() => filteredRecords.filter((record) => {
     if (record.raw?.mapeamento_legado || record.evaluatorMatricula === 'HISTORICO') return false;

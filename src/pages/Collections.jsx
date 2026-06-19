@@ -62,7 +62,7 @@ function lineColumns(record) {
   ];
 }
 
-export default function Collections({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, dateFrom, dateTo, searchTerm }) {
+export default function Collections({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, searchTerm }) {
   const { loading, records, source, error } = useCqoData();
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -84,6 +84,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     areaFilter,
     searchTerm,
     evaluatorFilter,
+    sourceFilter,
     statusFilter,
     periodFilter,
     cycleFilter,
@@ -131,6 +132,10 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
 
   const handleReview = async (status) => {
     if (!selectedRecord) return;
+    if (selectedRecord.source === 'excel') {
+      window.alert('Registro histórico do Excel: validação deve ser feita apenas nas coletas do app.');
+      return;
+    }
     setIsReviewing(true);
     try {
       await updateResponseReviewStatus(selectedRecord.id, status);
@@ -149,6 +154,10 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
 
   const handleDelete = async () => {
     if (!selectedRecord) return;
+    if (selectedRecord.source === 'excel') {
+      window.alert('Registro histórico do Excel: exclusão pelo dashboard vale apenas para coletas do app.');
+      return;
+    }
     if (!window.confirm(`Tem certeza que deseja excluir a ficha ${selectedRecord.id}? Esta ação não pode ser desfeita e removerá os dados permanentemente do Supabase.`)) return;
     
     setIsDeleting(true);
@@ -238,6 +247,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 <th>Ficha</th>
                 <th>Data / Hora</th>
                 <th>Formulário</th>
+                <th>Fonte</th>
                 <th>Fazenda / Parcela</th>
                 <th>Avaliador</th>
                 <th>Status</th>
@@ -258,8 +268,9 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                         <span className="skeleton-text skeleton-sm" />
                       </div>
                     </td>
-                    <td><span className="skeleton-text" /></td>
-                    <td>
+                  <td><span className="skeleton-text" /></td>
+                  <td><span className="skeleton-text skeleton-sm" /></td>
+                  <td>
                       <div className="stack-cell">
                         <strong className="skeleton-text skeleton-sm" />
                         <span className="skeleton-text skeleton-sm" />
@@ -280,7 +291,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 ))
               ) : filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className="empty-table-cell">
+                  <td colSpan="11" className="empty-table-cell">
                     Nenhuma coleta encontrada para os filtros atuais.
                   </td>
                 </tr>
@@ -295,6 +306,11 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                       </div>
                     </td>
                     <td>{record.form}</td>
+                    <td>
+                      <span className={record.source === 'excel' ? 'badge badge-warning' : 'badge badge-info'}>
+                        {record.source === 'excel' ? 'Excel' : 'App'}
+                      </span>
+                    </td>
                     <td>
                       <div className="stack-cell">
                         <strong>{record.farm}</strong>
@@ -543,15 +559,15 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 <Download size={14} />
                 Excel
               </button>
-              <button onClick={handleDelete} className="btn btn-secondary" style={{ color: 'var(--status-danger)', borderColor: 'var(--status-danger)' }} disabled={isDeleting}>
+              <button onClick={handleDelete} className="btn btn-secondary" style={{ color: 'var(--status-danger)', borderColor: 'var(--status-danger)' }} disabled={isDeleting || selectedRecord.source === 'excel'}>
                 <Trash2 size={14} />
                 Excluir
               </button>
-              <button onClick={() => handleReview('reprovado')} className="btn btn-danger" disabled={isReviewing || isDeleting}>
+              <button onClick={() => handleReview('reprovado')} className="btn btn-danger" disabled={isReviewing || isDeleting || selectedRecord.source === 'excel'}>
                 <ThumbsDown size={14} />
                 Reprovar
               </button>
-              <button onClick={() => handleReview('aprovado')} className="btn btn-primary" disabled={isReviewing || isDeleting}>
+              <button onClick={() => handleReview('aprovado')} className="btn btn-primary" disabled={isReviewing || isDeleting || selectedRecord.source === 'excel'}>
                 <ThumbsUp size={14} />
                 Aprovar
               </button>
