@@ -780,22 +780,53 @@ body.presentation-active {
 }
 
 .presentation-close-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-card);
-  color: var(--text-primary);
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+  color: #182230;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(10px);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.presentation-close-btn svg {
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
 }
 
 .presentation-close-btn:hover {
-  color: var(--status-danger);
+  background: var(--status-danger);
   border-color: var(--status-danger);
+  color: var(--white);
+  box-shadow: 0 16px 32px rgba(239, 68, 68, 0.28);
+  transform: translateY(-1px);
+}
+
+.presentation-close-btn:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.presentation-close-btn:focus-visible {
+  outline: 3px solid rgba(232, 145, 0, 0.35);
+  outline-offset: 3px;
+}
+
+[data-theme='dark'] .presentation-close-btn {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(15, 23, 42, 0.92);
+  color: var(--white);
 }
 
 .presentation-content {
@@ -1836,10 +1867,21 @@ body.presentation-active {
 
 .field-bi-close-btn {
   position: fixed;
-  top: 18px;
-  right: 18px;
+  top: 16px;
+  right: 16px;
   z-index: 2147483647;
-  background: rgba(255, 255, 255, 0.94);
+}
+
+.presentation-overlay .field-bi-close-btn {
+  top: 16px;
+  right: 16px;
+}
+
+.tv-mode-toolbar .presentation-close-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2147483647;
 }
 
 .developer-signature {
@@ -6102,6 +6144,23 @@ body.presentation-active {
 }
 
 @media (max-width: 760px) {
+  .presentation-close-btn {
+    width: 42px;
+    height: 42px;
+  }
+
+  .presentation-close-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .field-bi-close-btn,
+  .presentation-overlay .field-bi-close-btn,
+  .tv-mode-toolbar .presentation-close-btn {
+    top: 10px;
+    right: 10px;
+  }
+
   .card {
     padding: 18px;
   }
