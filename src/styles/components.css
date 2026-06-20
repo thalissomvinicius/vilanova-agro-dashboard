@@ -3997,9 +3997,76 @@ body.presentation-active {
 }
 
 .map-presentation-overlay .gps-map-overlay {
-  max-height: calc(100vh - 190px);
-  max-height: calc(100dvh - 190px);
+  width: min(286px, calc(100vw - 34px));
+  max-height: calc(100vh - 240px);
+  max-height: min(640px, calc(100dvh - 240px));
+  right: 18px;
+  top: 20px;
+  padding: 14px;
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+
+.map-presentation-overlay .gps-base-toggle {
+  grid-template-columns: 1fr;
+}
+
+.map-presentation-overlay .gps-base-toggle button,
+.map-presentation-overlay .gps-layer-stack .btn,
+.map-presentation-overlay .gps-metric-control select {
+  min-height: 30px;
+  height: 30px;
+  font-size: 0.68rem;
+}
+
+.map-presentation-overlay .gps-layer-stack {
+  gap: 6px;
+}
+
+.map-presentation-overlay .gps-map-stats {
+  margin-top: 9px;
+  padding-top: 8px;
+}
+
+.map-presentation-overlay .gps-sample-grid {
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.map-presentation-overlay .gps-sample-grid div {
+  padding: 6px;
+}
+
+.map-presentation-overlay .gps-risk-ranking {
+  gap: 5px;
+  padding: 7px;
+  margin: 8px 0;
+}
+
+.map-presentation-overlay .gps-risk-row {
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 5px;
+  min-height: 34px;
+  padding: 5px;
+}
+
+.map-presentation-overlay .gps-risk-row b {
+  grid-column: 2;
+  justify-self: start;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.map-presentation-overlay .gps-map-note {
+  margin-top: 7px;
+}
+
+.map-presentation-overlay .gps-heat-legend {
+  margin-top: 7px;
+  padding-top: 7px;
 }
 
 .map-presentation-signature {
@@ -4694,7 +4761,7 @@ body.presentation-active {
   line-height: 1.35;
 }
 
-.gps-map-stats > div:not(.gps-map-stats-total):not(.gps-map-note):not(.gps-sample-grid):not(.gps-heat-legend) {
+.gps-map-stats > div:not(.gps-map-stats-total):not(.gps-map-note):not(.gps-sample-grid):not(.gps-risk-ranking):not(.gps-heat-legend) {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -4703,7 +4770,7 @@ body.presentation-active {
   opacity: 0.82;
 }
 
-.gps-map-stats > div:not(.gps-map-stats-total):not(.gps-map-note):not(.gps-sample-grid):not(.gps-heat-legend) span:first-child {
+.gps-map-stats > div:not(.gps-map-stats-total):not(.gps-map-note):not(.gps-sample-grid):not(.gps-risk-ranking):not(.gps-heat-legend) span:first-child {
   width: 9px;
   height: 9px;
   border-radius: 2px;
