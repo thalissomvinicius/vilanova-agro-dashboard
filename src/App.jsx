@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Layers3, MapPinned, Route, Satellite, X } from 'lucide-react';
+import { Layers3, MapPinned, MonitorPlay, Route, Satellite, X } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
@@ -193,6 +193,31 @@ function TvModeOverlay({
   );
 }
 
+function MapPresentationOverlay({ closeMapPresentation, commonProps }) {
+  return createPortal(
+    <div className="presentation-overlay map-presentation-overlay" role="dialog" aria-modal="true" aria-label="Apresentação do mapa operacional">
+      <button type="button" className="presentation-close-btn field-bi-close-btn" onClick={closeMapPresentation} title="Fechar apresentação" aria-label="Fechar apresentação">
+        <X size={21} />
+      </button>
+      <div className="map-presentation-shell">
+        <div className="map-presentation-header">
+          <img src="/logo.png" alt="Vila Nova Agroindustrial" />
+          <div>
+            <span>Georreferenciamento CQO</span>
+            <h2>Mapa Operacional Integrado</h2>
+            <p>Parcelas, risco por amostragem, GPS do app e fonte Excel/App dentro dos filtros atuais.</p>
+          </div>
+        </div>
+        <div className="map-presentation-frame">
+          <LeafletMap {...commonProps} presentationMode />
+        </div>
+      </div>
+      <div className="developer-signature map-presentation-signature">Desenvolvedor: Vinicius Dev.</div>
+    </div>,
+    document.body
+  );
+}
+
 export default function App() {
   const bootFilters = useMemo(() => initialFilters(), []);
   const [activePage, setActivePage] = useState(() => pageFromPath(window.location.pathname));
@@ -226,6 +251,7 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState(bootFilters.searchTerm);
   const [isSyncing, setIsSyncing] = useState(false);
   const [tvModeOpen, setTvModeOpen] = useState(false);
+  const [mapPresentationOpen, setMapPresentationOpen] = useState(false);
   const [activeTvPage, setActiveTvPage] = useState('campo');
   const [lastSyncTime, setLastSyncTime] = useState(() => (
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -416,6 +442,35 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    if (!mapPresentationOpen) return undefined;
+    document.body.classList.add('presentation-active');
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setMapPresentationOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.classList.remove('presentation-active');
+    };
+  }, [mapPresentationOpen]);
+
+  const openMapPresentation = () => {
+    setMapPresentationOpen(true);
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  };
+
+  const closeMapPresentation = () => {
+    setMapPresentationOpen(false);
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
   const renderActivePage = () => {
     switch (activePage) {
       case 'dashboard':
@@ -510,24 +565,22 @@ export default function App() {
                 <h2>Mapa Operacional Integrado</h2>
                 <p>Visualizacao geoespacial das areas produtivas de palma, rotas e ocorrencias recebidas do app.</p>
               </div>
-              <div className="gps-hero-grid">
-                <div><MapPinned size={18} /><span>Parcelas</span><strong>Mapa CQO</strong></div>
-                <div><Layers3 size={18} /><span>Camadas</span><strong>Semáforo</strong></div>
-                <div><Route size={18} /><span>Rotas</span><strong>GPS app</strong></div>
-                <div><Satellite size={18} /><span>Base</span><strong>OSM/CARTO</strong></div>
+              <div className="gps-hero-side">
+                <button type="button" className="gps-present-btn" onClick={openMapPresentation}>
+                  <MonitorPlay size={17} />
+                  Apresentar
+                </button>
+                <div className="gps-hero-grid">
+                  <div><MapPinned size={18} /><span>Parcelas</span><strong>Mapa CQO</strong></div>
+                  <div><Layers3 size={18} /><span>Camadas</span><strong>Semáforo</strong></div>
+                  <div><Route size={18} /><span>Rotas</span><strong>GPS app</strong></div>
+                  <div><Satellite size={18} /><span>Base</span><strong>OSM/CARTO</strong></div>
+                </div>
               </div>
             </div>
             <div className="map-frame">
               <LeafletMap
-                theme={theme}
-                farmFilter={farmFilter}
-                areaFilter={areaFilter}
-                periodFilter={periodFilter}
-                cycleFilter={cycleFilter}
-                evaluatorFilter={evaluatorFilter}
-                sourceFilter={fieldSourceFilter}
-                dateFrom={dateFrom}
-                dateTo={dateTo}
+                {...commonDashboardProps}
               />
             </div>
           </div>
@@ -614,6 +667,12 @@ export default function App() {
             activeTvPage={activeTvPage}
             setActiveTvPage={setActiveTvPage}
             closeTvMode={closeTvMode}
+            commonProps={commonDashboardProps}
+          />
+        )}
+        {mapPresentationOpen && (
+          <MapPresentationOverlay
+            closeMapPresentation={closeMapPresentation}
             commonProps={commonDashboardProps}
           />
         )}

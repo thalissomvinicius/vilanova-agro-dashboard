@@ -471,7 +471,7 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
   `;
 }
 
-export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter = 'all', sourceFilter = 'all', dateFrom, dateTo }) {
+export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter = 'all', sourceFilter = 'all', dateFrom, dateTo, presentationMode = false }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const layerGroupRef = useRef(null);
@@ -776,9 +776,9 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           }
 
           if (mapLayer === 'polygon' && shapeParcel) {
-            if (parcelTotals) {
-              fillColor = getScoreColor(parcelTotals.generalScore);
-              fillOpacity = 0.55;
+            if (parcelTotals && summary) {
+              fillColor = summary.color;
+              fillOpacity = 0.5;
               weight = 2;
             } else {
               fillColor = '#CBD5E1'; // Neutral gray for un-evaluated parcels
@@ -788,7 +788,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           }
 
           return {
-            color: mapLayer === 'heat' && summary?.totals ? summary.color : style.color,
+            color: (mapLayer === 'heat' || mapLayer === 'polygon') && summary?.totals ? summary.color : style.color,
             fillColor,
             fillOpacity,
             weight,
@@ -1038,7 +1038,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, selectedRiskMetric, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, filteredParcelFeatures, parcelSummaryByKey]);
 
   return (
-    <div className="card gps-map-card">
+    <div className={`card gps-map-card ${presentationMode ? 'gps-map-card-presentation' : ''}`}>
       <div ref={mapContainerRef} className="gps-map-canvas" />
 
       <div className="map-overlay-card gps-map-overlay">
@@ -1176,7 +1176,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             <span>
               {mapLayer === 'heat' && `${selectedRiskMetric.label} aplicado na parcela completa com base na amostragem filtrada.`}
               {mapLayer === 'route' && 'GPS detalhado mostra as coordenadas reais numeradas dentro da parcela.'}
-              {mapLayer === 'polygon' && 'Semaforo por parcela; use o calor para ver tendencia espacial da amostra.'}
+              {mapLayer === 'polygon' && `${selectedRiskMetric.label} em semaforo por parcela, respeitando os filtros atuais.`}
             </span>
           </div>
           <div className="gps-heat-legend" aria-label="Legenda do mapa CQO">
