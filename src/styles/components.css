@@ -6046,7 +6046,8 @@ body.presentation-active {
 
 .evidence-file-placeholder {
   width: 100%;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 16 / 7;
+  min-height: 118px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6072,6 +6073,13 @@ body.presentation-active {
 .evidence-photo span {
   color: var(--text-muted);
   font-size: 0.72rem;
+}
+
+.evidence-photo small {
+  color: var(--status-warning);
+  font-size: 0.7rem;
+  line-height: 1.35;
+  font-weight: 750;
 }
 
 /* Phone Mockup Frame */

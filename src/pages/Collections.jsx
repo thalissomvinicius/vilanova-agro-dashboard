@@ -44,6 +44,10 @@ function reviewStatusLabel(status) {
 const PHOTO_FIELD_PATTERN = /(foto|fotos|evidencia|evidencias|imagem|image|photo|anexo|anexos)/i;
 const STORAGE_BUCKET_CANDIDATES = ['mobile-anexos', 'mobile_anexos', 'anexos', 'evidencias', 'fotos', 'cqo-anexos'];
 
+function isLocalOnlyReference(value) {
+  return /^(content|file):\/\//i.test(String(value || '').trim()) || /^[a-z]:\\/i.test(String(value || '').trim());
+}
+
 function normalizeEvidencePhoto(value, fieldId, index = 0) {
   if (!value) return null;
 
@@ -71,7 +75,7 @@ function normalizeEvidencePhoto(value, fieldId, index = 0) {
   if (typeof value !== 'object') return null;
   const rawUrl = value.url || value.publicUrl || value.public_url || value.storage_url || value.download_url || value.uri || null;
   const urlIsDisplayable = rawUrl && (/^https?:\/\//i.test(rawUrl) || /^data:image\//i.test(rawUrl));
-  const urlLooksLocalOnly = rawUrl && (/^(file|content):\/\//i.test(rawUrl) || /^[a-z]:\\/i.test(rawUrl));
+  const urlLooksLocalOnly = rawUrl && isLocalOnlyReference(rawUrl);
   const storagePath = value.storagePath
     || value.storage_path
     || value.path
@@ -135,6 +139,7 @@ function normalizeStoragePublicUrl(photo) {
   const rawPath = String(photo.storagePath).trim();
   if (!rawPath) return '';
   if (/^https?:\/\//i.test(rawPath)) return rawPath;
+  if (isLocalOnlyReference(rawPath)) return '';
 
   const cleanPath = rawPath.replace(/^\/+/, '');
   const [firstSegment, ...restSegments] = cleanPath.split('/');
@@ -145,11 +150,87 @@ function normalizeStoragePublicUrl(photo) {
   return `${SUPABASE_CONFIG.url}/storage/v1/object/public/${encodeURIComponent(inferredBucket)}/${encodedPath}`;
 }
 
-function photoDisplaySrc(photo) {
-  if (photo?.base64) return `data:${photo.mimeType || 'image/jpeg'};base64,${photo.base64}`;
-  if (photo?.url && /^data:image\//i.test(photo.url)) return photo.url;
-  if (photo?.url && /^https?:\/\//i.test(photo.url)) return photo.url;
-  return normalizeStoragePublicUrl(photo);
+function storagePublicUrl(bucket, path) {
+  if (!bucket || !path || !SUPABASE_CONFIG.url) return '';
+  const encodedPath = String(path).split('/').filter(Boolean).map(encodeURIComponent).join('/');
+  return `${SUPABASE_CONFIG.url}/storage/v1/object/public/${encodeURIComponent(bucket)}/${encodedPath}`;
+}
+
+function photoDisplayCandidates(photo) {
+  const candidates = [];
+  if (photo?.base64) candidates.push(`data:${photo.mimeType || 'image/jpeg'};base64,${photo.base64}`);
+  if (photo?.url && /^data:image\//i.test(photo.url)) candidates.push(photo.url);
+  if (photo?.url && /^https?:\/\//i.test(photo.url)) candidates.push(photo.url);
+
+  const publicUrl = normalizeStoragePublicUrl(photo);
+  if (publicUrl) candidates.push(publicUrl);
+
+  if (photo?.storagePath && SUPABASE_CONFIG.url) {
+    const rawPath = String(photo.storagePath).trim().replace(/^\/+/, '');
+    if (isLocalOnlyReference(rawPath)) return [...new Set(candidates.filter(Boolean))];
+    const parts = rawPath.split('/');
+    const firstSegment = parts[0];
+    const pathWithoutKnownBucket = STORAGE_BUCKET_CANDIDATES.includes(firstSegment) && parts.length > 1
+      ? parts.slice(1).join('/')
+      : rawPath;
+    const bucketCandidates = [
+      photo.bucket,
+      firstSegment && STORAGE_BUCKET_CANDIDATES.includes(firstSegment) ? firstSegment : '',
+      ...STORAGE_BUCKET_CANDIDATES,
+    ].filter(Boolean);
+
+    bucketCandidates.forEach((bucket) => {
+      candidates.push(storagePublicUrl(bucket, pathWithoutKnownBucket));
+    });
+  }
+
+  return [...new Set(candidates.filter(Boolean))];
+}
+
+function photoDiagnosticText(photo, failedCandidates = false) {
+  const rawReference = String(photo?.url || photo?.storagePath || '').trim();
+  if (/^(content|file):\/\//i.test(rawReference)) {
+    return 'Foto encontrada no formulário, mas veio só como caminho local do celular. O app precisa enviar o arquivo para o Supabase Storage/mobile_anexos.';
+  }
+  if (failedCandidates) {
+    return 'Arquivo localizado, mas o Storage não liberou a imagem. Verifique bucket público/política de leitura ou caminho salvo no mobile_anexos.';
+  }
+  return 'Arquivo sincronizado sem URL pública de imagem.';
+}
+
+function EvidencePhotoCard({ photo }) {
+  const candidates = useMemo(() => photoDisplayCandidates(photo), [photo]);
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const imageSrc = candidates[candidateIndex] || '';
+  const failedCandidates = candidates.length > 0 && candidateIndex >= candidates.length;
+
+  return (
+    <div className="evidence-photo">
+      {imageSrc ? (
+        <img
+          src={imageSrc}
+          alt={photo.fieldId}
+          onError={() => setCandidateIndex((current) => current + 1)}
+        />
+      ) : (
+        <div className="evidence-file-placeholder">
+          <Download size={18} />
+          <span>{failedCandidates ? 'Imagem bloqueada' : 'Sem arquivo web'}</span>
+        </div>
+      )}
+      <div>
+        <strong>{photo.fileName || photo.fieldId}</strong>
+        <span>{photo.capturedAt ? new Date(photo.capturedAt).toLocaleString('pt-BR') : 'Sem data'}</span>
+        <span>
+          {photo.gps
+            ? `${Number(photo.gps.latitude ?? photo.gps.lat).toFixed(6)}, ${Number(photo.gps.longitude ?? photo.gps.lng).toFixed(6)}`
+            : 'Sem GPS'}
+        </span>
+        {photo.storagePath ? <span>{photo.storagePath}</span> : null}
+        {!imageSrc ? <small>{photoDiagnosticText(photo, failedCandidates)}</small> : null}
+      </div>
+    </div>
+  );
 }
 
 function dedupePhotos(photos) {
@@ -850,34 +931,12 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                     </div>
                   </div>
                   <div className="evidence-grid">
-                    {selectedPhotos.map((photo) => {
-                      const imageSrc = photoDisplaySrc(photo);
-                      return (
-                      <div className="evidence-photo" key={photo.id || `${photo.fieldId}_${photo.storagePath || photo.url || photo.fileName}`}>
-                        {imageSrc ? (
-                          <img
-                            src={imageSrc}
-                            alt={photo.fieldId}
-                          />
-                        ) : (
-                          <div className="evidence-file-placeholder">
-                            <Download size={18} />
-                            <span>Arquivo sincronizado</span>
-                          </div>
-                        )}
-                        <div>
-                          <strong>{photo.fileName || photo.fieldId}</strong>
-                          <span>{photo.capturedAt ? new Date(photo.capturedAt).toLocaleString('pt-BR') : 'Sem data'}</span>
-                          <span>
-                            {photo.gps
-                              ? `${Number(photo.gps.latitude ?? photo.gps.lat).toFixed(6)}, ${Number(photo.gps.longitude ?? photo.gps.lng).toFixed(6)}`
-                              : 'Sem GPS'}
-                          </span>
-                          {photo.storagePath ? <span>{photo.storagePath}</span> : null}
-                        </div>
-                      </div>
-                      );
-                    })}
+                    {selectedPhotos.map((photo) => (
+                      <EvidencePhotoCard
+                        key={photo.id || `${photo.fieldId}_${photo.storagePath || photo.url || photo.fileName}`}
+                        photo={photo}
+                      />
+                    ))}
                   </div>
                 </div>
               ) : null}
