@@ -4938,6 +4938,30 @@ body.presentation-active {
   display: none;
 }
 
+.parcel-map-label {
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: 0.62rem;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0;
+  padding: 3px 6px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+.parcel-map-label::before {
+  display: none;
+}
+
+.parcel-map-label-muted {
+  opacity: 0.64 !important;
+}
+
 .gps-occurrence-marker span {
   width: 26px;
   height: 26px;

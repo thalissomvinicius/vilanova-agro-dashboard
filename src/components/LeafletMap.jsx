@@ -270,6 +270,18 @@ function percentOf(value, total) {
   return parsedTotal > 0 ? (parsedValue / parsedTotal) * 100 : 0;
 }
 
+function hasCorteBunchBase(totals) {
+  return Number(totals?.corte || 0) > 0 && Number(totals?.cachosObservados || 0) > 0;
+}
+
+function hasCortePlantBase(totals) {
+  return Number(totals?.corte || 0) > 0 && Number(totals?.plantasObservadas || 0) > 0;
+}
+
+function hasCarreamentoBase(totals) {
+  return Number(totals?.carreamento || 0) > 0 && Number(totals?.plantasObservadas || 0) > 0;
+}
+
 function formatDecimal(value, digits = 1) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return '0';
@@ -298,18 +310,25 @@ function metricValue(metric, totals, areaHa) {
       if (!(areaHa > 0)) return null;
       return perHa(totals.lostCachosQty || 0, areaHa);
     case 'perda_corte':
+      if (!hasCorteBunchBase(totals)) return null;
       return Number(totals.perdaCorteRate || 0);
     case 'nao_carreado':
+      if (!hasCarreamentoBase(totals)) return null;
       return Number(totals.cachoNaoCarreadoRate || 0);
     case 'maduro':
+      if (!hasCorteBunchBase(totals)) return null;
       return percentOf(totals.cachoMaduro, totals.cachosObservados);
     case 'verde':
+      if (!hasCorteBunchBase(totals)) return null;
       return Number(totals.cachoVerdeRate || 0);
     case 'passado':
+      if (!hasCorteBunchBase(totals)) return null;
       return Number(totals.cachoPassadoRate || 0);
     case 'avermelhado':
+      if (!hasCorteBunchBase(totals)) return null;
       return percentOf(totals.cachoAvermelhado, totals.cachosObservados);
     case 'talo':
+      if (!hasCortePlantBase(totals)) return null;
       return Number(totals.taloCompridoRate || 0);
     default:
       return 0;
@@ -337,6 +356,12 @@ function metricRiskScore(metric, value) {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) return -Infinity;
   const numeric = Number(value);
   return metric.goodWhen === 'high' ? metric.meta - numeric : numeric - metric.meta;
+}
+
+function hasMetricValue(summary) {
+  return summary?.value !== null
+    && summary?.value !== undefined
+    && Number.isFinite(Number(summary.value));
 }
 
 function formatMetricValue(metric, value) {
@@ -899,14 +924,14 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       gpsPoints: trackPoints.length,
       occurrencePoints: occurrencePoints.length,
       sampledLines: new Set(occurrencePoints.map((point) => `${point.record.id}|${point.line}`)).size,
-      sampledParcels: parcelSummaries.filter((summary) => summary.totals).length,
+      sampledParcels: parcelSummaries.filter(hasMetricValue).length,
       uniqueGpsPoints: allGpsPoints.length,
       byFarm,
       lineCount: approvedRecords.reduce((sum, record) => sum + Number(record?.totals?.linhas || record?.lines?.length || 0), 0),
       excelRecords: approvedRecords.filter((record) => record.source === 'excel').length,
       appRecords: approvedRecords.filter((record) => record.source === 'app').length,
       evaluatedHa: parcelSummaries
-        .filter((summary) => summary.totals)
+        .filter(hasMetricValue)
         .reduce((sum, summary) => sum + Number(summary.areaHa || 0), 0),
     };
   }, [filteredRecords, trackPoints, occurrencePoints, allGpsPoints, parcelSummaries]);
@@ -1067,6 +1092,14 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             autoPanPaddingTopLeft: [24, 120],
             autoPanPaddingBottomRight: [380, 70],
           });
+          if (shapeParcel) {
+            layer.bindTooltip(escapeHtml(shapeParcel), {
+              permanent: mapLayer !== 'route',
+              direction: 'center',
+              opacity: 1,
+              className: `parcel-map-label ${summary?.totals ? '' : 'parcel-map-label-muted'}`,
+            });
+          }
           if (layer.getBounds) farmLayerBounds.push(layer.getBounds());
         },
       }).addTo(layers);
