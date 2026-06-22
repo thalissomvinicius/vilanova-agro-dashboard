@@ -3956,14 +3956,67 @@ body.presentation-active {
 }
 
 .map-page-shell {
-  height: 100%;
+  height: calc(100vh - 188px);
+  height: calc(100dvh - 188px);
   min-height: 560px;
+  gap: 10px;
 }
 
 .map-frame {
   height: calc(100vh - 180px);
   height: calc(100dvh - 180px);
   min-height: 500px;
+}
+
+.map-page-shell .map-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+
+.gps-map-commandbar {
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(23, 77, 43, 0.96), rgba(15, 53, 31, 0.96)),
+    var(--green-institutional);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+
+.gps-map-commandbar .page-title-block {
+  max-width: none;
+}
+
+.gps-map-commandbar .page-eyebrow {
+  color: var(--orange-highlight);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gps-map-commandbar h2 {
+  margin: 1px 0 0;
+  color: var(--white);
+  font-size: clamp(1.05rem, 1.35vw, 1.32rem);
+  line-height: 1.12;
+}
+
+.gps-map-commandbar p {
+  display: none;
+}
+
+.gps-map-commandbar .gps-present-btn {
+  width: auto;
+  min-width: 156px;
+  min-height: 36px;
+  flex: 0 0 auto;
+  padding: 0 16px;
+  box-shadow: 0 7px 16px rgba(232, 145, 0, 0.2);
 }
 
 .map-presentation-overlay {

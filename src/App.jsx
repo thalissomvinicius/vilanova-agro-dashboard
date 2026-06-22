@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Layers3, MapPinned, MonitorPlay, Route, Satellite, X } from 'lucide-react';
+import { MonitorPlay, X } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
@@ -559,24 +559,16 @@ export default function App() {
       case 'mapa':
         return (
           <div className="fade-in page-shell map-page-shell gps-page">
-            <div className="page-header operational-hero gps-hero">
+            <div className="page-header gps-map-commandbar">
               <div className="page-title-block">
                 <span className="page-eyebrow">Georreferenciamento</span>
                 <h2>Mapa Operacional Integrado</h2>
-                <p>Visualizacao geoespacial das areas produtivas de palma, rotas e ocorrencias recebidas do app.</p>
+                <p>Parcelas, semáforo, risco por amostragem e GPS do app nos filtros atuais.</p>
               </div>
-              <div className="gps-hero-side">
-                <button type="button" className="gps-present-btn" onClick={openMapPresentation}>
-                  <MonitorPlay size={17} />
-                  Apresentar
-                </button>
-                <div className="gps-hero-grid">
-                  <div><MapPinned size={18} /><span>Parcelas</span><strong>Mapa CQO</strong></div>
-                  <div><Layers3 size={18} /><span>Camadas</span><strong>Semáforo</strong></div>
-                  <div><Route size={18} /><span>Rotas</span><strong>GPS app</strong></div>
-                  <div><Satellite size={18} /><span>Base</span><strong>OSM/CARTO</strong></div>
-                </div>
-              </div>
+              <button type="button" className="gps-present-btn" onClick={openMapPresentation}>
+                <MonitorPlay size={17} />
+                Apresentar
+              </button>
             </div>
             <div className="map-frame">
               <LeafletMap
