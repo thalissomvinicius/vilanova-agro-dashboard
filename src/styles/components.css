@@ -4801,6 +4801,75 @@ body.presentation-active {
   line-height: 1.2;
 }
 
+.bulk-audit-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.bulk-audit-bar.is-active {
+  border-color: rgba(242, 148, 0, 0.42);
+  background: linear-gradient(135deg, rgba(242, 148, 0, 0.11), var(--bg-card));
+}
+
+.bulk-audit-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 190px;
+}
+
+.bulk-audit-copy strong {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.bulk-audit-copy span {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.bulk-audit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bulk-audit-actions .btn {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 0.76rem;
+}
+
+.selection-cell {
+  width: 42px;
+  min-width: 42px;
+  text-align: center;
+}
+
+.table-row-checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--orange-institutional);
+  cursor: pointer;
+}
+
+.table-row-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
 .sync-flow-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }

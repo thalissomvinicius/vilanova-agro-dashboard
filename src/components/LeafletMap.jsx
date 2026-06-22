@@ -1330,47 +1330,49 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       });
     }
 
-    geoRecords.forEach((record) => {
-      if (record.gpsOccurrences?.length && mapLayer !== 'polygon') return;
-      const style = farmStyle(record.farmId);
-      const markerPoint = firstValidGpsPoint(record);
-      if (!markerPoint) return;
-      const pinColor = markerColor(record, style.fill);
-      const pinIcon = L.divIcon({
-        className: 'custom-div-icon gps-collection-marker',
-        html: `
-          <div class="gps-pin-ring" style="--gps-pin-color:${pinColor};">
-            <span></span>
-          </div>
-          <strong>GPS</strong>
-        `,
-        iconSize: [52, 34],
-        iconAnchor: [16, 16],
-      });
+    if (mapLayer === 'route') {
+      geoRecords.forEach((record) => {
+        if (record.gpsOccurrences?.length) return;
+        const style = farmStyle(record.farmId);
+        const markerPoint = firstValidGpsPoint(record);
+        if (!markerPoint) return;
+        const pinColor = markerColor(record, style.fill);
+        const pinIcon = L.divIcon({
+          className: 'custom-div-icon gps-collection-marker',
+          html: `
+            <div class="gps-pin-ring" style="--gps-pin-color:${pinColor};">
+              <span></span>
+            </div>
+            <strong>GPS</strong>
+          `,
+          iconSize: [52, 34],
+          iconAnchor: [16, 16],
+        });
 
-      L.marker([markerPoint.lat, markerPoint.lng], { icon: pinIcon })
-        .addTo(layers)
-        .bindTooltip(`${record.status} - ${record.gpsOccurrences?.length || record.gpsTrack?.length || 1} ponto(s) GPS`, {
-          permanent: geoRecords.length <= 5 && !record.gpsOccurrences?.length,
-          direction: 'top',
-          offset: [0, -14],
-          opacity: 0.95,
-          className: 'gps-marker-tooltip',
-        })
-        .bindPopup(`
-          <div style="font-family: Inter, Segoe UI, sans-serif; max-width: 240px;">
-            <strong style="color:${style.color};font-size:12px;">Coleta #${record.id}</strong><br/>
-            <span style="font-size:11px;">Formulario: <strong>${record.form}</strong></span><br/>
-            <span style="font-size:11px;">Fazenda: <strong>${record.farm}</strong></span><br/>
-            <span style="font-size:11px;">Parcela: <strong>${record.parcel}</strong></span><br/>
-            <span style="font-size:11px;">Linhas avaliadas: <strong>${record.totals?.linhas || record.lines?.length || 0}</strong></span><br/>
-            <span style="font-size:11px;">Ocorrencias GPS: <strong>${record.gpsOccurrences?.length || 0}</strong></span><br/>
-            <span style="font-size:11px;">Pontos da trilha: <strong>${record.gpsTrack?.length || 1}</strong></span><br/>
-            <span style="font-size:11px;">GPS: <strong>${markerPoint.label}</strong></span><br/>
-            <span style="font-size:11px;">Status: <strong style="color:${pinColor};">${record.status}</strong></span>
-          </div>
-        `);
-    });
+        L.marker([markerPoint.lat, markerPoint.lng], { icon: pinIcon })
+          .addTo(layers)
+          .bindTooltip(`${record.status} - ${record.gpsOccurrences?.length || record.gpsTrack?.length || 1} ponto(s) GPS`, {
+            permanent: geoRecords.length <= 5 && !record.gpsOccurrences?.length,
+            direction: 'top',
+            offset: [0, -14],
+            opacity: 0.95,
+            className: 'gps-marker-tooltip',
+          })
+          .bindPopup(`
+            <div style="font-family: Inter, Segoe UI, sans-serif; max-width: 240px;">
+              <strong style="color:${style.color};font-size:12px;">Coleta #${record.id}</strong><br/>
+              <span style="font-size:11px;">Formulario: <strong>${record.form}</strong></span><br/>
+              <span style="font-size:11px;">Fazenda: <strong>${record.farm}</strong></span><br/>
+              <span style="font-size:11px;">Parcela: <strong>${record.parcel}</strong></span><br/>
+              <span style="font-size:11px;">Linhas avaliadas: <strong>${record.totals?.linhas || record.lines?.length || 0}</strong></span><br/>
+              <span style="font-size:11px;">Ocorrencias GPS: <strong>${record.gpsOccurrences?.length || 0}</strong></span><br/>
+              <span style="font-size:11px;">Pontos da trilha: <strong>${record.gpsTrack?.length || 1}</strong></span><br/>
+              <span style="font-size:11px;">GPS: <strong>${markerPoint.label}</strong></span><br/>
+              <span style="font-size:11px;">Status: <strong style="color:${pinColor};">${record.status}</strong></span>
+            </div>
+          `);
+      });
+    }
 
     if (mapLayer === 'heat' && !parcelGeoJson?.features?.length) {
       heatPoints.forEach((point) => {
@@ -1444,7 +1446,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       if (!mapContainerRef.current) return;
       map.invalidateSize({ pan: false, debounceMoveend: false });
 
-      const gpsLatLngs = allGpsPoints
+      const gpsLatLngs = (mapLayer === 'route' ? allGpsPoints : [])
         .map(normalizeLatLng)
         .filter(Boolean)
         .map((point) => L.latLng(point.lat, point.lng));

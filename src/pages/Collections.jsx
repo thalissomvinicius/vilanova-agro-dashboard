@@ -20,6 +20,7 @@ import { exportDashboardRecord } from '../utils/reportExporter';
 function statusBadge(status) {
   if (status === 'Aprovado') return 'badge-success';
   if (status === 'Reprovado') return 'badge-danger';
+  if (status === 'Auditoria fechada') return 'badge-info';
   if (status === 'Pendente validação') return 'badge-warning';
   if (status === 'Sincronizado') return 'badge-success';
   if (status === 'Falha') return 'badge-danger';
@@ -31,6 +32,13 @@ function formatNumber(value, digits = 0) {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   }).format(Number(value || 0));
+}
+
+function reviewStatusLabel(status) {
+  if (status === 'aprovado') return 'Aprovado';
+  if (status === 'reprovado') return 'Reprovado';
+  if (status === 'auditoria_fechada') return 'Auditoria fechada';
+  return 'Reprovado';
 }
 
 function lineColumns(record) {
@@ -74,8 +82,10 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   const [searchFicha, setSearchFicha] = useState('');
   const [reviewOverrides, setReviewOverrides] = useState({});
   const [deletedRecords, setDeletedRecords] = useState(new Set());
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const [isReviewing, setIsReviewing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isBulkReviewing, setIsBulkReviewing] = useState(false);
 
   const displayRecords = records
     .filter(record => !deletedRecords.has(record.id))
@@ -101,6 +111,19 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     return String(record.id || '').toLowerCase().includes(term) || 
            String(record.formId || '').toLowerCase().includes(term);
   });
+
+  const selectableFilteredRecords = useMemo(
+    () => filteredRecords.filter((record) => record.source !== 'excel'),
+    [filteredRecords]
+  );
+
+  const selectedAppRecords = useMemo(
+    () => selectableFilteredRecords.filter((record) => selectedIds.has(record.id)),
+    [selectableFilteredRecords, selectedIds]
+  );
+
+  const allVisibleSelected = selectableFilteredRecords.length > 0
+    && selectableFilteredRecords.every((record) => selectedIds.has(record.id));
 
   const collectionStats = useMemo(() => {
     const gpsEligible = filteredRecords.filter((record) => record.gpsApplicable !== false).length;
@@ -144,6 +167,31 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     ]
     : [];
 
+  const toggleRecordSelection = (record) => {
+    if (record.source === 'excel') return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(record.id)) {
+        next.delete(record.id);
+      } else {
+        next.add(record.id);
+      }
+      return next;
+    });
+  };
+
+  const toggleVisibleSelection = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        selectableFilteredRecords.forEach((record) => next.delete(record.id));
+      } else {
+        selectableFilteredRecords.forEach((record) => next.add(record.id));
+      }
+      return next;
+    });
+  };
+
   const handleReview = async (status) => {
     if (!selectedRecord) return;
     if (selectedRecord.source === 'excel') {
@@ -153,7 +201,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     setIsReviewing(true);
     try {
       await updateResponseReviewStatus(selectedRecord.id, status);
-      const label = status === 'aprovado' ? 'Aprovado' : 'Reprovado';
+      const label = reviewStatusLabel(status);
       setReviewOverrides((prev) => ({ ...prev, [selectedRecord.id]: label }));
       setSelectedRecord((prev) => (prev ? { ...prev, status: label } : prev));
       await refreshCqoData().catch((syncError) => {
@@ -178,6 +226,11 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     try {
       await deleteResponseRecord(selectedRecord.id);
       setDeletedRecords(prev => new Set(prev).add(selectedRecord.id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(selectedRecord.id);
+        return next;
+      });
       setSelectedRecord(null);
       await refreshCqoData().catch((syncError) => {
         console.warn('Nao foi possivel atualizar o cache global apos exclusao:', syncError);
@@ -186,6 +239,59 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
       window.alert(`Não foi possível excluir a ficha: ${error.message}`);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleBulkReview = async (action) => {
+    const targets = selectedAppRecords;
+    if (!targets.length) {
+      window.alert('Selecione pelo menos uma coleta do App.');
+      return;
+    }
+
+    if (action === 'excluir' && !window.confirm(`Excluir ${targets.length} ficha(s) selecionada(s)? Esta ação marca os registros como excluídos no Supabase.`)) {
+      return;
+    }
+
+    setIsBulkReviewing(true);
+    try {
+      if (action === 'excluir') {
+        await Promise.all(targets.map((record) => deleteResponseRecord(record.id)));
+        setDeletedRecords((prev) => {
+          const next = new Set(prev);
+          targets.forEach((record) => next.add(record.id));
+          return next;
+        });
+        if (selectedRecord && targets.some((record) => record.id === selectedRecord.id)) {
+          setSelectedRecord(null);
+        }
+      } else {
+        await Promise.all(targets.map((record) => updateResponseReviewStatus(record.id, action)));
+        const label = reviewStatusLabel(action);
+        setReviewOverrides((prev) => {
+          const next = { ...prev };
+          targets.forEach((record) => {
+            next[record.id] = label;
+          });
+          return next;
+        });
+        if (selectedRecord && targets.some((record) => record.id === selectedRecord.id)) {
+          setSelectedRecord((prev) => (prev ? { ...prev, status: label } : prev));
+        }
+      }
+
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        targets.forEach((record) => next.delete(record.id));
+        return next;
+      });
+      await refreshCqoData().catch((syncError) => {
+        console.warn('Nao foi possivel atualizar o cache global apos acao em lote:', syncError);
+      });
+    } catch (error) {
+      window.alert(`Não foi possível concluir a ação em lote: ${error.message}`);
+    } finally {
+      setIsBulkReviewing(false);
     }
   };
 
@@ -230,6 +336,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
             <option value="Pendente validação">Pendente validação</option>
             <option value="Aprovado">Aprovado</option>
             <option value="Reprovado">Reprovado</option>
+            <option value="Auditoria fechada">Auditoria fechada</option>
             <option value="Pendente">Pendente</option>
             <option value="Falha">Falha</option>
           </select>
@@ -253,11 +360,75 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
         <div><ClipboardList size={16} /><span>Auditoria filtrada</span><strong>{formatNumber(collectionStats.total)}</strong></div>
       </div>
 
+      <div className={`bulk-audit-bar ${selectedAppRecords.length ? 'is-active' : ''}`}>
+        <div className="bulk-audit-copy">
+          <strong>{formatNumber(selectedAppRecords.length)} selecionada(s)</strong>
+          <span>{selectedAppRecords.length ? 'Ações aplicadas somente nas coletas do App.' : 'Selecione as caixas da tabela para auditar várias coletas.'}</span>
+        </div>
+        <div className="bulk-audit-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setSelectedIds(new Set())}
+            disabled={!selectedAppRecords.length || isBulkReviewing}
+          >
+            Limpar
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => handleBulkReview('auditoria_fechada')}
+            disabled={!selectedAppRecords.length || isBulkReviewing}
+          >
+            <ClipboardList size={14} />
+            Fechar auditoria
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => handleBulkReview('excluir')}
+            disabled={!selectedAppRecords.length || isBulkReviewing}
+            style={{ color: 'var(--status-danger)', borderColor: 'var(--status-danger)' }}
+          >
+            <Trash2 size={14} />
+            Excluir
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={() => handleBulkReview('reprovado')}
+            disabled={!selectedAppRecords.length || isBulkReviewing}
+          >
+            <ThumbsDown size={14} />
+            Reprovar
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => handleBulkReview('aprovado')}
+            disabled={!selectedAppRecords.length || isBulkReviewing}
+          >
+            <ThumbsUp size={14} />
+            Aprovar
+          </button>
+        </div>
+      </div>
+
       <div className="card page-card data-surface-card">
         <div className="table-wrapper">
           <table className="custom-table dense-table">
             <thead>
               <tr>
+                <th className="selection-cell">
+                  <input
+                    type="checkbox"
+                    className="table-row-checkbox"
+                    checked={allVisibleSelected}
+                    disabled={!selectableFilteredRecords.length || loading}
+                    onChange={toggleVisibleSelection}
+                    aria-label="Selecionar coletas visíveis"
+                  />
+                </th>
                 <th>Ficha</th>
                 <th>Data / Hora</th>
                 <th>Formulário</th>
@@ -275,6 +446,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={`skeleton-${i}`}>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
                     <td><span className="skeleton-text skeleton-sm" /></td>
                     <td>
                       <div className="stack-cell">
@@ -305,13 +477,24 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 ))
               ) : filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan="11" className="empty-table-cell">
+                  <td colSpan="12" className="empty-table-cell">
                     Nenhuma coleta encontrada para os filtros atuais.
                   </td>
                 </tr>
               ) : (
                 filteredRecords.map((record) => (
                   <tr key={record.id}>
+                    <td className="selection-cell">
+                      <input
+                        type="checkbox"
+                        className="table-row-checkbox"
+                        checked={selectedIds.has(record.id)}
+                        disabled={record.source === 'excel'}
+                        onChange={() => toggleRecordSelection(record)}
+                        aria-label={`Selecionar ficha ${record.id}`}
+                        title={record.source === 'excel' ? 'Registro Excel não permite auditoria em lote' : 'Selecionar coleta'}
+                      />
+                    </td>
                     <td style={{ fontWeight: 800, color: 'var(--text-primary)' }}>#{record.id}</td>
                     <td>
                       <div className="stack-cell">
@@ -593,8 +776,12 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 <ThumbsUp size={14} />
                 Aprovar
               </button>
-              <button onClick={() => setSelectedRecord(null)} className="btn btn-primary">
+              <button onClick={() => handleReview('auditoria_fechada')} className="btn btn-secondary" disabled={isReviewing || isDeleting || selectedRecord.source === 'excel'}>
+                <ClipboardList size={14} />
                 Fechar auditoria
+              </button>
+              <button onClick={() => setSelectedRecord(null)} className="btn btn-primary">
+                Fechar janela
               </button>
             </div>
           </div>

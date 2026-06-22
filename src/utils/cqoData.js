@@ -361,6 +361,7 @@ function statusLabel(status) {
   if (normalized === 'pendente-validacao') return 'Pendente validação';
   if (normalized === 'aprovado') return 'Aprovado';
   if (normalized === 'reprovado') return 'Reprovado';
+  if (normalized === 'auditoria-fechada' || normalized === 'auditoria-encerrada') return 'Auditoria fechada';
   if (normalized === 'erro' || normalized === 'falha') return 'Falha';
   return 'Pendente';
 }
@@ -884,7 +885,20 @@ async function loadCqoImportSnapshotRows() {
 }
 
 export async function updateResponseReviewStatus(responseId, status) {
-  const normalizedStatus = normalizeText(status) === 'aprovado' ? 'aprovado' : 'reprovado';
+  const statusMap = {
+    aprovado: 'aprovado',
+    aprovar: 'aprovado',
+    reprovado: 'reprovado',
+    reprovar: 'reprovado',
+    'auditoria-fechada': 'auditoria_fechada',
+    'fechar-auditoria': 'auditoria_fechada',
+    'auditoria-encerrada': 'auditoria_fechada',
+  };
+  const normalizedStatus = statusMap[normalizeText(status)];
+  if (!normalizedStatus) {
+    throw new Error(`Status de auditoria inválido: ${status}`);
+  }
+
   const response = await fetch(`${SUPABASE_URL}/rest/v1/mobile_respostas?id=eq.${encodeURIComponent(responseId)}`, {
     method: 'PATCH',
     headers: {
