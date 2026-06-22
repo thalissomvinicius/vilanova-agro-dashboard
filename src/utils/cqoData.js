@@ -953,26 +953,74 @@ async function fetchOptionalTable(table, query) {
   }
 }
 
-async function loadSupabaseData() {
-  const [responseResult, headcount, gpsRows, attachmentRows, formRows, cqoImport] = await Promise.all([
-    fetchFirstAvailableTable(
-      ['mobile_respostas', 'respostas'],
-      'select=*&status=neq.excluido&order=criado_em.desc&limit=1000'
-    ),
-    loadHeadcountData(),
-    fetchOptionalTable(
-      'mobile_gps',
-      'select=id,resposta_id,campo_id,latitude,longitude,precisao,altitude,capturado_em&order=capturado_em.asc&limit=10000'
-    ),
-    fetchOptionalTable(
-      'mobile_anexos',
-      'select=*&limit=10000'
-    ),
-    fetchOptionalTable(
-      'mobile_formularios',
-      'select=*&limit=500'
-    ),
-    loadCqoImportSnapshotRows(),
+function normalizeLoadOptions(options = {}) {
+  const sourceFilter = options.sourceFilter || 'all';
+  const appLimitValue = Number(options.appLimit ?? 1000);
+  const appLimit = Number.isFinite(appLimitValue)
+    ? Math.max(1, Math.min(1000, Math.round(appLimitValue)))
+    : 1000;
+
+  return {
+    includeApp: options.includeApp ?? sourceFilter !== 'excel',
+    includeExcel: options.includeExcel ?? sourceFilter !== 'app',
+    includeHeadcount: options.includeHeadcount ?? true,
+    includeGps: options.includeGps ?? sourceFilter !== 'excel',
+    includeAttachments: options.includeAttachments ?? sourceFilter !== 'excel',
+    includeForms: options.includeForms ?? true,
+    appLimit,
+  };
+}
+
+function loadOptionsKey(options) {
+  return [
+    options.includeApp ? 'app' : 'no-app',
+    options.includeExcel ? 'excel' : 'no-excel',
+    options.includeHeadcount ? 'headcount' : 'no-headcount',
+    options.includeGps ? 'gps' : 'no-gps',
+    options.includeAttachments ? 'attachments' : 'no-attachments',
+    options.includeForms ? 'forms' : 'no-forms',
+    `limit-${options.appLimit}`,
+  ].join('|');
+}
+
+async function loadSupabaseData(options = {}) {
+  const loadOptions = normalizeLoadOptions(options);
+  const [
+    responseResult,
+    headcount,
+    gpsRows,
+    attachmentRows,
+    formRows,
+    cqoImport,
+  ] = await Promise.all([
+    loadOptions.includeApp
+      ? fetchFirstAvailableTable(
+        ['mobile_respostas', 'respostas'],
+        `select=*&status=neq.excluido&order=criado_em.desc&limit=${loadOptions.appLimit}`
+      )
+      : Promise.resolve({ table: 'mobile_respostas', rows: [] }),
+    loadOptions.includeHeadcount ? loadHeadcountData() : Promise.resolve([]),
+    loadOptions.includeApp && loadOptions.includeGps
+      ? fetchOptionalTable(
+        'mobile_gps',
+        'select=id,resposta_id,campo_id,latitude,longitude,precisao,altitude,capturado_em&order=capturado_em.asc&limit=10000'
+      )
+      : Promise.resolve([]),
+    loadOptions.includeApp && loadOptions.includeAttachments
+      ? fetchOptionalTable(
+        'mobile_anexos',
+        'select=*&limit=10000'
+      )
+      : Promise.resolve([]),
+    loadOptions.includeForms
+      ? fetchOptionalTable(
+        'mobile_formularios',
+        'select=*&limit=500'
+      )
+      : Promise.resolve([]),
+    loadOptions.includeExcel
+      ? loadCqoImportSnapshotRows()
+      : Promise.resolve({ rows: [], snapshot: null }),
   ]);
 
   const gpsByResponse = gpsRows.reduce((acc, point) => {
@@ -1021,7 +1069,11 @@ async function loadSupabaseData() {
       corteRows: Number(cqoImport.snapshot?.corte_total_rows || 0),
       carreamentoRows: Number(cqoImport.snapshot?.carreamento_total_rows || 0),
     },
-    source: `Supabase / ${responseResult.table}`,
+    source: loadOptions.includeExcel && loadOptions.includeApp
+      ? `Supabase / ${responseResult.table}`
+      : loadOptions.includeApp
+        ? `Supabase / ${responseResult.table} (App)`
+        : 'Supabase / cqo_import_snapshots (Excel)',
     error: '',
   };
 }
@@ -1041,54 +1093,114 @@ function sampleData(error = '') {
   };
 }
 
-let cachedData = null;
-let activePromise = null;
+const cachedDataByKey = new Map();
+const activePromiseByKey = new Map();
+const loadOptionsByKey = new Map();
 const listeners = new Set();
 
+function emptyCqoData(source = 'Carregando', error = '') {
+  return {
+    records: [],
+    mobileRecords: [],
+    excelRecords: [],
+    headcount: [],
+    formularios: [],
+    anexos: [],
+    gpsRows: [],
+    cqoImport: { snapshot: null, records: 0, corteRows: 0, carreamentoRows: 0 },
+    source,
+    error,
+  };
+}
+
+function notifyCqoListeners(key, state) {
+  listeners.forEach((listener) => {
+    if (listener.key === key) {
+      listener.setState(state);
+    }
+  });
+}
+
+function startCqoLoad(key, options) {
+  if (activePromiseByKey.has(key)) return activePromiseByKey.get(key);
+
+  const promise = loadSupabaseData(options)
+    .then((data) => {
+      cachedDataByKey.set(key, data);
+      activePromiseByKey.delete(key);
+      notifyCqoListeners(key, { ...data, loading: false });
+      return data;
+    })
+    .catch((error) => {
+      activePromiseByKey.delete(key);
+      const failedData = sampleData(error.message);
+      cachedDataByKey.set(key, failedData);
+      notifyCqoListeners(key, { ...failedData, loading: false });
+      return failedData;
+    });
+
+  activePromiseByKey.set(key, promise);
+  return promise;
+}
+
 export function clearCqoCache() {
-  cachedData = null;
-  activePromise = null;
+  cachedDataByKey.clear();
+  activePromiseByKey.clear();
 }
 
 export function refreshCqoData() {
   clearCqoCache();
 
-  // Notificar todos os listeners ativos de que estamos recarregando
-  listeners.forEach((listener) =>
-    listener({
+  const activeKeys = Array.from(new Set(Array.from(listeners).map((listener) => listener.key)));
+  const keysToRefresh = activeKeys.length ? activeKeys : [loadOptionsKey(normalizeLoadOptions())];
+
+  keysToRefresh.forEach((key) => {
+    notifyCqoListeners(key, {
       loading: true,
-      records: [],
-      mobileRecords: [],
-      excelRecords: [],
-      headcount: [],
-      formularios: [],
-      anexos: [],
-      gpsRows: [],
-      cqoImport: { snapshot: null, records: 0, corteRows: 0, carreamentoRows: 0 },
-      source: 'Atualizando...',
-      error: '',
-    })
-  );
-
-  activePromise = loadSupabaseData()
-    .then((data) => {
-      cachedData = data;
-      activePromise = null;
-      listeners.forEach((listener) => listener({ ...data, loading: false }));
-      return data;
-    })
-    .catch((error) => {
-      activePromise = null;
-      const failedData = sampleData(error.message);
-      listeners.forEach((listener) => listener({ ...failedData, loading: false }));
-      throw error;
+      ...emptyCqoData('Atualizando...'),
     });
+  });
 
-  return activePromise;
+  return Promise.all(keysToRefresh.map((key) => (
+    startCqoLoad(key, loadOptionsByKey.get(key) || normalizeLoadOptions())
+  )));
 }
 
-export function useCqoData() {
+export function useCqoData(options = {}) {
+  const {
+    sourceFilter,
+    includeApp,
+    includeExcel,
+    includeHeadcount,
+    includeGps,
+    includeAttachments,
+    includeForms,
+    appLimit,
+  } = options;
+
+  const loadOptions = useMemo(() => normalizeLoadOptions({
+    sourceFilter,
+    includeApp,
+    includeExcel,
+    includeHeadcount,
+    includeGps,
+    includeAttachments,
+    includeForms,
+    appLimit,
+  }), [
+    sourceFilter,
+    includeApp,
+    includeExcel,
+    includeHeadcount,
+    includeGps,
+    includeAttachments,
+    includeForms,
+    appLimit,
+  ]);
+  const cacheKey = useMemo(() => loadOptionsKey(loadOptions), [loadOptions]);
+
   const [state, setState] = useState(() => {
+    const cachedData = cachedDataByKey.get(cacheKey);
     if (cachedData) {
       return {
         loading: false,
@@ -1097,38 +1209,34 @@ export function useCqoData() {
     }
     return {
       loading: true,
-      records: [],
-      headcount: [],
-      formularios: [],
-      anexos: [],
-      gpsRows: [],
-      source: 'Carregando',
-      error: '',
+      ...emptyCqoData(),
     };
   });
 
   useEffect(() => {
-    listeners.add(setState);
+    let active = true;
+    const safeSetState = (nextState) => {
+      if (active) setState(nextState);
+    };
+    loadOptionsByKey.set(cacheKey, loadOptions);
+    const listener = { key: cacheKey, setState: safeSetState };
+    listeners.add(listener);
 
-    // Se o cache não estiver pronto e nenhuma busca estiver ativa, inicia a busca
-    if (!cachedData && !activePromise) {
-      activePromise = loadSupabaseData()
-        .then((data) => {
-          cachedData = data;
-          activePromise = null;
-          listeners.forEach((listener) => listener({ ...data, loading: false }));
-        })
-        .catch((error) => {
-          activePromise = null;
-          const failedData = sampleData(error.message);
-          listeners.forEach((listener) => listener({ ...failedData, loading: false }));
-        });
-    }
+    const cachedData = cachedDataByKey.get(cacheKey);
+    queueMicrotask(() => {
+      if (cachedData) {
+        safeSetState({ loading: false, ...cachedData });
+      } else {
+        safeSetState({ loading: true, ...emptyCqoData() });
+        startCqoLoad(cacheKey, loadOptions);
+      }
+    });
 
     return () => {
-      listeners.delete(setState);
+      active = false;
+      listeners.delete(listener);
     };
-  }, []);
+  }, [cacheKey, loadOptions]);
 
   return state;
 }
@@ -1517,7 +1625,7 @@ export function buildCharts(records) {
 }
 
 export function useCqoDashboard(filters) {
-  const data = useCqoData();
+  const data = useCqoData({ sourceFilter: filters?.sourceFilter });
   const filtered = useMemo(() => filterRecords(data.records, filters), [data.records, filters]);
   const totals = useMemo(() => aggregateRecords(filtered), [filtered]);
   const charts = useMemo(() => buildCharts(filtered), [filtered]);

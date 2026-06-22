@@ -901,7 +901,12 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   const [baseLayer, setBaseLayer] = useState('standard');
   const [riskMetricId, setRiskMetricId] = useState('perda_t_ha');
   const [parcelGeoJson, setParcelGeoJson] = useState(null);
-  const { records } = useCqoData();
+  const { records } = useCqoData({
+    sourceFilter,
+    includeAttachments: false,
+    includeForms: false,
+    appLimit: sourceFilter === 'app' ? 500 : 1000,
+  });
   const selectedRiskMetric = useMemo(() => activeRiskMetric(riskMetricId), [riskMetricId]);
 
   const filteredRecords = useMemo(() => filterRecords(records, {

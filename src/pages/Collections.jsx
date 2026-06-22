@@ -63,7 +63,12 @@ function lineColumns(record) {
 }
 
 export default function Collections({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, searchTerm }) {
-  const { loading, records, source, error } = useCqoData();
+  const { loading, records, source, error } = useCqoData({
+    sourceFilter,
+    includeForms: false,
+    includeAttachments: sourceFilter !== 'app',
+    appLimit: sourceFilter === 'app' ? 200 : 1000,
+  });
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchFicha, setSearchFicha] = useState('');

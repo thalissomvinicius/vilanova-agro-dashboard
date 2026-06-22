@@ -58,7 +58,14 @@ export default function Header({
   activePage,
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
-  const { records } = useCqoData();
+  const { records } = useCqoData({
+    sourceFilter,
+    includeAttachments: false,
+    includeForms: false,
+    includeHeadcount: false,
+    includeGps: false,
+    appLimit: 150,
+  });
   const bonificacaoData = useBonificacaoData();
 
   const monthOptions = [
