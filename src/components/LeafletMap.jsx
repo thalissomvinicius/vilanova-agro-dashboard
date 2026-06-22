@@ -259,6 +259,152 @@ function parcelDensity(props = {}) {
   return areaHa > 0 ? plants / areaHa : 0;
 }
 
+function geometryPolygons(geometry) {
+  if (!geometry) return [];
+  if (geometry.type === 'Polygon') return [geometry.coordinates || []];
+  if (geometry.type === 'MultiPolygon') return geometry.coordinates || [];
+  return [];
+}
+
+function ringBounds(ring) {
+  return ring.reduce((bounds, point) => ({
+    minLng: Math.min(bounds.minLng, Number(point[0])),
+    maxLng: Math.max(bounds.maxLng, Number(point[0])),
+    minLat: Math.min(bounds.minLat, Number(point[1])),
+    maxLat: Math.max(bounds.maxLat, Number(point[1])),
+  }), {
+    minLng: Infinity,
+    maxLng: -Infinity,
+    minLat: Infinity,
+    maxLat: -Infinity,
+  });
+}
+
+function ringAreaAbs(ring) {
+  let area = 0;
+  for (let index = 0; index < ring.length - 1; index += 1) {
+    area += (Number(ring[index][0]) * Number(ring[index + 1][1]))
+      - (Number(ring[index + 1][0]) * Number(ring[index][1]));
+  }
+  return Math.abs(area / 2);
+}
+
+function ringCentroid(ring) {
+  let areaFactor = 0;
+  let lngSum = 0;
+  let latSum = 0;
+
+  for (let index = 0; index < ring.length - 1; index += 1) {
+    const current = ring[index];
+    const next = ring[index + 1];
+    const cross = (Number(current[0]) * Number(next[1])) - (Number(next[0]) * Number(current[1]));
+    areaFactor += cross;
+    lngSum += (Number(current[0]) + Number(next[0])) * cross;
+    latSum += (Number(current[1]) + Number(next[1])) * cross;
+  }
+
+  if (!areaFactor) {
+    const bounds = ringBounds(ring);
+    return [(bounds.minLng + bounds.maxLng) / 2, (bounds.minLat + bounds.maxLat) / 2];
+  }
+
+  return [lngSum / (3 * areaFactor), latSum / (3 * areaFactor)];
+}
+
+function pointInRing(point, ring) {
+  const [lng, lat] = point;
+  let inside = false;
+
+  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
+    const currentLng = Number(ring[index][0]);
+    const currentLat = Number(ring[index][1]);
+    const previousLng = Number(ring[previous][0]);
+    const previousLat = Number(ring[previous][1]);
+    const intersects = ((currentLat > lat) !== (previousLat > lat))
+      && (lng < ((previousLng - currentLng) * (lat - currentLat)) / ((previousLat - currentLat) || 1e-12) + currentLng);
+
+    if (intersects) inside = !inside;
+  }
+
+  return inside;
+}
+
+function pointInPolygon(point, polygon) {
+  const outerRing = polygon?.[0] || [];
+  if (!pointInRing(point, outerRing)) return false;
+  return !polygon.slice(1).some((hole) => pointInRing(point, hole));
+}
+
+function pointSegmentDistanceSquared(point, start, end) {
+  const x = Number(point[0]);
+  const y = Number(point[1]);
+  const x1 = Number(start[0]);
+  const y1 = Number(start[1]);
+  const x2 = Number(end[0]);
+  const y2 = Number(end[1]);
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const segmentLength = (dx * dx) + (dy * dy);
+  const ratio = segmentLength ? Math.max(0, Math.min(1, (((x - x1) * dx) + ((y - y1) * dy)) / segmentLength)) : 0;
+  const projectionX = x1 + ratio * dx;
+  const projectionY = y1 + ratio * dy;
+
+  return ((x - projectionX) ** 2) + ((y - projectionY) ** 2);
+}
+
+function pointDistanceToPolygonEdge(point, polygon) {
+  return polygon.reduce((minDistance, ring) => {
+    let ringMin = minDistance;
+    for (let index = 0; index < ring.length - 1; index += 1) {
+      ringMin = Math.min(ringMin, pointSegmentDistanceSquared(point, ring[index], ring[index + 1]));
+    }
+    return ringMin;
+  }, Infinity);
+}
+
+function featureLabelLatLng(feature) {
+  const polygons = geometryPolygons(feature?.geometry)
+    .filter((polygon) => polygon?.[0]?.length >= 4)
+    .sort((a, b) => ringAreaAbs(b[0]) - ringAreaAbs(a[0]));
+  const polygon = polygons[0];
+  if (!polygon) return null;
+
+  const outerRing = polygon[0];
+  const bounds = ringBounds(outerRing);
+  const centroid = ringCentroid(outerRing);
+  const candidates = [centroid];
+  const gridSteps = 8;
+
+  for (let xIndex = 1; xIndex < gridSteps; xIndex += 1) {
+    for (let yIndex = 1; yIndex < gridSteps; yIndex += 1) {
+      candidates.push([
+        bounds.minLng + ((bounds.maxLng - bounds.minLng) * xIndex) / gridSteps,
+        bounds.minLat + ((bounds.maxLat - bounds.minLat) * yIndex) / gridSteps,
+      ]);
+    }
+  }
+
+  const best = candidates
+    .filter((point) => pointInPolygon(point, polygon))
+    .map((point) => ({
+      point,
+      distance: pointDistanceToPolygonEdge(point, polygon),
+    }))
+    .sort((a, b) => b.distance - a.distance)[0]?.point;
+
+  const labelPoint = best || centroid;
+  return [labelPoint[1], labelPoint[0]];
+}
+
+function parcelLabelIcon(label, hasData) {
+  return L.divIcon({
+    className: `parcel-label-icon ${hasData ? '' : 'parcel-label-icon-muted'}`,
+    html: `<span>${escapeHtml(label)}</span>`,
+    iconSize: [1, 1],
+    iconAnchor: [0, 0],
+  });
+}
+
 function perHa(value, areaHa) {
   const parsed = Number(value || 0);
   return areaHa > 0 ? parsed / areaHa : 0;
@@ -1092,13 +1238,16 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             autoPanPaddingTopLeft: [24, 120],
             autoPanPaddingBottomRight: [380, 70],
           });
-          if (shapeParcel) {
-            layer.bindTooltip(escapeHtml(shapeParcel), {
-              permanent: mapLayer !== 'route',
-              direction: 'center',
-              opacity: 1,
-              className: `parcel-map-label ${summary?.totals ? '' : 'parcel-map-label-muted'}`,
-            });
+          if (shapeParcel && mapLayer !== 'route') {
+            const labelLatLng = featureLabelLatLng(feature);
+            if (labelLatLng) {
+              L.marker(labelLatLng, {
+                icon: parcelLabelIcon(shapeParcel, Boolean(summary?.totals)),
+                interactive: false,
+                keyboard: false,
+                pane: 'tooltipPane',
+              }).addTo(layers);
+            }
           }
           if (layer.getBounds) farmLayerBounds.push(layer.getBounds());
         },
