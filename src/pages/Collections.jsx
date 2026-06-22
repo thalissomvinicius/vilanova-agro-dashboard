@@ -14,7 +14,7 @@ import {
   Trash2,
   User,
 } from 'lucide-react';
-import { filterRecords, updateResponseReviewStatus, deleteResponseRecord, refreshCqoData, useCqoData } from '../utils/cqoData';
+import { SUPABASE_CONFIG, filterRecords, updateResponseReviewStatus, deleteResponseRecord, refreshCqoData, useCqoData } from '../utils/cqoData';
 import { exportDashboardRecord } from '../utils/reportExporter';
 
 function statusBadge(status) {
@@ -39,6 +39,133 @@ function reviewStatusLabel(status) {
   if (status === 'reprovado') return 'Reprovado';
   if (status === 'auditoria_fechada') return 'Auditoria fechada';
   return 'Reprovado';
+}
+
+const PHOTO_FIELD_PATTERN = /(foto|fotos|evidencia|evidencias|imagem|image|photo|anexo|anexos)/i;
+const STORAGE_BUCKET_CANDIDATES = ['mobile-anexos', 'mobile_anexos', 'anexos', 'evidencias', 'fotos', 'cqo-anexos'];
+
+function normalizeEvidencePhoto(value, fieldId, index = 0) {
+  if (!value) return null;
+
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) return null;
+    const isDataUrl = /^data:image\//i.test(text);
+    const isHttpUrl = /^https?:\/\//i.test(text);
+    const looksLikeBase64 = !isDataUrl && !isHttpUrl && text.length > 120 && /^[a-z0-9+/=\s]+$/i.test(text);
+    return {
+      id: `${fieldId}_${index}`,
+      fieldId,
+      fileName: fieldId,
+      mimeType: 'image/jpeg',
+      base64: looksLikeBase64 ? text : null,
+      url: isDataUrl || isHttpUrl ? text : null,
+      storagePath: !looksLikeBase64 && !isDataUrl && !isHttpUrl ? text : null,
+      bucket: null,
+      capturedAt: null,
+      gps: null,
+      raw: value,
+    };
+  }
+
+  if (typeof value !== 'object') return null;
+  const rawUrl = value.url || value.publicUrl || value.public_url || value.storage_url || value.download_url || value.uri || null;
+  const urlIsDisplayable = rawUrl && (/^https?:\/\//i.test(rawUrl) || /^data:image\//i.test(rawUrl));
+  const urlLooksLocalOnly = rawUrl && (/^(file|content):\/\//i.test(rawUrl) || /^[a-z]:\\/i.test(rawUrl));
+  const storagePath = value.storagePath
+    || value.storage_path
+    || value.path
+    || value.caminho
+    || value.arquivo_path
+    || (!urlIsDisplayable && !urlLooksLocalOnly ? rawUrl : null);
+  const url = rawUrl || null;
+  const base64 = value.base64 || value.arquivo_base64 || value.conteudo_base64 || value.file_base64 || null;
+  const hasImagePayload = Boolean(base64 || url || storagePath);
+
+  if (!hasImagePayload) return null;
+
+  return {
+    id: value.id || `${fieldId}_${index}`,
+    fieldId,
+    fileName: value.fileName || value.nome_arquivo || value.filename || value.file_name || fieldId,
+    mimeType: value.mimeType || value.mime_type || value.tipo_mime || 'image/jpeg',
+    base64,
+    url,
+    storagePath,
+    bucket: value.bucket || value.bucket_id || value.storage_bucket || null,
+    capturedAt: value.capturedAt || value.capturado_em || value.created_at || value.criado_em || null,
+    gps: value.gps || value.location || null,
+    raw: value,
+  };
+}
+
+function collectEvidencePhotos(value, path = 'evidencia', photos = []) {
+  if (!value || typeof value !== 'object') return photos;
+
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => collectEvidencePhotos(item, `${path}_${index + 1}`, photos));
+    return photos;
+  }
+
+  const directPhoto = PHOTO_FIELD_PATTERN.test(path)
+    ? normalizeEvidencePhoto(value, path, photos.length + 1)
+    : null;
+  if (directPhoto) {
+    photos.push(directPhoto);
+  }
+
+  Object.entries(value).forEach(([key, childValue]) => {
+    if (!childValue) return;
+    const keyLooksPhoto = PHOTO_FIELD_PATTERN.test(key);
+    if (keyLooksPhoto) {
+      const childPhoto = normalizeEvidencePhoto(childValue, key, photos.length + 1);
+      if (childPhoto) photos.push(childPhoto);
+    }
+    if (typeof childValue === 'object') {
+      const childPath = keyLooksPhoto ? key : `${path}_${key}`;
+      collectEvidencePhotos(childValue, childPath, photos);
+    }
+  });
+
+  return photos;
+}
+
+function normalizeStoragePublicUrl(photo) {
+  if (!photo?.storagePath || !SUPABASE_CONFIG.url) return '';
+  const rawPath = String(photo.storagePath).trim();
+  if (!rawPath) return '';
+  if (/^https?:\/\//i.test(rawPath)) return rawPath;
+
+  const cleanPath = rawPath.replace(/^\/+/, '');
+  const [firstSegment, ...restSegments] = cleanPath.split('/');
+  const inferredBucket = photo.bucket || (STORAGE_BUCKET_CANDIDATES.includes(firstSegment) ? firstSegment : 'mobile-anexos');
+  const objectPath = inferredBucket === firstSegment && restSegments.length ? restSegments.join('/') : cleanPath;
+  const encodedPath = objectPath.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+
+  return `${SUPABASE_CONFIG.url}/storage/v1/object/public/${encodeURIComponent(inferredBucket)}/${encodedPath}`;
+}
+
+function photoDisplaySrc(photo) {
+  if (photo?.base64) return `data:${photo.mimeType || 'image/jpeg'};base64,${photo.base64}`;
+  if (photo?.url && /^data:image\//i.test(photo.url)) return photo.url;
+  if (photo?.url && /^https?:\/\//i.test(photo.url)) return photo.url;
+  return normalizeStoragePublicUrl(photo);
+}
+
+function dedupePhotos(photos) {
+  const seen = new Set();
+  return photos.filter((photo) => {
+    const key = [
+      photo.id || '',
+      photo.fieldId || '',
+      photo.storagePath || '',
+      photo.url || '',
+      photo.base64 ? photo.base64.slice(0, 48) : '',
+    ].join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function lineColumns(record) {
@@ -74,7 +201,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   const { loading, records, source, error } = useCqoData({
     sourceFilter,
     includeForms: false,
-    includeAttachments: sourceFilter !== 'app',
+    includeAttachments: sourceFilter !== 'excel',
     appLimit: sourceFilter === 'app' ? 200 : 1000,
   });
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -150,7 +277,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   }, [loading, source, sourceFilter]);
 
   const selectedPhotos = selectedRecord
-    ? [
+    ? dedupePhotos([
       ...(selectedRecord.attachments || []),
       ...Object.entries(selectedRecord.raw || {})
       .filter(([, value]) => value && typeof value === 'object' && value.base64)
@@ -164,7 +291,9 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
         capturedAt: value.capturedAt || value.capturado_em || null,
         gps: value.gps || null,
       })),
-    ]
+      ...collectEvidencePhotos(selectedRecord.raw || {}),
+      ...collectEvidencePhotos(selectedRecord.lines || {}),
+    ])
     : [];
 
   const toggleRecordSelection = (record) => {
@@ -721,11 +850,13 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                     </div>
                   </div>
                   <div className="evidence-grid">
-                    {selectedPhotos.map((photo) => (
-                      <div className="evidence-photo" key={photo.id || photo.fieldId}>
-                        {photo.base64 || photo.url ? (
+                    {selectedPhotos.map((photo) => {
+                      const imageSrc = photoDisplaySrc(photo);
+                      return (
+                      <div className="evidence-photo" key={photo.id || `${photo.fieldId}_${photo.storagePath || photo.url || photo.fileName}`}>
+                        {imageSrc ? (
                           <img
-                            src={photo.base64 ? `data:${photo.mimeType || 'image/jpeg'};base64,${photo.base64}` : photo.url}
+                            src={imageSrc}
                             alt={photo.fieldId}
                           />
                         ) : (
@@ -745,7 +876,8 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                           {photo.storagePath ? <span>{photo.storagePath}</span> : null}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ) : null}
