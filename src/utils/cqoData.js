@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://wcifxyvesmhqurqhnway.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndjaWZ4eXZlc21ocXVycWhud2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMDY2MjgsImV4cCI6MjA4NTc4MjYyOH0.1hnE3IuZQ5wrXtXA22GxS-pUAiSnIlZBOiuGUgS1ABw';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const SUPABASE_CONFIG = {
   url: SUPABASE_URL,
   anonKey: SUPABASE_ANON_KEY,
+  configured: Boolean(SUPABASE_URL && SUPABASE_ANON_KEY),
 };
 
 export const CQO_FARMS = [
@@ -549,6 +550,10 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
 }
 
 async function fetchSupabaseTable(table, query) {
+  if (!SUPABASE_CONFIG.configured) {
+    throw new Error('Supabase nao configurado no ambiente.');
+  }
+
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
     headers: {
       apikey: SUPABASE_ANON_KEY,

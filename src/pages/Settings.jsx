@@ -3,7 +3,9 @@ import { Database, LogOut, Moon, RefreshCcw, ShieldCheck, Sun } from 'lucide-rea
 import { SUPABASE_CONFIG, useCqoData } from '../utils/cqoData';
 
 export default function Settings({ theme, setTheme, user, onLogout, triggerManualSync, isSyncing }) {
-  const maskedKey = `${SUPABASE_CONFIG.anonKey.slice(0, 18)}...${SUPABASE_CONFIG.anonKey.slice(-8)}`;
+  const maskedKey = SUPABASE_CONFIG.anonKey
+    ? `${SUPABASE_CONFIG.anonKey.slice(0, 10)}...${SUPABASE_CONFIG.anonKey.slice(-6)}`
+    : 'Nao exposta no codigo';
   const { records, gpsRows = [], anexos = [], formularios = [], loading } = useCqoData();
 
   return (

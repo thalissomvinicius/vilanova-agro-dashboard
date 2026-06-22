@@ -11,6 +11,32 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
+
+# Local operational data and BI extracts
+scratch/
+excel_dump*.txt
+*.pbix
+*.pbit
+*.xlsx
+*.xlsm
+*.xls
+*.csv
+*.db
+*.sqlite
+*.sqlite3
+*.bak
+*.backup
+
+# Local GIS/source files; publish only sanitized app assets intentionally
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.qpj
 
 # Editor directories and files
 .vscode/*

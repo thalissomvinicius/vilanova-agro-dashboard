@@ -92,6 +92,10 @@ function parseJson(value) {
 }
 
 async function fetchBonificacaoSnapshot() {
+  if (!SUPABASE_CONFIG.configured) {
+    throw new Error('Supabase nao configurado no ambiente.');
+  }
+
   const query = new URLSearchParams({
     select: 'snapshot_json,source_path,imported_at,updated_at',
     import_key: `eq.${BONIFICACAO_SOURCE.importKey}`,
