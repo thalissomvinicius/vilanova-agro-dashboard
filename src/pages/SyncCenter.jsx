@@ -41,9 +41,13 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
     headcount = [],
   } = useCqoData();
   const appRecords = mobileRecords.length ? mobileRecords : records.filter((record) => record.raw?.fonte_excel === undefined);
-  const synced = appRecords.filter((record) => record.status === 'Sincronizado').length;
+  const receivedOnline = appRecords.filter((record) => !['Pendente', 'Falha'].includes(record.status)).length;
+  const validationPending = appRecords.filter((record) => record.status === 'Pendente validação').length;
   const failed = appRecords.filter((record) => record.status === 'Falha').length;
-  const pending = appRecords.filter((record) => record.status === 'Pendente').length;
+  const embeddedGpsPoints = appRecords.reduce((total, record) => (
+    total + (record.gpsTrack?.length || 0) + (record.gpsOccurrences?.length || 0) + (record.gps ? 1 : 0)
+  ), 0);
+  const totalGpsPoints = gpsRows.length + embeddedGpsPoints;
   const lastRecord = appRecords[0];
   const headcountSource = headcount[0]?.source === 'headcount_import_snapshots'
     ? `Snapshot ${headcount[0]?.reference_date || ''}`.trim()
@@ -95,9 +99,9 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
           loading={loading}
         />
         <SyncMetric
-          title="Sincronizadas"
-          value={synced}
-          subtitle={`${pending} pendentes / ${failed} falhas`}
+          title="Recebidas no Supabase"
+          value={receivedOnline}
+          subtitle={`${validationPending} aguardando validação / ${failed} falhas`}
           icon={CheckCircle2}
           tone="green"
           loading={loading}
@@ -123,8 +127,8 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
         />
         <SyncMetric
           title="Pontos GPS"
-          value={gpsRows.length}
-          subtitle="mobile_gps vinculados às fichas"
+          value={totalGpsPoints}
+          subtitle={gpsRows.length ? 'mobile_gps + dados_json' : 'GPS embutido no dados_json'}
           icon={MapPin}
           tone="info"
           loading={loading}
