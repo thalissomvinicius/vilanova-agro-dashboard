@@ -347,6 +347,229 @@ function formatMetricValue(metric, value) {
   return formatDecimal(value, 1);
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function metricTargetText(metric) {
+  const prefix = metric.goodWhen === 'high' ? 'mín.' : 'máx.';
+  return `${prefix} ${formatMetricValue(metric, metric.meta)}`;
+}
+
+function metricExplanation(metric, value, color) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+    return 'Sem valor suficiente para comparar com a meta neste indicador.';
+  }
+
+  const numeric = Number(value);
+  const diff = metric.goodWhen === 'high' ? numeric - metric.meta : metric.meta - numeric;
+  const direction = metric.goodWhen === 'high'
+    ? (diff >= 0 ? 'acima' : 'abaixo')
+    : (diff >= 0 ? 'abaixo' : 'acima');
+  const absDiff = Math.abs(diff);
+  const status = riskStatusLabel(color).toLowerCase();
+
+  return `${status}: ${metric.label} ficou ${direction} da meta em ${formatMetricValue(metric, absDiff)}.`;
+}
+
+function metricProgressWidth(metric, value) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return 0;
+  const numeric = Math.max(0, Number(value));
+  const base = Math.max(Number(metric.meta || 1), numeric);
+  if (metric.goodWhen === 'high') return Math.max(8, Math.min(100, (numeric / base) * 100));
+  return Math.max(8, Math.min(100, (numeric / (metric.meta * 2.4 || base)) * 100));
+}
+
+function metricTargetPosition(metric, value) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return 50;
+  const numeric = Math.max(0, Number(value));
+  const base = metric.goodWhen === 'high'
+    ? Math.max(Number(metric.meta || 1), numeric)
+    : Math.max(Number(metric.meta || 1) * 2.4, numeric);
+  return Math.max(6, Math.min(94, (Number(metric.meta || 0) / base) * 100));
+}
+
+function uniqueCompact(values, limit = 4) {
+  return Array.from(new Set(values
+    .map((value) => String(value || '').trim())
+    .filter((value) => value && value !== '--')))
+    .slice(0, limit);
+}
+
+function dateOrderValue(value) {
+  const text = String(value || '').trim();
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return Number(`${iso[1]}${iso[2]}${iso[3]}`);
+
+  const br = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (br) return Number(`${br[3]}${br[2].padStart(2, '0')}${br[1].padStart(2, '0')}`);
+
+  const parsed = Date.parse(text);
+  return Number.isFinite(parsed) ? parsed : -Infinity;
+}
+
+function sortDateTexts(values) {
+  return values
+    .filter(Boolean)
+    .sort((a, b) => dateOrderValue(a) - dateOrderValue(b));
+}
+
+function parcelFiscalRows(records) {
+  const byFiscal = new Map();
+
+  records.forEach((record) => {
+    const fiscal = record.fiscal || 'Sem fiscal';
+    const current = byFiscal.get(fiscal) || {
+      fiscal,
+      count: 0,
+      dates: [],
+      sources: new Set(),
+    };
+    current.count += 1;
+    if (record.date && record.date !== '--') current.dates.push(record.date);
+    current.sources.add(record.source === 'excel' ? 'Excel' : 'App');
+    byFiscal.set(fiscal, current);
+  });
+
+  return Array.from(byFiscal.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3)
+    .map((item) => {
+      const sortedDates = sortDateTexts(item.dates);
+      const dateText = sortedDates.length
+        ? `${sortedDates[0]}${sortedDates[0] !== sortedDates[sortedDates.length - 1] ? ` a ${sortedDates[sortedDates.length - 1]}` : ''}`
+        : 'Sem data';
+      return `
+        <div class="parcel-popup-person-row">
+          <strong>${escapeHtml(item.fiscal)}</strong>
+          <span>${formatInteger(item.count)} coleta(s) · ${escapeHtml(dateText)} · ${escapeHtml(Array.from(item.sources).join(' + '))}</span>
+        </div>
+      `;
+    }).join('');
+}
+
+function parcelCollaboratorCodes(records) {
+  return uniqueCompact(records.flatMap((record) => (
+    (record.lines || []).flatMap((line) => [
+      line.matricula_colaborador,
+      line.MatriculaColaborador,
+      line.MatriculaCortador,
+      line.colaborador_matricula,
+    ])
+  )), 8);
+}
+
+function parcelLatestRows(records) {
+  return [...records]
+    .sort((a, b) => dateOrderValue(b.date) - dateOrderValue(a.date))
+    .slice(0, 4)
+    .map((record) => {
+      const collaboratorCodes = parcelCollaboratorCodes([record]);
+      return `
+        <div class="parcel-popup-event-row">
+          <strong>${escapeHtml(record.date || '--')}</strong>
+          <span>${escapeHtml(record.form || record.type || 'CQO')} · ${escapeHtml(record.fiscal || 'Sem fiscal')}</span>
+          <small>${escapeHtml(record.source === 'excel' ? 'Excel' : 'App')}${collaboratorCodes.length ? ` · Colab. ${escapeHtml(collaboratorCodes.join(', '))}` : ''}</small>
+        </div>
+      `;
+    }).join('');
+}
+
+function topCauseRows(totals) {
+  if (!totals) return [];
+
+  return [
+    { label: 'Perda corte', value: Number(totals.perdaCorteRate || 0), detail: `${formatInteger(totals.cachoEsquecido || 0)} cacho(s) esquecido(s)`, color: '#EF4444' },
+    { label: 'Não carreado', value: Number(totals.cachoNaoCarreadoRate || 0), detail: `${formatInteger(totals.cachoNaoCarreado || 0)} cacho(s)`, color: '#EF4444' },
+    { label: 'Verde', value: Number(totals.cachoVerdeRate || 0), detail: `${formatInteger(totals.cachoVerde || 0)} cacho(s)`, color: '#F59E0B' },
+    { label: 'Passado', value: Number(totals.cachoPassadoRate || 0), detail: `${formatInteger(totals.cachoPassado || 0)} cacho(s)`, color: '#6B4B3E' },
+    { label: 'Avermelhado', value: percentOf(totals.cachoAvermelhado, totals.cachosObservados), detail: `${formatInteger(totals.cachoAvermelhado || 0)} cacho(s)`, color: '#B91C1C' },
+    { label: 'Talo comprido', value: Number(totals.taloCompridoRate || 0), detail: `${formatInteger(totals.taloComprido || 0)} ocorr.`, color: '#D98C10' },
+    { label: 'Mal posicionado', value: Number(totals.cachoMalPosicionadoRate || 0), detail: `${formatInteger(totals.cachoMalPosicionado || 0)} ocorr.`, color: '#F97316' },
+  ].filter((item) => item.value > 0 || !/^0\b/.test(String(item.detail)))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 4);
+}
+
+function popupMetricChart(metric, value, color) {
+  const width = metricProgressWidth(metric, value);
+  const target = metricTargetPosition(metric, value);
+
+  return `
+    <div class="parcel-popup-chart-card">
+      <div class="parcel-popup-chart-head">
+        <span>${escapeHtml(metric.label)}</span>
+        <strong style="color:${color};">${formatMetricValue(metric, value)}</strong>
+      </div>
+      <div class="parcel-popup-goalbar">
+        <span style="width:${width}%; background:${color};"></span>
+        <i style="left:${target}%;" title="Meta"></i>
+      </div>
+      <div class="parcel-popup-chart-foot">
+        <span>Meta ${escapeHtml(metricTargetText(metric))}</span>
+        <b>${escapeHtml(metricExplanation(metric, value, color))}</b>
+      </div>
+    </div>
+  `;
+}
+
+function popupCauseChart(totals) {
+  const causes = topCauseRows(totals);
+  if (!causes.length) {
+    return '<div class="parcel-popup-empty">Nenhum desvio relevante identificado nos campos calculados.</div>';
+  }
+  const max = Math.max(...causes.map((item) => item.value), 1);
+
+  return `
+    <div class="parcel-popup-cause-list">
+      ${causes.map((item) => `
+        <div class="parcel-popup-cause-row">
+          <div>
+            <strong>${escapeHtml(item.label)}</strong>
+            <span>${escapeHtml(item.detail)}</span>
+          </div>
+          <div class="parcel-popup-mini-bar">
+            <span style="width:${Math.max(7, (item.value / max) * 100)}%; background:${item.color};"></span>
+          </div>
+          <b>${formatDecimal(item.value, 1)}%</b>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function popupBunchStack(totals) {
+  const parts = [
+    { label: 'Maduro', value: Number(totals?.cachoMaduro || 0), color: '#FB8A4B' },
+    { label: 'Passado', value: Number(totals?.cachoPassado || 0), color: '#6B4B3E' },
+    { label: 'Verde', value: Number(totals?.cachoVerde || 0), color: '#22C55E' },
+    { label: 'Averm.', value: Number(totals?.cachoAvermelhado || 0), color: '#B91C1C' },
+  ];
+  const total = parts.reduce((sum, item) => sum + item.value, 0);
+
+  if (!total) return '<div class="parcel-popup-empty">Sem composição de cachos observados nesta parcela.</div>';
+
+  return `
+    <div class="parcel-popup-stack">
+      <div class="parcel-popup-stackbar">
+        ${parts.map((item) => `
+          <span style="width:${Math.max(item.value ? 3 : 0, (item.value / total) * 100)}%; background:${item.color};" title="${escapeHtml(item.label)}"></span>
+        `).join('')}
+      </div>
+      <div class="parcel-popup-stack-legend">
+        ${parts.map((item) => `
+          <span><i style="background:${item.color};"></i>${escapeHtml(item.label)} ${formatDecimal(percentOf(item.value, total), 1)}%</span>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 function buildParcelSummary({ feature, records, heatSummary, metric }) {
   const props = feature?.properties || {};
   const shapeParcel = shapeParcelCode(props);
@@ -414,10 +637,14 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
     : 'Sem coleta aprovada';
   const excelCount = parcelRecords.filter((record) => record.source === 'excel').length;
   const appCount = parcelRecords.filter((record) => record.source === 'app').length;
-  const dateValues = parcelRecords.map((record) => record.date).filter(Boolean).sort();
+  const dateValues = sortDateTexts(parcelRecords.map((record) => record.date));
   const dateRange = dateValues.length
     ? `${dateValues[0]}${dateValues[0] !== dateValues[dateValues.length - 1] ? ` a ${dateValues[dateValues.length - 1]}` : ''}`
     : 'Sem data';
+  const latestDate = dateValues[dateValues.length - 1] || 'Sem data';
+  const collaboratorCodes = parcelCollaboratorCodes(parcelRecords);
+  const fiscalRows = parcelFiscalRows(parcelRecords);
+  const latestRows = parcelLatestRows(parcelRecords);
 
   const riskBlock = totals
     ? `
@@ -436,6 +663,7 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
   const mainMetrics = [
     popupMetric('Nota CQO', totals ? `${formatDecimal(score, 0)}%` : 'N/D', scoreColor),
     popupMetric('Area', areaHa ? `${formatDecimal(areaHa, 2)} ha` : 'N/D'),
+    popupMetric('Densidade', densityShape ? `${formatDecimal(densityShape, 0)} pl/ha` : 'N/D'),
     popupMetric('Periodo', dateRange),
     popupMetric('Fonte', totals ? `${excelCount} Excel / ${appCount} App` : 'N/D'),
     popupMetric('Linhas amostradas', formatInteger(totals?.linhas || 0)),
@@ -457,13 +685,36 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
   return `
     <div class="parcel-popup-card">
       <div class="parcel-popup-head">
-        <strong style="color:${style.color};">${props.farmName || 'Fazenda'}</strong>
-        <span>Parcela: <b>${shapeParcel || '--'}</b> | Fonte: shapefile</span>
-        <small>${formatInteger(parcelRecords.length)} coleta(s) | ${statusText} | ${densityShape ? `${formatDecimal(densityShape, 0)} pl/ha` : 'densidade N/D'}</small>
+        <strong style="color:${style.color};">${escapeHtml(props.farmName || 'Fazenda')}</strong>
+        <span>Parcela: <b>${escapeHtml(shapeParcel || '--')}</b> | Fonte: shapefile</span>
+        <small>${formatInteger(parcelRecords.length)} coleta(s) | ${statusText} | Último dado: ${escapeHtml(latestDate)}</small>
       </div>
       <div class="parcel-popup-scroll">
+        <div class="parcel-popup-executive" style="color:${selectedColor};">
+          <strong style="color:${selectedColor};">${riskStatusLabel(selectedColor)}</strong>
+          <span>${escapeHtml(metricExplanation(selectedMetric, selectedValue, selectedColor))}</span>
+        </div>
+        ${totals ? popupMetricChart(selectedMetric, selectedValue, selectedColor) : ''}
         <div class="parcel-popup-grid">${mainMetrics}</div>
         ${riskBlock}
+        <div class="parcel-popup-section">O que aconteceu</div>
+        ${popupCauseChart(totals)}
+        <div class="parcel-popup-section">Composição dos cachos</div>
+        ${popupBunchStack(totals)}
+        <div class="parcel-popup-section">Fiscal responsável</div>
+        <div class="parcel-popup-person-list">
+          ${fiscalRows || '<div class="parcel-popup-empty">Sem fiscal responsável informado.</div>'}
+        </div>
+        <div class="parcel-popup-section">Coletas no período</div>
+        <div class="parcel-popup-event-list">
+          ${latestRows || '<div class="parcel-popup-empty">Sem coleta dentro dos filtros atuais.</div>'}
+        </div>
+        ${collaboratorCodes.length ? `
+          <div class="parcel-popup-section">Matrículas de colaboradores</div>
+          <div class="parcel-popup-chip-list">
+            ${collaboratorCodes.map((code) => `<span>${escapeHtml(code)}</span>`).join('')}
+          </div>
+        ` : ''}
         <div class="parcel-popup-section">Percentuais principais</div>
         <div class="parcel-popup-percent-list">${percentMetrics}</div>
       </div>
@@ -810,8 +1061,8 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             parcelRecords,
             metric: selectedRiskMetric,
           }), {
-            maxWidth: 360,
-            minWidth: 320,
+            maxWidth: 460,
+            minWidth: 380,
             autoPan: true,
             autoPanPaddingTopLeft: [24, 120],
             autoPanPaddingBottomRight: [380, 70],
