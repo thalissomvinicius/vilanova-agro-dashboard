@@ -524,40 +524,6 @@ function sortDateTexts(values) {
     .sort((a, b) => dateOrderValue(a) - dateOrderValue(b));
 }
 
-function parcelFiscalRows(records) {
-  const byFiscal = new Map();
-
-  records.forEach((record) => {
-    const fiscal = record.fiscal || 'Sem fiscal';
-    const current = byFiscal.get(fiscal) || {
-      fiscal,
-      count: 0,
-      dates: [],
-      sources: new Set(),
-    };
-    current.count += 1;
-    if (record.date && record.date !== '--') current.dates.push(record.date);
-    current.sources.add(record.source === 'excel' ? 'Excel' : 'App');
-    byFiscal.set(fiscal, current);
-  });
-
-  return Array.from(byFiscal.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 3)
-    .map((item) => {
-      const sortedDates = sortDateTexts(item.dates);
-      const dateText = sortedDates.length
-        ? `${sortedDates[0]}${sortedDates[0] !== sortedDates[sortedDates.length - 1] ? ` a ${sortedDates[sortedDates.length - 1]}` : ''}`
-        : 'Sem data';
-      return `
-        <div class="parcel-popup-person-row">
-          <strong>${escapeHtml(item.fiscal)}</strong>
-          <span>${formatInteger(item.count)} coleta(s) · ${escapeHtml(dateText)} · ${escapeHtml(Array.from(item.sources).join(' + '))}</span>
-        </div>
-      `;
-    }).join('');
-}
-
 function parcelCollaboratorCodes(records) {
   return uniqueCompact(records.flatMap((record) => (
     (record.lines || []).flatMap((line) => [
@@ -569,20 +535,9 @@ function parcelCollaboratorCodes(records) {
   )), 8);
 }
 
-function parcelLatestRows(records) {
-  return [...records]
-    .sort((a, b) => dateOrderValue(b.date) - dateOrderValue(a.date))
-    .slice(0, 4)
-    .map((record) => {
-      const collaboratorCodes = parcelCollaboratorCodes([record]);
-      return `
-        <div class="parcel-popup-event-row">
-          <strong>${escapeHtml(record.date || '--')}</strong>
-          <span>${escapeHtml(record.form || record.type || 'CQO')} · ${escapeHtml(record.fiscal || 'Sem fiscal')}</span>
-          <small>${escapeHtml(record.source === 'excel' ? 'Excel' : 'App')}${collaboratorCodes.length ? ` · Colab. ${escapeHtml(collaboratorCodes.join(', '))}` : ''}</small>
-        </div>
-      `;
-    }).join('');
+function parcelFiscalSummary(records) {
+  const fiscals = uniqueCompact(records.map((record) => record.fiscal || 'Sem fiscal'), 2);
+  return fiscals.length ? fiscals.join(' / ') : 'Sem fiscal informado';
 }
 
 function topCauseRows(totals) {
@@ -652,31 +607,6 @@ function popupMetricChart(metric, value, color, totals = null) {
         <span>Meta ${escapeHtml(metricTargetText(metric))}</span>
         <b>${escapeHtml(metricExplanation(metric, value, color))}</b>
       </div>
-    </div>
-  `;
-}
-
-function popupCauseChart(totals) {
-  const causes = topCauseRows(totals);
-  if (!causes.length) {
-    return '<div class="parcel-popup-empty">Nenhum desvio relevante identificado nos campos calculados.</div>';
-  }
-  const max = Math.max(...causes.map((item) => item.value), 1);
-
-  return `
-    <div class="parcel-popup-cause-list">
-      ${causes.map((item) => `
-        <div class="parcel-popup-cause-row">
-          <div>
-            <strong>${escapeHtml(item.label)}</strong>
-            <span>${escapeHtml(item.detail)}</span>
-          </div>
-          <div class="parcel-popup-mini-bar">
-            <span style="width:${Math.max(7, (item.value / max) * 100)}%; background:${item.color};"></span>
-          </div>
-          <b>${formatDecimal(item.value, 1)}%</b>
-        </div>
-      `).join('')}
     </div>
   `;
 }
@@ -766,15 +696,6 @@ function popupMetric(label, value, tone = '') {
   `;
 }
 
-function popupPercentRow(label, value, tone = '') {
-  return `
-    <div class="parcel-popup-percent-row">
-      <span>${label}</span>
-      <strong style="color:${tone || '#182230'};">${value}</strong>
-    </div>
-  `;
-}
-
 function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }) {
   const totals = parcelRecords.length ? aggregateRecords(parcelRecords) : null;
   const areaHa = parcelAreaHa(props);
@@ -795,81 +716,50 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
     : 'Sem data';
   const latestDate = dateValues[dateValues.length - 1] || 'Sem data';
   const collaboratorCodes = parcelCollaboratorCodes(parcelRecords);
-  const fiscalRows = parcelFiscalRows(parcelRecords);
-  const latestRows = parcelLatestRows(parcelRecords);
-
-  const riskBlock = totals
-    ? `
-      <div class="parcel-popup-heat">
-        <strong style="color:${selectedColor};">${riskStatusLabel(selectedColor)} - ${selectedMetric.label}</strong>
-        <span>${formatMetricValue(selectedMetric, selectedValue)} aplicado na parcela completa a partir da amostragem.</span>
-      </div>
-    `
-    : `
-      <div class="parcel-popup-heat parcel-popup-heat-neutral">
-        <strong>Sem avaliação no período</strong>
-        <span>Esta parcela não tem coleta aprovada ou registro Excel dentro dos filtros atuais.</span>
-      </div>
-    `;
+  const fiscalSummary = parcelFiscalSummary(parcelRecords);
+  const causeRows = topCauseRows(totals).slice(0, 2);
 
   const mainMetrics = [
     popupMetric('Nota CQO', totals ? `${formatDecimal(score, 0)}%` : 'N/D', scoreColor),
-    popupMetric('Area', areaHa ? `${formatDecimal(areaHa, 2)} ha` : 'N/D'),
-    popupMetric('Densidade', densityShape ? `${formatDecimal(densityShape, 0)} pl/ha` : 'N/D'),
-    popupMetric('Periodo', dateRange),
-    popupMetric('Fonte', totals ? `${excelCount} Excel / ${appCount} App` : 'N/D'),
-    popupMetric('Linhas amostradas', formatInteger(totals?.linhas || 0)),
-    popupMetric('Plantas obs.', formatInteger(totals?.plantasObservadas || 0)),
+    popupMetric('Area', areaHa ? `${formatDecimal(areaHa, 1)} ha` : 'N/D'),
+    popupMetric('Linhas', formatInteger(totals?.linhas || 0)),
     popupMetric('Cachos obs.', formatInteger(totals?.cachosObservados || 0)),
-    popupMetric('Perda fruta/ha', areaHa ? `${formatDecimal(perHa(totals?.lostFrutosTon || 0, areaHa), 3)} t/ha` : 'N/D', '#EF4444'),
   ].join('');
 
-  const percentMetrics = [
-    popupPercentRow('Cacho maduro', `${formatDecimal(percentOf(totals?.cachoMaduro, totals?.cachosObservados), 1)}%`, '#22C55E'),
-    popupPercentRow('Perda corte', `${formatDecimal(totals?.perdaCorteRate || 0, 1)}%`, '#EF4444'),
-    popupPercentRow('Cacho verde', `${formatDecimal(totals?.cachoVerdeRate || 0, 1)}%`, '#F59E0B'),
-    popupPercentRow('Cacho passado', `${formatDecimal(totals?.cachoPassadoRate || 0, 1)}%`, '#F59E0B'),
-    popupPercentRow('Avermelhado', `${formatDecimal(percentOf(totals?.cachoAvermelhado, totals?.cachosObservados), 1)}%`, '#EF4444'),
-    popupPercentRow('Talo comprido', `${formatDecimal(percentOf(totals?.taloComprido, totals?.cachosObservados), 1)}%`, '#D98C10'),
-    popupPercentRow('Estrela', `${formatDecimal(percentOf(totals?.cachoEstrela, totals?.cachosObservados), 1)}%`, '#F2B544'),
-    popupPercentRow('Nao carreado', `${formatDecimal(totals?.cachoNaoCarreadoRate || 0, 1)}%`, '#EF4444'),
-  ].join('');
+  const compactCauses = causeRows.length
+    ? `
+      <div class="parcel-popup-compact-causes">
+        ${causeRows.map((item) => `
+          <span>
+            <b style="color:${item.color};">${escapeHtml(item.label)}</b>
+            ${formatDecimal(item.value, 1)}% · ${escapeHtml(item.detail)}
+          </span>
+        `).join('')}
+      </div>
+    `
+    : '';
 
   return `
-    <div class="parcel-popup-card">
+    <div class="parcel-popup-card parcel-popup-card-compact">
       <div class="parcel-popup-head">
         <strong style="color:${style.color};">${escapeHtml(props.farmName || 'Fazenda')}</strong>
         <span>Parcela: <b>${escapeHtml(shapeParcel || '--')}</b> | Fonte: shapefile</span>
         <small>${formatInteger(parcelRecords.length)} coleta(s) | ${statusText} | Último dado: ${escapeHtml(latestDate)}</small>
       </div>
-      <div class="parcel-popup-scroll">
+      <div class="parcel-popup-body">
         <div class="parcel-popup-executive" style="color:${selectedColor};">
           <strong style="color:${selectedColor};">${riskStatusLabel(selectedColor)}</strong>
           <span>${escapeHtml(metricExplanation(selectedMetric, selectedValue, selectedColor))}</span>
         </div>
         ${totals ? popupMetricChart(selectedMetric, selectedValue, selectedColor, totals) : ''}
         <div class="parcel-popup-grid">${mainMetrics}</div>
-        ${riskBlock}
-        <div class="parcel-popup-section">O que aconteceu</div>
-        ${popupCauseChart(totals)}
-        <div class="parcel-popup-section">Composição dos cachos</div>
+        ${compactCauses ? '<div class="parcel-popup-section parcel-popup-section-tight">Pontos de atenção</div>' : ''}
+        ${compactCauses}
+        <div class="parcel-popup-section parcel-popup-section-tight">Composição dos cachos</div>
         ${popupBunchStack(totals, selectedMetric.id === 'qualidade_cachos' ? 'bunch' : 'full')}
-        <div class="parcel-popup-section">Fiscal responsável</div>
-        <div class="parcel-popup-person-list">
-          ${fiscalRows || '<div class="parcel-popup-empty">Sem fiscal responsável informado.</div>'}
+        <div class="parcel-popup-footnote">
+          Fiscal: <b>${escapeHtml(fiscalSummary)}</b> · Fonte: <b>${formatInteger(excelCount)} Excel / ${formatInteger(appCount)} App</b> · Período: <b>${escapeHtml(dateRange)}</b>${densityShape ? ` · Dens.: <b>${formatDecimal(densityShape, 0)} pl/ha</b>` : ''}${collaboratorCodes.length ? ` · Matr.: <b>${escapeHtml(collaboratorCodes.slice(0, 3).join(', '))}</b>` : ''}
         </div>
-        <div class="parcel-popup-section">Coletas no período</div>
-        <div class="parcel-popup-event-list">
-          ${latestRows || '<div class="parcel-popup-empty">Sem coleta dentro dos filtros atuais.</div>'}
-        </div>
-        ${collaboratorCodes.length ? `
-          <div class="parcel-popup-section">Matrículas de colaboradores</div>
-          <div class="parcel-popup-chip-list">
-            ${collaboratorCodes.map((code) => `<span>${escapeHtml(code)}</span>`).join('')}
-          </div>
-        ` : ''}
-        <div class="parcel-popup-section">Percentuais principais</div>
-        <div class="parcel-popup-percent-list">${percentMetrics}</div>
       </div>
     </div>
   `;

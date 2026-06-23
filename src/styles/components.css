@@ -4388,7 +4388,6 @@ body.presentation-active {
 .parcel-popup-card {
   width: min(430px, calc(100vw - 48px));
   max-width: 430px;
-  max-height: min(500px, calc(100dvh - 390px));
   display: flex;
   flex-direction: column;
   font-family: Inter, Segoe UI, sans-serif;
@@ -4396,16 +4395,21 @@ body.presentation-active {
   color: var(--text-primary);
 }
 
+.parcel-popup-card-compact {
+  width: min(420px, calc(100vw - 48px));
+  max-width: 420px;
+}
+
 .parcel-popup-head {
   flex: 0 0 auto;
-  padding: 14px 26px 8px 14px;
+  padding: 10px 28px 7px 12px;
   border-bottom: 1px solid var(--border-color);
   background: var(--bg-card);
 }
 
 .parcel-popup-head strong {
   display: block;
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   font-weight: 900;
   line-height: 1.2;
 }
@@ -4413,10 +4417,10 @@ body.presentation-active {
 .parcel-popup-head span,
 .parcel-popup-head small {
   display: block;
-  margin-top: 4px;
+  margin-top: 3px;
   color: var(--text-secondary);
-  font-size: 0.72rem;
-  line-height: 1.25;
+  font-size: 0.68rem;
+  line-height: 1.18;
 }
 
 .parcel-popup-head small {
@@ -4431,9 +4435,14 @@ body.presentation-active {
   scrollbar-width: thin;
 }
 
+.parcel-popup-body {
+  padding: 8px 10px 10px;
+  overflow: visible;
+}
+
 .parcel-popup-executive {
-  margin-bottom: 8px;
-  padding: 9px 10px;
+  margin-bottom: 6px;
+  padding: 7px 8px;
   border: 1px solid var(--border-color);
   border-left: 4px solid currentColor;
   border-radius: 8px;
@@ -4446,21 +4455,21 @@ body.presentation-active {
 }
 
 .parcel-popup-executive strong {
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-weight: 950;
   text-transform: uppercase;
 }
 
 .parcel-popup-executive span {
-  margin-top: 4px;
+  margin-top: 2px;
   color: var(--text-secondary);
-  font-size: 0.72rem;
-  line-height: 1.35;
+  font-size: 0.66rem;
+  line-height: 1.22;
 }
 
 .parcel-popup-chart-card {
-  margin-bottom: 9px;
-  padding: 9px 10px;
+  margin-bottom: 6px;
+  padding: 7px 8px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--bg-card);
@@ -4480,13 +4489,13 @@ body.presentation-active {
 .parcel-popup-chart-head span {
   min-width: 0;
   color: var(--text-primary);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 900;
 }
 
 .parcel-popup-chart-head strong {
   flex: 0 0 auto;
-  font-size: 1rem;
+  font-size: 0.92rem;
   font-weight: 950;
 }
 
@@ -4519,16 +4528,16 @@ body.presentation-active {
 
 .parcel-popup-goal-list {
   display: grid;
-  gap: 6px;
-  margin-top: 8px;
+  gap: 4px;
+  margin-top: 6px;
 }
 
 .parcel-popup-goal-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 8px;
-  padding: 6px 7px;
+  gap: 6px;
+  padding: 5px 7px;
   border: 1px solid var(--border-color);
   border-radius: 7px;
   background: var(--bg-primary);
@@ -4540,7 +4549,7 @@ body.presentation-active {
   align-items: center;
   gap: 6px;
   color: var(--text-secondary);
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 850;
 }
 
@@ -4553,13 +4562,13 @@ body.presentation-active {
 
 .parcel-popup-goal-item b {
   color: var(--text-primary);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 950;
 }
 
 .parcel-popup-goal-item small {
   color: var(--text-muted);
-  font-size: 0.64rem;
+  font-size: 0.6rem;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -4579,14 +4588,14 @@ body.presentation-active {
 
 .parcel-popup-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
 }
 
 .parcel-popup-metric {
   min-width: 0;
-  min-height: 44px;
-  padding: 6px 8px;
+  min-height: 38px;
+  padding: 5px 6px;
   border: 1px solid var(--border-color);
   border-radius: 7px;
   background: var(--bg-secondary);
@@ -4595,7 +4604,7 @@ body.presentation-active {
 .parcel-popup-metric span {
   display: block;
   color: var(--text-muted);
-  font-size: 0.65rem;
+  font-size: 0.58rem;
   font-weight: 850;
   line-height: 1.15;
   text-transform: uppercase;
@@ -4603,8 +4612,8 @@ body.presentation-active {
 
 .parcel-popup-metric strong {
   display: block;
-  margin-top: 3px;
-  font-size: 0.86rem;
+  margin-top: 2px;
+  font-size: 0.76rem;
   font-weight: 900;
   line-height: 1.15;
   overflow-wrap: anywhere;
@@ -4646,6 +4655,36 @@ body.presentation-active {
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.parcel-popup-section-tight {
+  margin: 6px 0 4px;
+  font-size: 0.62rem;
+}
+
+.parcel-popup-compact-causes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.parcel-popup-compact-causes span {
+  min-width: 0;
+  padding: 6px 7px;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.63rem;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.parcel-popup-compact-causes b {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 0.65rem;
+  font-weight: 900;
 }
 
 .parcel-popup-percent-list {
@@ -4716,7 +4755,7 @@ body.presentation-active {
 }
 
 .parcel-popup-stack {
-  padding: 8px;
+  padding: 6px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--bg-secondary);
@@ -4724,7 +4763,7 @@ body.presentation-active {
 
 .parcel-popup-stackbar {
   display: flex;
-  height: 14px;
+  height: 12px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--bg-tertiary);
@@ -4738,18 +4777,34 @@ body.presentation-active {
 .parcel-popup-stack-legend {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px 8px;
-  margin-top: 8px;
+  gap: 4px 8px;
+  margin-top: 6px;
 }
 
 .parcel-popup-stack-legend span {
   min-width: 0;
   color: var(--text-secondary);
-  font-size: 0.66rem;
+  font-size: 0.62rem;
   font-weight: 750;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.parcel-popup-footnote {
+  margin-top: 7px;
+  padding: 6px 7px;
+  border-radius: 7px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.63rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.parcel-popup-footnote b {
+  color: var(--text-primary);
+  font-weight: 850;
 }
 
 .parcel-popup-stack-legend i {
@@ -4857,7 +4912,11 @@ body.presentation-active {
 
   .parcel-popup-card {
     width: min(360px, calc(100vw - 36px));
-    max-height: min(560px, calc(100dvh - 120px));
+  }
+
+  .parcel-popup-grid,
+  .parcel-popup-compact-causes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .parcel-popup-stack-legend {
