@@ -1015,7 +1015,10 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   const [baseLayer, setBaseLayer] = useState('standard');
   const [riskMetricId, setRiskMetricId] = useState('qualidade_cachos');
   const [parcelGeoJson, setParcelGeoJson] = useState(null);
-  const { records } = useCqoData({
+  const [parcelGeoLoading, setParcelGeoLoading] = useState(true);
+  const [mapRendering, setMapRendering] = useState(true);
+  const [tileLoading, setTileLoading] = useState(true);
+  const { records, loading: dataLoading } = useCqoData({
     sourceFilter,
     includeAttachments: false,
     includeForms: false,
@@ -1233,10 +1236,16 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
         return response.json();
       })
       .then((geojson) => {
-        if (mounted) setParcelGeoJson(geojson);
+        if (mounted) {
+          setParcelGeoJson(geojson);
+          setParcelGeoLoading(false);
+        }
       })
       .catch(() => {
-        if (mounted) setParcelGeoJson(null);
+        if (mounted) {
+          setParcelGeoJson(null);
+          setParcelGeoLoading(false);
+        }
       });
 
     return () => {
@@ -1249,6 +1258,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     const layers = layerGroupRef.current;
     if (!map || !layers) return;
 
+    const startRenderFrame = window.requestAnimationFrame(() => setMapRendering(true));
     layers.clearLayers();
     map.eachLayer((layer) => {
       if (layer instanceof L.TileLayer) {
@@ -1282,7 +1292,11 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       };
     }
 
-    L.tileLayer(tileUrl, tileOptions).addTo(map);
+    const tileLayer = L.tileLayer(tileUrl, tileOptions)
+      .on('loading', () => setTileLoading(true))
+      .on('load', () => setTileLoading(false))
+      .on('tileerror', () => setTileLoading(false))
+      .addTo(map);
 
     const farmLayerBounds = [];
 
@@ -1581,19 +1595,53 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       }
     };
 
+    let secondViewportTimer;
+    let finishRenderTimer;
+
     const frame = window.requestAnimationFrame(() => {
       map.whenReady(() => {
         applyViewport();
-        window.setTimeout(applyViewport, 120);
+        secondViewportTimer = window.setTimeout(applyViewport, 120);
+        finishRenderTimer = window.setTimeout(() => setMapRendering(false), 240);
       });
     });
 
-    return () => window.cancelAnimationFrame(frame);
+    return () => {
+      window.cancelAnimationFrame(startRenderFrame);
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(secondViewportTimer);
+      window.clearTimeout(finishRenderTimer);
+      tileLayer.off();
+    };
   }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, selectedRiskMetric, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, filteredParcelFeatures, parcelSummaryByKey]);
+
+  const mapIsLoading = dataLoading || parcelGeoLoading || mapRendering || tileLoading;
+  const mapLoadingText = dataLoading
+    ? 'Sincronizando dados do Supabase'
+    : parcelGeoLoading
+      ? 'Carregando parcelas das fazendas'
+      : tileLoading
+        ? 'Carregando imagem do mapa'
+        : 'Renderizando semáforo das parcelas';
 
   return (
     <div className={`card gps-map-card ${presentationMode ? 'gps-map-card-presentation' : ''}`}>
       <div ref={mapContainerRef} className="gps-map-canvas" />
+
+      {mapIsLoading ? (
+        <div className="gps-map-loading-overlay" role="status" aria-live="polite">
+          <div className="gps-map-loader">
+            <div className="gps-map-loader-radar" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <strong>{mapLoadingText}</strong>
+            <small>Preparando mapa operacional</small>
+          </div>
+        </div>
+      ) : null}
 
       <div className="map-overlay-card gps-map-overlay">
         <h4>Visualização</h4>

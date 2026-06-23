@@ -53,6 +53,27 @@
   }
 }
 
+@keyframes map-loader-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes map-loader-parcel {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.92);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* Classes */
 
 .pulse {
