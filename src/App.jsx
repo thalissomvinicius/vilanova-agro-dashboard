@@ -35,6 +35,7 @@ const Development = lazy(() => import('./pages/Development'));
 const LeafletMap = lazy(() => import('./components/LeafletMap'));
 
 const FILTER_STORAGE_KEY = 'vilanova_dashboard_filters';
+const FILTER_STORAGE_VERSION = 2;
 const AUTH_STORAGE_KEY = 'vilanova_dashboard_session';
 const LEGACY_AUTH_STORAGE_KEY = 'vilanova_dashboard_user';
 const AUTH_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
@@ -54,10 +55,6 @@ function accessiblePagesForUser(user) {
       })
       .map((route) => route.id)
   );
-}
-
-function currentMonthValue() {
-  return String(new Date().getMonth() + 1).padStart(2, '0');
 }
 
 function monthDateRange(yearValue, monthValue) {
@@ -95,7 +92,11 @@ function pathFromPage(page) {
 
 function readStoredFilters() {
   try {
-    return JSON.parse(localStorage.getItem(FILTER_STORAGE_KEY) || '{}');
+    const storedFilters = JSON.parse(localStorage.getItem(FILTER_STORAGE_KEY) || '{}');
+    if (storedFilters?.__version !== FILTER_STORAGE_VERSION) return {};
+    const filters = { ...storedFilters };
+    delete filters.__version;
+    return filters;
   } catch {
     return {};
   }
@@ -103,6 +104,10 @@ function readStoredFilters() {
 
 function searchFilters() {
   const params = new URLSearchParams(window.location.search);
+  if (params.size > 0 && params.get('vf') !== String(FILTER_STORAGE_VERSION)) {
+    return {};
+  }
+
   return {
     farmFilter: params.get('fazenda') || undefined,
     yearFilter: params.get('ano') || undefined,
@@ -118,9 +123,8 @@ function searchFilters() {
 
 function compactFilters(filters) {
   const currentYear = String(new Date().getFullYear());
-  const currentMonth = currentMonthValue();
   const yearFilter = /^\d{4}$/.test(String(filters.yearFilter || '')) ? String(filters.yearFilter) : currentYear;
-  const monthFilter = VALID_MONTHS.has(String(filters.monthFilter || '')) ? String(filters.monthFilter) : currentMonth;
+  const monthFilter = VALID_MONTHS.has(String(filters.monthFilter || '')) ? String(filters.monthFilter) : 'all';
   const defaultRange = monthDateRange(yearFilter, monthFilter);
   let dateFrom = isDateInputValue(filters.dateFrom) ? String(filters.dateFrom) : defaultRange.from;
   let dateTo = isDateInputValue(filters.dateTo) ? String(filters.dateTo) : defaultRange.to;
@@ -198,8 +202,9 @@ function buildSearch(filters) {
   if (filters.searchTerm) params.set('busca', filters.searchTerm);
   if (filters.dateFrom) params.set('dataInicio', filters.dateFrom);
   if (filters.dateTo) params.set('dataFim', filters.dateTo);
-  const query = params.toString();
-  return query ? `?${query}` : '';
+  if (params.size === 0) return '';
+  params.set('vf', String(FILTER_STORAGE_VERSION));
+  return `?${params.toString()}`;
 }
 
 function filtersForRoute(filters, routeId) {
@@ -409,7 +414,10 @@ export default function App() {
   }, [sidebarWidth]);
 
   useEffect(() => {
-    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(activeFilters));
+    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify({
+      ...activeFilters,
+      __version: FILTER_STORAGE_VERSION,
+    }));
     const routeFilters = filtersForRoute(activeFilters, effectiveActivePage);
     const nextPath = `${pathFromPage(effectiveActivePage)}${buildSearch(routeFilters)}`;
     const currentPath = `${window.location.pathname}${window.location.search}`;
