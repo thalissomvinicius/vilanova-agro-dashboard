@@ -7,6 +7,7 @@ import {
   Download,
   Eye,
   MapPin,
+  RotateCcw,
   Rows3,
   Search,
   ThumbsDown,
@@ -295,6 +296,11 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   const [isDeleting, setIsDeleting] = useState(false);
   const [isBulkReviewing, setIsBulkReviewing] = useState(false);
 
+  const clearLocalFilters = () => {
+    setSearchFicha('');
+    setStatusFilter('all');
+  };
+
   const displayRecords = records
     .filter(record => !deletedRecords.has(record.id))
     .map((record) => ({
@@ -524,7 +530,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
         </div>
       </div>
 
-      <div className="operational-filter-bar">
+      <div className="operational-filter-bar has-clear">
         <div className="table-search operational-search">
             <Search size={16} />
             <input
@@ -555,6 +561,15 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
             <span>Fonte</span>
             <strong>{sourceLabel}</strong>
           </div>
+          <button
+            type="button"
+            className="operational-clear-btn"
+            onClick={clearLocalFilters}
+            title="Limpar filtros da tela"
+          >
+            <RotateCcw size={15} />
+            Limpar
+          </button>
       </div>
 
       {error ? (

@@ -6,6 +6,7 @@ import {
   Maximize2,
   MonitorPlay,
   RefreshCw,
+  RotateCcw,
   SlidersHorizontal,
   X,
 } from 'lucide-react';
@@ -852,6 +853,19 @@ function FieldBiBoard({
               ) : null}
             </div>
           ) : null}
+
+          <button
+            type="button"
+            className="field-bi-clear-btn"
+            onClick={() => {
+              setBoardMode('meeting');
+              setTotalSection('qualidade');
+            }}
+            title="Limpar filtros desta tela"
+          >
+            <RotateCcw size={14} />
+            Limpar
+          </button>
         </div>
       ) : null}
 

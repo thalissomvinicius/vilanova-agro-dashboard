@@ -1364,6 +1364,30 @@ body.presentation-active {
   text-transform: none;
 }
 
+.field-bi-clear-btn {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid rgba(232, 145, 0, 0.26);
+  border-radius: 8px;
+  background: rgba(232, 145, 0, 0.1);
+  color: var(--orange-institutional);
+  font-family: var(--font-family);
+  font-size: 0.74rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.field-bi-clear-btn:hover {
+  border-color: var(--orange-institutional);
+  background: rgba(232, 145, 0, 0.16);
+  transform: translateY(-1px);
+}
+
 .field-bi-filter-strip {
   min-height: 34px;
   display: flex;
@@ -4307,7 +4331,8 @@ body.presentation-active {
 
 .map-presentation-overlay .gps-base-toggle button,
 .map-presentation-overlay .gps-layer-stack .btn,
-.map-presentation-overlay .gps-metric-control select {
+.map-presentation-overlay .gps-metric-control select,
+.map-presentation-overlay .gps-reset-map-btn {
   min-height: 28px;
   height: 28px;
   font-size: 0.64rem;
@@ -4330,6 +4355,10 @@ body.presentation-active {
 .map-presentation-overlay .gps-map-stats {
   margin-top: 7px;
   padding-top: 7px;
+}
+
+.map-presentation-overlay .gps-reset-map-btn {
+  margin-top: 6px;
 }
 
 .map-presentation-overlay .gps-map-stats-total {
@@ -5075,8 +5104,16 @@ body.presentation-active {
   box-shadow: var(--shadow-sm);
 }
 
+.operational-filter-bar.has-clear {
+  grid-template-columns: minmax(240px, 1fr) minmax(150px, 230px) minmax(210px, 320px) minmax(92px, auto);
+}
+
 .inventory-filter-bar {
   grid-template-columns: minmax(160px, 220px) minmax(220px, 1fr) minmax(280px, 360px);
+}
+
+.inventory-filter-bar.has-clear {
+  grid-template-columns: minmax(150px, 220px) minmax(210px, 1fr) minmax(260px, 350px) minmax(92px, auto);
 }
 
 .operational-search {
@@ -5121,6 +5158,40 @@ body.presentation-active {
 
 .compact-control {
   width: 180px;
+}
+
+.operational-clear-btn {
+  min-width: 92px;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid rgba(232, 145, 0, 0.26);
+  border-radius: 10px;
+  background: rgba(232, 145, 0, 0.1);
+  color: var(--orange-institutional);
+  font-family: var(--font-family);
+  font-size: 0.76rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.operational-clear-btn:hover {
+  border-color: var(--orange-institutional);
+  background: rgba(232, 145, 0, 0.16);
+  transform: translateY(-1px);
+}
+
+.operational-clear-btn svg {
+  flex: 0 0 auto;
+}
+
+.table-clear-btn {
+  align-self: stretch;
+  min-height: 48px;
 }
 
 .collection-summary-strip,
@@ -5660,6 +5731,31 @@ body.presentation-active {
 
 [data-theme='light'] .gps-metric-control select {
   background: rgba(245, 247, 249, 0.9);
+}
+
+.gps-reset-map-btn {
+  width: 100%;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 8px;
+  border: 1px solid rgba(232, 145, 0, 0.26);
+  border-radius: 8px;
+  background: rgba(232, 145, 0, 0.1);
+  color: var(--orange-institutional);
+  font-family: var(--font-family);
+  font-size: 0.7rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.gps-reset-map-btn:hover {
+  border-color: var(--orange-institutional);
+  background: rgba(232, 145, 0, 0.16);
+  transform: translateY(-1px);
 }
 
 .gps-map-stats {

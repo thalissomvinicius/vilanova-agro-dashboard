@@ -311,6 +311,19 @@ export default function App() {
     }
   };
 
+  const clearGlobalFilters = () => {
+    const nextFilters = compactFilters({});
+    setFarmFilter(nextFilters.farmFilter);
+    setYearFilter(nextFilters.yearFilter);
+    setMonthFilter(nextFilters.monthFilter);
+    setDateFrom(nextFilters.dateFrom);
+    setDateTo(nextFilters.dateTo);
+    setCycleFilter(nextFilters.cycleFilter);
+    setEvaluatorFilter(nextFilters.evaluatorFilter);
+    setSourceFilter(nextFilters.sourceFilter);
+    setSearchTerm(nextFilters.searchTerm);
+  };
+
   useEffect(() => {
     if (isAppLoading) {
       const timer = setTimeout(() => setIsAppLoading(false), 2000);
@@ -639,6 +652,7 @@ export default function App() {
           setEvaluatorFilter={setEvaluatorFilter}
           sourceFilter={sourceFilter}
           setSourceFilter={setSourceFilter}
+          onClearFilters={clearGlobalFilters}
           activePage={activePage}
           theme={theme}
           setTheme={setTheme}

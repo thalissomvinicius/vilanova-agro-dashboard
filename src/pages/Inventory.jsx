@@ -3,6 +3,7 @@ import {
   AlertCircle,
   FileSpreadsheet,
   MapPin,
+  RotateCcw,
   Rows3,
   Sprout,
 } from 'lucide-react';
@@ -74,7 +75,7 @@ export default function Inventory({ farmFilter, searchTerm }) {
         </div>
       </div>
 
-      <div className="operational-filter-bar inventory-filter-bar">
+      <div className="operational-filter-bar inventory-filter-bar has-clear">
         <label className="operational-select-control">
           <span>Ano de plantio</span>
           <select
@@ -108,6 +109,18 @@ export default function Inventory({ farmFilter, searchTerm }) {
             <strong>{loading ? 'Carregando...' : source}</strong>
             <small>{generatedAt ? `Gerado em ${new Date(generatedAt).toLocaleString('pt-BR')}` : 'Aguardando leitura'}</small>
           </div>
+          <button
+            type="button"
+            className="operational-clear-btn"
+            onClick={() => {
+              setYearFilter('all');
+              setCultivarFilter('all');
+            }}
+            title="Limpar filtros da tela"
+          >
+            <RotateCcw size={15} />
+            Limpar
+          </button>
       </div>
 
       {error ? (

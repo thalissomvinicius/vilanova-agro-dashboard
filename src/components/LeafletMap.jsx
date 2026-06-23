@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import { Flame, Layers, Map as MapIcon, Route, Satellite } from 'lucide-react';
+import { Flame, Layers, Map as MapIcon, RotateCcw, Route, Satellite } from 'lucide-react';
 import { FARMS } from '../utils/mockData';
 import { filterRecords, useCqoData, aggregateRecords } from '../utils/cqoData';
 
@@ -1500,6 +1500,20 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             </select>
           </label>
         ) : null}
+
+        <button
+          type="button"
+          className="gps-reset-map-btn"
+          onClick={() => {
+            setBaseLayer('standard');
+            setMapLayer('heat');
+            setRiskMetricId('qualidade_cachos');
+          }}
+          title="Limpar filtros do mapa"
+        >
+          <RotateCcw size={13} />
+          Limpar mapa
+        </button>
 
         <div className="gps-map-stats">
           <div className="gps-map-stats-total">

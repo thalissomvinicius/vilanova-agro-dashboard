@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, LogOut, MonitorPlay, Moon, RefreshCw, Search, Sun } from 'lucide-react';
+import { Bell, LogOut, MonitorPlay, Moon, RefreshCw, RotateCcw, Search, Sun } from 'lucide-react';
 import { ACTIVE_CQO_FARM_IDS, CQO_FARMS } from '../utils/cqoData';
 
 import { useCqoData } from '../utils/cqoData';
@@ -45,6 +45,7 @@ export default function Header({
   setEvaluatorFilter,
   sourceFilter,
   setSourceFilter,
+  onClearFilters,
   theme,
   setTheme,
   searchTerm,
@@ -265,6 +266,17 @@ export default function Header({
             title="Data final"
           />
         </label>
+
+        <button
+          type="button"
+          className="header-clear-filters-btn"
+          onClick={onClearFilters}
+          title="Limpar filtros e voltar ao mês atual"
+          aria-label="Limpar filtros"
+        >
+          <RotateCcw size={14} />
+          <span>Limpar</span>
+        </button>
       </div>
 
       <div className="header-right">

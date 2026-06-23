@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, BriefcaseBusiness, Search, UserCheck, Users, Key, Lock, Loader2, Check } from 'lucide-react';
+import { AlertCircle, BriefcaseBusiness, Search, UserCheck, Users, Key, Lock, Loader2, Check, RotateCcw } from 'lucide-react';
 import { loadHeadcountData, normalizeText, updateCollaborator } from '../utils/cqoData';
 
 function metric(label, value, Icon, tone = 'green', loading = false) {
@@ -162,6 +162,18 @@ export default function Collaborators() {
               ))}
             </select>
           </label>
+          <button
+            type="button"
+            className="operational-clear-btn table-clear-btn"
+            onClick={() => {
+              setSearch('');
+              setStatus('ATIVO');
+            }}
+            title="Limpar filtros da tela"
+          >
+            <RotateCcw size={15} />
+            Limpar
+          </button>
         </div>
 
         <div className="table-wrapper">
