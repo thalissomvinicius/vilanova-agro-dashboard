@@ -265,239 +265,6 @@ function parcelDensity(props = {}) {
   return areaHa > 0 ? plants / areaHa : 0;
 }
 
-function geometryPolygons(geometry) {
-  if (!geometry) return [];
-  if (geometry.type === 'Polygon') return [geometry.coordinates || []];
-  if (geometry.type === 'MultiPolygon') return geometry.coordinates || [];
-  return [];
-}
-
-function ringBounds(ring) {
-  return ring.reduce((bounds, point) => ({
-    minLng: Math.min(bounds.minLng, Number(point[0])),
-    maxLng: Math.max(bounds.maxLng, Number(point[0])),
-    minLat: Math.min(bounds.minLat, Number(point[1])),
-    maxLat: Math.max(bounds.maxLat, Number(point[1])),
-  }), {
-    minLng: Infinity,
-    maxLng: -Infinity,
-    minLat: Infinity,
-    maxLat: -Infinity,
-  });
-}
-
-function ringAreaAbs(ring) {
-  let area = 0;
-  for (let index = 0; index < ring.length - 1; index += 1) {
-    area += (Number(ring[index][0]) * Number(ring[index + 1][1]))
-      - (Number(ring[index + 1][0]) * Number(ring[index][1]));
-  }
-  return Math.abs(area / 2);
-}
-
-function ringCentroid(ring) {
-  let areaFactor = 0;
-  let lngSum = 0;
-  let latSum = 0;
-
-  for (let index = 0; index < ring.length - 1; index += 1) {
-    const current = ring[index];
-    const next = ring[index + 1];
-    const cross = (Number(current[0]) * Number(next[1])) - (Number(next[0]) * Number(current[1]));
-    areaFactor += cross;
-    lngSum += (Number(current[0]) + Number(next[0])) * cross;
-    latSum += (Number(current[1]) + Number(next[1])) * cross;
-  }
-
-  if (!areaFactor) {
-    const bounds = ringBounds(ring);
-    return [(bounds.minLng + bounds.maxLng) / 2, (bounds.minLat + bounds.maxLat) / 2];
-  }
-
-  return [lngSum / (3 * areaFactor), latSum / (3 * areaFactor)];
-}
-
-function pointInRing(point, ring) {
-  const [lng, lat] = point;
-  let inside = false;
-
-  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
-    const currentLng = Number(ring[index][0]);
-    const currentLat = Number(ring[index][1]);
-    const previousLng = Number(ring[previous][0]);
-    const previousLat = Number(ring[previous][1]);
-    const intersects = ((currentLat > lat) !== (previousLat > lat))
-      && (lng < ((previousLng - currentLng) * (lat - currentLat)) / ((previousLat - currentLat) || 1e-12) + currentLng);
-
-    if (intersects) inside = !inside;
-  }
-
-  return inside;
-}
-
-function pointInPolygon(point, polygon) {
-  const outerRing = polygon?.[0] || [];
-  if (!pointInRing(point, outerRing)) return false;
-  return !polygon.slice(1).some((hole) => pointInRing(point, hole));
-}
-
-function pointSegmentDistanceSquared(point, start, end) {
-  const x = Number(point[0]);
-  const y = Number(point[1]);
-  const x1 = Number(start[0]);
-  const y1 = Number(start[1]);
-  const x2 = Number(end[0]);
-  const y2 = Number(end[1]);
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const segmentLength = (dx * dx) + (dy * dy);
-  const ratio = segmentLength ? Math.max(0, Math.min(1, (((x - x1) * dx) + ((y - y1) * dy)) / segmentLength)) : 0;
-  const projectionX = x1 + ratio * dx;
-  const projectionY = y1 + ratio * dy;
-
-  return ((x - projectionX) ** 2) + ((y - projectionY) ** 2);
-}
-
-function pointDistanceToPolygonEdge(point, polygon) {
-  return polygon.reduce((minDistance, ring) => {
-    let ringMin = minDistance;
-    for (let index = 0; index < ring.length - 1; index += 1) {
-      ringMin = Math.min(ringMin, pointSegmentDistanceSquared(point, ring[index], ring[index + 1]));
-    }
-    return ringMin;
-  }, Infinity);
-}
-
-function featureLabelLatLng(feature) {
-  const polygons = geometryPolygons(feature?.geometry)
-    .filter((polygon) => polygon?.[0]?.length >= 4)
-    .sort((a, b) => ringAreaAbs(b[0]) - ringAreaAbs(a[0]));
-  const polygon = polygons[0];
-  if (!polygon) return null;
-
-  const outerRing = polygon[0];
-  const bounds = ringBounds(outerRing);
-  const centroid = ringCentroid(outerRing);
-  const candidates = [centroid];
-  const gridSteps = 8;
-
-  for (let xIndex = 1; xIndex < gridSteps; xIndex += 1) {
-    for (let yIndex = 1; yIndex < gridSteps; yIndex += 1) {
-      candidates.push([
-        bounds.minLng + ((bounds.maxLng - bounds.minLng) * xIndex) / gridSteps,
-        bounds.minLat + ((bounds.maxLat - bounds.minLat) * yIndex) / gridSteps,
-      ]);
-    }
-  }
-
-  const best = candidates
-    .filter((point) => pointInPolygon(point, polygon))
-    .map((point) => ({
-      point,
-      distance: pointDistanceToPolygonEdge(point, polygon),
-    }))
-    .sort((a, b) => b.distance - a.distance)[0]?.point;
-
-  const labelPoint = best || centroid;
-  return [labelPoint[1], labelPoint[0]];
-}
-
-function mapLabelZoomClass(zoom) {
-  if (zoom < 13.5) return 'label-zoom-overview';
-  if (zoom < 14.5) return 'label-zoom-mid';
-  if (zoom < 15.5) return 'label-zoom-detail';
-  return 'label-zoom-full';
-}
-
-function applyMapLabelZoomClass(map) {
-  const container = map?.getContainer?.();
-  if (!container) return;
-  container.classList.remove('label-zoom-overview', 'label-zoom-mid', 'label-zoom-detail', 'label-zoom-full');
-  container.classList.add(mapLabelZoomClass(map.getZoom()));
-}
-
-function parcelLabelTone(summary) {
-  if (summary?.color === RISK_COLORS.critical) return 'critical';
-  if (summary?.color === RISK_COLORS.attention) return 'attention';
-  if (summary?.color === RISK_COLORS.good) return 'good';
-  return 'empty';
-}
-
-function parcelLabelPriority(summary) {
-  const tone = parcelLabelTone(summary);
-  if (tone === 'critical') return 4;
-  if (tone === 'attention') return 3;
-  if (summary?.totals) return 2;
-  return 1;
-}
-
-function rectsOverlap(first, second) {
-  return first.left < second.right
-    && first.right > second.left
-    && first.top < second.bottom
-    && first.bottom > second.top;
-}
-
-function labelEstimatedRect(map, latLng, label) {
-  const point = map.latLngToContainerPoint(latLng);
-  const width = Math.max(18, Math.min(38, String(label || '').length * 4.2 + 7));
-  const height = 11;
-
-  return {
-    left: point.x - (width / 2) - 3,
-    right: point.x + (width / 2) + 3,
-    top: point.y - (height / 2) - 3,
-    bottom: point.y + (height / 2) + 3,
-  };
-}
-
-function layerPixelSize(map, layer) {
-  if (!layer?.getBounds) return { width: 0, height: 0 };
-  const bounds = layer.getBounds();
-  if (!bounds?.isValid?.()) return { width: 0, height: 0 };
-  const northWest = map.latLngToContainerPoint(bounds.getNorthWest());
-  const southEast = map.latLngToContainerPoint(bounds.getSouthEast());
-  return {
-    width: Math.abs(southEast.x - northWest.x),
-    height: Math.abs(southEast.y - northWest.y),
-  };
-}
-
-function shouldRenderParcelLabel({ map, layer, labelLatLng, label, summary, placedRects }) {
-  const zoom = map.getZoom();
-  const priority = parcelLabelPriority(summary);
-
-  if (zoom < 13.5 && priority < 4) return false;
-  if (zoom < 14.5 && priority < 3) return false;
-  if (zoom < 15.5 && priority < 2) return false;
-
-  const size = layerPixelSize(map, layer);
-  const minWidth = zoom < 14.5 ? 42 : zoom < 15.5 ? 30 : 18;
-  const minHeight = zoom < 14.5 ? 20 : zoom < 15.5 ? 14 : 9;
-  if (size.width < minWidth || size.height < minHeight) return false;
-
-  const rect = labelEstimatedRect(map, labelLatLng, label);
-  if (placedRects.some((placed) => rectsOverlap(rect, placed))) return false;
-
-  placedRects.push(rect);
-  return true;
-}
-
-function parcelLabelIcon(label, summary) {
-  const hasData = Boolean(summary?.totals);
-  const tone = parcelLabelTone(summary);
-  return L.divIcon({
-    className: [
-      'parcel-label-icon',
-      `parcel-label-${tone}`,
-      hasData ? 'parcel-label-icon-data' : 'parcel-label-icon-muted',
-    ].join(' '),
-    html: `<span>${escapeHtml(label)}</span>`,
-    iconSize: [1, 1],
-    iconAnchor: [0, 0],
-  });
-}
-
 function perHa(value, areaHa) {
   const parsed = Number(value || 0);
   return areaHa > 0 ? parsed / areaHa : 0;
@@ -1106,7 +873,6 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   const [parcelGeoLoading, setParcelGeoLoading] = useState(true);
   const [mapRendering, setMapRendering] = useState(true);
   const [tileLoading, setTileLoading] = useState(true);
-  const [mapZoom, setMapZoom] = useState(12);
   const { records, loading: dataLoading } = useCqoData({
     sourceFilter,
     includeAttachments: false,
@@ -1304,11 +1070,6 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       });
 
       L.control.zoom({ position: 'bottomright' }).addTo(map);
-      map.on('zoomend', () => {
-        applyMapLabelZoomClass(map);
-        setMapZoom(map.getZoom());
-      });
-      applyMapLabelZoomClass(map);
       mapInstanceRef.current = map;
       layerGroupRef.current = L.layerGroup().addTo(map);
     }
@@ -1393,7 +1154,6 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       .addTo(map);
 
     const farmLayerBounds = [];
-    const placedLabelRects = [];
     const viewportKey = [
       farmFilter,
       areaFilter,
@@ -1482,22 +1242,12 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             autoPanPaddingBottomRight: [380, 70],
           });
           if (shapeParcel && mapLayer !== 'route') {
-            const labelLatLng = featureLabelLatLng(feature);
-            if (labelLatLng && shouldRenderParcelLabel({
-              map,
-              layer,
-              labelLatLng,
-              label: shapeParcel,
-              summary,
-              placedRects: placedLabelRects,
-            })) {
-              L.marker(labelLatLng, {
-                icon: parcelLabelIcon(shapeParcel, summary),
-                interactive: false,
-                keyboard: false,
-                pane: 'tooltipPane',
-              }).addTo(layers);
-            }
+            layer.bindTooltip(`Parcela ${shapeParcel}`, {
+              sticky: true,
+              direction: 'top',
+              opacity: 0.95,
+              className: 'parcel-hover-tooltip',
+            });
           }
           if (layer.getBounds) farmLayerBounds.push(layer.getBounds());
         },
@@ -1711,7 +1461,6 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
         }
       }
 
-      applyMapLabelZoomClass(map);
     };
 
     let secondViewportTimer;
@@ -1724,7 +1473,6 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           secondViewportTimer = window.setTimeout(applyViewport, 120);
         } else {
           map.invalidateSize({ pan: false, debounceMoveend: false });
-          applyMapLabelZoomClass(map);
         }
         finishRenderTimer = window.setTimeout(() => setMapRendering(false), 240);
       });
@@ -1737,7 +1485,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       window.clearTimeout(finishRenderTimer);
       tileLayer.off();
     };
-  }, [theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo, mapLayer, baseLayer, selectedRiskMetric, mapZoom, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, filteredParcelFeatures, parcelSummaryByKey]);
+  }, [theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo, mapLayer, baseLayer, selectedRiskMetric, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, filteredParcelFeatures, parcelSummaryByKey]);
 
   const mapIsLoading = dataLoading || parcelGeoLoading || mapRendering || tileLoading;
   const mapLoadingText = dataLoading
