@@ -1051,10 +1051,19 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       };
     }
 
+    let tilesSettled = false;
+    const settleTiles = () => {
+      tilesSettled = true;
+      setTileLoading(false);
+    };
+    const tileFailSafeTimer = window.setTimeout(settleTiles, presentationMode ? 2200 : 4500);
+
     const tileLayer = L.tileLayer(tileUrl, tileOptions)
-      .on('loading', () => setTileLoading(true))
-      .on('load', () => setTileLoading(false))
-      .on('tileerror', () => setTileLoading(false))
+      .on('loading', () => {
+        if (!tilesSettled) setTileLoading(true);
+      })
+      .on('load', settleTiles)
+      .on('tileerror', settleTiles)
       .addTo(map);
 
     const farmLayerBounds = [];
@@ -1377,7 +1386,10 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
         } else {
           map.invalidateSize({ pan: false, debounceMoveend: false });
         }
-        finishRenderTimer = window.setTimeout(() => setMapRendering(false), 240);
+        finishRenderTimer = window.setTimeout(() => {
+          setMapRendering(false);
+          if (presentationMode) settleTiles();
+        }, presentationMode ? 320 : 240);
       });
     });
 
@@ -1386,9 +1398,10 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       window.cancelAnimationFrame(frame);
       window.clearTimeout(secondViewportTimer);
       window.clearTimeout(finishRenderTimer);
+      window.clearTimeout(tileFailSafeTimer);
       tileLayer.off();
     };
-  }, [theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo, mapLayer, baseLayer, selectedRiskMetric, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, filteredParcelFeatures, parcelSummaryByKey]);
+  }, [theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo, mapLayer, baseLayer, selectedRiskMetric, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, filteredParcelFeatures, parcelSummaryByKey, presentationMode]);
 
   const mapIsLoading = dataLoading || parcelGeoLoading || mapRendering || tileLoading;
   const mapLoadingText = dataLoading
