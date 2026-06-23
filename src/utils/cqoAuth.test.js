@@ -184,6 +184,117 @@ describe('dashboard response mutations', () => {
     expect(data.source).toBe('Banco online');
   });
 
+  it('transforma snapshot CQO Excel em registros operacionais filtraveis', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okJson({
+      response_table: 'mobile_respostas',
+      mobile_respostas: [],
+      mobile_gps: [],
+      mobile_anexos: [],
+      mobile_formularios: [],
+      headcount_import_snapshots: [{
+        reference_month: '2024-07',
+        rows_json: [{
+          MATRICULA: '2005',
+          NOME: 'Maria Silva',
+          STATUS: 'ATIVO',
+          FUNCAO: 'Fiscal CQO',
+        }],
+        imported_at: '2024-07-31T12:00:00Z',
+      }],
+      cqo_import_snapshots: [{
+        import_key: 'cqo_1_digitacao_cqo',
+        source_file: '1_Digitação_CQO.xlsx',
+        corte_total_rows: 2,
+        carreamento_total_rows: 1,
+        imported_at: '2026-06-18T19:56:35Z',
+        updated_at: '2026-06-18T19:56:35Z',
+        corte_rows_json: [
+          {
+            NomePolo: 'TOMÉ-AÇU',
+            NomeFazenda: 'VILA NOVA',
+            Parcela: 'E18',
+            'DataAvaliação': 45474,
+            ciclo_mes: 1,
+            MatriculaAvaliadores: '2005',
+            'Fiscal Resp': 'Reney',
+            NumeroPlantasObservadas: 318,
+            NumeroCahosObservados: 30,
+            CachoEsquecidoCiclo: 1,
+            CachoVerde: 2,
+            CachoMaduro: 27,
+            CachoPassado: 1,
+          },
+          {
+            NomePolo: 'TOMÉ-AÇU',
+            NomeFazenda: 'VILA NOVA',
+            Parcela: 'E18',
+            'DataAvaliação': 45474,
+            ciclo_mes: 1,
+            MatriculaAvaliadores: '2005',
+            'Fiscal Resp': 'Reney',
+            NumeroPlantasObservadas: 114,
+            NumeroCahosObservados: 19,
+            CachoEsquecidoCiclo: 2,
+            CachoVerde: 0,
+            CachoMaduro: 19,
+            CachoPassado: 0,
+          },
+        ],
+        carreamento_rows_json: [{
+          NomePolo: 'TOMÉ-AÇU',
+          NomeFazenda: 'NOVA CONCEIÇÃO',
+          Parcela: 'D30',
+          'DataAvaliação': 45444,
+          Ciclo_mes: 1,
+          MatriculaAvaliadores: '2005',
+          'Fiscal Resp': 'Reginaldo',
+          NumeroPlantasObservadas: 474,
+          Cachonaocarreado: 3,
+          cachoMalPosicionado: 1,
+        }],
+      }],
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { filterRecords, refreshCqoData, setCqoSessionToken } = await loadAuthModule();
+    setCqoSessionToken('session-token');
+    const data = await refreshCqoData();
+
+    expect(data.cqoImport).toMatchObject({
+      records: 2,
+      corteRows: 2,
+      carreamentoRows: 1,
+    });
+    expect(data.excelRecords).toHaveLength(2);
+
+    const corte = data.excelRecords.find((record) => record.type === 'corte');
+    expect(corte).toMatchObject({
+      source: 'excel',
+      farmId: 'vila-nova',
+      farm: 'VILA NOVA',
+      parcel: 'E18',
+      date: '01/07/2024',
+      evaluator: 'Maria Silva',
+      fiscal: 'Reney',
+    });
+    expect(corte.lines).toHaveLength(2);
+    expect(corte.totals).toMatchObject({
+      plantasObservadas: 432,
+      cachoEsquecido: 3,
+      cachoMaduro: 46,
+    });
+
+    const visible = filterRecords(data.records, {
+      areaFilter: 'corte',
+      sourceFilter: 'excel',
+      periodFilter: 'custom',
+      dateFrom: '2024-01-01',
+      dateTo: '2024-12-31',
+    });
+
+    expect(visible.map((record) => record.id)).toEqual([corte.id]);
+  });
+
   it('carrega headcount por RPC quando ha sessao ativa', async () => {
     const fetchMock = vi.fn().mockResolvedValue(okJson({
       reference_month: '2026-06',
