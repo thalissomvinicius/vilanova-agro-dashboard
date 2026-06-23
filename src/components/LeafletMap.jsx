@@ -809,13 +809,22 @@ function popupCauseChart(totals) {
 }
 
 function popupBunchStack(totals) {
-  const parts = [
+  const visibleParts = [
     { label: 'Maduro', value: Number(totals?.cachoMaduro || 0), color: '#FB8A4B' },
     { label: 'Passado', value: Number(totals?.cachoPassado || 0), color: '#6B4B3E' },
     { label: 'Verde', value: Number(totals?.cachoVerde || 0), color: '#22C55E' },
     { label: 'Averm.', value: Number(totals?.cachoAvermelhado || 0), color: '#B91C1C' },
+    { label: 'Estrela', value: Number(totals?.cachoEstrela || 0), color: '#F2B544' },
+    { label: 'Talo', value: Number(totals?.taloComprido || 0), color: '#D98C10' },
   ];
-  const total = parts.reduce((sum, item) => sum + item.value, 0);
+  const visibleTotal = visibleParts.reduce((sum, item) => sum + item.value, 0);
+  const observedTotal = Number(totals?.cachosObservados || 0);
+  const total = Math.max(observedTotal, visibleTotal);
+  const others = Math.max(0, total - visibleTotal);
+  const parts = [
+    ...visibleParts,
+    ...(others > 0 ? [{ label: 'Outros', value: others, color: '#94A3B8' }] : []),
+  ];
 
   if (!total) return '<div class="parcel-popup-empty">Sem composição de cachos observados nesta parcela.</div>';
 
@@ -823,11 +832,11 @@ function popupBunchStack(totals) {
     <div class="parcel-popup-stack">
       <div class="parcel-popup-stackbar">
         ${parts.map((item) => `
-          <span style="width:${Math.max(item.value ? 3 : 0, (item.value / total) * 100)}%; background:${item.color};" title="${escapeHtml(item.label)}"></span>
+          <span style="width:${(item.value / total) * 100}%; background:${item.color};" title="${escapeHtml(item.label)}"></span>
         `).join('')}
       </div>
       <div class="parcel-popup-stack-legend">
-        ${parts.map((item) => `
+        ${parts.filter((item) => item.value > 0 || item.label !== 'Outros').map((item) => `
           <span><i style="background:${item.color};"></i>${escapeHtml(item.label)} ${formatDecimal(percentOf(item.value, total), 1)}%</span>
         `).join('')}
       </div>
