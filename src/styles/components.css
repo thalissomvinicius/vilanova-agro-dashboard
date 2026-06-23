@@ -4321,6 +4321,53 @@ body.presentation-active {
   opacity: 0.72;
 }
 
+.parcel-popup-goal-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.parcel-popup-goal-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 7px;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg-primary);
+}
+
+.parcel-popup-goal-item span {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.parcel-popup-goal-item i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+
+.parcel-popup-goal-item b {
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.parcel-popup-goal-item small {
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .parcel-popup-chart-foot span,
 .parcel-popup-chart-foot b {
   color: var(--text-muted);

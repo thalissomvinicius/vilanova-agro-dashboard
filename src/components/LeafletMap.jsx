@@ -27,6 +27,7 @@ const BASE_LAYER_NOTES = {
 };
 
 const RISK_METRICS = [
+  { id: 'farol_bi', label: 'Farol CQO (metas BI)', unit: 'status', goodWhen: 'composite', meta: null },
   { id: 'nota', label: 'Nota CQO', unit: '%', goodWhen: 'high', meta: 90 },
   { id: 'perda_t_ha', label: 'Perda estimada t/ha', unit: 't/ha', goodWhen: 'low', meta: 0.08 },
   { id: 'cachos_ha', label: 'Cachos perdidos/ha', unit: 'cachos/ha', goodWhen: 'low', meta: 4 },
@@ -37,7 +38,10 @@ const RISK_METRICS = [
   { id: 'passado', label: 'Cacho passado %', unit: '%', goodWhen: 'low', meta: 10 },
   { id: 'avermelhado', label: 'Cacho avermelhado %', unit: '%', goodWhen: 'low', meta: 4 },
   { id: 'talo', label: 'Talo comprido %', unit: '%', goodWhen: 'low', meta: 3 },
+  { id: 'estrela', label: 'Cacho estrela %', unit: '%', goodWhen: 'low', meta: 2 },
 ];
+
+const BI_GOAL_METRIC_IDS = ['maduro', 'passado', 'verde', 'avermelhado', 'talo', 'estrela'];
 
 const RISK_COLORS = {
   good: '#22C55E',
@@ -47,7 +51,7 @@ const RISK_COLORS = {
 };
 
 function activeRiskMetric(metricId) {
-  return RISK_METRICS.find((metric) => metric.id === metricId) || RISK_METRICS[1];
+  return RISK_METRICS.find((metric) => metric.id === metricId) || RISK_METRICS[0];
 }
 
 const defaultIcon = L.icon({
@@ -420,10 +424,6 @@ function hasCorteBunchBase(totals) {
   return Number(totals?.corte || 0) > 0 && Number(totals?.cachosObservados || 0) > 0;
 }
 
-function hasCortePlantBase(totals) {
-  return Number(totals?.corte || 0) > 0 && Number(totals?.plantasObservadas || 0) > 0;
-}
-
 function hasCarreamentoBase(totals) {
   return Number(totals?.carreamento || 0) > 0 && Number(totals?.plantasObservadas || 0) > 0;
 }
@@ -447,6 +447,8 @@ function metricValue(metric, totals, areaHa) {
   if (!totals) return null;
 
   switch (metric.id) {
+    case 'farol_bi':
+      return qualityGoalScore(totals);
     case 'nota':
       return Number(totals.generalScore || 0);
     case 'perda_t_ha':
@@ -474,8 +476,11 @@ function metricValue(metric, totals, areaHa) {
       if (!hasCorteBunchBase(totals)) return null;
       return percentOf(totals.cachoAvermelhado, totals.cachosObservados);
     case 'talo':
-      if (!hasCortePlantBase(totals)) return null;
-      return Number(totals.taloCompridoRate || 0);
+      if (!hasCorteBunchBase(totals)) return null;
+      return percentOf(totals.taloComprido, totals.cachosObservados);
+    case 'estrela':
+      if (!hasCorteBunchBase(totals)) return null;
+      return percentOf(totals.cachoEstrela, totals.cachosObservados);
     default:
       return 0;
   }
@@ -487,6 +492,12 @@ function metricColor(metric, value, hasData) {
   }
 
   const numeric = Number(value);
+  if (metric.goodWhen === 'composite') {
+    if (numeric >= 2) return RISK_COLORS.critical;
+    if (numeric >= 1) return RISK_COLORS.attention;
+    return RISK_COLORS.good;
+  }
+
   if (metric.goodWhen === 'high') {
     if (numeric >= metric.meta) return RISK_COLORS.good;
     if (numeric >= metric.meta * 0.88) return RISK_COLORS.attention;
@@ -498,9 +509,39 @@ function metricColor(metric, value, hasData) {
   return RISK_COLORS.critical;
 }
 
+function qualityGoalMetrics() {
+  return BI_GOAL_METRIC_IDS
+    .map((id) => RISK_METRICS.find((metric) => metric.id === id))
+    .filter(Boolean);
+}
+
+function qualityGoalRows(totals) {
+  if (!totals) return [];
+
+  return qualityGoalMetrics()
+    .map((metric) => {
+      const value = metricValue(metric, totals, 0);
+      const color = metricColor(metric, value, true);
+      return {
+        metric,
+        value,
+        color,
+        severity: color === RISK_COLORS.critical ? 2 : color === RISK_COLORS.attention ? 1 : 0,
+      };
+    })
+    .filter((item) => item.value !== null && item.value !== undefined && Number.isFinite(Number(item.value)));
+}
+
+function qualityGoalScore(totals) {
+  const rows = qualityGoalRows(totals);
+  if (!rows.length) return null;
+  return Math.max(...rows.map((item) => item.severity));
+}
+
 function metricRiskScore(metric, value) {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) return -Infinity;
   const numeric = Number(value);
+  if (metric.goodWhen === 'composite') return numeric;
   return metric.goodWhen === 'high' ? metric.meta - numeric : numeric - metric.meta;
 }
 
@@ -512,6 +553,11 @@ function hasMetricValue(summary) {
 
 function formatMetricValue(metric, value) {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) return 'N/D';
+  if (metric.goodWhen === 'composite') {
+    if (Number(value) >= 2) return 'Fora da meta';
+    if (Number(value) >= 1) return 'Atenção';
+    return 'Dentro da meta';
+  }
   if (metric.unit === 't/ha') return `${formatDecimal(value, 3)} t/ha`;
   if (metric.unit === 'cachos/ha') return `${formatDecimal(value, 1)} cachos/ha`;
   if (metric.unit === '%') return `${formatDecimal(value, metric.id === 'nota' ? 0 : 1)}%`;
@@ -528,11 +574,25 @@ function escapeHtml(value) {
 }
 
 function metricTargetText(metric) {
+  if (metric.goodWhen === 'composite') return 'metas BI';
   const prefix = metric.goodWhen === 'high' ? 'mín.' : 'máx.';
   return `${prefix} ${formatMetricValue(metric, metric.meta)}`;
 }
 
 function metricExplanation(metric, value, color) {
+  if (metric.goodWhen === 'composite') {
+    if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+      return 'Sem dados suficientes para comparar as metas do BI nesta parcela.';
+    }
+    if (Number(value) >= 2) {
+      return 'crítico: pelo menos uma meta principal do BI ficou fora do limite.';
+    }
+    if (Number(value) >= 1) {
+      return 'atenção: existe indicador próximo do limite definido no BI.';
+    }
+    return 'dentro da meta: os indicadores principais respeitam as metas do BI.';
+  }
+
   if (value === null || value === undefined || !Number.isFinite(Number(value))) {
     return 'Sem valor suficiente para comparar com a meta neste indicador.';
   }
@@ -550,6 +610,7 @@ function metricExplanation(metric, value, color) {
 
 function metricProgressWidth(metric, value) {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) return 0;
+  if (metric.goodWhen === 'composite') return Number(value) >= 2 ? 100 : Number(value) >= 1 ? 66 : 100;
   const numeric = Math.max(0, Number(value));
   const base = Math.max(Number(metric.meta || 1), numeric);
   if (metric.goodWhen === 'high') return Math.max(8, Math.min(100, (numeric / base) * 100));
@@ -558,6 +619,7 @@ function metricProgressWidth(metric, value) {
 
 function metricTargetPosition(metric, value) {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) return 50;
+  if (metric.goodWhen === 'composite') return 50;
   const numeric = Math.max(0, Number(value));
   const base = metric.goodWhen === 'high'
     ? Math.max(Number(metric.meta || 1), numeric)
@@ -660,14 +722,46 @@ function topCauseRows(totals) {
     { label: 'Verde', value: Number(totals.cachoVerdeRate || 0), detail: `${formatInteger(totals.cachoVerde || 0)} cacho(s)`, color: '#F59E0B' },
     { label: 'Passado', value: Number(totals.cachoPassadoRate || 0), detail: `${formatInteger(totals.cachoPassado || 0)} cacho(s)`, color: '#6B4B3E' },
     { label: 'Avermelhado', value: percentOf(totals.cachoAvermelhado, totals.cachosObservados), detail: `${formatInteger(totals.cachoAvermelhado || 0)} cacho(s)`, color: '#B91C1C' },
-    { label: 'Talo comprido', value: Number(totals.taloCompridoRate || 0), detail: `${formatInteger(totals.taloComprido || 0)} ocorr.`, color: '#D98C10' },
+    { label: 'Talo comprido', value: percentOf(totals.taloComprido, totals.cachosObservados), detail: `${formatInteger(totals.taloComprido || 0)} cacho(s)`, color: '#D98C10' },
+    { label: 'Estrela', value: percentOf(totals.cachoEstrela, totals.cachosObservados), detail: `${formatInteger(totals.cachoEstrela || 0)} cacho(s)`, color: '#F2B544' },
     { label: 'Mal posicionado', value: Number(totals.cachoMalPosicionadoRate || 0), detail: `${formatInteger(totals.cachoMalPosicionado || 0)} ocorr.`, color: '#F97316' },
   ].filter((item) => item.value > 0 || !/^0\b/.test(String(item.detail)))
     .sort((a, b) => b.value - a.value)
     .slice(0, 4);
 }
 
-function popupMetricChart(metric, value, color) {
+function popupBiGoalChecklist(totals) {
+  const rows = qualityGoalRows(totals);
+  if (!rows.length) {
+    return '<div class="parcel-popup-empty">Sem base de cachos suficiente para comparar com as metas do BI.</div>';
+  }
+
+  return `
+    <div class="parcel-popup-chart-card">
+      <div class="parcel-popup-chart-head">
+        <span>Farol CQO - metas BI</span>
+        <strong style="color:${rows.some((row) => row.severity >= 2) ? RISK_COLORS.critical : rows.some((row) => row.severity >= 1) ? RISK_COLORS.attention : RISK_COLORS.good};">
+          ${rows.some((row) => row.severity >= 2) ? 'Fora da meta' : rows.some((row) => row.severity >= 1) ? 'Atenção' : 'Dentro da meta'}
+        </strong>
+      </div>
+      <div class="parcel-popup-goal-list">
+        ${rows.map(({ metric, value: rowValue, color: rowColor }) => `
+          <div class="parcel-popup-goal-item">
+            <span><i style="background:${rowColor};"></i>${escapeHtml(metric.label)}</span>
+            <b style="color:${rowColor};">${formatMetricValue(metric, rowValue)}</b>
+            <small>${escapeHtml(metricTargetText(metric))}</small>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function popupMetricChart(metric, value, color, totals = null) {
+  if (metric.goodWhen === 'composite') {
+    return popupBiGoalChecklist(totals);
+  }
+
   const width = metricProgressWidth(metric, value);
   const target = metricTargetPosition(metric, value);
 
@@ -849,7 +943,8 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
     popupPercentRow('Cacho verde', `${formatDecimal(totals?.cachoVerdeRate || 0, 1)}%`, '#F59E0B'),
     popupPercentRow('Cacho passado', `${formatDecimal(totals?.cachoPassadoRate || 0, 1)}%`, '#F59E0B'),
     popupPercentRow('Avermelhado', `${formatDecimal(percentOf(totals?.cachoAvermelhado, totals?.cachosObservados), 1)}%`, '#EF4444'),
-    popupPercentRow('Talo comprido', `${formatDecimal(totals?.taloCompridoRate || 0, 1)}%`, '#D98C10'),
+    popupPercentRow('Talo comprido', `${formatDecimal(percentOf(totals?.taloComprido, totals?.cachosObservados), 1)}%`, '#D98C10'),
+    popupPercentRow('Estrela', `${formatDecimal(percentOf(totals?.cachoEstrela, totals?.cachosObservados), 1)}%`, '#F2B544'),
     popupPercentRow('Nao carreado', `${formatDecimal(totals?.cachoNaoCarreadoRate || 0, 1)}%`, '#EF4444'),
   ].join('');
 
@@ -865,7 +960,7 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
           <strong style="color:${selectedColor};">${riskStatusLabel(selectedColor)}</strong>
           <span>${escapeHtml(metricExplanation(selectedMetric, selectedValue, selectedColor))}</span>
         </div>
-        ${totals ? popupMetricChart(selectedMetric, selectedValue, selectedColor) : ''}
+        ${totals ? popupMetricChart(selectedMetric, selectedValue, selectedColor, totals) : ''}
         <div class="parcel-popup-grid">${mainMetrics}</div>
         ${riskBlock}
         <div class="parcel-popup-section">O que aconteceu</div>
@@ -899,7 +994,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   const layerGroupRef = useRef(null);
   const [mapLayer, setMapLayer] = useState('heat');
   const [baseLayer, setBaseLayer] = useState('standard');
-  const [riskMetricId, setRiskMetricId] = useState('perda_t_ha');
+  const [riskMetricId, setRiskMetricId] = useState('farol_bi');
   const [parcelGeoJson, setParcelGeoJson] = useState(null);
   const { records } = useCqoData({
     sourceFilter,
