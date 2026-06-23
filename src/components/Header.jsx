@@ -3,7 +3,6 @@ import { Bell, LogOut, MonitorPlay, Moon, RefreshCw, RotateCcw, Search, Sun } fr
 import { ACTIVE_CQO_FARM_IDS, CQO_FARMS } from '../utils/cqoData';
 
 import { useCqoData } from '../utils/cqoData';
-import { useBonificacaoData } from '../utils/bonificacaoData';
 
 function addYearFromValue(years, value) {
   if (!value) return;
@@ -59,15 +58,16 @@ export default function Header({
   activePage,
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
+  const lightweightSourceFilter = sourceFilter === 'app' ? 'app' : 'all';
   const { records } = useCqoData({
-    sourceFilter,
+    sourceFilter: lightweightSourceFilter,
+    includeExcel: false,
+    includeHeadcount: false,
     includeAttachments: false,
     includeForms: false,
-    includeHeadcount: false,
     includeGps: false,
-    appLimit: 150,
+    appLimit: 300,
   });
-  const bonificacaoData = useBonificacaoData();
 
   const monthOptions = [
     { value: '01', label: 'Janeiro' },
@@ -97,14 +97,8 @@ export default function Header({
       ].forEach((candidate) => addYearFromValue(years, candidate));
     });
 
-    (bonificacaoData?.cqoRampa?.byProducerDay || []).forEach((row) => addYearFromValue(years, row.dayKey));
-    (bonificacaoData?.cqoRampa?.byDay || []).forEach((row) => addYearFromValue(years, row.dayKey));
-    (bonificacaoData?.cqoRampa?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));
-    (bonificacaoData?.entradaDeCff?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));
-    (bonificacaoData?.faturamento?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));
-
     return Array.from(years).sort((a, b) => Number(b) - Number(a));
-  }, [records, bonificacaoData, yearFilter]);
+  }, [records, yearFilter]);
 
   const fiscalResponsibles = React.useMemo(() => {
     const fiscals = new Set();

@@ -9,6 +9,41 @@ export const SUPABASE_CONFIG = {
   configured: Boolean(SUPABASE_URL && SUPABASE_ANON_KEY),
 };
 
+const cqoResourcePromiseCache = new Map();
+const normalizedExcelRecordsCache = new WeakMap();
+const EMPTY_HEADCOUNT_REFERENCE = [];
+
+function getCqoResource(key, loader) {
+  if (cqoResourcePromiseCache.has(key)) return cqoResourcePromiseCache.get(key);
+
+  const promise = Promise.resolve()
+    .then(loader)
+    .catch((error) => {
+      cqoResourcePromiseCache.delete(key);
+      throw error;
+    });
+
+  cqoResourcePromiseCache.set(key, promise);
+  return promise;
+}
+
+function normalizeExcelRecordsOnce(cqoImport, headcount = EMPTY_HEADCOUNT_REFERENCE) {
+  if (!cqoImport?.rows?.length) return [];
+
+  const headcountKey = headcount || EMPTY_HEADCOUNT_REFERENCE;
+  let cacheByHeadcount = normalizedExcelRecordsCache.get(cqoImport);
+  if (!cacheByHeadcount) {
+    cacheByHeadcount = new WeakMap();
+    normalizedExcelRecordsCache.set(cqoImport, cacheByHeadcount);
+  }
+
+  if (cacheByHeadcount.has(headcountKey)) return cacheByHeadcount.get(headcountKey);
+
+  const records = cqoImport.rows.map((row) => normalizeResponse(row, headcountKey));
+  cacheByHeadcount.set(headcountKey, records);
+  return records;
+}
+
 export const CQO_FARMS = [
   { id: 'all', name: 'Todas as Fazendas' },
   { id: 'fe-em-deus', name: 'Fé em Deus' },
@@ -571,6 +606,10 @@ async function fetchSupabaseTable(table, query) {
   return response.json();
 }
 
+function fetchSupabaseTableCached(table, query) {
+  return getCqoResource(`table:${table}?${query}`, () => fetchSupabaseTable(table, query));
+}
+
 export async function authenticateDashboardUser(matricula, senha) {
   const normalizedMatricula = String(matricula || '').trim();
   const normalizedSenha = String(senha || '').trim();
@@ -604,10 +643,12 @@ export async function authenticateDashboardUser(matricula, senha) {
 }
 
 export async function loadHeadcountData() {
-  const snapshot = await loadHeadcountSnapshotData();
-  if (snapshot.rows.length) return snapshot.rows;
+  return getCqoResource('headcount:dashboard', async () => {
+    const snapshot = await loadHeadcountSnapshotData();
+    if (snapshot.rows.length) return snapshot.rows;
 
-  return fetchLegacyHeadcountData();
+    return fetchLegacyHeadcountData();
+  });
 }
 
 function pickHeadcountValue(row, keys) {
@@ -666,7 +707,7 @@ async function loadHeadcountSnapshotData() {
   }).toString();
 
   try {
-    const snapshots = await fetchSupabaseTable('headcount_import_snapshots', query);
+    const snapshots = await fetchSupabaseTableCached('headcount_import_snapshots', query);
     const snapshot = snapshots[0];
     const rawRows = Array.isArray(snapshot?.rows_json) ? snapshot.rows_json : [];
     const rows = rawRows
@@ -681,7 +722,7 @@ async function loadHeadcountSnapshotData() {
 }
 
 async function fetchLegacyHeadcountData(query = 'select=matricula,nome,departamento,cargo,gestor,status,senha,reference_date,updated_at&order=nome.asc&limit=3000') {
-  const rows = await fetchSupabaseTable('headcount_colaboradores', query);
+  const rows = await fetchSupabaseTableCached('headcount_colaboradores', query);
   return rows.map((row) => ({
     ...row,
     source: 'headcount_colaboradores',
@@ -861,28 +902,30 @@ function groupCqoSnapshotRows(rows, type, snapshot) {
 }
 
 async function loadCqoImportSnapshotRows() {
-  const query = new URLSearchParams({
-    select: 'import_key,fonte,source_file,source_path,file_last_write_time,corte_total_rows,carreamento_total_rows,corte_columns_json,carreamento_columns_json,corte_rows_json,carreamento_rows_json,imported_at,updated_at',
-    import_key: 'eq.cqo_1_digitacao_cqo',
-    limit: '1',
-  }).toString();
+  return getCqoResource('cqo-import-snapshot:rows', async () => {
+    const query = new URLSearchParams({
+      select: 'import_key,fonte,source_file,source_path,file_last_write_time,corte_total_rows,carreamento_total_rows,corte_columns_json,carreamento_columns_json,corte_rows_json,carreamento_rows_json,imported_at,updated_at',
+      import_key: 'eq.cqo_1_digitacao_cqo',
+      limit: '1',
+    }).toString();
 
-  try {
-    const snapshots = await fetchSupabaseTable('cqo_import_snapshots', query);
-    const snapshot = snapshots[0];
-    if (!snapshot) return { rows: [], snapshot: null };
-    const corteRows = Array.isArray(snapshot.corte_rows_json) ? snapshot.corte_rows_json : [];
-    const carreamentoRows = Array.isArray(snapshot.carreamento_rows_json) ? snapshot.carreamento_rows_json : [];
-    return {
-      snapshot,
-      rows: [
-        ...groupCqoSnapshotRows(corteRows, 'corte', snapshot),
-        ...groupCqoSnapshotRows(carreamentoRows, 'carreamento', snapshot),
-      ],
-    };
-  } catch {
-    return { rows: [], snapshot: null };
-  }
+    try {
+      const snapshots = await fetchSupabaseTableCached('cqo_import_snapshots', query);
+      const snapshot = snapshots[0];
+      if (!snapshot) return { rows: [], snapshot: null };
+      const corteRows = Array.isArray(snapshot.corte_rows_json) ? snapshot.corte_rows_json : [];
+      const carreamentoRows = Array.isArray(snapshot.carreamento_rows_json) ? snapshot.carreamento_rows_json : [];
+      return {
+        snapshot,
+        rows: [
+          ...groupCqoSnapshotRows(corteRows, 'corte', snapshot),
+          ...groupCqoSnapshotRows(carreamentoRows, 'carreamento', snapshot),
+        ],
+      };
+    } catch {
+      return { rows: [], snapshot: null };
+    }
+  });
 }
 
 export async function updateResponseReviewStatus(responseId, status) {
@@ -950,7 +993,7 @@ async function fetchFirstAvailableTable(candidates, query) {
 
   for (const table of candidates) {
     try {
-      const rows = await fetchSupabaseTable(table, query);
+      const rows = await fetchSupabaseTableCached(table, query);
       return { table, rows };
     } catch (error) {
       errors.push(`${table}: ${error.message}`);
@@ -962,7 +1005,7 @@ async function fetchFirstAvailableTable(candidates, query) {
 
 async function fetchOptionalTable(table, query) {
   try {
-    return await fetchSupabaseTable(table, query);
+    return await fetchSupabaseTableCached(table, query);
   } catch {
     return [];
   }
@@ -994,7 +1037,6 @@ function loadOptionsKey(options) {
     options.includeGps ? 'gps' : 'no-gps',
     options.includeAttachments ? 'attachments' : 'no-attachments',
     options.includeForms ? 'forms' : 'no-forms',
-    `limit-${options.appLimit}`,
   ].join('|');
 }
 
@@ -1011,7 +1053,7 @@ async function loadSupabaseData(options = {}) {
     loadOptions.includeApp
       ? fetchFirstAvailableTable(
         ['mobile_respostas', 'respostas'],
-        `select=*&status=neq.excluido&order=criado_em.desc&limit=${loadOptions.appLimit}`
+        'select=*&status=neq.excluido&order=criado_em.desc&limit=1000'
       )
       : Promise.resolve({ table: 'mobile_respostas', rows: [] }),
     loadOptions.includeHeadcount ? loadHeadcountData() : Promise.resolve([]),
@@ -1062,7 +1104,7 @@ async function loadSupabaseData(options = {}) {
       gpsByResponse[row.id] || [],
       attachmentsByResponse[row.id] || []
   ));
-  const excelRecords = cqoImport.rows.map((row) => normalizeResponse(row, headcount));
+  const excelRecords = normalizeExcelRecordsOnce(cqoImport, headcount);
   const records = [...mobileRecords, ...excelRecords]
     .sort((a, b) => {
       const dateA = parseRecordDateValue(a.raw?.data_avaliacao || a.createdAt)?.getTime() || 0;
@@ -1161,6 +1203,7 @@ function startCqoLoad(key, options) {
 export function clearCqoCache() {
   cachedDataByKey.clear();
   activePromiseByKey.clear();
+  cqoResourcePromiseCache.clear();
 }
 
 export function refreshCqoData() {

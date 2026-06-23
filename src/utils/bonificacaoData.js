@@ -191,50 +191,62 @@ function normalizeSnapshot(rawSnapshot, metadata = {}) {
   };
 }
 
+let bonificacaoStateCache = normalizeSnapshot(snapshot);
+let bonificacaoLoadPromise = null;
+const bonificacaoListeners = new Set();
+
+function notifyBonificacaoListeners(nextState) {
+  bonificacaoListeners.forEach((listener) => listener(nextState));
+}
+
+function loadBonificacaoDataOnce() {
+  if (bonificacaoLoadPromise) return bonificacaoLoadPromise;
+
+  bonificacaoLoadPromise = fetchBonificacaoSnapshot()
+    .then((onlineSnapshot) => {
+      if (onlineSnapshot?.snapshot) {
+        return normalizeSnapshot(onlineSnapshot.snapshot, {
+          online: true,
+          sourcePath: onlineSnapshot.sourcePath,
+          importedAt: onlineSnapshot.importedAt,
+          updatedAt: onlineSnapshot.updatedAt,
+        });
+      }
+
+      return fetch('/bonificacaoSnapshot.json')
+        .then((response) => (response.ok ? response.json() : null))
+        .then((json) => (json ? normalizeSnapshot(json) : bonificacaoStateCache));
+    })
+    .catch(() => (
+      fetch('/bonificacaoSnapshot.json')
+        .then((response) => (response.ok ? response.json() : null))
+        .then((json) => (json ? normalizeSnapshot(json) : fallbackData()))
+        .catch(() => fallbackData())
+    ))
+    .then((nextState) => {
+      bonificacaoStateCache = nextState;
+      notifyBonificacaoListeners(nextState);
+      return nextState;
+    });
+
+  return bonificacaoLoadPromise;
+}
+
 export function useBonificacaoData() {
-  const [state, setState] = useState(normalizeSnapshot(snapshot));
+  const [state, setState] = useState(bonificacaoStateCache);
 
   useEffect(() => {
     let mounted = true;
+    const listener = (nextState) => {
+      if (mounted) setState(nextState);
+    };
 
-    fetchBonificacaoSnapshot()
-      .then((onlineSnapshot) => {
-        if (!mounted) return null;
-        if (onlineSnapshot?.snapshot) {
-          setState(normalizeSnapshot(onlineSnapshot.snapshot, {
-            online: true,
-            sourcePath: onlineSnapshot.sourcePath,
-            importedAt: onlineSnapshot.importedAt,
-            updatedAt: onlineSnapshot.updatedAt,
-          }));
-          return null;
-        }
-
-        return fetch('/bonificacaoSnapshot.json')
-          .then((response) => (response.ok ? response.json() : null))
-          .then((json) => {
-            if (mounted && json) {
-              setState(normalizeSnapshot(json));
-            }
-          });
-      })
-      .catch(() => (
-        fetch('/bonificacaoSnapshot.json')
-          .then((response) => (response.ok ? response.json() : null))
-          .then((json) => {
-            if (mounted && json) {
-              setState(normalizeSnapshot(json));
-            } else if (mounted) {
-              setState(fallbackData());
-            }
-          })
-          .catch(() => {
-            if (mounted) setState(fallbackData());
-          })
-      ));
+    bonificacaoListeners.add(listener);
+    loadBonificacaoDataOnce();
 
     return () => {
       mounted = false;
+      bonificacaoListeners.delete(listener);
     };
   }, []);
 
