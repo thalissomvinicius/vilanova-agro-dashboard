@@ -22,6 +22,10 @@ import {
   X,
 } from 'lucide-react';
 import CustomChart from '../components/CustomChart';
+import MetricCard from '../components/ui/MetricCard';
+import PageHeader from '../components/ui/PageHeader';
+import SegmentedTabs from '../components/ui/SegmentedTabs';
+import StatusBanner from '../components/ui/StatusBanner';
 import { aggregateRecords, buildCharts, filterRecords, useCqoData } from '../utils/cqoData';
 
 function fmt(value, digits = 0) {
@@ -34,41 +38,6 @@ function fmt(value, digits = 0) {
 function pct(num, den) {
   if (!den || den === 0) return '0,0%';
   return `${((num / den) * 100).toFixed(1).replace('.', ',')}%`;
-}
-
-// ─── KpiCard ─────────────────────────────────────────────────────────────────
-function KpiCard({ title, value, subtitle, icon: Icon, tone = 'green', loading = false, trend = null }) {
-  const toneMap = {
-    green: 'kpi-icon-green',
-    orange: 'kpi-icon-orange',
-    info: 'kpi-icon-info',
-    danger: 'kpi-icon-danger',
-    warning: 'kpi-icon-orange',
-  };
-  return (
-    <div className="card kpi-card">
-      <div className="kpi-card-header">
-        <span className="kpi-title">{title}</span>
-        <div className={`kpi-icon-wrapper ${toneMap[tone] || 'kpi-icon-green'}`}>
-          <Icon size={18} />
-        </div>
-      </div>
-      <div className="kpi-body">
-        <span className={`kpi-value ${loading ? 'skeleton-text' : ''}`}>
-          {loading ? '\u00A0' : value}
-        </span>
-        {trend !== null && !loading && (
-          <span style={{ fontSize: '0.72rem', color: trend >= 0 ? 'var(--status-success)' : 'var(--status-danger)', display: 'flex', alignItems: 'center', gap: 2 }}>
-            {trend >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-            {trend >= 0 ? '+' : ''}{trend}%
-          </span>
-        )}
-      </div>
-      <span className={`kpi-footer ${loading ? 'skeleton-text skeleton-sm' : ''}`}>
-        {loading ? '\u00A0' : subtitle}
-      </span>
-    </div>
-  );
 }
 
 // ─── SectionHeader ────────────────────────────────────────────────────────────
@@ -537,7 +506,6 @@ function CarreamentoBiBoard({
         </section>
       </div>
 
-      <div className="developer-signature">Desenvolvedor: Vinicius Dev.</div>
     </div>
   );
 }
@@ -655,10 +623,9 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
         )}
 
         {error && (
-          <div className="warning-strip">
-            <AlertTriangle size={16} />
-            <span>{error}</span>
-          </div>
+          <StatusBanner tone="danger" icon={AlertTriangle}>
+            {error}
+          </StatusBanner>
         )}
 
         <CarreamentoBiBoard
@@ -686,12 +653,11 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
         />
       )}
 
-      <div className="page-header">
-        <div className="page-title-block">
-          <span className="page-eyebrow">{areaFilter === 'carreamento' ? 'CQO Carreamento' : 'CQO Campo'}</span>
-          <h2>{areaFilter === 'carreamento' ? 'Painel de Indicadores de Carreamento' : 'Painel de Indicadores de Campo'}</h2>
-          <p>{areaFilter === 'carreamento' ? 'Modulo dedicado ao acompanhamento das respostas de carreamento sincronizadas pelo aplicativo.' : 'Dados calculados em tempo real a partir das respostas sincronizadas pelo aplicativo Android. A rampa é tratada em uma visão separada.'}</p>
-        </div>
+      <PageHeader
+        eyebrow={areaFilter === 'carreamento' ? 'CQO Carreamento' : 'CQO Campo'}
+        title={areaFilter === 'carreamento' ? 'Painel de Indicadores de Carreamento' : 'Painel de Indicadores de Campo'}
+        description={areaFilter === 'carreamento' ? 'Modulo dedicado ao acompanhamento das respostas de carreamento sincronizadas pelo aplicativo.' : 'Dados calculados em tempo real a partir das respostas sincronizadas pelo aplicativo Android. A rampa é tratada em uma visão separada.'}
+      >
         <div className="page-actions field-presentation-actions">
           {areaFilter === 'carreamento' && (
             <button type="button" className="btn btn-primary" onClick={openCarreamentoPresentation}>
@@ -705,39 +671,16 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
             <strong className={loading ? 'skeleton-text skeleton-sm' : ''}>{loading ? '\u00A0' : source}</strong>
           </div>
         </div>
-      </div>
+      </PageHeader>
 
       {error && (
-        <div className="warning-strip">
-          <AlertTriangle size={16} />
-          <span>Falha ao carregar indicadores: {error}</span>
-        </div>
+        <StatusBanner tone="danger" icon={AlertTriangle}>
+          Falha ao carregar indicadores: {error}
+        </StatusBanner>
       )}
 
       {/* Tab Navigation */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid var(--border-color)', paddingBottom: 0 }}>
-        {availableTabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '8px 20px',
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              fontWeight: currentTab === tab.id ? 700 : 500,
-              color: currentTab === tab.id ? 'var(--green-institutional)' : 'var(--text-secondary)',
-              borderBottom: currentTab === tab.id ? '2px solid var(--green-institutional)' : '2px solid transparent',
-              marginBottom: -2,
-              fontSize: '0.9rem',
-              transition: 'all 0.18s ease',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <SegmentedTabs tabs={availableTabs} activeId={currentTab} onChange={setActiveTab} />
 
       {/* Empty state */}
       {!loading && filtered.length === 0 && <EmptyState areaFilter={areaFilter} />}
@@ -775,36 +718,39 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
 
           <SectionHeader eyebrow="Volumes e Amostragem" title="Escopo do Monitoramento de Campo" color="var(--orange-institutional)" />
           <div className={`grid-container ${areaFilter === 'carreamento' ? 'grid-cols-3' : 'grid-cols-4'}`}>
-            <KpiCard title="Coletas Recebidas" value={fmt(totalsGeral.total)} subtitle="Total de fichas no banco de dados" icon={ClipboardCheck} tone="green" loading={loading} />
+            <MetricCard variant="kpi" title="Coletas Recebidas" value={fmt(totalsGeral.total)} footer="Total de fichas no banco de dados" icon={ClipboardCheck} tone="green" loading={loading} />
             {areaFilter !== 'carreamento' && (
-              <KpiCard title="Cachos Observados" value={fmt(totalsGeral.cachosObservados)} subtitle="Cachos auditados nas linhas" icon={CheckCircle2} tone="info" loading={loading} />
+              <MetricCard variant="kpi" title="Cachos Observados" value={fmt(totalsGeral.cachosObservados)} footer="Cachos auditados nas linhas" icon={CheckCircle2} tone="info" loading={loading} />
             )}
-            <KpiCard title="Linhas Avaliadas" value={fmt(totalsGeral.linhas)} subtitle={totalsGeral.gpsEligible ? `${fmt(totalsGeral.gpsPoints)} pontos GPS no trajeto` : 'Excel sem GPS'} icon={Rows3} tone="orange" loading={loading} />
-            <KpiCard title="Plantas Observadas" value={fmt(totalsGeral.plantasObservadas)} subtitle="Base para cálculo de perdas" icon={Sprout} tone="green" loading={loading} />
+            <MetricCard variant="kpi" title="Linhas Avaliadas" value={fmt(totalsGeral.linhas)} footer={totalsGeral.gpsEligible ? `${fmt(totalsGeral.gpsPoints)} pontos GPS no trajeto` : 'Excel sem GPS'} icon={Rows3} tone="orange" loading={loading} />
+            <MetricCard variant="kpi" title="Plantas Observadas" value={fmt(totalsGeral.plantasObservadas)} footer="Base para cálculo de perdas" icon={Sprout} tone="green" loading={loading} />
           </div>
 
           <SectionHeader eyebrow="Desperdício de Matéria-Prima" title="Estimativa Física de Perdas no Campo" color="var(--status-danger)" />
           <div className="grid-container grid-cols-3" style={{ marginBottom: '24px' }}>
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title={areaFilter === 'corte' ? "Cachos Perdidos (Corte)" : areaFilter === 'carreamento' ? "Cachos Perdidos (Logística)" : "Cachos Perdidos (Corte/Logística)"}
               value={`${fmt(totalsGeral.lostCachosQty)} cachos`}
-              subtitle={areaFilter === 'corte' ? 'Apenas cachos esquecidos' : areaFilter === 'carreamento' ? 'Apenas cachos não carreados' : 'Esquecidos ou não carreados'}
+              footer={areaFilter === 'corte' ? 'Apenas cachos esquecidos' : areaFilter === 'carreamento' ? 'Apenas cachos não carreados' : 'Esquecidos ou não carreados'}
               icon={AlertTriangle}
               tone="danger"
               loading={loading}
             />
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Massa de Frutos Perdida"
               value={`${fmt(totalsGeral.lostFrutosTon, 2)} Toneladas`}
-              subtitle="Estimativa física acumulada (20kg/cacho)"
+              footer="Estimativa física acumulada (20kg/cacho)"
               icon={Weight}
               tone="danger"
               loading={loading}
             />
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Óleo de Palma (CPO) Perdido"
               value={`${fmt(totalsGeral.lostOilTon, 2)} Ton. de Óleo`}
-              subtitle="Rendimento médio estimado de 20%"
+              footer="Rendimento médio estimado de 20%"
               icon={Leaf}
               tone="danger"
               loading={loading}
@@ -844,40 +790,44 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
               data={[{ label: 'Score geral de qualidade no corte', value: totalsCorte.corteScore }]}
               loading={loading}
             />
-            <KpiCard title="Fichas de corte" value={fmt(corteRecords.length)} subtitle={`${mediaLinhasCorte} linhas por ficha (média)`} icon={Scissors} tone="green" loading={loading} />
-            <KpiCard title="Plantas observadas" value={fmt(totalsCorte.plantasObservadas)} subtitle={`${mediaPlantasPorLinha} plantas/linha (média)`} icon={Sprout} tone="green" loading={loading} />
+            <MetricCard variant="kpi" title="Fichas de corte" value={fmt(corteRecords.length)} footer={`${mediaLinhasCorte} linhas por ficha (média)`} icon={Scissors} tone="green" loading={loading} />
+            <MetricCard variant="kpi" title="Plantas observadas" value={fmt(totalsCorte.plantasObservadas)} footer={`${mediaPlantasPorLinha} plantas/linha (média)`} icon={Sprout} tone="green" loading={loading} />
           </div>
 
           <SectionHeader eyebrow="Qualidade dos cachos" title="Maturação e perdas no corte" color="var(--orange-institutional)" />
           <div className="grid-container grid-cols-4" style={{ marginBottom: '18px' }}>
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Taxa de maturação"
               value={`${taxaMaturacao.replace('.', ',')}%`}
-              subtitle={`${fmt(totalsCorte.cachoMaduro)} cachos maduros`}
+              footer={`${fmt(totalsCorte.cachoMaduro)} cachos maduros`}
               icon={ThumbsUp}
               tone="green"
               loading={loading}
             />
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Perda no corte"
               value={`${taxaPerda.replace('.', ',')}%`}
-              subtitle={`${fmt(totalsCorte.cachoEsquecido)} cachos esquecidos`}
+              footer={`${fmt(totalsCorte.cachoEsquecido)} cachos esquecidos`}
               icon={AlertTriangle}
               tone={Number(taxaPerda) > 1.5 ? 'danger' : 'green'}
               loading={loading}
             />
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Cachos verdes"
               value={`${totalsCorte.cachoVerdeRate.toFixed(2).replace('.', ',')}%`}
-              subtitle={`${fmt(totalsCorte.cachoVerde)} unidades colhidas`}
+              footer={`${fmt(totalsCorte.cachoVerde)} unidades colhidas`}
               icon={Leaf}
               tone={totalsCorte.cachoVerdeRate > 3.0 ? 'danger' : 'warning'}
               loading={loading}
             />
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Cachos passados"
               value={`${totalsCorte.cachoPassadoRate.toFixed(2).replace('.', ',')}%`}
-              subtitle={`${fmt(totalsCorte.cachoPassado)} unidades colhidas`}
+              footer={`${fmt(totalsCorte.cachoPassado)} unidades colhidas`}
               icon={TrendingDown}
               tone={totalsCorte.cachoPassadoRate > 5.0 ? 'danger' : 'warning'}
               loading={loading}
@@ -1033,23 +983,25 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
               data={[{ label: 'Score geral de qualidade do carreamento', value: totalsCarreamento.carreamentoScore }]}
               loading={loading}
             />
-            <KpiCard title="Fichas carreamento" value={fmt(carreamentoRecords.length)} subtitle={`${fmt(totalsCarreamento.linhas)} linhas registradas`} icon={Truck} tone="orange" loading={loading} />
-            <KpiCard title="Plantas observadas" value={fmt(totalsCarreamento.plantasObservadas)} subtitle="Base de cálculo por linha" icon={Sprout} tone="green" loading={loading} />
+            <MetricCard variant="kpi" title="Fichas carreamento" value={fmt(carreamentoRecords.length)} footer={`${fmt(totalsCarreamento.linhas)} linhas registradas`} icon={Truck} tone="orange" loading={loading} />
+            <MetricCard variant="kpi" title="Plantas observadas" value={fmt(totalsCarreamento.plantasObservadas)} footer="Base de cálculo por linha" icon={Sprout} tone="green" loading={loading} />
           </div>
 
           <div className="grid-container grid-cols-2" style={{ marginTop: 12 }}>
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Acúmulo de Peso Observado"
               value={`${fmt(totalsCarreamento.pesoMedio, 1)} kg`}
-              subtitle={`Média de ${mediaPesoFicha} kg/ficha`}
+              footer={`Média de ${mediaPesoFicha} kg/ficha`}
               icon={Weight}
               tone="info"
               loading={loading}
             />
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Taxa de Sincronização"
               value={pct(carreamentoRecords.filter((r) => r.status === 'Sincronizado').length, carreamentoRecords.length)}
-              subtitle={`${carreamentoRecords.filter((r) => r.status === 'Sincronizado').length} fichas concluídas`}
+              footer={`${carreamentoRecords.filter((r) => r.status === 'Sincronizado').length} fichas concluídas`}
               icon={TrendingUp}
               tone="info"
               loading={loading}
@@ -1058,34 +1010,38 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
 
           <SectionHeader eyebrow="Irregularidades de transporte" title="Perdas e falhas no carreamento" color="var(--orange-institutional)" />
           <div className="grid-container grid-cols-4" style={{ marginBottom: '18px' }}>
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Mal posicionados"
               value={`${taxaMalPos.replace('.', ',')}%`}
-              subtitle={`${fmt(totalsCarreamento.cachoMalPosicionado)} cachos`}
+              footer={`${fmt(totalsCarreamento.cachoMalPosicionado)} cachos`}
               icon={AlertTriangle}
               tone={totalsCarreamento.cachoMalPosicionadoRate > 5.0 ? 'danger' : 'warning'}
               loading={loading}
             />
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Não carreados"
               value={`${taxaNaoCarreado.replace('.', ',')}%`}
-              subtitle={`${fmt(totalsCarreamento.cachoNaoCarreado)} cachos`}
+              footer={`${fmt(totalsCarreamento.cachoNaoCarreado)} cachos`}
               icon={ThumbsDown}
               tone={totalsCarreamento.cachoNaoCarreadoRate > 2.0 ? 'danger' : 'green'}
               loading={loading}
             />
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Com acompanhamento"
               value={pct(carreamentoRecords.filter((r) => r.acompanhamento?.teve === 'sim').length, carreamentoRecords.length)}
-              subtitle={`${carreamentoRecords.filter((r) => r.acompanhamento?.teve === 'sim').length} fichas supervisionadas`}
+              footer={`${carreamentoRecords.filter((r) => r.acompanhamento?.teve === 'sim').length} fichas supervisionadas`}
               icon={CheckCircle2}
               tone="info"
               loading={loading}
             />
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Aprovação"
               value={pct(carreamentoRecords.filter((r) => r.status === 'Aprovado').length, carreamentoRecords.length)}
-              subtitle={`${carreamentoRecords.filter((r) => r.status === 'Aprovado').length} fichas aprovadas`}
+              footer={`${carreamentoRecords.filter((r) => r.status === 'Aprovado').length} fichas aprovadas`}
               icon={ThumbsUp}
               tone="green"
               loading={loading}

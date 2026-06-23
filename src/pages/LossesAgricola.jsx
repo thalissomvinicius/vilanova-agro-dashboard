@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, CalendarDays, Maximize2, MonitorPlay, RefreshCw, X } from 'lucide-react';
+import StatusBanner from '../components/ui/StatusBanner';
 import { filterRecords, useCqoData } from '../utils/cqoData';
 import { buildQualidadeOperacional, QUALITY_LOSS_LIMITS } from '../utils/qualidadeOperacionalData';
 
@@ -273,7 +274,6 @@ function LossesBoard({ loading, model, periodText, updateText, onPresent, presen
           <WeeklyLossChart rows={model.weekRows} fiscalRows={model.evaluatorRows} loading={loading} />
         </div>
       </div>
-      <div className="developer-signature">Desenvolvedor: Vinicius Dev.</div>
     </div>
   );
 }
@@ -363,17 +363,15 @@ export default function LossesAgricola({
       ) : null}
 
       {error ? (
-        <div className="warning-strip">
-          <AlertTriangle size={16} />
-          <span>Falha ao carregar dados: {error}</span>
-        </div>
+        <StatusBanner tone="danger" icon={AlertTriangle}>
+          Falha ao carregar dados: {error}
+        </StatusBanner>
       ) : null}
 
       {!model.hasProductionBase && !loading && filtered.length > 0 ? (
-        <div className="warning-strip">
-          <AlertTriangle size={16} />
-          <span>Percentuais dependem da base de produção/balança. As toneladas seguem estimadas pelas amostras CQO.</span>
-        </div>
+        <StatusBanner icon={AlertTriangle}>
+          Percentuais dependem da base de produção/balança. As toneladas seguem estimadas pelas amostras CQO.
+        </StatusBanner>
       ) : null}
 
       <LossesBoard

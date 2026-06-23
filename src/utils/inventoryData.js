@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ACTIVE_CQO_FARM_IDS, normalizeText } from './cqoData';
+import { ACTIVE_CQO_FARM_IDS, dashboardErrorMessage, normalizeText } from './cqoData';
 
 export function useInventoryData() {
   const [state, setState] = useState({
@@ -15,7 +15,7 @@ export function useInventoryData() {
 
     fetch('/data/inventory-parcels.json')
       .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) throw new Error(`Inventario: HTTP ${response.status}`);
         return response.json();
       })
       .then((data) => {
@@ -37,7 +37,7 @@ export function useInventoryData() {
           records: [],
           summary: null,
           source: 'Inventario indisponivel',
-          error: error.message,
+          error: dashboardErrorMessage(error, 'Base de inventário indisponível.'),
         });
       });
 

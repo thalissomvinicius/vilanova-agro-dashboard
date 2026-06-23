@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Bell, LogOut, MonitorPlay, Moon, RefreshCw, RotateCcw, Search, Sun } from 'lucide-react';
+import { Bell, LogOut, MonitorPlay, Moon, RefreshCw, Search, Sun } from 'lucide-react';
 import { ACTIVE_CQO_FARM_IDS, CQO_FARMS } from '../utils/cqoData';
 
 import { useCqoData } from '../utils/cqoData';
+import { useBonificacaoData } from '../utils/bonificacaoData';
 
 function addYearFromValue(years, value) {
   if (!value) return;
@@ -44,7 +45,6 @@ export default function Header({
   setEvaluatorFilter,
   sourceFilter,
   setSourceFilter,
-  onClearFilters,
   theme,
   setTheme,
   searchTerm,
@@ -56,18 +56,15 @@ export default function Header({
   onLogout,
   onOpenTvMode,
   activePage,
+  visibleFilters = [],
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
-  const lightweightSourceFilter = sourceFilter === 'app' ? 'app' : 'all';
-  const { records } = useCqoData({
-    sourceFilter: lightweightSourceFilter,
-    includeExcel: false,
-    includeHeadcount: false,
-    includeAttachments: false,
-    includeForms: false,
-    includeGps: false,
-    appLimit: 300,
-  });
+  const { records } = useCqoData();
+  const bonificacaoData = useBonificacaoData();
+  const visibleFilterSet = React.useMemo(() => new Set(visibleFilters), [visibleFilters]);
+  const showSearch = visibleFilterSet.has('search');
+  const hasFieldFilters = ['farm', 'cycle', 'evaluator', 'source', 'year', 'month', 'dateRange']
+    .some((filterId) => visibleFilterSet.has(filterId));
 
   const monthOptions = [
     { value: '01', label: 'Janeiro' },
@@ -97,8 +94,14 @@ export default function Header({
       ].forEach((candidate) => addYearFromValue(years, candidate));
     });
 
+    (bonificacaoData?.cqoRampa?.byProducerDay || []).forEach((row) => addYearFromValue(years, row.dayKey));
+    (bonificacaoData?.cqoRampa?.byDay || []).forEach((row) => addYearFromValue(years, row.dayKey));
+    (bonificacaoData?.cqoRampa?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));
+    (bonificacaoData?.entradaDeCff?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));
+    (bonificacaoData?.faturamento?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));
+
     return Array.from(years).sort((a, b) => Number(b) - Number(a));
-  }, [records, yearFilter]);
+  }, [records, bonificacaoData, yearFilter]);
 
   const fiscalResponsibles = React.useMemo(() => {
     const fiscals = new Set();
@@ -134,144 +137,153 @@ export default function Header({
       <div className="header-left">
         <img src="/logo.png" alt="Vila Nova Agroindustrial" className="header-brand-logo" />
 
-        <div className="header-search">
-          <Search />
-          <input
-            type="text"
-            placeholder="Buscar por fazenda, matrícula, parcela ou fiscal"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-          />
+        {showSearch ? (
+          <div className="header-search">
+            <Search />
+            <input
+              type="text"
+              placeholder="Buscar por fazenda, matrícula, parcela ou fiscal"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+          </div>
+        ) : null}
+
+      </div>
+
+      {hasFieldFilters ? (
+        <div className="header-filters" aria-label="Filtros da página">
+          {visibleFilterSet.has('farm') ? (
+            <label className="header-filter-control">
+              <span>Fazenda</span>
+              <select
+                className="header-filter-select"
+                value={farmFilter}
+                onChange={(event) => setFarmFilter(event.target.value)}
+                title="Selecionar fazenda"
+              >
+                {CQO_FARMS.map((farm) => (
+                  <option key={farm.id} value={farm.id}>{farm.name}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          {visibleFilterSet.has('cycle') ? (
+            <label className="header-filter-control">
+              <span>Ciclo</span>
+              <select
+                className="header-filter-select"
+                value={cycleFilter}
+                onChange={(event) => setCycleFilter(event.target.value)}
+                title="Selecionar ciclo"
+              >
+                <option value="all">Todos os ciclos</option>
+                <option value="1">Ciclo 1</option>
+                <option value="2">Ciclo 2</option>
+                <option value="3">Ciclo 3</option>
+                <option value="4">Ciclo 4</option>
+                <option value="5">Ciclo 5</option>
+                <option value="6">Ciclo 6</option>
+              </select>
+            </label>
+          ) : null}
+
+          {visibleFilterSet.has('evaluator') ? (
+            <label className="header-filter-control header-filter-control-wide">
+              <span>Fiscal Resp.</span>
+              <select
+                className="header-filter-select"
+                value={evaluatorFilter}
+                onChange={(event) => setEvaluatorFilter(event.target.value)}
+                title="Selecionar fiscal responsável da equipe"
+              >
+                <option value="all">Todos os fiscais</option>
+                {fiscalResponsibles.map((fiscal) => (
+                  <option key={fiscal} value={fiscal}>{fiscal}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          {visibleFilterSet.has('source') ? (
+            <label className="header-filter-control header-filter-control-source">
+              <span>Fonte</span>
+              <select
+                className="header-filter-select"
+                value={visibleSourceFilter}
+                onChange={(event) => setSourceFilter(event.target.value)}
+                title={isRampaPage ? 'Selecionar fonte dos dados da Rampa' : 'Selecionar fonte dos dados de campo'}
+              >
+                {sourceOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          {visibleFilterSet.has('year') ? (
+            <label className="header-filter-control header-filter-control-short">
+              <span>Ano</span>
+              <select
+                className="header-filter-select"
+                value={yearFilter}
+                onChange={(event) => setYearFilter(event.target.value)}
+                title="Selecionar ano"
+              >
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          {visibleFilterSet.has('month') ? (
+            <label className="header-filter-control header-filter-control-short">
+              <span>Mês</span>
+              <select
+                className="header-filter-select"
+                value={monthFilter}
+                onChange={(event) => setMonthFilter(event.target.value)}
+                title="Selecionar mês"
+              >
+                <option value="all">Todos os meses</option>
+                {monthOptions.map((month) => (
+                  <option key={month.value} value={month.value}>{month.label}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          {visibleFilterSet.has('dateRange') ? (
+            <>
+              <label className="header-filter-control header-filter-control-date">
+                <span>Data inicial</span>
+                <input
+                  className="header-date-input"
+                  type="date"
+                  value={dateFrom}
+                  max={dateTo || undefined}
+                  onChange={(event) => setDateFrom(event.target.value)}
+                  title="Data inicial"
+                />
+              </label>
+
+              <label className="header-filter-control header-filter-control-date">
+                <span>Data final</span>
+                <input
+                  className="header-date-input"
+                  type="date"
+                  value={dateTo}
+                  min={dateFrom || undefined}
+                  onChange={(event) => setDateTo(event.target.value)}
+                  title="Data final"
+                />
+              </label>
+            </>
+          ) : null}
         </div>
-
-      </div>
-
-      <div className="header-filters" aria-label="Filtros globais">
-        <label className="header-filter-control">
-          <span>Fazenda</span>
-          <select
-            className="header-filter-select"
-            value={farmFilter}
-            onChange={(event) => setFarmFilter(event.target.value)}
-            title="Selecionar fazenda"
-          >
-            {CQO_FARMS.map((farm) => (
-              <option key={farm.id} value={farm.id}>{farm.name}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="header-filter-control">
-          <span>Ciclo</span>
-          <select
-            className="header-filter-select"
-            value={cycleFilter}
-            onChange={(event) => setCycleFilter(event.target.value)}
-            title="Selecionar ciclo"
-          >
-            <option value="all">Todos os ciclos</option>
-            <option value="1">Ciclo 1</option>
-            <option value="2">Ciclo 2</option>
-            <option value="3">Ciclo 3</option>
-            <option value="4">Ciclo 4</option>
-            <option value="5">Ciclo 5</option>
-            <option value="6">Ciclo 6</option>
-          </select>
-        </label>
-
-        <label className="header-filter-control header-filter-control-wide">
-          <span>Fiscal Resp.</span>
-          <select
-            className="header-filter-select"
-            value={evaluatorFilter}
-            onChange={(event) => setEvaluatorFilter(event.target.value)}
-            title="Selecionar fiscal responsável da equipe"
-          >
-            <option value="all">Todos os fiscais</option>
-            {fiscalResponsibles.map((fiscal) => (
-              <option key={fiscal} value={fiscal}>{fiscal}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="header-filter-control header-filter-control-source">
-          <span>Fonte</span>
-          <select
-            className="header-filter-select"
-            value={visibleSourceFilter}
-            onChange={(event) => setSourceFilter(event.target.value)}
-            title={isRampaPage ? 'Selecionar fonte dos dados da Rampa' : 'Selecionar fonte dos dados de campo'}
-          >
-            {sourceOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="header-filter-control header-filter-control-short">
-          <span>Ano</span>
-          <select
-            className="header-filter-select"
-            value={yearFilter}
-            onChange={(event) => setYearFilter(event.target.value)}
-            title="Selecionar ano"
-          >
-            {yearOptions.map((year) => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="header-filter-control header-filter-control-short">
-          <span>Mês</span>
-          <select
-            className="header-filter-select"
-            value={monthFilter}
-            onChange={(event) => setMonthFilter(event.target.value)}
-            title="Selecionar mês"
-          >
-            <option value="all">Todos os meses</option>
-            {monthOptions.map((month) => (
-              <option key={month.value} value={month.value}>{month.label}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="header-filter-control header-filter-control-date">
-          <span>Data inicial</span>
-          <input
-            className="header-date-input"
-            type="date"
-            value={dateFrom}
-            max={dateTo || undefined}
-            onChange={(event) => setDateFrom(event.target.value)}
-            title="Data inicial"
-          />
-        </label>
-
-        <label className="header-filter-control header-filter-control-date">
-          <span>Data final</span>
-          <input
-            className="header-date-input"
-            type="date"
-            value={dateTo}
-            min={dateFrom || undefined}
-            onChange={(event) => setDateTo(event.target.value)}
-            title="Data final"
-          />
-        </label>
-
-        <button
-          type="button"
-          className="header-clear-filters-btn"
-          onClick={onClearFilters}
-          title="Limpar filtros e voltar ao mês atual"
-          aria-label="Limpar filtros"
-        >
-          <RotateCcw size={14} />
-          <span>Limpar</span>
-        </button>
-      </div>
+      ) : null}
 
       <div className="header-right">
         <div className="header-sync-status">
@@ -279,12 +291,11 @@ export default function Header({
           <span>{isSyncing ? 'Sincronizando...' : `Atualizado: ${lastSyncTime}`}</span>
           <button
             onClick={triggerManualSync}
-            className="header-btn"
-            style={{ width: '28px', height: '28px', border: 'none', marginLeft: '6px' }}
+            className="header-btn header-sync-refresh-btn"
             title="Atualizar dados"
             disabled={isSyncing}
           >
-            <RefreshCw className={isSyncing ? 'spin' : ''} style={{ width: '14px', height: '14px' }} />
+            <RefreshCw className={isSyncing ? 'spin' : ''} />
           </button>
         </div>
 
@@ -305,7 +316,7 @@ export default function Header({
             <MonitorPlay size={18} />
           </button>
 
-          <div style={{ position: 'relative' }}>
+          <div className="header-notification-anchor">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               className="header-btn"
@@ -316,26 +327,16 @@ export default function Header({
             </button>
 
             {showNotifications && (
-              <div
-                className="card fade-in header-notifications"
-                style={{
-                  position: 'absolute',
-                  top: '48px',
-                  right: '0',
-                  zIndex: '500',
-                  padding: '16px',
-                  boxShadow: 'var(--shadow-lg)',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-                  <span style={{ fontWeight: '700', fontSize: '0.875rem' }}>Avisos do painel</span>
+              <div className="card fade-in header-notifications">
+                <div className="header-notifications-head">
+                  <span className="header-notifications-title">Avisos do painel</span>
                   <button className="link-button" onClick={() => setShowNotifications(false)}>Fechar</button>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div className="header-notifications-list">
                   {notifications.map((notification) => (
-                    <div key={notification.id} style={{ fontSize: '0.8rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px' }}>
-                      <p style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{notification.text}</p>
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>{notification.time}</span>
+                    <div key={notification.id} className="header-notification-row">
+                      <p>{notification.text}</p>
+                      <span className="header-notification-time">{notification.time}</span>
                     </div>
                   ))}
                 </div>
@@ -346,8 +347,8 @@ export default function Header({
 
         <div className="header-user">
           <div className="header-user-info">
-            <span style={{ fontSize: '0.825rem', fontWeight: '700', color: 'var(--text-primary)' }}>{user?.nome || 'Qualidade Agrícola'}</span>
-            <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>{user?.matricula ? `Mat. ${user.matricula}` : 'CQO Corte e Carreamento'}</span>
+            <span className="header-user-name">{user?.nome || 'Qualidade Agrícola'}</span>
+            <span className="header-user-meta">{user?.matricula ? `Mat. ${user.matricula}` : 'CQO Corte e Carreamento'}</span>
           </div>
           <button className="header-btn" onClick={onLogout} title="Sair">
             <LogOut size={17} />

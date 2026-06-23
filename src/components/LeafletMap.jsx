@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import { Flame, Layers, Map as MapIcon, RotateCcw, Route, Satellite } from 'lucide-react';
+import { Flame, Layers, Map as MapIcon, Route, Satellite } from 'lucide-react';
 import { FARMS } from '../utils/mockData';
 import { filterRecords, useCqoData, aggregateRecords } from '../utils/cqoData';
 
@@ -27,8 +27,6 @@ const BASE_LAYER_NOTES = {
 };
 
 const RISK_METRICS = [
-  { id: 'qualidade_cachos', label: 'Qualidade dos cachos', unit: 'status', goodWhen: 'composite', meta: null, metricIds: ['maduro', 'passado', 'verde', 'avermelhado'] },
-  { id: 'farol_bi', label: 'Farol CQO (metas BI)', unit: 'status', goodWhen: 'composite', meta: null },
   { id: 'nota', label: 'Nota CQO', unit: '%', goodWhen: 'high', meta: 90 },
   { id: 'perda_t_ha', label: 'Perda estimada t/ha', unit: 't/ha', goodWhen: 'low', meta: 0.08 },
   { id: 'cachos_ha', label: 'Cachos perdidos/ha', unit: 'cachos/ha', goodWhen: 'low', meta: 4 },
@@ -39,11 +37,7 @@ const RISK_METRICS = [
   { id: 'passado', label: 'Cacho passado %', unit: '%', goodWhen: 'low', meta: 10 },
   { id: 'avermelhado', label: 'Cacho avermelhado %', unit: '%', goodWhen: 'low', meta: 4 },
   { id: 'talo', label: 'Talo comprido %', unit: '%', goodWhen: 'low', meta: 3 },
-  { id: 'estrela', label: 'Cacho estrela %', unit: '%', goodWhen: 'low', meta: 2 },
 ];
-
-const BI_GOAL_METRIC_IDS = ['maduro', 'passado', 'verde', 'avermelhado', 'talo', 'estrela'];
-const BUNCH_QUALITY_METRIC_IDS = ['maduro', 'passado', 'verde', 'avermelhado'];
 
 const RISK_COLORS = {
   good: '#22C55E',
@@ -53,7 +47,7 @@ const RISK_COLORS = {
 };
 
 function activeRiskMetric(metricId) {
-  return RISK_METRICS.find((metric) => metric.id === metricId) || RISK_METRICS[0];
+  return RISK_METRICS.find((metric) => metric.id === metricId) || RISK_METRICS[1];
 }
 
 const defaultIcon = L.icon({
@@ -265,18 +259,150 @@ function parcelDensity(props = {}) {
   return areaHa > 0 ? plants / areaHa : 0;
 }
 
-function parcelPopupLatLng(layer, fallback) {
-  if (typeof layer?.getCenter === 'function') {
-    const center = layer.getCenter();
-    if (Number.isFinite(Number(center?.lat)) && Number.isFinite(Number(center?.lng))) return center;
+function geometryPolygons(geometry) {
+  if (!geometry) return [];
+  if (geometry.type === 'Polygon') return [geometry.coordinates || []];
+  if (geometry.type === 'MultiPolygon') return geometry.coordinates || [];
+  return [];
+}
+
+function ringBounds(ring) {
+  return ring.reduce((bounds, point) => ({
+    minLng: Math.min(bounds.minLng, Number(point[0])),
+    maxLng: Math.max(bounds.maxLng, Number(point[0])),
+    minLat: Math.min(bounds.minLat, Number(point[1])),
+    maxLat: Math.max(bounds.maxLat, Number(point[1])),
+  }), {
+    minLng: Infinity,
+    maxLng: -Infinity,
+    minLat: Infinity,
+    maxLat: -Infinity,
+  });
+}
+
+function ringAreaAbs(ring) {
+  let area = 0;
+  for (let index = 0; index < ring.length - 1; index += 1) {
+    area += (Number(ring[index][0]) * Number(ring[index + 1][1]))
+      - (Number(ring[index + 1][0]) * Number(ring[index][1]));
+  }
+  return Math.abs(area / 2);
+}
+
+function ringCentroid(ring) {
+  let areaFactor = 0;
+  let lngSum = 0;
+  let latSum = 0;
+
+  for (let index = 0; index < ring.length - 1; index += 1) {
+    const current = ring[index];
+    const next = ring[index + 1];
+    const cross = (Number(current[0]) * Number(next[1])) - (Number(next[0]) * Number(current[1]));
+    areaFactor += cross;
+    lngSum += (Number(current[0]) + Number(next[0])) * cross;
+    latSum += (Number(current[1]) + Number(next[1])) * cross;
   }
 
-  if (typeof layer?.getBounds === 'function') {
-    const bounds = layer.getBounds();
-    if (bounds?.isValid?.()) return bounds.getCenter();
+  if (!areaFactor) {
+    const bounds = ringBounds(ring);
+    return [(bounds.minLng + bounds.maxLng) / 2, (bounds.minLat + bounds.maxLat) / 2];
   }
 
-  return fallback;
+  return [lngSum / (3 * areaFactor), latSum / (3 * areaFactor)];
+}
+
+function pointInRing(point, ring) {
+  const [lng, lat] = point;
+  let inside = false;
+
+  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
+    const currentLng = Number(ring[index][0]);
+    const currentLat = Number(ring[index][1]);
+    const previousLng = Number(ring[previous][0]);
+    const previousLat = Number(ring[previous][1]);
+    const intersects = ((currentLat > lat) !== (previousLat > lat))
+      && (lng < ((previousLng - currentLng) * (lat - currentLat)) / ((previousLat - currentLat) || 1e-12) + currentLng);
+
+    if (intersects) inside = !inside;
+  }
+
+  return inside;
+}
+
+function pointInPolygon(point, polygon) {
+  const outerRing = polygon?.[0] || [];
+  if (!pointInRing(point, outerRing)) return false;
+  return !polygon.slice(1).some((hole) => pointInRing(point, hole));
+}
+
+function pointSegmentDistanceSquared(point, start, end) {
+  const x = Number(point[0]);
+  const y = Number(point[1]);
+  const x1 = Number(start[0]);
+  const y1 = Number(start[1]);
+  const x2 = Number(end[0]);
+  const y2 = Number(end[1]);
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const segmentLength = (dx * dx) + (dy * dy);
+  const ratio = segmentLength ? Math.max(0, Math.min(1, (((x - x1) * dx) + ((y - y1) * dy)) / segmentLength)) : 0;
+  const projectionX = x1 + ratio * dx;
+  const projectionY = y1 + ratio * dy;
+
+  return ((x - projectionX) ** 2) + ((y - projectionY) ** 2);
+}
+
+function pointDistanceToPolygonEdge(point, polygon) {
+  return polygon.reduce((minDistance, ring) => {
+    let ringMin = minDistance;
+    for (let index = 0; index < ring.length - 1; index += 1) {
+      ringMin = Math.min(ringMin, pointSegmentDistanceSquared(point, ring[index], ring[index + 1]));
+    }
+    return ringMin;
+  }, Infinity);
+}
+
+function featureLabelLatLng(feature) {
+  const polygons = geometryPolygons(feature?.geometry)
+    .filter((polygon) => polygon?.[0]?.length >= 4)
+    .sort((a, b) => ringAreaAbs(b[0]) - ringAreaAbs(a[0]));
+  const polygon = polygons[0];
+  if (!polygon) return null;
+
+  const outerRing = polygon[0];
+  const bounds = ringBounds(outerRing);
+  const centroid = ringCentroid(outerRing);
+  const candidates = [centroid];
+  const gridSteps = 8;
+
+  for (let xIndex = 1; xIndex < gridSteps; xIndex += 1) {
+    for (let yIndex = 1; yIndex < gridSteps; yIndex += 1) {
+      candidates.push([
+        bounds.minLng + ((bounds.maxLng - bounds.minLng) * xIndex) / gridSteps,
+        bounds.minLat + ((bounds.maxLat - bounds.minLat) * yIndex) / gridSteps,
+      ]);
+    }
+  }
+
+  const best = candidates
+    .filter((point) => pointInPolygon(point, polygon))
+    .map((point) => ({
+      point,
+      distance: pointDistanceToPolygonEdge(point, polygon),
+    }))
+    .sort((a, b) => b.distance - a.distance)[0]?.point;
+
+  const labelPoint = best || centroid;
+  return [labelPoint[1], labelPoint[0]];
+}
+
+function parcelLabelIcon(label, hasData) {
+  return L.divIcon({
+    className: `parcel-label-icon ${hasData ? '' : 'parcel-label-icon-muted'}`,
+    html: `<span>${escapeHtml(label)}</span>`,
+    iconSize: [1, 1],
+    iconAnchor: [0, 0],
+  });
 }
 
 function perHa(value, areaHa) {
@@ -292,6 +418,10 @@ function percentOf(value, total) {
 
 function hasCorteBunchBase(totals) {
   return Number(totals?.corte || 0) > 0 && Number(totals?.cachosObservados || 0) > 0;
+}
+
+function hasCortePlantBase(totals) {
+  return Number(totals?.corte || 0) > 0 && Number(totals?.plantasObservadas || 0) > 0;
 }
 
 function hasCarreamentoBase(totals) {
@@ -317,10 +447,6 @@ function metricValue(metric, totals, areaHa) {
   if (!totals) return null;
 
   switch (metric.id) {
-    case 'farol_bi':
-      return qualityGoalScore(totals, BI_GOAL_METRIC_IDS);
-    case 'qualidade_cachos':
-      return qualityGoalScore(totals, BUNCH_QUALITY_METRIC_IDS);
     case 'nota':
       return Number(totals.generalScore || 0);
     case 'perda_t_ha':
@@ -348,11 +474,8 @@ function metricValue(metric, totals, areaHa) {
       if (!hasCorteBunchBase(totals)) return null;
       return percentOf(totals.cachoAvermelhado, totals.cachosObservados);
     case 'talo':
-      if (!hasCorteBunchBase(totals)) return null;
-      return percentOf(totals.taloComprido, totals.cachosObservados);
-    case 'estrela':
-      if (!hasCorteBunchBase(totals)) return null;
-      return percentOf(totals.cachoEstrela, totals.cachosObservados);
+      if (!hasCortePlantBase(totals)) return null;
+      return Number(totals.taloCompridoRate || 0);
     default:
       return 0;
   }
@@ -364,12 +487,6 @@ function metricColor(metric, value, hasData) {
   }
 
   const numeric = Number(value);
-  if (metric.goodWhen === 'composite') {
-    if (numeric >= 2) return RISK_COLORS.critical;
-    if (numeric >= 1) return RISK_COLORS.attention;
-    return RISK_COLORS.good;
-  }
-
   if (metric.goodWhen === 'high') {
     if (numeric >= metric.meta) return RISK_COLORS.good;
     if (numeric >= metric.meta * 0.88) return RISK_COLORS.attention;
@@ -381,39 +498,9 @@ function metricColor(metric, value, hasData) {
   return RISK_COLORS.critical;
 }
 
-function qualityGoalMetrics(metricIds = BI_GOAL_METRIC_IDS) {
-  return metricIds
-    .map((id) => RISK_METRICS.find((metric) => metric.id === id))
-    .filter(Boolean);
-}
-
-function qualityGoalRows(totals, metricIds = BI_GOAL_METRIC_IDS) {
-  if (!totals) return [];
-
-  return qualityGoalMetrics(metricIds)
-    .map((metric) => {
-      const value = metricValue(metric, totals, 0);
-      const color = metricColor(metric, value, true);
-      return {
-        metric,
-        value,
-        color,
-        severity: color === RISK_COLORS.critical ? 2 : color === RISK_COLORS.attention ? 1 : 0,
-      };
-    })
-    .filter((item) => item.value !== null && item.value !== undefined && Number.isFinite(Number(item.value)));
-}
-
-function qualityGoalScore(totals, metricIds = BI_GOAL_METRIC_IDS) {
-  const rows = qualityGoalRows(totals, metricIds);
-  if (!rows.length) return null;
-  return Math.max(...rows.map((item) => item.severity));
-}
-
 function metricRiskScore(metric, value) {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) return -Infinity;
   const numeric = Number(value);
-  if (metric.goodWhen === 'composite') return numeric;
   return metric.goodWhen === 'high' ? metric.meta - numeric : numeric - metric.meta;
 }
 
@@ -425,11 +512,6 @@ function hasMetricValue(summary) {
 
 function formatMetricValue(metric, value) {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) return 'N/D';
-  if (metric.goodWhen === 'composite') {
-    if (Number(value) >= 2) return 'Fora da meta';
-    if (Number(value) >= 1) return 'Atenção';
-    return 'Dentro da meta';
-  }
   if (metric.unit === 't/ha') return `${formatDecimal(value, 3)} t/ha`;
   if (metric.unit === 'cachos/ha') return `${formatDecimal(value, 1)} cachos/ha`;
   if (metric.unit === '%') return `${formatDecimal(value, metric.id === 'nota' ? 0 : 1)}%`;
@@ -446,25 +528,11 @@ function escapeHtml(value) {
 }
 
 function metricTargetText(metric) {
-  if (metric.goodWhen === 'composite') return 'metas BI';
   const prefix = metric.goodWhen === 'high' ? 'mín.' : 'máx.';
   return `${prefix} ${formatMetricValue(metric, metric.meta)}`;
 }
 
 function metricExplanation(metric, value, color) {
-  if (metric.goodWhen === 'composite') {
-    if (value === null || value === undefined || !Number.isFinite(Number(value))) {
-      return `Sem dados suficientes para comparar ${metric.label.toLowerCase()} nesta parcela.`;
-    }
-    if (Number(value) >= 2) {
-      return `crítico: pelo menos um item de ${metric.label.toLowerCase()} ficou fora da meta.`;
-    }
-    if (Number(value) >= 1) {
-      return `atenção: existe item de ${metric.label.toLowerCase()} próximo do limite.`;
-    }
-    return `dentro da meta: ${metric.label.toLowerCase()} respeita os limites definidos.`;
-  }
-
   if (value === null || value === undefined || !Number.isFinite(Number(value))) {
     return 'Sem valor suficiente para comparar com a meta neste indicador.';
   }
@@ -482,7 +550,6 @@ function metricExplanation(metric, value, color) {
 
 function metricProgressWidth(metric, value) {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) return 0;
-  if (metric.goodWhen === 'composite') return Number(value) >= 2 ? 100 : Number(value) >= 1 ? 66 : 100;
   const numeric = Math.max(0, Number(value));
   const base = Math.max(Number(metric.meta || 1), numeric);
   if (metric.goodWhen === 'high') return Math.max(8, Math.min(100, (numeric / base) * 100));
@@ -491,7 +558,6 @@ function metricProgressWidth(metric, value) {
 
 function metricTargetPosition(metric, value) {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) return 50;
-  if (metric.goodWhen === 'composite') return 50;
   const numeric = Math.max(0, Number(value));
   const base = metric.goodWhen === 'high'
     ? Math.max(Number(metric.meta || 1), numeric)
@@ -524,6 +590,40 @@ function sortDateTexts(values) {
     .sort((a, b) => dateOrderValue(a) - dateOrderValue(b));
 }
 
+function parcelFiscalRows(records) {
+  const byFiscal = new Map();
+
+  records.forEach((record) => {
+    const fiscal = record.fiscal || 'Sem fiscal';
+    const current = byFiscal.get(fiscal) || {
+      fiscal,
+      count: 0,
+      dates: [],
+      sources: new Set(),
+    };
+    current.count += 1;
+    if (record.date && record.date !== '--') current.dates.push(record.date);
+    current.sources.add(record.source === 'excel' ? 'Excel' : 'App');
+    byFiscal.set(fiscal, current);
+  });
+
+  return Array.from(byFiscal.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3)
+    .map((item) => {
+      const sortedDates = sortDateTexts(item.dates);
+      const dateText = sortedDates.length
+        ? `${sortedDates[0]}${sortedDates[0] !== sortedDates[sortedDates.length - 1] ? ` a ${sortedDates[sortedDates.length - 1]}` : ''}`
+        : 'Sem data';
+      return `
+        <div class="parcel-popup-person-row">
+          <strong>${escapeHtml(item.fiscal)}</strong>
+          <span>${formatInteger(item.count)} coleta(s) · ${escapeHtml(dateText)} · ${escapeHtml(Array.from(item.sources).join(' + '))}</span>
+        </div>
+      `;
+    }).join('');
+}
+
 function parcelCollaboratorCodes(records) {
   return uniqueCompact(records.flatMap((record) => (
     (record.lines || []).flatMap((line) => [
@@ -535,9 +635,20 @@ function parcelCollaboratorCodes(records) {
   )), 8);
 }
 
-function parcelFiscalSummary(records) {
-  const fiscals = uniqueCompact(records.map((record) => record.fiscal || 'Sem fiscal'), 2);
-  return fiscals.length ? fiscals.join(' / ') : 'Sem fiscal informado';
+function parcelLatestRows(records) {
+  return [...records]
+    .sort((a, b) => dateOrderValue(b.date) - dateOrderValue(a.date))
+    .slice(0, 4)
+    .map((record) => {
+      const collaboratorCodes = parcelCollaboratorCodes([record]);
+      return `
+        <div class="parcel-popup-event-row">
+          <strong>${escapeHtml(record.date || '--')}</strong>
+          <span>${escapeHtml(record.form || record.type || 'CQO')} · ${escapeHtml(record.fiscal || 'Sem fiscal')}</span>
+          <small>${escapeHtml(record.source === 'excel' ? 'Excel' : 'App')}${collaboratorCodes.length ? ` · Colab. ${escapeHtml(collaboratorCodes.join(', '))}` : ''}</small>
+        </div>
+      `;
+    }).join('');
 }
 
 function topCauseRows(totals) {
@@ -549,47 +660,14 @@ function topCauseRows(totals) {
     { label: 'Verde', value: Number(totals.cachoVerdeRate || 0), detail: `${formatInteger(totals.cachoVerde || 0)} cacho(s)`, color: '#F59E0B' },
     { label: 'Passado', value: Number(totals.cachoPassadoRate || 0), detail: `${formatInteger(totals.cachoPassado || 0)} cacho(s)`, color: '#6B4B3E' },
     { label: 'Avermelhado', value: percentOf(totals.cachoAvermelhado, totals.cachosObservados), detail: `${formatInteger(totals.cachoAvermelhado || 0)} cacho(s)`, color: '#B91C1C' },
-    { label: 'Talo comprido', value: percentOf(totals.taloComprido, totals.cachosObservados), detail: `${formatInteger(totals.taloComprido || 0)} cacho(s)`, color: '#D98C10' },
-    { label: 'Estrela', value: percentOf(totals.cachoEstrela, totals.cachosObservados), detail: `${formatInteger(totals.cachoEstrela || 0)} cacho(s)`, color: '#F2B544' },
+    { label: 'Talo comprido', value: Number(totals.taloCompridoRate || 0), detail: `${formatInteger(totals.taloComprido || 0)} ocorr.`, color: '#D98C10' },
     { label: 'Mal posicionado', value: Number(totals.cachoMalPosicionadoRate || 0), detail: `${formatInteger(totals.cachoMalPosicionado || 0)} ocorr.`, color: '#F97316' },
   ].filter((item) => item.value > 0 || !/^0\b/.test(String(item.detail)))
     .sort((a, b) => b.value - a.value)
     .slice(0, 4);
 }
 
-function popupBiGoalChecklist(totals, metric) {
-  const metricIds = metric?.metricIds || BI_GOAL_METRIC_IDS;
-  const rows = qualityGoalRows(totals, metricIds);
-  if (!rows.length) {
-    return '<div class="parcel-popup-empty">Sem base de cachos suficiente para comparar este indicador.</div>';
-  }
-
-  return `
-    <div class="parcel-popup-chart-card">
-      <div class="parcel-popup-chart-head">
-        <span>${escapeHtml(metric?.label || 'Farol CQO')}</span>
-        <strong style="color:${rows.some((row) => row.severity >= 2) ? RISK_COLORS.critical : rows.some((row) => row.severity >= 1) ? RISK_COLORS.attention : RISK_COLORS.good};">
-          ${rows.some((row) => row.severity >= 2) ? 'Fora da meta' : rows.some((row) => row.severity >= 1) ? 'Atenção' : 'Dentro da meta'}
-        </strong>
-      </div>
-      <div class="parcel-popup-goal-list">
-        ${rows.map(({ metric, value: rowValue, color: rowColor }) => `
-          <div class="parcel-popup-goal-item">
-            <span><i style="background:${rowColor};"></i>${escapeHtml(metric.label)}</span>
-            <b style="color:${rowColor};">${formatMetricValue(metric, rowValue)}</b>
-            <small>${escapeHtml(metricTargetText(metric))}</small>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
-
-function popupMetricChart(metric, value, color, totals = null) {
-  if (metric.goodWhen === 'composite') {
-    return popupBiGoalChecklist(totals, metric);
-  }
-
+function popupMetricChart(metric, value, color) {
   const width = metricProgressWidth(metric, value);
   const target = metricTargetPosition(metric, value);
 
@@ -611,28 +689,39 @@ function popupMetricChart(metric, value, color, totals = null) {
   `;
 }
 
-function popupBunchStack(totals, mode = 'full') {
-  const mainParts = [
+function popupCauseChart(totals) {
+  const causes = topCauseRows(totals);
+  if (!causes.length) {
+    return '<div class="parcel-popup-empty">Nenhum desvio relevante identificado nos campos calculados.</div>';
+  }
+  const max = Math.max(...causes.map((item) => item.value), 1);
+
+  return `
+    <div class="parcel-popup-cause-list">
+      ${causes.map((item) => `
+        <div class="parcel-popup-cause-row">
+          <div>
+            <strong>${escapeHtml(item.label)}</strong>
+            <span>${escapeHtml(item.detail)}</span>
+          </div>
+          <div class="parcel-popup-mini-bar">
+            <span style="width:${Math.max(7, (item.value / max) * 100)}%; background:${item.color};"></span>
+          </div>
+          <b>${formatDecimal(item.value, 1)}%</b>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function popupBunchStack(totals) {
+  const parts = [
     { label: 'Maduro', value: Number(totals?.cachoMaduro || 0), color: '#FB8A4B' },
     { label: 'Passado', value: Number(totals?.cachoPassado || 0), color: '#6B4B3E' },
     { label: 'Verde', value: Number(totals?.cachoVerde || 0), color: '#22C55E' },
     { label: 'Averm.', value: Number(totals?.cachoAvermelhado || 0), color: '#B91C1C' },
   ];
-  const visibleParts = mode === 'bunch'
-    ? mainParts
-    : [
-      ...mainParts,
-      { label: 'Estrela', value: Number(totals?.cachoEstrela || 0), color: '#F2B544' },
-      { label: 'Talo', value: Number(totals?.taloComprido || 0), color: '#D98C10' },
-    ];
-  const visibleTotal = visibleParts.reduce((sum, item) => sum + item.value, 0);
-  const observedTotal = Number(totals?.cachosObservados || 0);
-  const total = Math.max(observedTotal, visibleTotal);
-  const others = Math.max(0, total - visibleTotal);
-  const parts = [
-    ...visibleParts,
-    ...(mode !== 'bunch' && others > 0 ? [{ label: 'Outros', value: others, color: '#94A3B8' }] : []),
-  ];
+  const total = parts.reduce((sum, item) => sum + item.value, 0);
 
   if (!total) return '<div class="parcel-popup-empty">Sem composição de cachos observados nesta parcela.</div>';
 
@@ -640,11 +729,11 @@ function popupBunchStack(totals, mode = 'full') {
     <div class="parcel-popup-stack">
       <div class="parcel-popup-stackbar">
         ${parts.map((item) => `
-          <span style="width:${(item.value / total) * 100}%; background:${item.color};" title="${escapeHtml(item.label)}"></span>
+          <span style="width:${Math.max(item.value ? 3 : 0, (item.value / total) * 100)}%; background:${item.color};" title="${escapeHtml(item.label)}"></span>
         `).join('')}
       </div>
       <div class="parcel-popup-stack-legend">
-        ${parts.filter((item) => item.value > 0 || item.label !== 'Outros').map((item) => `
+        ${parts.map((item) => `
           <span><i style="background:${item.color};"></i>${escapeHtml(item.label)} ${formatDecimal(percentOf(item.value, total), 1)}%</span>
         `).join('')}
       </div>
@@ -690,8 +779,17 @@ function buildParcelSummary({ feature, records, heatSummary, metric }) {
 function popupMetric(label, value, tone = '') {
   return `
     <div class="parcel-popup-metric">
-      <span>${label}</span>
-      <strong style="color:${tone || '#182230'};">${value}</strong>
+      <span>${escapeHtml(label)}</span>
+      <strong style="color:${tone || '#182230'};">${escapeHtml(value)}</strong>
+    </div>
+  `;
+}
+
+function popupPercentRow(label, value, tone = '') {
+  return `
+    <div class="parcel-popup-percent-row">
+      <span>${escapeHtml(label)}</span>
+      <strong style="color:${tone || '#182230'};">${escapeHtml(value)}</strong>
     </div>
   `;
 }
@@ -702,7 +800,7 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
   const densityShape = parcelDensity(props);
   const score = totals?.generalScore ?? 0;
   const scoreColor = totals ? getScoreColor(score) : '#94A3B8';
-  const selectedMetric = metric || RISK_METRICS[0];
+  const selectedMetric = metric || RISK_METRICS[1];
   const selectedValue = metricValue(selectedMetric, totals, areaHa);
   const selectedColor = metricColor(selectedMetric, selectedValue, Boolean(totals));
   const statusText = totals
@@ -716,50 +814,80 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
     : 'Sem data';
   const latestDate = dateValues[dateValues.length - 1] || 'Sem data';
   const collaboratorCodes = parcelCollaboratorCodes(parcelRecords);
-  const fiscalSummary = parcelFiscalSummary(parcelRecords);
-  const causeRows = topCauseRows(totals).slice(0, 2);
+  const fiscalRows = parcelFiscalRows(parcelRecords);
+  const latestRows = parcelLatestRows(parcelRecords);
+
+  const riskBlock = totals
+    ? `
+      <div class="parcel-popup-heat">
+        <strong style="color:${selectedColor};">${riskStatusLabel(selectedColor)} - ${selectedMetric.label}</strong>
+        <span>${formatMetricValue(selectedMetric, selectedValue)} aplicado na parcela completa a partir da amostragem.</span>
+      </div>
+    `
+    : `
+      <div class="parcel-popup-heat parcel-popup-heat-neutral">
+        <strong>Sem avaliação no período</strong>
+        <span>Esta parcela não tem coleta aprovada ou registro Excel dentro dos filtros atuais.</span>
+      </div>
+    `;
 
   const mainMetrics = [
     popupMetric('Nota CQO', totals ? `${formatDecimal(score, 0)}%` : 'N/D', scoreColor),
-    popupMetric('Area', areaHa ? `${formatDecimal(areaHa, 1)} ha` : 'N/D'),
-    popupMetric('Linhas', formatInteger(totals?.linhas || 0)),
+    popupMetric('Area', areaHa ? `${formatDecimal(areaHa, 2)} ha` : 'N/D'),
+    popupMetric('Densidade', densityShape ? `${formatDecimal(densityShape, 0)} pl/ha` : 'N/D'),
+    popupMetric('Periodo', dateRange),
+    popupMetric('Fonte', totals ? `${excelCount} Excel / ${appCount} App` : 'N/D'),
+    popupMetric('Linhas amostradas', formatInteger(totals?.linhas || 0)),
+    popupMetric('Plantas obs.', formatInteger(totals?.plantasObservadas || 0)),
     popupMetric('Cachos obs.', formatInteger(totals?.cachosObservados || 0)),
+    popupMetric('Perda fruta/ha', areaHa ? `${formatDecimal(perHa(totals?.lostFrutosTon || 0, areaHa), 3)} t/ha` : 'N/D', '#EF4444'),
   ].join('');
 
-  const compactCauses = causeRows.length
-    ? `
-      <div class="parcel-popup-compact-causes">
-        ${causeRows.map((item) => `
-          <span>
-            <b style="color:${item.color};">${escapeHtml(item.label)}</b>
-            ${formatDecimal(item.value, 1)}% · ${escapeHtml(item.detail)}
-          </span>
-        `).join('')}
-      </div>
-    `
-    : '';
+  const percentMetrics = [
+    popupPercentRow('Cacho maduro', `${formatDecimal(percentOf(totals?.cachoMaduro, totals?.cachosObservados), 1)}%`, '#22C55E'),
+    popupPercentRow('Perda corte', `${formatDecimal(totals?.perdaCorteRate || 0, 1)}%`, '#EF4444'),
+    popupPercentRow('Cacho verde', `${formatDecimal(totals?.cachoVerdeRate || 0, 1)}%`, '#F59E0B'),
+    popupPercentRow('Cacho passado', `${formatDecimal(totals?.cachoPassadoRate || 0, 1)}%`, '#F59E0B'),
+    popupPercentRow('Avermelhado', `${formatDecimal(percentOf(totals?.cachoAvermelhado, totals?.cachosObservados), 1)}%`, '#EF4444'),
+    popupPercentRow('Talo comprido', `${formatDecimal(totals?.taloCompridoRate || 0, 1)}%`, '#D98C10'),
+    popupPercentRow('Nao carreado', `${formatDecimal(totals?.cachoNaoCarreadoRate || 0, 1)}%`, '#EF4444'),
+  ].join('');
 
   return `
-    <div class="parcel-popup-card parcel-popup-card-compact">
+    <div class="parcel-popup-card">
       <div class="parcel-popup-head">
         <strong style="color:${style.color};">${escapeHtml(props.farmName || 'Fazenda')}</strong>
         <span>Parcela: <b>${escapeHtml(shapeParcel || '--')}</b> | Fonte: shapefile</span>
         <small>${formatInteger(parcelRecords.length)} coleta(s) | ${statusText} | Último dado: ${escapeHtml(latestDate)}</small>
       </div>
-      <div class="parcel-popup-body">
+      <div class="parcel-popup-scroll">
         <div class="parcel-popup-executive" style="color:${selectedColor};">
           <strong style="color:${selectedColor};">${riskStatusLabel(selectedColor)}</strong>
           <span>${escapeHtml(metricExplanation(selectedMetric, selectedValue, selectedColor))}</span>
         </div>
-        ${totals ? popupMetricChart(selectedMetric, selectedValue, selectedColor, totals) : ''}
+        ${totals ? popupMetricChart(selectedMetric, selectedValue, selectedColor) : ''}
         <div class="parcel-popup-grid">${mainMetrics}</div>
-        ${compactCauses ? '<div class="parcel-popup-section parcel-popup-section-tight">Pontos de atenção</div>' : ''}
-        ${compactCauses}
-        <div class="parcel-popup-section parcel-popup-section-tight">Composição dos cachos</div>
-        ${popupBunchStack(totals, selectedMetric.id === 'qualidade_cachos' ? 'bunch' : 'full')}
-        <div class="parcel-popup-footnote">
-          Fiscal: <b>${escapeHtml(fiscalSummary)}</b> · Fonte: <b>${formatInteger(excelCount)} Excel / ${formatInteger(appCount)} App</b> · Período: <b>${escapeHtml(dateRange)}</b>${densityShape ? ` · Dens.: <b>${formatDecimal(densityShape, 0)} pl/ha</b>` : ''}${collaboratorCodes.length ? ` · Matr.: <b>${escapeHtml(collaboratorCodes.slice(0, 3).join(', '))}</b>` : ''}
+        ${riskBlock}
+        <div class="parcel-popup-section">O que aconteceu</div>
+        ${popupCauseChart(totals)}
+        <div class="parcel-popup-section">Composição dos cachos</div>
+        ${popupBunchStack(totals)}
+        <div class="parcel-popup-section">Fiscal responsável</div>
+        <div class="parcel-popup-person-list">
+          ${fiscalRows || '<div class="parcel-popup-empty">Sem fiscal responsável informado.</div>'}
         </div>
+        <div class="parcel-popup-section">Coletas no período</div>
+        <div class="parcel-popup-event-list">
+          ${latestRows || '<div class="parcel-popup-empty">Sem coleta dentro dos filtros atuais.</div>'}
+        </div>
+        ${collaboratorCodes.length ? `
+          <div class="parcel-popup-section">Matrículas de colaboradores</div>
+          <div class="parcel-popup-chip-list">
+            ${collaboratorCodes.map((code) => `<span>${escapeHtml(code)}</span>`).join('')}
+          </div>
+        ` : ''}
+        <div class="parcel-popup-section">Percentuais principais</div>
+        <div class="parcel-popup-percent-list">${percentMetrics}</div>
       </div>
     </div>
   `;
@@ -769,20 +897,11 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const layerGroupRef = useRef(null);
-  const autoViewportKeyRef = useRef('');
   const [mapLayer, setMapLayer] = useState('heat');
   const [baseLayer, setBaseLayer] = useState('standard');
-  const [riskMetricId, setRiskMetricId] = useState('qualidade_cachos');
+  const [riskMetricId, setRiskMetricId] = useState('perda_t_ha');
   const [parcelGeoJson, setParcelGeoJson] = useState(null);
-  const [parcelGeoLoading, setParcelGeoLoading] = useState(true);
-  const [mapRendering, setMapRendering] = useState(true);
-  const [tileLoading, setTileLoading] = useState(true);
-  const { records, loading: dataLoading } = useCqoData({
-    sourceFilter,
-    includeAttachments: false,
-    includeForms: false,
-    appLimit: sourceFilter === 'app' ? 500 : 1000,
-  });
+  const { records } = useCqoData();
   const selectedRiskMetric = useMemo(() => activeRiskMetric(riskMetricId), [riskMetricId]);
 
   const filteredRecords = useMemo(() => filterRecords(records, {
@@ -991,20 +1110,14 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     let mounted = true;
     fetch('/data/farm-parcels.geojson')
       .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) throw new Error('Mapa de parcelas indisponível.');
         return response.json();
       })
       .then((geojson) => {
-        if (mounted) {
-          setParcelGeoJson(geojson);
-          setParcelGeoLoading(false);
-        }
+        if (mounted) setParcelGeoJson(geojson);
       })
       .catch(() => {
-        if (mounted) {
-          setParcelGeoJson(null);
-          setParcelGeoLoading(false);
-        }
+        if (mounted) setParcelGeoJson(null);
       });
 
     return () => {
@@ -1017,7 +1130,6 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     const layers = layerGroupRef.current;
     if (!map || !layers) return;
 
-    const startRenderFrame = window.requestAnimationFrame(() => setMapRendering(true));
     layers.clearLayers();
     map.eachLayer((layer) => {
       if (layer instanceof L.TileLayer) {
@@ -1051,37 +1163,9 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       };
     }
 
-    let tilesSettled = false;
-    const settleTiles = () => {
-      tilesSettled = true;
-      setTileLoading(false);
-    };
-    const tileFailSafeTimer = window.setTimeout(settleTiles, presentationMode ? 2200 : 4500);
-
-    const tileLayer = L.tileLayer(tileUrl, tileOptions)
-      .on('loading', () => {
-        if (!tilesSettled) setTileLoading(true);
-      })
-      .on('load', settleTiles)
-      .on('tileerror', settleTiles)
-      .addTo(map);
+    L.tileLayer(tileUrl, tileOptions).addTo(map);
 
     const farmLayerBounds = [];
-    const viewportKey = [
-      farmFilter,
-      areaFilter,
-      periodFilter,
-      cycleFilter,
-      evaluatorFilter,
-      mapLayer,
-      sourceFilter,
-      dateFrom,
-      dateTo,
-      filteredParcelFeatures.length,
-      allGpsPoints.length,
-    ].join('|');
-    const shouldAutoViewport = autoViewportKeyRef.current !== viewportKey;
-    autoViewportKeyRef.current = viewportKey;
 
     if (parcelGeoJson?.features?.length) {
       const filteredParcels = {
@@ -1140,27 +1224,31 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           const shapeParcel = shapeParcelCode(props);
           const summary = parcelSummaryByKey.get(parcelHeatKey(props.farmId, shapeParcel));
           const parcelRecords = summary?.records || [];
-          const popupContent = parcelNumbersPopup({
+
+          layer.bindPopup(parcelNumbersPopup({
             props,
             shapeParcel,
             style,
             parcelRecords,
             metric: selectedRiskMetric,
-          });
-          const popupOptions = {
+          }), {
             maxWidth: 460,
             minWidth: 380,
             autoPan: true,
             autoPanPaddingTopLeft: [24, 120],
             autoPanPaddingBottomRight: [380, 70],
-          };
-
-          layer.on('click', (event) => {
-            L.popup(popupOptions)
-              .setLatLng(parcelPopupLatLng(layer, event.latlng))
-              .setContent(popupContent)
-              .openOn(map);
           });
+          if (shapeParcel && mapLayer !== 'route') {
+            const labelLatLng = featureLabelLatLng(feature);
+            if (labelLatLng) {
+              L.marker(labelLatLng, {
+                icon: parcelLabelIcon(shapeParcel, Boolean(summary?.totals)),
+                interactive: false,
+                keyboard: false,
+                pane: 'tooltipPane',
+              }).addTo(layers);
+            }
+          }
           if (layer.getBounds) farmLayerBounds.push(layer.getBounds());
         },
       }).addTo(layers);
@@ -1187,7 +1275,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           .addTo(layers)
           .bindPopup(`
             <div style="font-family: Inter, Segoe UI, sans-serif;">
-              <strong style="color: #234F2A; font-size: 14px;">${farm.name}</strong><br/>
+              <strong style="color: #234F2A; font-size: 14px;">${escapeHtml(farm.name)}</strong><br/>
               <span>Area estimada</span>
             </div>
           `);
@@ -1215,7 +1303,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
 
         L.marker([pointLat, pointLng], { icon: gpsPointIcon(point, index, pinColor) })
           .addTo(layers)
-          .bindTooltip(`${index + 1}. ${point.title}`, {
+          .bindTooltip(`${index + 1}. ${escapeHtml(point.title)}`, {
             direction: 'top',
             offset: [0, -12],
             opacity: 0.95,
@@ -1224,62 +1312,60 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           .bindPopup(`
             <div style="font-family: Inter, Segoe UI, sans-serif; max-width: 260px;">
               <strong style="color:${style.color};font-size:12px;">Ponto GPS ${index + 1}</strong><br/>
-              <span style="font-size:11px;">Ocorrencia: <strong>${point.title}</strong></span><br/>
-              <span style="font-size:11px;">Campo: <strong>${point.fieldId || '--'}</strong></span><br/>
-              <span style="font-size:11px;">Linha: <strong>${point.line}</strong></span><br/>
-              <span style="font-size:11px;">Fazenda: <strong>${point.record.farm}</strong></span><br/>
-              <span style="font-size:11px;">Parcela: <strong>${point.record.parcel}</strong></span><br/>
-              <span style="font-size:11px;">Quantidade: <strong>${point.quantity || 1}</strong></span><br/>
-              <span style="font-size:11px;">GPS original: <strong>${point.label}</strong></span><br/>
-              <span style="font-size:11px;">Status: <strong style="color:${markerColor(point.record, style.fill)};">${point.record.status}</strong></span>
+              <span style="font-size:11px;">Ocorrencia: <strong>${escapeHtml(point.title)}</strong></span><br/>
+              <span style="font-size:11px;">Campo: <strong>${escapeHtml(point.fieldId || '--')}</strong></span><br/>
+              <span style="font-size:11px;">Linha: <strong>${escapeHtml(point.line)}</strong></span><br/>
+              <span style="font-size:11px;">Fazenda: <strong>${escapeHtml(point.record.farm)}</strong></span><br/>
+              <span style="font-size:11px;">Parcela: <strong>${escapeHtml(point.record.parcel)}</strong></span><br/>
+              <span style="font-size:11px;">Quantidade: <strong>${escapeHtml(point.quantity || 1)}</strong></span><br/>
+              <span style="font-size:11px;">GPS original: <strong>${escapeHtml(point.label)}</strong></span><br/>
+              <span style="font-size:11px;">Status: <strong style="color:${markerColor(point.record, style.fill)};">${escapeHtml(point.record.status)}</strong></span>
             </div>
           `);
       });
     }
 
-    if (mapLayer === 'route') {
-      geoRecords.forEach((record) => {
-        if (record.gpsOccurrences?.length) return;
-        const style = farmStyle(record.farmId);
-        const markerPoint = firstValidGpsPoint(record);
-        if (!markerPoint) return;
-        const pinColor = markerColor(record, style.fill);
-        const pinIcon = L.divIcon({
-          className: 'custom-div-icon gps-collection-marker',
-          html: `
-            <div class="gps-pin-ring" style="--gps-pin-color:${pinColor};">
-              <span></span>
-            </div>
-            <strong>GPS</strong>
-          `,
-          iconSize: [52, 34],
-          iconAnchor: [16, 16],
-        });
-
-        L.marker([markerPoint.lat, markerPoint.lng], { icon: pinIcon })
-          .addTo(layers)
-          .bindTooltip(`${record.status} - ${record.gpsOccurrences?.length || record.gpsTrack?.length || 1} ponto(s) GPS`, {
-            permanent: geoRecords.length <= 5 && !record.gpsOccurrences?.length,
-            direction: 'top',
-            offset: [0, -14],
-            opacity: 0.95,
-            className: 'gps-marker-tooltip',
-          })
-          .bindPopup(`
-            <div style="font-family: Inter, Segoe UI, sans-serif; max-width: 240px;">
-              <strong style="color:${style.color};font-size:12px;">Coleta #${record.id}</strong><br/>
-              <span style="font-size:11px;">Formulario: <strong>${record.form}</strong></span><br/>
-              <span style="font-size:11px;">Fazenda: <strong>${record.farm}</strong></span><br/>
-              <span style="font-size:11px;">Parcela: <strong>${record.parcel}</strong></span><br/>
-              <span style="font-size:11px;">Linhas avaliadas: <strong>${record.totals?.linhas || record.lines?.length || 0}</strong></span><br/>
-              <span style="font-size:11px;">Ocorrencias GPS: <strong>${record.gpsOccurrences?.length || 0}</strong></span><br/>
-              <span style="font-size:11px;">Pontos da trilha: <strong>${record.gpsTrack?.length || 1}</strong></span><br/>
-              <span style="font-size:11px;">GPS: <strong>${markerPoint.label}</strong></span><br/>
-              <span style="font-size:11px;">Status: <strong style="color:${pinColor};">${record.status}</strong></span>
-            </div>
-          `);
+    geoRecords.forEach((record) => {
+      if (record.gpsOccurrences?.length && mapLayer !== 'polygon') return;
+      const style = farmStyle(record.farmId);
+      const markerPoint = firstValidGpsPoint(record);
+      if (!markerPoint) return;
+      const pinColor = markerColor(record, style.fill);
+      const pinIcon = L.divIcon({
+        className: 'custom-div-icon gps-collection-marker',
+        html: `
+          <div class="gps-pin-ring" style="--gps-pin-color:${pinColor};">
+            <span></span>
+          </div>
+          <strong>GPS</strong>
+        `,
+        iconSize: [52, 34],
+        iconAnchor: [16, 16],
       });
-    }
+
+      L.marker([markerPoint.lat, markerPoint.lng], { icon: pinIcon })
+        .addTo(layers)
+        .bindTooltip(`${escapeHtml(record.status)} - ${record.gpsOccurrences?.length || record.gpsTrack?.length || 1} ponto(s) GPS`, {
+          permanent: geoRecords.length <= 5 && !record.gpsOccurrences?.length,
+          direction: 'top',
+          offset: [0, -14],
+          opacity: 0.95,
+          className: 'gps-marker-tooltip',
+        })
+        .bindPopup(`
+          <div style="font-family: Inter, Segoe UI, sans-serif; max-width: 240px;">
+            <strong style="color:${style.color};font-size:12px;">Coleta #${escapeHtml(record.id)}</strong><br/>
+            <span style="font-size:11px;">Formulario: <strong>${escapeHtml(record.form)}</strong></span><br/>
+            <span style="font-size:11px;">Fazenda: <strong>${escapeHtml(record.farm)}</strong></span><br/>
+            <span style="font-size:11px;">Parcela: <strong>${escapeHtml(record.parcel)}</strong></span><br/>
+            <span style="font-size:11px;">Linhas avaliadas: <strong>${record.totals?.linhas || record.lines?.length || 0}</strong></span><br/>
+            <span style="font-size:11px;">Ocorrencias GPS: <strong>${record.gpsOccurrences?.length || 0}</strong></span><br/>
+            <span style="font-size:11px;">Pontos da trilha: <strong>${record.gpsTrack?.length || 1}</strong></span><br/>
+            <span style="font-size:11px;">GPS: <strong>${escapeHtml(markerPoint.label)}</strong></span><br/>
+            <span style="font-size:11px;">Status: <strong style="color:${pinColor};">${escapeHtml(record.status)}</strong></span>
+          </div>
+        `);
+    });
 
     if (mapLayer === 'heat' && !parcelGeoJson?.features?.length) {
       heatPoints.forEach((point) => {
@@ -1296,7 +1382,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           opacity: 0.44,
         })
           .addTo(layers)
-          .bindTooltip(`${point.title || 'Ocorrencia'} - linha ${point.line || '--'}`, {
+          .bindTooltip(`${escapeHtml(point.title || 'Ocorrencia')} - linha ${escapeHtml(point.line || '--')}`, {
             direction: 'top',
             opacity: 0.9,
             className: 'gps-marker-tooltip',
@@ -1353,7 +1439,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       if (!mapContainerRef.current) return;
       map.invalidateSize({ pan: false, debounceMoveend: false });
 
-      const gpsLatLngs = (mapLayer === 'route' ? allGpsPoints : [])
+      const gpsLatLngs = allGpsPoints
         .map(normalizeLatLng)
         .filter(Boolean)
         .map((point) => L.latLng(point.lat, point.lng));
@@ -1372,64 +1458,21 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           map.setView([selectedFarm.Lat, selectedFarm.Lng], 14, { animate: false });
         }
       }
-
     };
-
-    let secondViewportTimer;
-    let finishRenderTimer;
 
     const frame = window.requestAnimationFrame(() => {
       map.whenReady(() => {
-        if (shouldAutoViewport) {
-          applyViewport();
-          secondViewportTimer = window.setTimeout(applyViewport, 120);
-        } else {
-          map.invalidateSize({ pan: false, debounceMoveend: false });
-        }
-        finishRenderTimer = window.setTimeout(() => {
-          setMapRendering(false);
-          if (presentationMode) settleTiles();
-        }, presentationMode ? 320 : 240);
+        applyViewport();
+        window.setTimeout(applyViewport, 120);
       });
     });
 
-    return () => {
-      window.cancelAnimationFrame(startRenderFrame);
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(secondViewportTimer);
-      window.clearTimeout(finishRenderTimer);
-      window.clearTimeout(tileFailSafeTimer);
-      tileLayer.off();
-    };
-  }, [theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo, mapLayer, baseLayer, selectedRiskMetric, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, filteredParcelFeatures, parcelSummaryByKey, presentationMode]);
-
-  const mapIsLoading = dataLoading || parcelGeoLoading || mapRendering || tileLoading;
-  const mapLoadingText = dataLoading
-    ? 'Sincronizando dados do Supabase'
-    : parcelGeoLoading
-      ? 'Carregando parcelas das fazendas'
-      : tileLoading
-        ? 'Carregando imagem do mapa'
-        : 'Renderizando semáforo das parcelas';
+    return () => window.cancelAnimationFrame(frame);
+  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, selectedRiskMetric, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, filteredParcelFeatures, parcelSummaryByKey]);
 
   return (
     <div className={`card gps-map-card ${presentationMode ? 'gps-map-card-presentation' : ''}`}>
       <div ref={mapContainerRef} className="gps-map-canvas" />
-
-      {mapIsLoading ? (
-        <div className="gps-map-loading-overlay" role="status" aria-live="polite">
-          <div className="gps-map-loader">
-            <div className="gps-map-loader-radar" aria-hidden="true">
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-            <strong>{mapLoadingText}</strong>
-            <small>Preparando mapa operacional</small>
-          </div>
-        </div>
-      ) : null}
 
       <div className="map-overlay-card gps-map-overlay">
         <h4>Visualização</h4>
@@ -1501,20 +1544,6 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           </label>
         ) : null}
 
-        <button
-          type="button"
-          className="gps-reset-map-btn"
-          onClick={() => {
-            setBaseLayer('standard');
-            setMapLayer('heat');
-            setRiskMetricId('qualidade_cachos');
-          }}
-          title="Limpar filtros do mapa"
-        >
-          <RotateCcw size={13} />
-          Limpar mapa
-        </button>
-
         <div className="gps-map-stats">
           <div className="gps-map-stats-total">
             {geoStats.total} coletas / {geoStats.sampledParcels} parcelas avaliadas
@@ -1570,14 +1599,12 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
               )}
             </div>
           ) : null}
-          <div className="gps-farm-counts">
-            {Object.entries(FARM_STYLES).filter(([id]) => id !== 'default').map(([id, style]) => (
-              <div key={id} className="gps-farm-count">
-                <span style={{ backgroundColor: style.fill }} />
-                <span>{style.label}: {geoStats.byFarm[id] || 0}</span>
-              </div>
-            ))}
-          </div>
+          {Object.entries(FARM_STYLES).filter(([id]) => id !== 'default').map(([id, style]) => (
+            <div key={id}>
+              <span style={{ backgroundColor: style.fill }} />
+              <span>{style.label}: {geoStats.byFarm[id] || 0}</span>
+            </div>
+          ))}
           <div className="gps-map-note">
             <span>
               {mapLayer === 'heat' && `${selectedRiskMetric.label} aplicado na parcela completa com base na amostragem filtrada.`}

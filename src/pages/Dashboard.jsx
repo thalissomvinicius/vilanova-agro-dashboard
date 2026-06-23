@@ -6,10 +6,10 @@ import {
   Maximize2,
   MonitorPlay,
   RefreshCw,
-  RotateCcw,
   SlidersHorizontal,
   X,
 } from 'lucide-react';
+import StatusBanner from '../components/ui/StatusBanner';
 import { parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
 import { buildQualidadeOperacional } from '../utils/qualidadeOperacionalData';
 
@@ -135,16 +135,10 @@ function buildDailyBunchRows(records) {
           avermelhado: 0,
           estrela: 0,
           talo: 0,
-          recordsCount: 0,
-          farms: new Set(),
-          parcels: new Set(),
         });
       }
 
       const bucket = buckets.get(sortKey);
-      bucket.recordsCount += 1;
-      bucket.farms.add(record.farm || 'Sem fazenda');
-      bucket.parcels.add(record.parcel || 'Sem parcela');
       bucket.maduro += record.totals?.cachoMaduro || 0;
       bucket.passado += record.totals?.cachoPassado || 0;
       bucket.verde += record.totals?.cachoVerde || 0;
@@ -153,16 +147,7 @@ function buildDailyBunchRows(records) {
       bucket.talo += record.totals?.taloComprido || 0;
     });
 
-  return Array.from(buckets.values())
-    .map((row) => {
-      const { farms, parcels, ...rest } = row;
-      return {
-        ...rest,
-        farmsLabel: Array.from(farms).slice(0, 3).join(', '),
-        parcelsLabel: Array.from(parcels).slice(0, 4).join(', '),
-      };
-    })
-    .sort((a, b) => String(a.sortKey).localeCompare(String(b.sortKey)));
+  return Array.from(buckets.values()).sort((a, b) => String(a.sortKey).localeCompare(String(b.sortKey)));
 }
 
 function qualityTone(value, meta, goodWhen = 'low') {
@@ -240,117 +225,6 @@ function riskFromValues(values) {
   return Number(values.passado || 0) + Number(values.verde || 0) + Number(values.avermelhado || 0);
 }
 
-function buildQualityInsight(kind, row, metricKey = 'maduro') {
-  const values = qualityValuesFromRow(row);
-  const metric = BI_SERIES.find((item) => item.key === metricKey) || BI_SERIES[0];
-  const recordsCount = row.records?.length || row.recordsCount || 0;
-  const risk = riskFromValues(values);
-
-  return {
-    id: `${kind}-${row.label}-${metric.key}`,
-    kind,
-    title: `${kind}: ${row.label}`,
-    subtitle: `${metric.fullLabel}: ${formatPercent(values[metric.key])}`,
-    metricKey: metric.key,
-    metricLabel: metric.fullLabel,
-    metricValue: values[metric.key],
-    values,
-    recordsCount,
-    samples: values.samples,
-    risk,
-    footer: row.corteT || row.carreamentoT
-      ? `Perdas: ${formatNumber(row.corteT || 0, 2)} t corte / ${formatNumber(row.carreamentoT || 0, 2)} t carreamento`
-      : '',
-  };
-}
-
-function buildDailyInsight(row, metricKey = 'maduro') {
-  const metric = BI_SERIES.find((item) => item.key === metricKey) || BI_SERIES[0];
-  const total = BI_SERIES.reduce((sum, item) => sum + Number(row[item.key] || 0), 0);
-  const values = BI_SERIES.reduce((acc, item) => ({
-    ...acc,
-    [item.key]: total > 0 ? (Number(row[item.key] || 0) / total) * 100 : 0,
-  }), {});
-  const counts = BI_SERIES.reduce((acc, item) => ({
-    ...acc,
-    [item.key]: Number(row[item.key] || 0),
-  }), {});
-
-  return {
-    id: `Dia-${row.sortKey}-${metric.key}`,
-    kind: 'Dia',
-    title: `Dia: ${row.label}`,
-    subtitle: `${metric.fullLabel}: ${formatNumber(counts[metric.key])} cachos (${formatPercent(values[metric.key])})`,
-    metricKey: metric.key,
-    metricLabel: metric.fullLabel,
-    metricValue: values[metric.key],
-    values,
-    counts,
-    recordsCount: row.recordsCount || 0,
-    samples: total,
-    risk: riskFromValues(values),
-    footer: [row.farmsLabel, row.parcelsLabel].filter(Boolean).join(' · '),
-  };
-}
-
-function FieldBiDrillPanel({ insight, onClose }) {
-  if (!insight) return null;
-
-  const totalVisiblePct = BI_SERIES.reduce((sum, item) => sum + Number(insight.values?.[item.key] || 0), 0) || 1;
-  const riskTone = insight.risk > 8 ? 'danger' : insight.risk > 4 ? 'warning' : 'success';
-
-  return (
-    <aside className={`field-bi-drill-panel field-bi-drill-${riskTone}`} aria-live="polite">
-      <div className="field-bi-drill-head">
-        <div>
-          <span>Detalhe selecionado</span>
-          <strong>{insight.title}</strong>
-          <small>{insight.subtitle}</small>
-        </div>
-        <button type="button" onClick={onClose} aria-label="Fechar detalhe">
-          <X size={16} />
-        </button>
-      </div>
-
-      <div className="field-bi-drill-stats">
-        <div><span>Coletas</span><strong>{formatNumber(insight.recordsCount)}</strong></div>
-        <div><span>Base</span><strong>{formatNumber(insight.samples)}</strong><small>cachos</small></div>
-        <div><span>Risco</span><strong>{formatPercent(insight.risk)}</strong></div>
-        <div><span>Selecionado</span><strong>{formatPercent(insight.metricValue)}</strong></div>
-      </div>
-
-      <div className="field-bi-drill-stack" aria-label="Composicao dos cachos">
-        {BI_SERIES.map((item) => {
-          const value = Number(insight.values?.[item.key] || 0);
-          return (
-            <span
-              key={item.key}
-              style={{ width: `${Math.max(0, (value / totalVisiblePct) * 100)}%`, background: item.color }}
-              title={`${item.fullLabel}: ${formatPercent(value)}`}
-            />
-          );
-        })}
-      </div>
-
-      <div className="field-bi-drill-grid">
-        {BI_SERIES.map((item) => {
-          const value = Number(insight.values?.[item.key] || 0);
-          const selected = item.key === insight.metricKey;
-          return (
-            <div className={selected ? 'active' : ''} key={item.key}>
-              <span><i style={{ background: item.color }} />{item.fullLabel}</span>
-              <strong>{formatPercent(value)}</strong>
-              {insight.counts ? <small>{formatNumber(insight.counts[item.key])} cachos</small> : null}
-            </div>
-          );
-        })}
-      </div>
-
-      {insight.footer ? <p>{insight.footer}</p> : null}
-    </aside>
-  );
-}
-
 function FieldBiLegend() {
   return (
     <div className="field-bi-legend">
@@ -361,7 +235,7 @@ function FieldBiLegend() {
   );
 }
 
-function FieldBiFarmChart({ rows, loading = false, onSelect }) {
+function FieldBiFarmChart({ rows, loading = false }) {
   const visibleRows = rows.slice(0, 5);
 
   return (
@@ -381,18 +255,13 @@ function FieldBiFarmChart({ rows, loading = false, onSelect }) {
                   {BI_SERIES.map((item, index) => {
                     const value = values[item.key];
                     return (
-                      <button
-                        type="button"
-                        className="field-bi-farm-bar-line"
-                        key={item.key}
-                        onClick={() => onSelect?.(buildQualityInsight('Fazenda', row, item.key))}
-                      >
+                      <div className="field-bi-farm-bar-line" key={item.key}>
                         <span
                           style={{ width: `${Math.min(value, 100)}%`, background: item.color }}
                           title={`${row.label} - ${item.fullLabel}: ${formatPercent(value)}`}
                         />
                         {index === 0 && <small>{formatPercent(value)}</small>}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -407,7 +276,7 @@ function FieldBiFarmChart({ rows, loading = false, onSelect }) {
   );
 }
 
-function FieldBiWeekChart({ rows, loading = false, onSelect }) {
+function FieldBiWeekChart({ rows, loading = false }) {
   const visibleRows = rows.slice(-8);
   const chartHeight = 232;
   const padding = { top: 22, right: 18, bottom: 36, left: 42 };
@@ -455,15 +324,6 @@ function FieldBiWeekChart({ rows, loading = false, onSelect }) {
                           height={Math.max(segmentHeight, pct > 0 ? 1.5 : 0)}
                           fill={item.color}
                           className="chart-bar"
-                          role="button"
-                          tabIndex="0"
-                          onClick={() => onSelect?.(buildQualityInsight('Semana', row, item.key))}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
-                              onSelect?.(buildQualityInsight('Semana', row, item.key));
-                            }
-                          }}
                         >
                           <title>{`${row.label} - ${item.fullLabel}: ${formatPercent(pct)}`}</title>
                         </rect>
@@ -496,7 +356,7 @@ function FieldBiWeekChart({ rows, loading = false, onSelect }) {
   );
 }
 
-function FiscalQualityCards({ rows, loading = false, onSelect }) {
+function FiscalQualityCards({ rows, loading = false }) {
   const visibleRows = rows
     .map((row) => {
       const risk = riskFromValues({
@@ -524,12 +384,7 @@ function FiscalQualityCards({ rows, loading = false, onSelect }) {
             <span>ranking por risco de qualidade</span>
           </div>
           {visibleRows.map((row) => (
-            <button
-              type="button"
-              className={`field-bi-evaluator-card field-bi-evaluator-${row.tone}`}
-              key={row.label}
-              onClick={() => onSelect?.(buildQualityInsight('Fiscal', row, 'avermelhado'))}
-            >
+            <div className={`field-bi-evaluator-card field-bi-evaluator-${row.tone}`} key={row.label}>
               <strong>
                 <span>{row.label}</span>
                 <em>{formatPercent(row.risk)} risco</em>
@@ -540,7 +395,7 @@ function FiscalQualityCards({ rows, loading = false, onSelect }) {
                 <span><b>{formatPercent(row.cachoMaduroPct)}</b>Cacho maduro %</span>
               </div>
               <small>{formatNumber(row.recordsCount)} coleta(s) · {row.tone === 'danger' ? 'prioridade alta' : row.tone === 'warning' ? 'acompanhar' : 'controlado'}</small>
-            </button>
+            </div>
           ))}
           {!visibleRows.length && <div className="empty-panel smart-empty-panel"><strong>Sem fiscais</strong><span>Nenhuma coleta do período trouxe fiscal responsável válido.</span></div>}
         </>
@@ -549,7 +404,7 @@ function FiscalQualityCards({ rows, loading = false, onSelect }) {
   );
 }
 
-function DailyBunchBarChart({ rows, loading = false, onSelect }) {
+function DailyBunchBarChart({ rows, loading = false }) {
   const series = [
     { key: 'maduro', label: 'Cacho maduro %', color: 'var(--orange-institutional)' },
     { key: 'passado', label: 'Cacho passado %', color: 'var(--text-primary)' },
@@ -613,15 +468,6 @@ function DailyBunchBarChart({ rows, loading = false, onSelect }) {
                           height={Math.max(segmentHeight, value > 0 ? 1.5 : 0)}
                           fill={item.color}
                           className="chart-bar"
-                          role="button"
-                          tabIndex="0"
-                          onClick={() => onSelect?.(buildDailyInsight(row, item.key))}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
-                              onSelect?.(buildDailyInsight(row, item.key));
-                            }
-                          }}
                         >
                           <title>{`${row.label} - ${item.label}: ${formatNumber(value)} cachos (${formatPercent(pct)})`}</title>
                         </rect>
@@ -793,7 +639,6 @@ function FieldBiBoard({
   presentationMode = false,
 }) {
   const isTotalMode = !presentationMode && boardMode === 'total';
-  const [selectedInsight, setSelectedInsight] = useState(null);
 
   return (
     <div className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
@@ -853,19 +698,6 @@ function FieldBiBoard({
               ) : null}
             </div>
           ) : null}
-
-          <button
-            type="button"
-            className="field-bi-clear-btn"
-            onClick={() => {
-              setBoardMode('meeting');
-              setTotalSection('qualidade');
-            }}
-            title="Limpar filtros desta tela"
-          >
-            <RotateCcw size={14} />
-            Limpar
-          </button>
         </div>
       ) : null}
 
@@ -881,19 +713,17 @@ function FieldBiBoard({
           </div>
 
           <div className="field-bi-main-grid">
-            <FieldBiFarmChart rows={model.farmRows} loading={loading} onSelect={setSelectedInsight} />
-            <FieldBiWeekChart rows={model.weekRows} loading={loading} onSelect={setSelectedInsight} />
-            <FiscalQualityCards rows={model.evaluatorRows} loading={loading} onSelect={setSelectedInsight} />
+            <FieldBiFarmChart rows={model.farmRows} loading={loading} />
+            <FieldBiWeekChart rows={model.weekRows} loading={loading} />
+            <FiscalQualityCards rows={model.evaluatorRows} loading={loading} />
           </div>
 
-          <DailyBunchBarChart rows={dailyBunchRows} loading={loading} onSelect={setSelectedInsight} />
-          <FieldBiDrillPanel insight={selectedInsight} onClose={() => setSelectedInsight(null)} />
+          <DailyBunchBarChart rows={dailyBunchRows} loading={loading} />
         </>
       ) : (
         <FieldTotalDataPanel model={model} selectedSection={totalSection} loading={loading} />
       )}
 
-      <div className="developer-signature">Desenvolvedor: Vinicius Dev.</div>
     </div>
   );
 }
@@ -995,10 +825,9 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
       )}
 
       {error && (
-        <div className="warning-strip">
-          <AlertTriangle size={16} />
-          <span>Falha ao carregar dados: {error}</span>
-        </div>
+        <StatusBanner tone="danger" icon={AlertTriangle}>
+          Falha ao carregar dados: {error}
+        </StatusBanner>
       )}
 
       <FieldBiBoard

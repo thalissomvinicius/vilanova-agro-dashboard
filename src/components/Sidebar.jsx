@@ -1,43 +1,19 @@
 import React from 'react';
-import {
-  ChevronLeft,
-  ChevronRight,
-  FileSpreadsheet,
-  Gauge,
-  Lightbulb,
-  LayoutDashboard,
-  Map,
-  RefreshCw,
-  Scale,
-  Settings,
-  Tractor,
-  Truck,
-  Users,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { SIDEBAR_GROUPS, getRouteById } from '../config/routeConfig';
 
-export default function Sidebar({ activePage, setActivePage, collapsed, setCollapsed, width }) {
-  const campoItems = [
-    { id: 'dashboard', label: 'Corte (Campo)', icon: LayoutDashboard },
-    { id: 'cqo-carreamento', label: 'Carreamento', icon: Truck },
-    { id: 'perdas-agricola', label: 'Perdas Agrícola', icon: Scale },
-  ];
-
-  const menuItems = [
-    { id: 'cqo-rampa', label: 'CQO Rampa', icon: Gauge },
-    { id: 'coletas', label: 'Coletas recebidas', icon: Tractor },
-    { id: 'inventario', label: 'Inventário parcelas', icon: FileSpreadsheet },
-    { id: 'mapa', label: 'Mapa GPS', icon: Map },
-    { id: 'desenvolvimento', label: 'Desenvolvimento', icon: Lightbulb },
-    { id: 'sync', label: 'Sincronizações', icon: RefreshCw },
-    { id: 'colaboradores', label: 'Colaboradores', icon: Users },
-    { id: 'config', label: 'Configurações', icon: Settings },
-  ];
+export default function Sidebar({ activePage, setActivePage, collapsed, setCollapsed, width, visiblePageIds }) {
+  const isVisible = (pageId) => !visiblePageIds || visiblePageIds.has(pageId);
+  const visibleGroups = SIDEBAR_GROUPS
+    .map((group) => ({
+      ...group,
+      items: group.itemIds.map(getRouteById).filter((item) => isVisible(item.id)),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const handleItemClick = (item) => {
     setActivePage(item.id);
   };
-
-  const isCampoActive = campoItems.some((item) => item.id === activePage);
 
   return (
     <aside
@@ -64,20 +40,17 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
       </div>
 
       <nav className="sidebar-menu">
-        <div className={`sidebar-module-group ${isCampoActive ? 'active' : ''}`}>
-          <div className="sidebar-module-heading" title="CQO Campo" aria-label="CQO Campo">
-            <LayoutDashboard />
-            <span>CQO Campo</span>
-          </div>
-          <div className="sidebar-submenu">
-            {campoItems.map((item) => {
+        {visibleGroups.map((group) => {
+          if (!group.label) {
+            return group.items.map((item) => {
               const Icon = item.icon;
               const isActive = activePage === item.id;
+
               return (
                 <button
                   key={item.id}
                   onClick={() => handleItemClick(item)}
-                  className={`sidebar-submenu-item ${isActive ? 'active' : ''}`}
+                  className={`sidebar-menu-item ${isActive ? 'active' : ''}`}
                   title={item.label}
                   aria-label={item.label}
                 >
@@ -85,24 +58,37 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
                   <span>{item.label}</span>
                 </button>
               );
-            })}
-          </div>
-        </div>
+            });
+          }
 
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activePage === item.id;
+          const GroupIcon = group.icon;
+          const isGroupActive = group.items.some((item) => item.id === activePage);
+
           return (
-            <button
-              key={item.id}
-              onClick={() => handleItemClick(item)}
-              className={`sidebar-menu-item ${isActive ? 'active' : ''}`}
-              title={item.label}
-              aria-label={item.label}
-            >
-              <Icon />
-              <span>{item.label}</span>
-            </button>
+            <div className={`sidebar-module-group ${isGroupActive ? 'active' : ''}`} key={group.id}>
+              <div className="sidebar-module-heading" title={group.label} aria-label={group.label}>
+                <GroupIcon />
+                <span>{group.label}</span>
+              </div>
+              <div className="sidebar-submenu">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activePage === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleItemClick(item)}
+                      className={`sidebar-submenu-item ${isActive ? 'active' : ''}`}
+                      title={item.label}
+                      aria-label={item.label}
+                    >
+                      <Icon />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </nav>

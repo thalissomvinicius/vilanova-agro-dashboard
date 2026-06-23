@@ -163,8 +163,8 @@ function htmlFor(record) {
               </tr>
               <tr class="footer">
                 <td colspan="${columns.length}">
-                  <span class="info-label">Desenvolvedor</span>
-                  <span class="info-value" style="font-weight: 700; font-size: 11px;">Vinicius Dev.</span>
+                  <span class="info-label">Sistema</span>
+                  <span class="info-value" style="font-weight: 700; font-size: 11px;">Dashboard CQO Vila Nova</span>
                 </td>
               </tr>
             </tfoot>

@@ -163,8 +163,8 @@ export default function Development() {
           <strong>Alimentação automática</strong>
         </div>
         <div>
-          <span>Assinatura</span>
-          <strong>Vinicius Dev.</strong>
+          <span>Ambiente</span>
+          <strong>Planejamento interno</strong>
         </div>
       </div>
 

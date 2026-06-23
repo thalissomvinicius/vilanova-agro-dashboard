@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import {
-  AlertCircle,
   FileSpreadsheet,
   MapPin,
-  RotateCcw,
   Rows3,
   Sprout,
 } from 'lucide-react';
 import CustomChart from '../components/CustomChart';
+import EmptyTableRow from '../components/ui/EmptyTableRow';
+import MetricCard from '../components/ui/MetricCard';
+import PageHeader from '../components/ui/PageHeader';
+import StatusBanner from '../components/ui/StatusBanner';
 import { useInventoryDashboard } from '../utils/inventoryData';
 
 function formatNumber(value, digits = 0) {
@@ -15,27 +17,6 @@ function formatNumber(value, digits = 0) {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   }).format(Number(value || 0));
-}
-
-function InventoryMetric({ title, value, footer, icon: Icon, tone = 'green', loading = false }) {
-  return (
-    <div className="card kpi-card">
-      <div className="kpi-card-header">
-        <span className="kpi-title">{title}</span>
-        <div className={`kpi-icon-wrapper kpi-icon-${tone}`}>
-          <Icon size={18} />
-        </div>
-      </div>
-      <div className="kpi-body">
-        <span className={`kpi-value ${loading ? 'skeleton-text' : ''}`}>
-          {loading ? '\u00A0' : value}
-        </span>
-      </div>
-      <span className={`kpi-footer ${loading ? 'skeleton-text skeleton-sm' : ''}`}>
-        {loading ? '\u00A0' : footer}
-      </span>
-    </div>
-  );
 }
 
 export default function Inventory({ farmFilter, searchTerm }) {
@@ -59,23 +40,22 @@ export default function Inventory({ farmFilter, searchTerm }) {
 
   return (
     <div className="fade-in page-shell inventory-page">
-      <div className="dashboard-page-header operational-hero inventory-hero">
-        <div>
-          <span className="page-eyebrow">Inventário agrícola</span>
-          <h2>Inventário de Parcelas das Fazendas</h2>
-          <p>
-            Base histórica importada dos Excel de inventário para consulta por fazenda, ano de plantio, bloco, parcela e cultivar.
-          </p>
-        </div>
+      <PageHeader
+        variant="dashboard"
+        className="inventory-hero"
+        eyebrow="Inventário agrícola"
+        title="Inventário de Parcelas das Fazendas"
+        description="Base histórica importada dos Excel de inventário para consulta por fazenda, ano de plantio, bloco, parcela e cultivar."
+      >
         <div className="operational-hero-stats">
           <div><span>Parcelas</span><strong>{formatNumber(totals.parcels)}</strong></div>
           <div><span>Área</span><strong>{formatNumber(totals.areaHa, 1)} ha</strong></div>
           <div><span>Plantas</span><strong>{formatNumber(totals.plants)}</strong></div>
           <div><span>Cultivares</span><strong>{formatNumber(totals.cultivars.length)}</strong></div>
         </div>
-      </div>
+      </PageHeader>
 
-      <div className="operational-filter-bar inventory-filter-bar has-clear">
+      <div className="operational-filter-bar inventory-filter-bar">
         <label className="operational-select-control">
           <span>Ano de plantio</span>
           <select
@@ -109,29 +89,17 @@ export default function Inventory({ farmFilter, searchTerm }) {
             <strong>{loading ? 'Carregando...' : source}</strong>
             <small>{generatedAt ? `Gerado em ${new Date(generatedAt).toLocaleString('pt-BR')}` : 'Aguardando leitura'}</small>
           </div>
-          <button
-            type="button"
-            className="operational-clear-btn"
-            onClick={() => {
-              setYearFilter('all');
-              setCultivarFilter('all');
-            }}
-            title="Limpar filtros da tela"
-          >
-            <RotateCcw size={15} />
-            Limpar
-          </button>
       </div>
 
       {error ? (
-        <div className="warning-strip">
-          <AlertCircle size={16} />
-          <span>Não foi possível carregar o inventário: {error}</span>
-        </div>
+        <StatusBanner tone="danger">
+          Não foi possível carregar o inventário: {error}
+        </StatusBanner>
       ) : null}
 
       <div className="grid-container grid-cols-4">
-        <InventoryMetric
+        <MetricCard
+          variant="kpi"
           title="Parcelas"
           value={formatNumber(totals.parcels)}
           footer={`${formatNumber(totals.blocks.length)} blocos no filtro`}
@@ -139,7 +107,8 @@ export default function Inventory({ farmFilter, searchTerm }) {
           tone="green"
           loading={loading}
         />
-        <InventoryMetric
+        <MetricCard
+          variant="kpi"
           title="Área inventariada"
           value={`${formatNumber(totals.areaHa, 2)} ha`}
           footer={`${formatNumber(totals.years.length)} ano(s) de plantio`}
@@ -147,7 +116,8 @@ export default function Inventory({ farmFilter, searchTerm }) {
           tone="info"
           loading={loading}
         />
-        <InventoryMetric
+        <MetricCard
+          variant="kpi"
           title="Plantas"
           value={formatNumber(totals.plants)}
           footer={`${formatNumber(totals.averagePlantsPerHa, 1)} plantas/ha média`}
@@ -155,7 +125,8 @@ export default function Inventory({ farmFilter, searchTerm }) {
           tone="green"
           loading={loading}
         />
-        <InventoryMetric
+        <MetricCard
+          variant="kpi"
           title="Cultivares"
           value={formatNumber(totals.cultivars.length)}
           footer={`${formatNumber(totals.corrected)} linhas corrigidas por área x densidade`}
@@ -219,15 +190,11 @@ export default function Inventory({ farmFilter, searchTerm }) {
                   </tr>
                 ))
               ) : records.length === 0 ? (
-                <tr>
-                  <td colSpan="9" className="empty-table-cell">
-                    Nenhuma parcela encontrada para os filtros atuais.
-                  </td>
-                </tr>
+                <EmptyTableRow colSpan={9} message="Nenhuma parcela encontrada para os filtros atuais." />
               ) : (
                 records.map((record) => (
                   <tr key={`${record.id}-${record.sourceRow}`}>
-                    <td style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{record.farmName}</td>
+                    <td className="table-key-cell">{record.farmName}</td>
                     <td>{record.year}</td>
                     <td>{record.block}</td>
                     <td>

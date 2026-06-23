@@ -1,0 +1,272 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+function okJson(payload) {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => payload,
+  };
+}
+
+function errorJson(status, payload) {
+  return {
+    ok: false,
+    status,
+    clone: () => ({
+      json: async () => payload,
+    }),
+    text: async () => payload.message || '',
+  };
+}
+
+async function loadAuthModule() {
+  vi.resetModules();
+  vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co');
+  vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
+  return import('./cqoData');
+}
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+  vi.resetModules();
+});
+
+describe('authenticateDashboardUser', () => {
+  it('usa RPC e nao retorna a senha do headcount', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okJson([{
+      matricula: '2170',
+      nome: 'Maria Silva',
+      departamento: 'CQO',
+      cargo: 'Fiscal',
+      gestor: 'Joao Souza',
+      status: 'ATIVO',
+      role: 'auditor',
+      permissions: ['review_response'],
+      session_token: 'session-token',
+      session_expires_at: '2026-06-23T23:00:00Z',
+      senha: '1234',
+    }]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { authenticateDashboardUser } = await loadAuthModule();
+    const profile = await authenticateDashboardUser('2170', '1234');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://example.supabase.co/rest/v1/rpc/dashboard_authenticate');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      p_matricula: '2170',
+      p_senha: '1234',
+    });
+    expect(profile).toEqual({
+      matricula: '2170',
+      nome: 'Maria Silva',
+      departamento: 'CQO',
+      cargo: 'Fiscal',
+      gestor: 'Joao Souza',
+      status: 'ATIVO',
+      role: 'auditor',
+      permissions: ['review_response'],
+      sessionToken: 'session-token',
+      sessionExpiresAt: '2026-06-23T23:00:00Z',
+    });
+    expect(profile).not.toHaveProperty('senha');
+  });
+
+  it('rejeita credenciais invalidas sem cair no modo legado', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(okJson([])));
+
+    const { authenticateDashboardUser } = await loadAuthModule();
+
+    await expect(authenticateDashboardUser('2170', 'errada'))
+      .rejects
+      .toThrow('Matricula ou senha invalida.');
+  });
+
+  it('mostra mensagem limpa quando o banco limita tentativas de login', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(errorJson(400, {
+      message: 'Muitas tentativas de login. Aguarde 15 minutos e tente novamente.',
+    })));
+
+    const { authenticateDashboardUser } = await loadAuthModule();
+
+    await expect(authenticateDashboardUser('2170', 'errada'))
+      .rejects
+      .toThrow('Muitas tentativas de login. Aguarde 15 minutos e tente novamente.');
+  });
+});
+
+describe('dashboard response mutations', () => {
+  it('atualiza perfil da sessao sem trocar o token local', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okJson([{
+      matricula: '2170',
+      nome: 'Maria Silva',
+      departamento: 'CQO',
+      cargo: 'Fiscal',
+      gestor: 'Joao Souza',
+      status: 'ATIVO',
+      role: 'admin',
+      permissions: [],
+      session_expires_at: '2026-06-23T23:00:00Z',
+    }]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { refreshDashboardSession } = await loadAuthModule();
+    const profile = await refreshDashboardSession('session-token');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://example.supabase.co/rest/v1/rpc/dashboard_session_profile');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      p_session_token: 'session-token',
+    });
+    expect(profile).toMatchObject({
+      matricula: '2170',
+      role: 'admin',
+      permissions: [],
+      sessionToken: 'session-token',
+    });
+    expect(profile).not.toHaveProperty('senha');
+  });
+
+  it('avalia permissoes do perfil autenticado', async () => {
+    const { canUseDashboardAction } = await loadAuthModule();
+
+    expect(canUseDashboardAction({ role: 'admin', permissions: [] }, 'delete_response')).toBe(true);
+    expect(canUseDashboardAction({ role: 'auditor', permissions: ['review_response'] }, 'review_response')).toBe(true);
+    expect(canUseDashboardAction({ role: 'viewer', permissions: [] }, 'review_response')).toBe(false);
+  });
+
+  it('identifica erros de sessao expirada sem confundir permissao negada', async () => {
+    const { isDashboardSessionExpiredError } = await loadAuthModule();
+
+    expect(isDashboardSessionExpiredError(new Error('Leitura do dashboard: HTTP 400 - Sessao expirada ou invalida.'))).toBe(true);
+    expect(isDashboardSessionExpiredError(new Error('Atualização: HTTP 400 - Sessao expirada, invalida ou sem permissao.'))).toBe(false);
+  });
+
+  it('traduz erros tecnicos para mensagens seguras de interface', async () => {
+    const { dashboardErrorMessage } = await loadAuthModule();
+
+    expect(dashboardErrorMessage(new Error('Leitura do dashboard: HTTP 400 - detalhes internos'))).toBe(
+      'Não foi possível acessar os dados agora. Tente novamente em instantes.'
+    );
+    expect(dashboardErrorMessage(new Error('Atualização: HTTP 400 - Sessao expirada, invalida ou sem permissao.'))).toBe(
+      'Seu perfil não tem permissão para esta ação.'
+    );
+    expect(dashboardErrorMessage(new Error('Autenticação do dashboard: HTTP 401 - invalid api key'))).toBe(
+      'Não foi possível validar o acesso agora. Tente novamente em instantes.'
+    );
+    expect(dashboardErrorMessage(new Error('Database schema leaked: public.mobile_respostas'))).toBe(
+      'Não foi possível concluir a operação agora.'
+    );
+  });
+
+  it('carrega o dataset CQO por RPC quando ha sessao ativa', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okJson({
+      response_table: 'mobile_respostas',
+      mobile_respostas: [],
+      mobile_gps: [],
+      mobile_anexos: [],
+      mobile_formularios: [],
+      headcount_import_snapshots: [],
+      cqo_import_snapshots: [],
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { refreshCqoData, setCqoSessionToken } = await loadAuthModule();
+    setCqoSessionToken('session-token');
+    const data = await refreshCqoData();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://example.supabase.co/rest/v1/rpc/dashboard_cqo_dataset');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      p_session_token: 'session-token',
+    });
+    expect(data.source).toBe('Banco online');
+  });
+
+  it('carrega headcount por RPC quando ha sessao ativa', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okJson({
+      reference_month: '2026-06',
+      rows_json: [{
+        MATRICULA: '2170',
+        NOME: 'Maria Silva',
+        STATUS: 'ATIVO',
+      }],
+      imported_at: '2026-06-23T12:00:00Z',
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { loadHeadcountData, setCqoSessionToken } = await loadAuthModule();
+    setCqoSessionToken('session-token');
+    const rows = await loadHeadcountData();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://example.supabase.co/rest/v1/rpc/dashboard_headcount_snapshot');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      p_session_token: 'session-token',
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      matricula: '2170',
+      nome: 'Maria Silva',
+      status: 'ATIVO',
+      source: 'headcount_import_snapshots',
+    });
+  });
+
+  it('envia atualizacao de colaborador por RPC com token de sessao', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okJson([{ matricula: '2170', status: 'INATIVO' }]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { updateCollaborator } = await loadAuthModule();
+    await updateCollaborator({
+      matricula: '2170',
+      status: 'INATIVO',
+      senha: undefined,
+      sessionToken: 'session-token',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://example.supabase.co/rest/v1/rpc/dashboard_update_collaborator_access');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      p_session_token: 'session-token',
+      p_matricula: '2170',
+      p_status: 'INATIVO',
+    });
+  });
+
+  it('envia aprovacao por RPC com token de sessao', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okJson([{ id: 'resp-1', status: 'aprovado' }]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { updateResponseReviewStatus } = await loadAuthModule();
+    await updateResponseReviewStatus('resp-1', 'aprovado', {
+      sessionToken: 'session-token',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://example.supabase.co/rest/v1/rpc/dashboard_review_response');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      p_session_token: 'session-token',
+      p_response_id: 'resp-1',
+      p_status: 'aprovado',
+    });
+  });
+
+  it('envia exclusao por RPC com token de sessao', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okJson([{ id: 'resp-1', status: 'excluido' }]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { deleteResponseRecord } = await loadAuthModule();
+    await deleteResponseRecord('resp-1', {
+      sessionToken: 'session-token',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://example.supabase.co/rest/v1/rpc/dashboard_delete_response');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      p_session_token: 'session-token',
+      p_response_id: 'resp-1',
+    });
+  });
+});

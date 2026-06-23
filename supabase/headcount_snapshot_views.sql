@@ -16,7 +16,13 @@ where s.fonte = 'headcount_agricola';
 
 create or replace view public.vw_headcount_agricola_atual as
 with latest_snapshot as (
-  select *
+  select
+    import_key,
+    reference_month,
+    source_file,
+    source_sheet,
+    imported_at,
+    rows_json
   from public.headcount_import_snapshots
   where fonte = 'headcount_agricola'
   order by reference_month desc, imported_at desc

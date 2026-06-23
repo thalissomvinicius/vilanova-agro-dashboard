@@ -1,5 +1,8 @@
 import React from 'react';
-import { AlertCircle, Camera, CheckCircle2, Clock, Database, FileText, MapPin, RefreshCcw, Server, Users } from 'lucide-react';
+import { Camera, CheckCircle2, Clock, Database, FileText, MapPin, RefreshCcw, Server, Users } from 'lucide-react';
+import MetricCard from '../components/ui/MetricCard';
+import PageHeader from '../components/ui/PageHeader';
+import StatusBanner from '../components/ui/StatusBanner';
 import { useCqoData } from '../utils/cqoData';
 
 function formatDateTime(value) {
@@ -7,23 +10,6 @@ function formatDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Sem registro';
   return date.toLocaleString('pt-BR');
-}
-
-function SyncMetric({ title, value, subtitle, icon: Icon, tone = 'green', loading = false }) {
-  return (
-    <div className="card metric-card">
-      <div className={`kpi-icon-wrapper kpi-icon-${tone}`}>
-        <Icon size={20} />
-      </div>
-      <div>
-        <span className="metric-label">{title}</span>
-        <strong className={`metric-value ${loading ? 'skeleton-text' : ''}`}>{loading ? '\u00A0' : value}</strong>
-        {subtitle ? (
-          <span className={`metric-subtitle ${loading ? 'skeleton-text skeleton-sm' : ''}`}>{loading ? '\u00A0' : subtitle}</span>
-        ) : null}
-      </div>
-    </div>
-  );
 }
 
 export default function SyncCenter({ isSyncing, triggerManualSync }) {
@@ -41,27 +27,23 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
     headcount = [],
   } = useCqoData();
   const appRecords = mobileRecords.length ? mobileRecords : records.filter((record) => record.raw?.fonte_excel === undefined);
-  const receivedOnline = appRecords.filter((record) => !['Pendente', 'Falha'].includes(record.status)).length;
-  const validationPending = appRecords.filter((record) => record.status === 'Pendente validação').length;
+  const synced = appRecords.filter((record) => record.status === 'Sincronizado').length;
   const failed = appRecords.filter((record) => record.status === 'Falha').length;
-  const embeddedGpsPoints = appRecords.reduce((total, record) => (
-    total + (record.gpsTrack?.length || 0) + (record.gpsOccurrences?.length || 0) + (record.gps ? 1 : 0)
-  ), 0);
-  const totalGpsPoints = gpsRows.length + embeddedGpsPoints;
+  const pending = appRecords.filter((record) => record.status === 'Pendente').length;
   const lastRecord = appRecords[0];
   const headcountSource = headcount[0]?.source === 'headcount_import_snapshots'
     ? `Snapshot ${headcount[0]?.reference_date || ''}`.trim()
-    : 'headcount_colaboradores';
+    : 'Snapshot indisponivel';
   const cqoSnapshot = cqoImport.snapshot;
 
   return (
     <div className="fade-in page-shell sync-page">
-      <div className="page-header operational-hero sync-hero">
-        <div className="page-title-block">
-          <span className="page-eyebrow">Sincronização online</span>
-          <h2>Central de Sincronização</h2>
-          <p>Monitoramento das coletas recebidas do app Android no Supabase.</p>
-        </div>
+      <PageHeader
+        className="sync-hero"
+        eyebrow="Sincronização online"
+        title="Central de Sincronização"
+        description="Monitoramento das coletas recebidas do app Android no serviço online."
+      >
         <div className="sync-hero-action">
           <button
             onClick={triggerManualSync}
@@ -72,44 +54,43 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
             <span>{isSyncing ? 'Atualizando...' : 'Atualizar painel'}</span>
           </button>
         </div>
-      </div>
+      </PageHeader>
 
       {error ? (
-        <div className="warning-strip">
-          <AlertCircle size={16} />
-          <span>Erro ao ler Supabase: {error}</span>
-        </div>
+        <StatusBanner tone="danger">
+          Erro ao carregar dados online: {error}
+        </StatusBanner>
       ) : null}
 
       <div className="grid-container grid-cols-4">
-        <SyncMetric
+        <MetricCard
           title="Fonte"
           value={loading ? 'Carregando' : source}
-          subtitle="Leitura direta do Supabase"
+          subtitle="RPC autenticada do dashboard"
           icon={Server}
           tone="info"
           loading={loading}
         />
-        <SyncMetric
+        <MetricCard
           title="Coletas recebidas"
           value={appRecords.length}
-          subtitle="mobile_respostas do app"
+          subtitle="Registros enviados pelo app"
           icon={Database}
           tone="green"
           loading={loading}
         />
-        <SyncMetric
-          title="Recebidas no Supabase"
-          value={receivedOnline}
-          subtitle={`${validationPending} aguardando validação / ${failed} falhas`}
+        <MetricCard
+          title="Sincronizadas"
+          value={synced}
+          subtitle={`${pending} pendentes / ${failed} falhas`}
           icon={CheckCircle2}
           tone="green"
           loading={loading}
         />
-        <SyncMetric
+        <MetricCard
           title="Última coleta"
           value={formatDateTime(lastRecord?.createdAt)}
-          subtitle="Baseado em criado_em"
+          subtitle="Horário de recebimento"
           icon={Clock}
           tone="orange"
           loading={loading}
@@ -117,39 +98,39 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
       </div>
 
       <div className="grid-container grid-cols-4">
-        <SyncMetric
+        <MetricCard
           title="CQO Excel"
           value={excelRecords.length}
-          subtitle={cqoSnapshot?.source_file || 'cqo_import_snapshots'}
+          subtitle={cqoSnapshot?.source_file || 'Snapshot importado'}
           icon={Database}
           tone="orange"
           loading={loading}
         />
-        <SyncMetric
+        <MetricCard
           title="Pontos GPS"
-          value={totalGpsPoints}
-          subtitle={gpsRows.length ? 'mobile_gps + dados_json' : 'GPS embutido no dados_json'}
+          value={gpsRows.length}
+          subtitle="Vinculados às fichas"
           icon={MapPin}
           tone="info"
           loading={loading}
         />
-        <SyncMetric
+        <MetricCard
           title="Anexos"
           value={anexos.length}
-          subtitle="mobile_anexos sincronizados"
+          subtitle="Arquivos sincronizados"
           icon={Camera}
           tone="orange"
           loading={loading}
         />
-        <SyncMetric
+        <MetricCard
           title="Formulários"
           value={formularios.length}
-          subtitle="Catálogo mobile_formularios"
+          subtitle="Catálogo do app"
           icon={FileText}
           tone="green"
           loading={loading}
         />
-        <SyncMetric
+        <MetricCard
           title="Headcount"
           value={headcount.length}
           subtitle={headcountSource}
@@ -160,26 +141,26 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
       </div>
 
       <div className="grid-container grid-cols-3">
-        <SyncMetric
+        <MetricCard
           title="Corte Excel"
           value={cqoImport.corteRows || 0}
-          subtitle="linhas em corte_rows_json"
+          subtitle="Linhas importadas"
           icon={FileText}
           tone="green"
           loading={loading}
         />
-        <SyncMetric
+        <MetricCard
           title="Carreamento Excel"
           value={cqoImport.carreamentoRows || 0}
-          subtitle="linhas em carreamento_rows_json"
+          subtitle="Linhas importadas"
           icon={FileText}
           tone="orange"
           loading={loading}
         />
-        <SyncMetric
+        <MetricCard
           title="Snapshot CQO"
           value={formatDateTime(cqoSnapshot?.updated_at || cqoSnapshot?.imported_at)}
-          subtitle="cqo_1_digitacao_cqo"
+          subtitle="Última importação"
           icon={Clock}
           tone="info"
           loading={loading}
@@ -196,8 +177,8 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
         <div>
           <Database size={20} />
           <span>Banco online</span>
-          <strong>Supabase</strong>
-          <small>mobile_respostas, mobile_gps, mobile_anexos, mobile_formularios e headcount.</small>
+          <strong>Serviço de dados</strong>
+          <small>Coletas, GPS, anexos, formulários e cadastros via RPC autenticada.</small>
         </div>
         <div>
           <CheckCircle2 size={20} />

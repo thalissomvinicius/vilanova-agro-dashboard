@@ -1,11 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
 :root {
   /* Brand Colors - Vila Nova Agroindustrial */
   --green-institutional: #174D2B;
   --green-dark: #0F351F;
   --green-medium: #256B3A;
   --orange-institutional: #E89100;
+  --orange-dark: #C97800;
   --orange-highlight: #F5A623;
   --orange-soft: #FFF4E0;
   --white: #FFFFFF;
@@ -13,7 +12,7 @@
   --gray-dark: #182230;
 
   /* Typography */
-  --font-family: 'Inter', 'Segoe UI', sans-serif;
+  --font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 
   /* Theme: Light (Default) */
   --bg-primary: #F8FAF9;
@@ -22,6 +21,7 @@
   --bg-sidebar: #0F351F;
   --bg-card: #FFFFFF;
   --bg-input: #FFFFFF;
+  --surface-hover: #EEF2EA;
 
   --text-primary: #182230;
   --text-secondary: #667085;
@@ -74,6 +74,7 @@
   --bg-sidebar: #0F351F;
   --bg-card: #182230;
   --bg-input: #1F2937;
+  --surface-hover: #24313B;
 
   --text-primary: #F7F8F3;
   --text-secondary: #D0D5DD;

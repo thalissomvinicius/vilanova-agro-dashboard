@@ -1,43 +1,60 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MonitorPlay, X } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import Dashboard from './pages/Dashboard';
-import Analytics from './pages/Analytics';
-import CqoRampa from './pages/CqoRampa';
-import LossesAgricola from './pages/LossesAgricola';
-import Collections from './pages/Collections';
-import SyncCenter from './pages/SyncCenter';
-import Collaborators from './pages/Collaborators';
-import Inventory from './pages/Inventory';
-import Settings from './pages/Settings';
+import {
+  DEFAULT_PAGE_ID,
+  PAGE_ROUTES,
+  ROUTE_DEFINITIONS,
+  ROUTE_PAGES,
+  getRouteFilterIds,
+} from './config/routeConfig';
 import Login from './pages/Login';
-import Development from './pages/Development';
-import LeafletMap from './components/LeafletMap';
-import { refreshCqoData } from './utils/cqoData';
+import { devError, devWarn } from './utils/devLog';
+import {
+  canUseDashboardAction,
+  DASHBOARD_SESSION_EXPIRED_EVENT,
+  isDashboardSessionExpiredError,
+  logoutDashboardSession,
+  refreshCqoData,
+  refreshDashboardSession,
+  setCqoSessionToken,
+} from './utils/cqoData';
 
-const PAGE_ROUTES = {
-  dashboard: '/campo',
-  'cqo-carreamento': '/carreamento',
-  'perdas-agricola': '/perdas',
-  'cqo-rampa': '/rampa',
-  coletas: '/coletas',
-  inventario: '/inventario',
-  mapa: '/mapa',
-  desenvolvimento: '/desenvolvimento',
-  sync: '/sincronizacoes',
-  colaboradores: '/colaboradores',
-  config: '/configuracoes',
-};
-
-const ROUTE_PAGES = Object.fromEntries(
-  Object.entries(PAGE_ROUTES).map(([page, path]) => [path, page])
-);
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Analytics = lazy(() => import('./pages/Analytics'));
+const CqoRampa = lazy(() => import('./pages/CqoRampa'));
+const LossesAgricola = lazy(() => import('./pages/LossesAgricola'));
+const Collections = lazy(() => import('./pages/Collections'));
+const SyncCenter = lazy(() => import('./pages/SyncCenter'));
+const Collaborators = lazy(() => import('./pages/Collaborators'));
+const Inventory = lazy(() => import('./pages/Inventory'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Development = lazy(() => import('./pages/Development'));
+const LeafletMap = lazy(() => import('./components/LeafletMap'));
 
 const FILTER_STORAGE_KEY = 'vilanova_dashboard_filters';
+const AUTH_STORAGE_KEY = 'vilanova_dashboard_session';
+const LEGACY_AUTH_STORAGE_KEY = 'vilanova_dashboard_user';
+const AUTH_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const VALID_MONTHS = new Set(['all', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']);
 const VALID_SOURCE_FILTERS = new Set(['all', 'app', 'excel', 'sql']);
+const ENABLE_DEVELOPMENT_PAGE = import.meta.env.DEV
+  || String(import.meta.env.VITE_ENABLE_DEVELOPMENT_PAGE || '').toLowerCase() === 'true';
+
+function accessiblePagesForUser(user) {
+  return new Set(
+    ROUTE_DEFINITIONS
+      .filter((route) => {
+        if (route.developmentOnly && !ENABLE_DEVELOPMENT_PAGE) return false;
+        if (route.adminOnly && user?.role !== 'admin') return false;
+        if (route.permission && !canUseDashboardAction(user, route.permission)) return false;
+        return true;
+      })
+      .map((route) => route.id)
+  );
+}
 
 function currentMonthValue() {
   return String(new Date().getMonth() + 1).padStart(2, '0');
@@ -69,11 +86,11 @@ function isDateInputValue(value) {
 
 function pageFromPath(pathname) {
   const normalized = pathname.replace(/\/+$/, '') || '/';
-  return ROUTE_PAGES[normalized] || 'dashboard';
+  return ROUTE_PAGES[normalized] || DEFAULT_PAGE_ID;
 }
 
 function pathFromPage(page) {
-  return PAGE_ROUTES[page] || PAGE_ROUTES.dashboard;
+  return PAGE_ROUTES[page] || PAGE_ROUTES[DEFAULT_PAGE_ID];
 }
 
 function readStoredFilters() {
@@ -132,6 +149,44 @@ function initialFilters() {
   });
 }
 
+function readStoredUserSession() {
+  try {
+    localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+    const session = JSON.parse(sessionStorage.getItem(AUTH_STORAGE_KEY) || 'null');
+    if (!session?.profile || Number(session.expiresAt || 0) <= Date.now()) {
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+      return null;
+    }
+    return session.profile;
+  } catch {
+    return null;
+  }
+}
+
+function writeUserSession(profile) {
+  const serverExpiresAt = Date.parse(profile?.sessionExpiresAt || '');
+  const session = {
+    profile,
+    expiresAt: Number.isFinite(serverExpiresAt) ? serverExpiresAt : Date.now() + AUTH_SESSION_TTL_MS,
+  };
+  sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+}
+
+function clearUserSession() {
+  sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+}
+
+function getStoredSessionExpiresAt() {
+  try {
+    const session = JSON.parse(sessionStorage.getItem(AUTH_STORAGE_KEY) || 'null');
+    return Number(session?.expiresAt || 0);
+  } catch {
+    return 0;
+  }
+}
+
 function buildSearch(filters) {
   const params = new URLSearchParams();
   if (filters.farmFilter !== 'all') params.set('fazenda', filters.farmFilter);
@@ -145,6 +200,36 @@ function buildSearch(filters) {
   if (filters.dateTo) params.set('dataFim', filters.dateTo);
   const query = params.toString();
   return query ? `?${query}` : '';
+}
+
+function filtersForRoute(filters, routeId) {
+  const visibleFilters = new Set(getRouteFilterIds(routeId));
+  const routeFilters = {
+    farmFilter: visibleFilters.has('farm') ? filters.farmFilter : 'all',
+    yearFilter: visibleFilters.has('year') ? filters.yearFilter : '',
+    monthFilter: visibleFilters.has('month') ? filters.monthFilter : 'all',
+    cycleFilter: visibleFilters.has('cycle') ? filters.cycleFilter : 'all',
+    evaluatorFilter: visibleFilters.has('evaluator') ? filters.evaluatorFilter : 'all',
+    sourceFilter: visibleFilters.has('source') ? filters.sourceFilter : 'all',
+    searchTerm: visibleFilters.has('search') ? filters.searchTerm : '',
+    dateFrom: visibleFilters.has('dateRange') ? filters.dateFrom : '',
+    dateTo: visibleFilters.has('dateRange') ? filters.dateTo : '',
+  };
+
+  if (routeId !== 'cqo-rampa' && routeFilters.sourceFilter === 'sql') {
+    routeFilters.sourceFilter = 'all';
+  }
+
+  return routeFilters;
+}
+
+function PageFallback() {
+  return (
+    <div className="empty-state page-loading-state">
+      <div className="spinner-modern"></div>
+      <p>Carregando modulo...</p>
+    </div>
+  );
 }
 
 function TvModeOverlay({
@@ -171,23 +256,24 @@ function TvModeOverlay({
         </button>
       </div>
 
-      <div className="tv-mode-content">
-        {activeTvPage === 'campo' ? (
-          <Dashboard
-            {...commonProps}
-            areaFilter="corte"
-          />
-        ) : (
-          <CqoRampa
-            farmFilter={commonProps.farmFilter}
-            periodFilter={commonProps.periodFilter}
-            dateFrom={commonProps.dateFrom}
-            dateTo={commonProps.dateTo}
-            sourceFilter={commonProps.sourceFilter === 'app' ? 'all' : commonProps.sourceFilter}
-          />
-        )}
-      </div>
-      <div className="developer-signature tv-mode-signature">Desenvolvedor: Vinicius Dev.</div>
+      <Suspense fallback={<PageFallback />}>
+        <div className="tv-mode-content">
+          {activeTvPage === 'campo' ? (
+            <Dashboard
+              {...commonProps}
+              areaFilter="corte"
+            />
+          ) : (
+            <CqoRampa
+              farmFilter={commonProps.farmFilter}
+              periodFilter={commonProps.periodFilter}
+              dateFrom={commonProps.dateFrom}
+              dateTo={commonProps.dateTo}
+              sourceFilter={commonProps.sourceFilter === 'app' ? 'all' : commonProps.sourceFilter}
+            />
+          )}
+        </div>
+      </Suspense>
     </div>,
     document.body
   );
@@ -209,10 +295,11 @@ function MapPresentationOverlay({ closeMapPresentation, commonProps }) {
           </div>
         </div>
         <div className="map-presentation-frame">
-          <LeafletMap {...commonProps} presentationMode />
+          <Suspense fallback={<PageFallback />}>
+            <LeafletMap {...commonProps} presentationMode />
+          </Suspense>
         </div>
       </div>
-      <div className="developer-signature map-presentation-signature">Desenvolvedor: Vinicius Dev.</div>
     </div>,
     document.body
   );
@@ -228,16 +315,13 @@ export default function App() {
     return Number.isFinite(savedWidth) ? Math.min(340, Math.max(220, savedWidth)) : 280;
   });
   const [user, setUser] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('vilanova_dashboard_user') || 'null');
-    } catch {
-      return null;
-    }
+    const storedUser = readStoredUserSession();
+    setCqoSessionToken(storedUser?.sessionToken);
+    return storedUser;
   });
-  
-  const [isAppLoading, setIsAppLoading] = useState(() => {
-    return !!localStorage.getItem('vilanova_dashboard_user');
-  });
+  const accessiblePages = useMemo(() => accessiblePagesForUser(user), [user]);
+  const effectiveActivePage = accessiblePages.has(activePage) ? activePage : DEFAULT_PAGE_ID;
+  const visibleHeaderFilters = useMemo(() => getRouteFilterIds(effectiveActivePage), [effectiveActivePage]);
 
   const [farmFilter, setFarmFilter] = useState(bootFilters.farmFilter);
   const [areaFilter] = useState('all');
@@ -311,26 +395,6 @@ export default function App() {
     }
   };
 
-  const clearGlobalFilters = () => {
-    const nextFilters = compactFilters({});
-    setFarmFilter(nextFilters.farmFilter);
-    setYearFilter(nextFilters.yearFilter);
-    setMonthFilter(nextFilters.monthFilter);
-    setDateFrom(nextFilters.dateFrom);
-    setDateTo(nextFilters.dateTo);
-    setCycleFilter(nextFilters.cycleFilter);
-    setEvaluatorFilter(nextFilters.evaluatorFilter);
-    setSourceFilter(nextFilters.sourceFilter);
-    setSearchTerm(nextFilters.searchTerm);
-  };
-
-  useEffect(() => {
-    if (isAppLoading) {
-      const timer = setTimeout(() => setIsAppLoading(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [isAppLoading]);
-
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('vilanova_dashboard_theme', theme);
@@ -346,16 +410,14 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(activeFilters));
-    const routeFilters = activePage === 'cqo-rampa'
-      ? activeFilters
-      : { ...activeFilters, sourceFilter: activeFilters.sourceFilter === 'sql' ? 'all' : activeFilters.sourceFilter };
-    const nextPath = `${pathFromPage(activePage)}${buildSearch(routeFilters)}`;
+    const routeFilters = filtersForRoute(activeFilters, effectiveActivePage);
+    const nextPath = `${pathFromPage(effectiveActivePage)}${buildSearch(routeFilters)}`;
     const currentPath = `${window.location.pathname}${window.location.search}`;
     if (currentPath !== nextPath) {
-      const method = window.location.pathname !== pathFromPage(activePage) ? 'pushState' : 'replaceState';
-      window.history[method]({ activePage, filters: activeFilters }, '', nextPath);
+      const method = window.location.pathname !== pathFromPage(effectiveActivePage) ? 'pushState' : 'replaceState';
+      window.history[method]({ activePage: effectiveActivePage, filters: activeFilters }, '', nextPath);
     }
-  }, [activePage, activeFilters]);
+  }, [effectiveActivePage, activeFilters]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -402,22 +464,96 @@ export default function App() {
   };
 
   const handleLogin = (profile) => {
-    localStorage.setItem('vilanova_dashboard_user', JSON.stringify(profile));
-    setIsAppLoading(true);
+    setCqoSessionToken(profile?.sessionToken);
+    writeUserSession(profile);
     setUser(profile);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('vilanova_dashboard_user');
+  const expireLocalSession = useCallback(() => {
+    setCqoSessionToken('');
+    clearUserSession();
     setUser(null);
-    setActivePage('dashboard');
-    window.history.replaceState({ activePage: 'dashboard' }, '', pathFromPage('dashboard'));
+    setActivePage(DEFAULT_PAGE_ID);
+    window.history.replaceState({ activePage: DEFAULT_PAGE_ID }, '', pathFromPage(DEFAULT_PAGE_ID));
+  }, []);
+
+  useEffect(() => {
+    const handleExpiredSession = () => expireLocalSession();
+    window.addEventListener(DASHBOARD_SESSION_EXPIRED_EVENT, handleExpiredSession);
+    return () => window.removeEventListener(DASHBOARD_SESSION_EXPIRED_EVENT, handleExpiredSession);
+  }, [expireLocalSession]);
+
+  const handleLogout = () => {
+    const sessionToken = user?.sessionToken;
+    expireLocalSession();
+    logoutDashboardSession(sessionToken).catch((error) => {
+      devWarn('Nao foi possivel revogar a sessao no Supabase:', error.message);
+    });
   };
+
+  const sessionToken = user?.sessionToken;
+
+  useEffect(() => {
+    if (!user) return undefined;
+    const expiresAt = getStoredSessionExpiresAt();
+    const delay = Math.max(0, expiresAt - Date.now());
+
+    const timer = window.setTimeout(() => {
+      expireLocalSession();
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [expireLocalSession, user]);
+
+  useEffect(() => {
+    if (!sessionToken) return undefined;
+    let cancelled = false;
+
+    const validateSession = async () => {
+      try {
+        const refreshedProfile = await refreshDashboardSession(sessionToken);
+        if (cancelled) return;
+        if (!refreshedProfile) {
+          expireLocalSession();
+          return;
+        }
+        const nextUser = { ...refreshedProfile, sessionToken };
+        setCqoSessionToken(sessionToken);
+        writeUserSession(nextUser);
+        setUser((current) => (
+          current?.sessionToken === sessionToken ? nextUser : current
+        ));
+      } catch (error) {
+        if (isDashboardSessionExpiredError(error)) {
+          expireLocalSession();
+          return;
+        }
+        devWarn('Nao foi possivel validar a sessao no Supabase:', error.message);
+      }
+    };
+
+    validateSession();
+    const interval = window.setInterval(validateSession, 5 * 60 * 1000);
+    const validateOnFocus = () => validateSession();
+    const validateOnVisible = () => {
+      if (document.visibilityState === 'visible') validateSession();
+    };
+
+    window.addEventListener('focus', validateOnFocus);
+    document.addEventListener('visibilitychange', validateOnVisible);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', validateOnFocus);
+      document.removeEventListener('visibilitychange', validateOnVisible);
+    };
+  }, [expireLocalSession, sessionToken]);
 
   const triggerManualSync = () => {
     setIsSyncing(true);
     refreshCqoData()
-      .catch((err) => console.error("Manual sync failed:", err))
+      .catch((err) => devError('Manual sync failed:', err))
       .finally(() => {
         setIsSyncing(false);
         setLastSyncTime(new Date().toLocaleTimeString([], {
@@ -485,7 +621,7 @@ export default function App() {
   };
 
   const renderActivePage = () => {
-    switch (activePage) {
+    switch (effectiveActivePage) {
       case 'dashboard':
         return (
           <Dashboard
@@ -537,6 +673,7 @@ export default function App() {
             dateFrom={dateFrom}
             dateTo={dateTo}
             searchTerm={searchTerm}
+            user={user}
           />
         );
       case 'inventario':
@@ -555,7 +692,7 @@ export default function App() {
           />
         );
       case 'colaboradores':
-        return <Collaborators />;
+        return <Collaborators user={user} />;
       case 'desenvolvimento':
         return <Development />;
       case 'config':
@@ -604,27 +741,15 @@ export default function App() {
     return <Login onLogin={handleLogin} />;
   }
 
-  if (isAppLoading) {
-    return (
-      <div className="app-loading-screen">
-        <div className="app-loading-content fade-in">
-          <img src="/logo.png" alt="Vila Nova" className="app-loading-logo pulse-animation" />
-          <div className="spinner-modern"></div>
-          <h2>Autenticação confirmada</h2>
-          <p>Carregando base de dados do Supabase e sincronizando tabelas...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={`app-container ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''}`}>
       <Sidebar
-        activePage={activePage}
+        activePage={effectiveActivePage}
         setActivePage={setActivePage}
         collapsed={sidebarCollapsed}
         setCollapsed={setSidebarCollapsed}
         width={sidebarCollapsed ? 76 : sidebarWidth}
+        visiblePageIds={accessiblePages}
       />
       <button
         type="button"
@@ -635,7 +760,7 @@ export default function App() {
         aria-label="Ajustar largura do menu"
       />
       <div className="app-main">
-          <Header
+        <Header
           farmFilter={farmFilter}
           setFarmFilter={setFarmFilter}
           yearFilter={yearFilter}
@@ -652,8 +777,8 @@ export default function App() {
           setEvaluatorFilter={setEvaluatorFilter}
           sourceFilter={sourceFilter}
           setSourceFilter={setSourceFilter}
-          onClearFilters={clearGlobalFilters}
-          activePage={activePage}
+          activePage={effectiveActivePage}
+          visibleFilters={visibleHeaderFilters}
           theme={theme}
           setTheme={setTheme}
           searchTerm={searchTerm}
@@ -666,7 +791,9 @@ export default function App() {
           onOpenTvMode={openTvMode}
         />
         <main className="app-content">
-          {renderActivePage()}
+          <Suspense fallback={<PageFallback />}>
+            {renderActivePage()}
+          </Suspense>
         </main>
         {tvModeOpen && (
           <TvModeOverlay
@@ -684,7 +811,6 @@ export default function App() {
         )}
         <footer className="app-developer-footer">
           <span>Vila Nova Agroindustrial - Dashboard CQO</span>
-          <span className="app-developer-signature">Desenvolvedor: <strong>Vinicius Dev.</strong></span>
         </footer>
       </div>
     </div>

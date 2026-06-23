@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import snapshot from '../data/bonificacaoSnapshot.json';
-import { SUPABASE_CONFIG } from './cqoData';
+import { callDashboardRpc, getCqoSessionToken } from './cqoData';
 
 export const BONIFICACAO_SOURCE = {
   workbook: 'Base Qualidade CFF.xlsx',
@@ -91,32 +90,27 @@ function parseJson(value) {
   }
 }
 
+function rpcScalarPayload(payload, functionName) {
+  if (Array.isArray(payload)) {
+    const first = payload[0] || null;
+    return first?.[functionName] || first || {};
+  }
+
+  return payload?.[functionName] || payload || {};
+}
+
 async function fetchBonificacaoSnapshot() {
-  if (!SUPABASE_CONFIG.configured) {
-    throw new Error('Supabase nao configurado no ambiente.');
+  const sessionToken = getCqoSessionToken();
+  if (!sessionToken) {
+    throw new Error('Sessao do dashboard nao configurada para bonificacao.');
   }
 
-  const query = new URLSearchParams({
-    select: 'snapshot_json,source_path,imported_at,updated_at',
-    import_key: `eq.${BONIFICACAO_SOURCE.importKey}`,
-    order: 'updated_at.desc',
-    limit: '1',
-  }).toString();
-
-  const response = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/${BONIFICACAO_SOURCE.importTable}?${query}`, {
-    headers: {
-      apikey: SUPABASE_CONFIG.anonKey,
-      Authorization: `Bearer ${SUPABASE_CONFIG.anonKey}`,
-      Accept: 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`${BONIFICACAO_SOURCE.importTable}: HTTP ${response.status}`);
-  }
-
-  const rows = await response.json();
-  const row = rows?.[0];
+  const payload = await callDashboardRpc(
+    'dashboard_bonificacao_snapshot',
+    { p_session_token: sessionToken },
+    'Leitura da bonificacao'
+  );
+  const row = rpcScalarPayload(payload, 'dashboard_bonificacao_snapshot');
   if (!row?.snapshot_json) return null;
 
   return {
@@ -191,62 +185,50 @@ function normalizeSnapshot(rawSnapshot, metadata = {}) {
   };
 }
 
-let bonificacaoStateCache = normalizeSnapshot(snapshot);
-let bonificacaoLoadPromise = null;
-const bonificacaoListeners = new Set();
-
-function notifyBonificacaoListeners(nextState) {
-  bonificacaoListeners.forEach((listener) => listener(nextState));
-}
-
-function loadBonificacaoDataOnce() {
-  if (bonificacaoLoadPromise) return bonificacaoLoadPromise;
-
-  bonificacaoLoadPromise = fetchBonificacaoSnapshot()
-    .then((onlineSnapshot) => {
-      if (onlineSnapshot?.snapshot) {
-        return normalizeSnapshot(onlineSnapshot.snapshot, {
-          online: true,
-          sourcePath: onlineSnapshot.sourcePath,
-          importedAt: onlineSnapshot.importedAt,
-          updatedAt: onlineSnapshot.updatedAt,
-        });
-      }
-
-      return fetch('/bonificacaoSnapshot.json')
-        .then((response) => (response.ok ? response.json() : null))
-        .then((json) => (json ? normalizeSnapshot(json) : bonificacaoStateCache));
-    })
-    .catch(() => (
-      fetch('/bonificacaoSnapshot.json')
-        .then((response) => (response.ok ? response.json() : null))
-        .then((json) => (json ? normalizeSnapshot(json) : fallbackData()))
-        .catch(() => fallbackData())
-    ))
-    .then((nextState) => {
-      bonificacaoStateCache = nextState;
-      notifyBonificacaoListeners(nextState);
-      return nextState;
-    });
-
-  return bonificacaoLoadPromise;
-}
-
 export function useBonificacaoData() {
-  const [state, setState] = useState(bonificacaoStateCache);
+  const [state, setState] = useState(fallbackData);
 
   useEffect(() => {
     let mounted = true;
-    const listener = (nextState) => {
-      if (mounted) setState(nextState);
-    };
 
-    bonificacaoListeners.add(listener);
-    loadBonificacaoDataOnce();
+    fetchBonificacaoSnapshot()
+      .then((onlineSnapshot) => {
+        if (!mounted) return null;
+        if (onlineSnapshot?.snapshot) {
+          setState(normalizeSnapshot(onlineSnapshot.snapshot, {
+            online: true,
+            sourcePath: onlineSnapshot.sourcePath,
+            importedAt: onlineSnapshot.importedAt,
+            updatedAt: onlineSnapshot.updatedAt,
+          }));
+          return null;
+        }
+
+        return fetch('/bonificacaoSnapshot.json')
+          .then((response) => (response.ok ? response.json() : null))
+          .then((json) => {
+            if (mounted && json) {
+              setState(normalizeSnapshot(json));
+            }
+          });
+      })
+      .catch(() => (
+        fetch('/bonificacaoSnapshot.json')
+          .then((response) => (response.ok ? response.json() : null))
+          .then((json) => {
+            if (mounted && json) {
+              setState(normalizeSnapshot(json));
+            } else if (mounted) {
+              setState(fallbackData());
+            }
+          })
+          .catch(() => {
+            if (mounted) setState(fallbackData());
+          })
+      ));
 
     return () => {
       mounted = false;
-      bonificacaoListeners.delete(listener);
     };
   }, []);
 

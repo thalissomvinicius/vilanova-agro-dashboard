@@ -1,104 +1,103 @@
-<div align="center">
-  <img src="./public/logo.png" alt="Vila Nova Agroindustrial" width="190" />
+# Vila Nova Agro Dashboard
 
-  <h1>Dashboard CQO Vila Nova</h1>
+Painel operacional React/Vite para acompanhamento de CQO, coletas, inventario, rampa, colaboradores e mapa georreferenciado.
 
-  <p>
-    Plataforma web de inteligencia operacional para acompanhamento de qualidade agricola,
-    coletas de campo, carreamento, rampa, perdas, inventario e georreferenciamento produtivo.
-  </p>
+## Requisitos
 
-  <p>
-    <img alt="React" src="https://img.shields.io/badge/React-19-0f5132?style=for-the-badge&logo=react&logoColor=white" />
-    <img alt="Vite" src="https://img.shields.io/badge/Vite-8-f59e0b?style=for-the-badge&logo=vite&logoColor=white" />
-    <img alt="Supabase" src="https://img.shields.io/badge/Supabase-Data-15803d?style=for-the-badge&logo=supabase&logoColor=white" />
-    <img alt="Leaflet" src="https://img.shields.io/badge/Leaflet-Maps-166534?style=for-the-badge&logo=leaflet&logoColor=white" />
-  </p>
-</div>
+- Node.js compativel com Vite 8
+- npm
+- Projeto Supabase com chaves configuradas por ambiente
 
----
+## Setup local
 
-## Visao Geral
+```bash
+npm ci
+cp .env.example .env.local
+npm run dev
+```
 
-O **Dashboard CQO Vila Nova** centraliza a leitura dos indicadores operacionais da qualidade agricola em uma experiencia visual moderna, responsiva e orientada a decisao.
+Preencha `.env.local` com:
 
-A plataforma organiza dados de campo, rampa, coletas sincronizadas, parcelas, perdas e mapas produtivos para apoiar reunioes, auditorias internas e acompanhamento tecnico das fazendas.
+```bash
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_ANON_KEY=sua-chave-anon
+VITE_ENABLE_DEVELOPMENT_PAGE=false
+```
 
-O painel foi desenhado para transformar bases operacionais em leitura executiva: indicadores claros, filtros consistentes, graficos objetivos, mapas interativos e apresentacoes em tela cheia.
+Sem URL e anon key, o frontend inicia, mas as chamadas ao Supabase retornam erro de configuracao em vez de usar fallbacks hardcoded.
 
-## Identidade Visual
+A pagina de desenvolvimento fica oculta em builds de producao. Para habilita-la explicitamente para usuarios admin, defina `VITE_ENABLE_DEVELOPMENT_PAGE=true`.
 
-A interface segue a identidade da Vila Nova Agroindustrial, combinando:
+Para login, leituras online e mutacoes auditaveis em producao, aplique `supabase/production_hardening.sql` no Supabase antes do deploy. O dashboard usa funcoes RPC para autenticar, emitir sessao curta, carregar CQO, headcount e bonificacao, atualizar acesso de colaboradores, aprovar/reprovar fichas e marcar fichas como excluidas sem expor colunas sensiveis ao frontend.
 
-- Verde institucional para leitura agricola, estabilidade e confianca.
-- Laranja como cor de acao, destaque e alerta operacional.
-- Branco e tons neutros para manter contraste, clareza e boa leitura em reunioes.
-- Componentes compactos, profissionais e focados em operacao real.
+O runtime do dashboard nao faz leitura REST direta de tabelas operacionais; as chamadas online passam por RPCs de sessao. O SQL tambem remove permissao de criacao no schema `public` para papeis nao confiaveis.
 
-## Modulos Do Dashboard
+O login registra tentativas no banco e bloqueia temporariamente uma matricula apos falhas repetidas, sem armazenar senhas digitadas.
 
-### CQO Campo
+Depois de aplicar o SQL, cadastre ao menos uma matricula administradora para liberar mutacoes privilegiadas:
 
-Modulo voltado ao acompanhamento da qualidade agricola coletada em campo, considerando Corte e Carreamento como partes da operacao CQO.
+```sql
+insert into public.dashboard_access_users (matricula, role, permissions)
+values ('SUA_MATRICULA', 'admin', '{}'::text[])
+on conflict (matricula) do update
+set role = excluded.role,
+    permissions = excluded.permissions,
+    active = true,
+    updated_at = now();
+```
 
-Reune indicadores de maturacao, cachos, perdas, fiscal responsavel, origem dos dados e leitura por fazenda, semana, dia e parcela.
+Permissoes granulares aceitas para perfis nao-admin: `review_response`, `delete_response` e `manage_collaborators`. Matriculas sem registro ativo em `dashboard_access_users` nao conseguem autenticar no dashboard.
 
-### Corte Campo
+Para migrar senhas legadas em texto para hash dentro do banco, rode em lotes apos aplicar o SQL:
 
-Visao especializada para qualidade de corte, com foco em maturacao, ocorrencias por amostragem, desempenho por origem e leitura consolidada das parcelas avaliadas.
+```sql
+select public.dashboard_hash_legacy_passwords(500);
+```
 
-### Carreamento
+Repita ate retornar `0`. O login de producao exige `senha_hash`; novas trocas de senha feitas pelo dashboard ja gravam `senha_hash` e limpam o campo legado `senha`.
 
-Painel dedicado ao transporte e retirada de cachos, com indicadores de nao carreamento, cacho mal posicionado, riscos por fazenda e apoio visual para apresentacao gerencial.
+A rotina de autenticacao tambem limpa sessoes expiradas e tentativas de login antigas. Para manutencao manual pelo SQL Editor/service role:
 
-### CQO Rampa
+```sql
+select * from public.dashboard_prune_security_state(7, 30, null);
+```
 
-Ambiente de analise da qualidade do CFF na rampa, estruturado para acompanhar fornecedores, medias mensais, fazendas, classificacoes de qualidade e evolucao operacional.
+Os parametros representam dias de retencao para sessoes, tentativas de login e auditoria. O terceiro parametro deve ficar `null` para preservar eventos de auditoria indefinidamente.
 
-### Perdas Agricola
+A tela de colaboradores consome o snapshot importado de headcount. Alteracoes de status e senha continuam passando apenas por RPC autenticado e auditado, sem leitura direta de `headcount_colaboradores` pelo frontend.
 
-Modulo para leitura das perdas do processo agricola, conectando percentuais, toneladas estimadas, fazendas, semanas e origem das perdas.
+## Scripts
 
-### Coletas Recebidas
+```bash
+npm run lint
+npm test
+npm run verify
+npm run build
+npm run preview
+```
 
-Central de auditoria das fichas sincronizadas pelo aplicativo de campo, com status, avaliadores, formularios, fazenda, parcela e rastreabilidade operacional.
+## Dados e assets
 
-### Inventario De Parcelas
+- `public/data/farm-parcels.geojson`: parcelas usadas pelo mapa Leaflet.
+- `public/data/inventory-parcels.json`: dados estaticos de inventario.
+- `public/bonificacaoSnapshot.json`: fallback publico para bonificacao quando a RPC online nao retorna snapshot.
+- `src/data/bonificacaoSnapshot.json`: copia historica local; o runtime usa carregamento sob demanda pelo arquivo publico.
+- `supabase/*.sql`: views auxiliares para dashboards e snapshots.
+- `supabase/production_hardening.sql`: indices e tabela de auditoria para revisar em staging antes de producao.
 
-Visao das areas produtivas por fazenda e parcela, com informacoes agronomicas relevantes para cruzamento com qualidade, perdas e produtividade.
+## Producao
 
-### Mapa GPS
+Antes de publicar:
 
-Mapa operacional integrado com shapes das fazendas, parcelas, semaforo de qualidade, risco por amostragem, GPS do aplicativo e leitura visual por area avaliada.
+1. Configure variaveis no provedor de deploy, nunca no codigo.
+2. Rode `npm run lint`, `npm run build` e `npm audit`.
+3. Rode `npm test`.
+4. Valide politicas RLS e permissoes no Supabase.
+5. Revise e aplique `supabase/production_hardening.sql` em staging antes de producao.
+6. Revise headers em `vercel.json`.
+7. Rode `npm run verify`.
+8. Remova artefatos locais e temporarios do pacote de entrega. A `.vercelignore` ja exclui `scratch/`, logs, dumps, PBIX e scripts operacionais do deploy.
 
-### Desenvolvimento
+## Scripts auxiliares
 
-Area reservada para evolucao da inteligencia agricola do dende, indicadores futuros, estudos de cultura, produtividade, sanidade, estimativas e modelos de decisao.
-
-## Inteligencia De Dados
-
-O dashboard foi preparado para operar com multiplas origens de dados:
-
-- Coletas digitais sincronizadas pelo aplicativo de campo.
-- Snapshots historicos vindos de bases Excel.
-- Dados de rampa importados para o Supabase.
-- Inventario e geometrias produtivas das fazendas.
-- Estruturas futuras para integracao SQL direta.
-
-A arquitetura separa dados do aplicativo, historico operacional e bases consolidadas, permitindo transicao gradual do processo manual para o processo digital.
-
-## Experiencia De Apresentacao
-
-O sistema possui telas pensadas para reuniao e tomada de decisao, com apresentacoes em tela cheia, indicadores resumidos, graficos objetivos e mapas com leitura gerencial.
-
-A proposta visual prioriza entendimento rapido: o gestor consegue identificar area critica, periodo, fazenda, parcela, responsavel e comportamento do indicador sem depender de planilhas paralelas.
-
-## Governanca E Seguranca
-
-O repositorio evita versionar arquivos locais de operacao, dumps, planilhas, extracoes de BI, bases sensiveis e credenciais.
-
-As integracoes externas sao tratadas por configuracao de ambiente, mantendo chaves, snapshots privados e rotinas operacionais fora do codigo publico.
-
-## Assinatura
-
-Projeto desenvolvido e mantido por **Vinicius Dev.**
+Scripts em `scripts/` e `scratch/` sao operacionais. Qualquer script que envie dados ao Supabase deve receber credenciais por variaveis de ambiente, nunca por valores fixos no arquivo.

@@ -1,47 +1,112 @@
 import { useEffect, useMemo, useState } from 'react';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || '').trim();
+const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
 
 export const SUPABASE_CONFIG = {
   url: SUPABASE_URL,
   anonKey: SUPABASE_ANON_KEY,
-  configured: Boolean(SUPABASE_URL && SUPABASE_ANON_KEY),
+  isConfigured: Boolean(SUPABASE_URL && SUPABASE_ANON_KEY),
 };
 
-const cqoResourcePromiseCache = new Map();
-const normalizedExcelRecordsCache = new WeakMap();
-const EMPTY_HEADCOUNT_REFERENCE = [];
+export const DASHBOARD_SESSION_EXPIRED_EVENT = 'vilanova-dashboard-session-expired';
 
-function getCqoResource(key, loader) {
-  if (cqoResourcePromiseCache.has(key)) return cqoResourcePromiseCache.get(key);
-
-  const promise = Promise.resolve()
-    .then(loader)
-    .catch((error) => {
-      cqoResourcePromiseCache.delete(key);
-      throw error;
-    });
-
-  cqoResourcePromiseCache.set(key, promise);
-  return promise;
-}
-
-function normalizeExcelRecordsOnce(cqoImport, headcount = EMPTY_HEADCOUNT_REFERENCE) {
-  if (!cqoImport?.rows?.length) return [];
-
-  const headcountKey = headcount || EMPTY_HEADCOUNT_REFERENCE;
-  let cacheByHeadcount = normalizedExcelRecordsCache.get(cqoImport);
-  if (!cacheByHeadcount) {
-    cacheByHeadcount = new WeakMap();
-    normalizedExcelRecordsCache.set(cqoImport, cacheByHeadcount);
+function requireSupabaseConfig() {
+  if (!SUPABASE_CONFIG.isConfigured) {
+    throw new Error('Supabase nao configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no ambiente.');
   }
 
-  if (cacheByHeadcount.has(headcountKey)) return cacheByHeadcount.get(headcountKey);
+  return SUPABASE_CONFIG;
+}
 
-  const records = cqoImport.rows.map((row) => normalizeResponse(row, headcountKey));
-  cacheByHeadcount.set(headcountKey, records);
-  return records;
+function supabaseHeaders(extraHeaders = {}) {
+  const { anonKey } = requireSupabaseConfig();
+  return {
+    apikey: anonKey,
+    Authorization: `Bearer ${anonKey}`,
+    Accept: 'application/json',
+    ...extraHeaders,
+  };
+}
+
+async function supabaseResponseError(response, context) {
+  let detail;
+
+  try {
+    const payload = await response.clone().json();
+    detail = [payload.message, payload.details, payload.hint, payload.error]
+      .filter(Boolean)
+      .join(' ');
+  } catch {
+    try {
+      detail = (await response.text()).trim();
+    } catch {
+      detail = undefined;
+    }
+  }
+
+  const suffix = detail ? ` - ${detail.slice(0, 240)}` : '';
+  return `${context}: HTTP ${response.status}${suffix}`;
+}
+
+export function isDashboardSessionExpiredError(error) {
+  const message = String(error?.message || error || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  return message.includes('sessao expirada ou invalida')
+    || message.includes('session expired')
+    || message.includes('invalid session')
+    || message.includes('jwt expired')
+    || message.includes('http 401')
+    || message.includes('http 403');
+}
+
+function notifyDashboardSessionExpired(error) {
+  if (!isDashboardSessionExpiredError(error) || typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(DASHBOARD_SESSION_EXPIRED_EVENT, {
+    detail: { message: error?.message || 'Sessao expirada.' },
+  }));
+}
+
+export function dashboardErrorMessage(error, fallback = 'Não foi possível concluir a operação agora.') {
+  const rawMessage = String(error?.message || error || '').trim();
+  const normalized = rawMessage
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  if (!rawMessage) return fallback;
+  if (normalized.includes('muitas tentativas de login')) {
+    return 'Muitas tentativas de login. Aguarde 15 minutos e tente novamente.';
+  }
+  if (normalized.includes('matricula ou senha invalida')) {
+    return 'Matricula ou senha invalida.';
+  }
+  if (normalized.includes('informe matricula e senha')) {
+    return 'Informe matricula e senha.';
+  }
+  if (normalized.includes('sem permissao')) {
+    return 'Seu perfil não tem permissão para esta ação.';
+  }
+  if (normalized.includes('autenticacao do dashboard') && normalized.includes('http ')) {
+    return 'Não foi possível validar o acesso agora. Tente novamente em instantes.';
+  }
+  if (isDashboardSessionExpiredError(rawMessage)) {
+    return 'Sua sessão expirou. Entre novamente para continuar.';
+  }
+  if (normalized.includes('supabase nao configurado') || normalized.includes('vite_supabase')) {
+    return 'Serviço de dados não configurado. Verifique as variáveis de ambiente.';
+  }
+  if (normalized.includes('failed to fetch') || normalized.includes('networkerror') || normalized.includes('network error')) {
+    return 'Não foi possível conectar ao serviço de dados. Tente novamente em instantes.';
+  }
+  if (normalized.includes('http ')) {
+    return 'Não foi possível acessar os dados agora. Tente novamente em instantes.';
+  }
+
+  return fallback;
 }
 
 export const CQO_FARMS = [
@@ -282,10 +347,9 @@ function normalizeAttachment(row, index) {
     fieldId: row?.campo_id || row?.field_id || meta?.campo_id || meta?.fieldId || `anexo_${index + 1}`,
     fileName: row?.nome_arquivo || row?.filename || row?.file_name || meta?.nome_arquivo || meta?.fileName || '',
     mimeType: row?.mime_type || row?.mimetype || row?.tipo_mime || meta?.mimeType || meta?.mime_type || 'image/jpeg',
-    base64: row?.base64 || row?.arquivo_base64 || row?.conteudo_base64 || row?.file_base64 || meta?.base64 || meta?.arquivo_base64 || null,
-    url: row?.url || row?.public_url || row?.storage_url || row?.arquivo_url || row?.download_url || meta?.url || meta?.publicUrl || meta?.public_url || null,
-    storagePath: row?.storage_path || row?.caminho || row?.path || row?.arquivo_path || row?.storagePath || meta?.storagePath || meta?.storage_path || meta?.path || null,
-    bucket: row?.bucket || row?.bucket_id || row?.storage_bucket || meta?.bucket || meta?.bucket_id || meta?.storage_bucket || null,
+    base64: row?.base64 || row?.arquivo_base64 || row?.conteudo_base64 || meta?.base64 || null,
+    url: row?.url || row?.public_url || row?.storage_url || meta?.url || meta?.publicUrl || null,
+    storagePath: row?.storage_path || row?.caminho || row?.path || meta?.storagePath || meta?.storage_path || null,
     capturedAt: row?.capturado_em || row?.criado_em || meta?.capturedAt || meta?.capturado_em || null,
     gps,
     raw: row,
@@ -397,7 +461,6 @@ function statusLabel(status) {
   if (normalized === 'pendente-validacao') return 'Pendente validação';
   if (normalized === 'aprovado') return 'Aprovado';
   if (normalized === 'reprovado') return 'Reprovado';
-  if (normalized === 'auditoria-fechada' || normalized === 'auditoria-encerrada') return 'Auditoria fechada';
   if (normalized === 'erro' || normalized === 'falha') return 'Falha';
   return 'Pendente';
 }
@@ -586,52 +649,38 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
   };
 }
 
-async function fetchSupabaseTable(table, query) {
-  if (!SUPABASE_CONFIG.configured) {
-    throw new Error('Supabase nao configurado no ambiente.');
-  }
-
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      Accept: 'application/json',
-    },
+async function postSupabaseRpc(functionName, body, context) {
+  const { url } = requireSupabaseConfig();
+  const response = await fetch(`${url}/rest/v1/rpc/${functionName}`, {
+    method: 'POST',
+    headers: supabaseHeaders({
+      'Content-Type': 'application/json',
+    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
-    throw new Error(`${table}: HTTP ${response.status}`);
+    const error = new Error(await supabaseResponseError(response, context));
+    error.status = response.status;
+    notifyDashboardSessionExpired(error);
+    throw error;
   }
 
+  if (response.status === 204) return null;
   return response.json();
 }
 
-function fetchSupabaseTableCached(table, query) {
-  return getCqoResource(`table:${table}?${query}`, () => fetchSupabaseTable(table, query));
+export async function callDashboardRpc(functionName, body, context) {
+  return postSupabaseRpc(functionName, body, context);
 }
 
-export async function authenticateDashboardUser(matricula, senha) {
-  const normalizedMatricula = String(matricula || '').trim();
-  const normalizedSenha = String(senha || '').trim();
+function firstRpcRow(payload) {
+  if (Array.isArray(payload)) return payload[0] || null;
+  return payload || null;
+}
 
-  if (!normalizedMatricula || !normalizedSenha) {
-    throw new Error('Informe matricula e senha.');
-  }
-
-  const query = new URLSearchParams({
-    select: 'matricula,senha,nome,departamento,cargo,gestor,status',
-    matricula: `eq.${normalizedMatricula}`,
-    status: 'eq.ATIVO',
-    limit: '1',
-  }).toString();
-
-  const rows = await fetchSupabaseTable('headcount_colaboradores', query);
-  const profile = rows[0];
-
-  if (!profile || String(profile.senha || '') !== normalizedSenha) {
-    throw new Error('Matricula ou senha invalida.');
-  }
-
+function dashboardProfile(profile) {
+  if (!profile) return null;
   return {
     matricula: profile.matricula,
     nome: profile.nome,
@@ -639,16 +688,99 @@ export async function authenticateDashboardUser(matricula, senha) {
     cargo: profile.cargo,
     gestor: profile.gestor,
     status: profile.status,
+    role: profile.role || 'viewer',
+    permissions: Array.isArray(profile.permissions) ? profile.permissions : [],
+    sessionToken: profile.session_token || profile.sessionToken || null,
+    sessionExpiresAt: profile.session_expires_at || profile.sessionExpiresAt || null,
   };
 }
 
-export async function loadHeadcountData() {
-  return getCqoResource('headcount:dashboard', async () => {
-    const snapshot = await loadHeadcountSnapshotData();
-    if (snapshot.rows.length) return snapshot.rows;
+export function canUseDashboardAction(user, permission) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  return Array.isArray(user.permissions) && user.permissions.includes(permission);
+}
 
-    return fetchLegacyHeadcountData();
-  });
+function sessionRpcPayload(session = {}) {
+  return {
+    p_session_token: String(session?.sessionToken || session || '').trim() || null,
+  };
+}
+
+function validateLoginInput(matricula, senha) {
+  const normalizedMatricula = String(matricula || '').trim();
+  const normalizedSenha = String(senha || '').trim();
+
+  if (!normalizedMatricula || !normalizedSenha) {
+    throw new Error('Informe matricula e senha.');
+  }
+
+  return { normalizedMatricula, normalizedSenha };
+}
+
+function isLoginRateLimitError(error) {
+  const message = String(error?.message || error || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  return message.includes('muitas tentativas de login');
+}
+
+async function authenticateDashboardUserRpc(normalizedMatricula, normalizedSenha) {
+  const payload = await postSupabaseRpc(
+    'dashboard_authenticate',
+    {
+      p_matricula: normalizedMatricula,
+      p_senha: normalizedSenha,
+    },
+    'Autenticação do dashboard'
+  );
+
+  return dashboardProfile(firstRpcRow(payload));
+}
+
+export async function authenticateDashboardUser(matricula, senha) {
+  const { normalizedMatricula, normalizedSenha } = validateLoginInput(matricula, senha);
+  let profile;
+
+  try {
+    profile = await authenticateDashboardUserRpc(normalizedMatricula, normalizedSenha);
+  } catch (error) {
+    if (isLoginRateLimitError(error)) {
+      throw new Error('Muitas tentativas de login. Aguarde 15 minutos e tente novamente.', { cause: error });
+    }
+    throw error;
+  }
+
+  if (!profile) {
+    throw new Error('Matricula ou senha invalida.');
+  }
+  return profile;
+}
+
+export async function refreshDashboardSession(sessionToken) {
+  if (!sessionToken) return null;
+  const payload = await postSupabaseRpc(
+    'dashboard_session_profile',
+    { p_session_token: String(sessionToken).trim() },
+    'Validação da sessão'
+  );
+  const profile = dashboardProfile(firstRpcRow(payload));
+  return profile ? { ...profile, sessionToken } : null;
+}
+
+export async function loadHeadcountData() {
+  if (!activeDashboardSessionToken) {
+    throw new Error('Sessao do dashboard nao configurada para leitura do headcount.');
+  }
+
+  const payload = await postSupabaseRpc(
+    'dashboard_headcount_snapshot',
+    { p_session_token: activeDashboardSessionToken },
+    'Leitura do headcount'
+  );
+  return normalizeHeadcountSnapshotData(rpcScalarPayload(payload, 'dashboard_headcount_snapshot')).rows;
 }
 
 function pickHeadcountValue(row, keys) {
@@ -698,60 +830,38 @@ function normalizeHeadcountSnapshotRow(row, snapshot) {
   };
 }
 
-async function loadHeadcountSnapshotData() {
-  const query = new URLSearchParams({
-    select: 'import_key,fonte,reference_month,source_file,source_sheet,total_rows,columns_json,rows_json,imported_at,updated_at',
-    fonte: 'eq.headcount_agricola',
-    order: 'reference_month.desc',
-    limit: '1',
-  }).toString();
+function normalizeHeadcountSnapshotData(snapshot) {
+  const rawRows = Array.isArray(snapshot?.rows_json) ? snapshot.rows_json : [];
+  const rows = rawRows
+    .map((row) => normalizeHeadcountSnapshotRow(row, snapshot))
+    .filter((row) => row.matricula || row.nome)
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 
-  try {
-    const snapshots = await fetchSupabaseTableCached('headcount_import_snapshots', query);
-    const snapshot = snapshots[0];
-    const rawRows = Array.isArray(snapshot?.rows_json) ? snapshot.rows_json : [];
-    const rows = rawRows
-      .map((row) => normalizeHeadcountSnapshotRow(row, snapshot))
-      .filter((row) => row.matricula || row.nome)
-      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-
-    return { snapshot, rows };
-  } catch {
-    return { snapshot: null, rows: [] };
-  }
+  return { snapshot: snapshot || null, rows };
 }
 
-async function fetchLegacyHeadcountData(query = 'select=matricula,nome,departamento,cargo,gestor,status,senha,reference_date,updated_at&order=nome.asc&limit=3000') {
-  const rows = await fetchSupabaseTableCached('headcount_colaboradores', query);
-  return rows.map((row) => ({
-    ...row,
-    source: 'headcount_colaboradores',
-  }));
+export async function logoutDashboardSession(sessionToken) {
+  if (!sessionToken) return null;
+  return postSupabaseRpc(
+    'dashboard_logout',
+    { p_session_token: String(sessionToken).trim() },
+    'Encerramento da sessão'
+  );
 }
 
-export async function updateCollaborator({ matricula, status, senha }) {
-  const body = {};
-  if (status !== undefined) body.status = status;
-  if (senha !== undefined) body.senha = senha;
-  body.updated_at = new Date().toISOString();
-
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/headcount_colaboradores?matricula=eq.${encodeURIComponent(matricula)}`, {
-    method: 'PATCH',
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
+export async function updateCollaborator({ matricula, status, senha, sessionToken }) {
+  const payload = await postSupabaseRpc(
+    'dashboard_update_collaborator_access',
+    {
+      ...sessionRpcPayload({ sessionToken }),
+      p_matricula: String(matricula || '').trim(),
+      p_status: status,
+      p_senha: senha,
     },
-    body: JSON.stringify(body),
-  });
+    'Atualização de colaborador'
+  );
 
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-
-  return response.json();
+  return payload || [];
 }
 
 function cqoSnapshotDate(row) {
@@ -901,186 +1011,76 @@ function groupCqoSnapshotRows(rows, type, snapshot) {
   });
 }
 
-async function loadCqoImportSnapshotRows() {
-  return getCqoResource('cqo-import-snapshot:rows', async () => {
-    const query = new URLSearchParams({
-      select: 'import_key,fonte,source_file,source_path,file_last_write_time,corte_total_rows,carreamento_total_rows,corte_columns_json,carreamento_columns_json,corte_rows_json,carreamento_rows_json,imported_at,updated_at',
-      import_key: 'eq.cqo_1_digitacao_cqo',
-      limit: '1',
-    }).toString();
-
-    try {
-      const snapshots = await fetchSupabaseTableCached('cqo_import_snapshots', query);
-      const snapshot = snapshots[0];
-      if (!snapshot) return { rows: [], snapshot: null };
-      const corteRows = Array.isArray(snapshot.corte_rows_json) ? snapshot.corte_rows_json : [];
-      const carreamentoRows = Array.isArray(snapshot.carreamento_rows_json) ? snapshot.carreamento_rows_json : [];
-      return {
-        snapshot,
-        rows: [
-          ...groupCqoSnapshotRows(corteRows, 'corte', snapshot),
-          ...groupCqoSnapshotRows(carreamentoRows, 'carreamento', snapshot),
-        ],
-      };
-    } catch {
-      return { rows: [], snapshot: null };
-    }
-  });
-}
-
-export async function updateResponseReviewStatus(responseId, status) {
-  const statusMap = {
-    aprovado: 'aprovado',
-    aprovar: 'aprovado',
-    reprovado: 'reprovado',
-    reprovar: 'reprovado',
-    'auditoria-fechada': 'auditoria_fechada',
-    'fechar-auditoria': 'auditoria_fechada',
-    'auditoria-encerrada': 'auditoria_fechada',
-  };
-  const normalizedStatus = statusMap[normalizeText(status)];
-  if (!normalizedStatus) {
-    throw new Error(`Status de auditoria inválido: ${status}`);
-  }
-
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/mobile_respostas?id=eq.${encodeURIComponent(responseId)}`, {
-    method: 'PATCH',
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-    },
-    body: JSON.stringify({
-      status: normalizedStatus,
-      updated_at: new Date().toISOString(),
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-
-  return response.json();
-}
-
-export async function deleteResponseRecord(responseId) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/mobile_respostas?id=eq.${encodeURIComponent(responseId)}`, {
-    method: 'PATCH',
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-    },
-    body: JSON.stringify({
-      status: 'excluido',
-      updated_at: new Date().toISOString(),
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-
-  return response.json();
-}
-
-async function fetchFirstAvailableTable(candidates, query) {
-  const errors = [];
-
-  for (const table of candidates) {
-    try {
-      const rows = await fetchSupabaseTableCached(table, query);
-      return { table, rows };
-    } catch (error) {
-      errors.push(`${table}: ${error.message}`);
-    }
-  }
-
-  throw new Error(errors.join(' | '));
-}
-
-async function fetchOptionalTable(table, query) {
-  try {
-    return await fetchSupabaseTableCached(table, query);
-  } catch {
-    return [];
-  }
-}
-
-function normalizeLoadOptions(options = {}) {
-  const sourceFilter = options.sourceFilter || 'all';
-  const appLimitValue = Number(options.appLimit ?? 1000);
-  const appLimit = Number.isFinite(appLimitValue)
-    ? Math.max(1, Math.min(1000, Math.round(appLimitValue)))
-    : 1000;
+function normalizeCqoImportSnapshotData(snapshot) {
+  if (!snapshot) return { rows: [], snapshot: null };
+  const corteRows = Array.isArray(snapshot.corte_rows_json) ? snapshot.corte_rows_json : [];
+  const carreamentoRows = Array.isArray(snapshot.carreamento_rows_json) ? snapshot.carreamento_rows_json : [];
 
   return {
-    includeApp: options.includeApp ?? sourceFilter !== 'excel',
-    includeExcel: options.includeExcel ?? sourceFilter !== 'app',
-    includeHeadcount: options.includeHeadcount ?? true,
-    includeGps: options.includeGps ?? sourceFilter !== 'excel',
-    includeAttachments: options.includeAttachments ?? sourceFilter !== 'excel',
-    includeForms: options.includeForms ?? true,
-    appLimit,
+    snapshot,
+    rows: [
+      ...groupCqoSnapshotRows(corteRows, 'corte', snapshot),
+      ...groupCqoSnapshotRows(carreamentoRows, 'carreamento', snapshot),
+    ],
   };
 }
 
-function loadOptionsKey(options) {
-  return [
-    options.includeApp ? 'app' : 'no-app',
-    options.includeExcel ? 'excel' : 'no-excel',
-    options.includeHeadcount ? 'headcount' : 'no-headcount',
-    options.includeGps ? 'gps' : 'no-gps',
-    options.includeAttachments ? 'attachments' : 'no-attachments',
-    options.includeForms ? 'forms' : 'no-forms',
-  ].join('|');
+export async function updateResponseReviewStatus(responseId, status, session = {}) {
+  const normalizedStatus = normalizeText(status) === 'aprovado' ? 'aprovado' : 'reprovado';
+  const payload = await postSupabaseRpc(
+    'dashboard_review_response',
+    {
+      ...sessionRpcPayload(session),
+      p_response_id: String(responseId),
+      p_status: normalizedStatus,
+    },
+    'Atualização de validação'
+  );
+
+  return payload || [];
 }
 
-async function loadSupabaseData(options = {}) {
-  const loadOptions = normalizeLoadOptions(options);
-  const [
-    responseResult,
-    headcount,
-    gpsRows,
-    attachmentRows,
-    formRows,
-    cqoImport,
-  ] = await Promise.all([
-    loadOptions.includeApp
-      ? fetchFirstAvailableTable(
-        ['mobile_respostas', 'respostas'],
-        'select=*&status=neq.excluido&order=criado_em.desc&limit=1000'
-      )
-      : Promise.resolve({ table: 'mobile_respostas', rows: [] }),
-    loadOptions.includeHeadcount ? loadHeadcountData() : Promise.resolve([]),
-    loadOptions.includeApp && loadOptions.includeGps
-      ? fetchOptionalTable(
-        'mobile_gps',
-        'select=id,resposta_id,campo_id,latitude,longitude,precisao,altitude,capturado_em&order=capturado_em.asc&limit=10000'
-      )
-      : Promise.resolve([]),
-    loadOptions.includeApp && loadOptions.includeAttachments
-      ? fetchOptionalTable(
-        'mobile_anexos',
-        'select=*&limit=10000'
-      )
-      : Promise.resolve([]),
-    loadOptions.includeForms
-      ? fetchOptionalTable(
-        'mobile_formularios',
-        'select=*&limit=500'
-      )
-      : Promise.resolve([]),
-    loadOptions.includeExcel
-      ? loadCqoImportSnapshotRows()
-      : Promise.resolve({ rows: [], snapshot: null }),
-  ]);
+export async function deleteResponseRecord(responseId, session = {}) {
+  const payload = await postSupabaseRpc(
+    'dashboard_delete_response',
+    {
+      ...sessionRpcPayload(session),
+      p_response_id: String(responseId),
+    },
+    'Exclusão de ficha'
+  );
 
-  const gpsByResponse = gpsRows.reduce((acc, point) => {
+  return payload || [];
+}
+
+function rpcScalarPayload(payload, functionName) {
+  if (Array.isArray(payload)) {
+    const first = payload[0] || null;
+    return first?.[functionName] || first || {};
+  }
+
+  return payload?.[functionName] || payload || {};
+}
+
+function datasetRows(dataset, key) {
+  const rows = dataset?.[key];
+  return Array.isArray(rows) ? rows : [];
+}
+
+function buildSupabaseData({
+  responseRows,
+  headcount,
+  gpsRows,
+  attachmentRows,
+  formRows,
+  cqoImport,
+  source,
+}) {
+  const safeGpsRows = Array.isArray(gpsRows) ? gpsRows : [];
+  const safeAttachmentRows = Array.isArray(attachmentRows) ? attachmentRows : [];
+  const safeFormRows = Array.isArray(formRows) ? formRows : [];
+
+  const gpsByResponse = safeGpsRows.reduce((acc, point) => {
     const key = point.resposta_id;
     if (!key) return acc;
     if (!acc[key]) acc[key] = [];
@@ -1088,7 +1088,7 @@ async function loadSupabaseData(options = {}) {
     return acc;
   }, {});
 
-  const attachmentsByResponse = attachmentRows
+  const attachmentsByResponse = safeAttachmentRows
     .map((row, index) => normalizeAttachment(row, index))
     .reduce((acc, attachment) => {
       const key = attachment.responseId;
@@ -1098,13 +1098,13 @@ async function loadSupabaseData(options = {}) {
       return acc;
     }, {});
 
-  const mobileRecords = responseResult.rows.map((row) => normalizeResponse(
+  const mobileRecords = responseRows.map((row) => normalizeResponse(
       row,
       headcount,
       gpsByResponse[row.id] || [],
       attachmentsByResponse[row.id] || []
   ));
-  const excelRecords = normalizeExcelRecordsOnce(cqoImport, headcount);
+  const excelRecords = cqoImport.rows.map((row) => normalizeResponse(row, headcount));
   const records = [...mobileRecords, ...excelRecords]
     .sort((a, b) => {
       const dateA = parseRecordDateValue(a.raw?.data_avaliacao || a.createdAt)?.getTime() || 0;
@@ -1117,22 +1117,47 @@ async function loadSupabaseData(options = {}) {
     mobileRecords,
     excelRecords,
     headcount,
-    formularios: formRows,
-    anexos: attachmentRows,
-    gpsRows,
+    formularios: safeFormRows,
+    anexos: safeAttachmentRows,
+    gpsRows: safeGpsRows,
     cqoImport: {
       snapshot: cqoImport.snapshot,
       records: excelRecords.length,
       corteRows: Number(cqoImport.snapshot?.corte_total_rows || 0),
       carreamentoRows: Number(cqoImport.snapshot?.carreamento_total_rows || 0),
     },
-    source: loadOptions.includeExcel && loadOptions.includeApp
-      ? `Supabase / ${responseResult.table}`
-      : loadOptions.includeApp
-        ? `Supabase / ${responseResult.table} (App)`
-        : 'Supabase / cqo_import_snapshots (Excel)',
+    source: source || 'Banco online',
     error: '',
   };
+}
+
+async function loadSupabaseDataFromRpc(sessionToken) {
+  const payload = await postSupabaseRpc(
+    'dashboard_cqo_dataset',
+    { p_session_token: sessionToken },
+    'Leitura do dashboard'
+  );
+  const dataset = rpcScalarPayload(payload, 'dashboard_cqo_dataset');
+  const headcount = normalizeHeadcountSnapshotData(datasetRows(dataset, 'headcount_import_snapshots')[0]).rows;
+  const cqoImport = normalizeCqoImportSnapshotData(datasetRows(dataset, 'cqo_import_snapshots')[0]);
+
+  return buildSupabaseData({
+    responseRows: datasetRows(dataset, 'mobile_respostas'),
+    headcount,
+    gpsRows: datasetRows(dataset, 'mobile_gps'),
+    attachmentRows: datasetRows(dataset, 'mobile_anexos'),
+    formRows: datasetRows(dataset, 'mobile_formularios'),
+    cqoImport,
+    source: 'Banco online',
+  });
+}
+
+async function loadSupabaseData() {
+  if (!activeDashboardSessionToken) {
+    throw new Error('Sessao do dashboard nao configurada para leitura dos dados.');
+  }
+
+  return loadSupabaseDataFromRpc(activeDashboardSessionToken);
 }
 
 function sampleData(error = '') {
@@ -1145,120 +1170,71 @@ function sampleData(error = '') {
     anexos: [],
     gpsRows: [],
     cqoImport: { snapshot: null, records: 0, corteRows: 0, carreamentoRows: 0 },
-    source: 'Supabase indisponivel',
-    error,
+    source: 'Serviço online indisponível',
+    error: dashboardErrorMessage(error, 'Não foi possível carregar os dados do dashboard.'),
   };
 }
 
-const cachedDataByKey = new Map();
-const activePromiseByKey = new Map();
-const loadOptionsByKey = new Map();
+let cachedData = null;
+let activePromise = null;
+let activeDashboardSessionToken = '';
 const listeners = new Set();
 
-function emptyCqoData(source = 'Carregando', error = '') {
-  return {
-    records: [],
-    mobileRecords: [],
-    excelRecords: [],
-    headcount: [],
-    formularios: [],
-    anexos: [],
-    gpsRows: [],
-    cqoImport: { snapshot: null, records: 0, corteRows: 0, carreamentoRows: 0 },
-    source,
-    error,
-  };
-}
-
-function notifyCqoListeners(key, state) {
-  listeners.forEach((listener) => {
-    if (listener.key === key) {
-      listener.setState(state);
-    }
-  });
-}
-
-function startCqoLoad(key, options) {
-  if (activePromiseByKey.has(key)) return activePromiseByKey.get(key);
-
-  const promise = loadSupabaseData(options)
-    .then((data) => {
-      cachedDataByKey.set(key, data);
-      activePromiseByKey.delete(key);
-      notifyCqoListeners(key, { ...data, loading: false });
-      return data;
-    })
-    .catch((error) => {
-      activePromiseByKey.delete(key);
-      const failedData = sampleData(error.message);
-      cachedDataByKey.set(key, failedData);
-      notifyCqoListeners(key, { ...failedData, loading: false });
-      return failedData;
-    });
-
-  activePromiseByKey.set(key, promise);
-  return promise;
-}
-
 export function clearCqoCache() {
-  cachedDataByKey.clear();
-  activePromiseByKey.clear();
-  cqoResourcePromiseCache.clear();
+  cachedData = null;
+  activePromise = null;
+}
+
+export function setCqoSessionToken(sessionToken) {
+  const nextToken = String(sessionToken || '').trim();
+  if (nextToken === activeDashboardSessionToken) return;
+  activeDashboardSessionToken = nextToken;
+  clearCqoCache();
+}
+
+export function getCqoSessionToken() {
+  return activeDashboardSessionToken;
 }
 
 export function refreshCqoData() {
   clearCqoCache();
 
-  const activeKeys = Array.from(new Set(Array.from(listeners).map((listener) => listener.key)));
-  const keysToRefresh = activeKeys.length ? activeKeys : [loadOptionsKey(normalizeLoadOptions())];
-
-  keysToRefresh.forEach((key) => {
-    notifyCqoListeners(key, {
+  // Notificar todos os listeners ativos de que estamos recarregando
+  listeners.forEach((listener) =>
+    listener({
       loading: true,
-      ...emptyCqoData('Atualizando...'),
-    });
-  });
+      records: [],
+      mobileRecords: [],
+      excelRecords: [],
+      headcount: [],
+      formularios: [],
+      anexos: [],
+      gpsRows: [],
+      cqoImport: { snapshot: null, records: 0, corteRows: 0, carreamentoRows: 0 },
+      source: 'Atualizando...',
+      error: '',
+    })
+  );
 
-  return Promise.all(keysToRefresh.map((key) => (
-    startCqoLoad(key, loadOptionsByKey.get(key) || normalizeLoadOptions())
-  )));
+  activePromise = loadSupabaseData()
+    .then((data) => {
+      cachedData = data;
+      activePromise = null;
+      listeners.forEach((listener) => listener({ ...data, loading: false }));
+      return data;
+    })
+    .catch((error) => {
+      activePromise = null;
+      const failedData = sampleData(error);
+      listeners.forEach((listener) => listener({ ...failedData, loading: false }));
+      throw error;
+    });
+
+  return activePromise;
 }
 
-export function useCqoData(options = {}) {
-  const {
-    sourceFilter,
-    includeApp,
-    includeExcel,
-    includeHeadcount,
-    includeGps,
-    includeAttachments,
-    includeForms,
-    appLimit,
-  } = options;
-
-  const loadOptions = useMemo(() => normalizeLoadOptions({
-    sourceFilter,
-    includeApp,
-    includeExcel,
-    includeHeadcount,
-    includeGps,
-    includeAttachments,
-    includeForms,
-    appLimit,
-  }), [
-    sourceFilter,
-    includeApp,
-    includeExcel,
-    includeHeadcount,
-    includeGps,
-    includeAttachments,
-    includeForms,
-    appLimit,
-  ]);
-  const cacheKey = useMemo(() => loadOptionsKey(loadOptions), [loadOptions]);
-
+export function useCqoData() {
   const [state, setState] = useState(() => {
-    const cachedData = cachedDataByKey.get(cacheKey);
     if (cachedData) {
       return {
         loading: false,
@@ -1267,34 +1243,38 @@ export function useCqoData(options = {}) {
     }
     return {
       loading: true,
-      ...emptyCqoData(),
+      records: [],
+      headcount: [],
+      formularios: [],
+      anexos: [],
+      gpsRows: [],
+      source: 'Carregando',
+      error: '',
     };
   });
 
   useEffect(() => {
-    let active = true;
-    const safeSetState = (nextState) => {
-      if (active) setState(nextState);
-    };
-    loadOptionsByKey.set(cacheKey, loadOptions);
-    const listener = { key: cacheKey, setState: safeSetState };
-    listeners.add(listener);
+    listeners.add(setState);
 
-    const cachedData = cachedDataByKey.get(cacheKey);
-    queueMicrotask(() => {
-      if (cachedData) {
-        safeSetState({ loading: false, ...cachedData });
-      } else {
-        safeSetState({ loading: true, ...emptyCqoData() });
-        startCqoLoad(cacheKey, loadOptions);
-      }
-    });
+    // Se o cache não estiver pronto e nenhuma busca estiver ativa, inicia a busca
+    if (!cachedData && !activePromise) {
+      activePromise = loadSupabaseData()
+        .then((data) => {
+          cachedData = data;
+          activePromise = null;
+          listeners.forEach((listener) => listener({ ...data, loading: false }));
+        })
+        .catch((error) => {
+          activePromise = null;
+          const failedData = sampleData(error);
+          listeners.forEach((listener) => listener({ ...failedData, loading: false }));
+        });
+    }
 
     return () => {
-      active = false;
-      listeners.delete(listener);
+      listeners.delete(setState);
     };
-  }, [cacheKey, loadOptions]);
+  }, []);
 
   return state;
 }
@@ -1683,7 +1663,7 @@ export function buildCharts(records) {
 }
 
 export function useCqoDashboard(filters) {
-  const data = useCqoData({ sourceFilter: filters?.sourceFilter });
+  const data = useCqoData();
   const filtered = useMemo(() => filterRecords(data.records, filters), [data.records, filters]);
   const totals = useMemo(() => aggregateRecords(filtered), [filtered]);
   const charts = useMemo(() => buildCharts(filtered), [filtered]);

@@ -12,6 +12,11 @@ import {
   Tractor,
   Truck,
 } from 'lucide-react';
+import EmptyTableRow from '../components/ui/EmptyTableRow';
+import MetricCard from '../components/ui/MetricCard';
+import PageHeader from '../components/ui/PageHeader';
+import SegmentedTabs from '../components/ui/SegmentedTabs';
+import StatusBanner from '../components/ui/StatusBanner';
 import { filterRecords, useCqoData } from '../utils/cqoData';
 import { buildQualidadeOperacional, QUALITY_LOSS_LIMITS } from '../utils/qualidadeOperacionalData';
 
@@ -25,27 +30,6 @@ function fmt(value, digits = 0) {
 function pct(value, digits = 2) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return 'N/D';
   return `${fmt(value, digits)}%`;
-}
-
-function KpiCard({ title, value, subtitle, icon: Icon, tone = 'green', loading = false }) {
-  return (
-    <div className="card kpi-card">
-      <div className="kpi-card-header">
-        <span className="kpi-title">{title}</span>
-        <div className={`kpi-icon-wrapper kpi-icon-${tone}`}>
-          <Icon size={18} />
-        </div>
-      </div>
-      <div className="kpi-body">
-        <span className={`kpi-value ${loading ? 'skeleton-text' : ''}`}>
-          {loading ? '\u00A0' : value}
-        </span>
-      </div>
-      <span className={`kpi-footer ${loading ? 'skeleton-text skeleton-sm' : ''}`}>
-        {loading ? '\u00A0' : subtitle}
-      </span>
-    </div>
-  );
 }
 
 function QualityMetric({ label, value, meta, goodWhen = 'high', loading = false }) {
@@ -495,83 +479,74 @@ export default function QualidadeOperacional({
   const pesoYtd = model.charts.perdasPctMensal.at(-1)?.pesoYtd || model.totals.producedTon;
   const perdasPctYtd = pesoYtd > 0 ? (perdasYtd / pesoYtd) * 100 : 0;
   const hasBase = model.hasProductionBase;
+  const qualityTabs = [
+    { id: 'geral', label: 'Visão Geral (Misto)' },
+    { id: 'qualidade', label: 'Qualidade Agrícola (Power BI)' },
+    { id: 'perdas', label: 'Perdas Agrícolas (Power BI)', tone: 'orange' },
+  ];
 
   return (
     <div className="fade-in page-shell">
-      <div className="page-header" style={{ marginBottom: '10px' }}>
-        <div className="page-title-block">
-          <span className="page-eyebrow">BI Qualidade Operacional</span>
-          <h2>Qualidade Agricola e Perdas</h2>
-          <p>Visões dinâmicas dos indicadores de campo. Escolha uma aba abaixo para explorar.</p>
-        </div>
+      <PageHeader
+        className="quality-operational-header"
+        eyebrow="BI Qualidade Operacional"
+        title="Qualidade Agricola e Perdas"
+        description="Visões dinâmicas dos indicadores de campo. Escolha uma aba abaixo para explorar."
+      >
         <div className="source-card compact">
           <span>Fonte</span>
           <strong className={loading ? 'skeleton-text skeleton-sm' : ''}>{loading ? '\u00A0' : source}</strong>
         </div>
-      </div>
+      </PageHeader>
 
-      <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--border-color)', marginBottom: '20px' }}>
-        <button 
-          onClick={() => setActiveTab('geral')} 
-          style={{ padding: '10px 16px', borderBottom: activeTab === 'geral' ? '2px solid var(--green-institutional)' : '2px solid transparent', backgroundColor: 'transparent', fontWeight: activeTab === 'geral' ? 600 : 400, color: activeTab === 'geral' ? 'var(--green-institutional)' : 'var(--text-secondary)', cursor: 'pointer' }}>
-          Visão Geral (Misto)
-        </button>
-        <button 
-          onClick={() => setActiveTab('qualidade')} 
-          style={{ padding: '10px 16px', borderBottom: activeTab === 'qualidade' ? '2px solid var(--green-institutional)' : '2px solid transparent', backgroundColor: 'transparent', fontWeight: activeTab === 'qualidade' ? 600 : 400, color: activeTab === 'qualidade' ? 'var(--green-institutional)' : 'var(--text-secondary)', cursor: 'pointer' }}>
-          Qualidade Agrícola (Power BI)
-        </button>
-        <button 
-          onClick={() => setActiveTab('perdas')} 
-          style={{ padding: '10px 16px', borderBottom: activeTab === 'perdas' ? '2px solid var(--orange-institutional)' : '2px solid transparent', backgroundColor: 'transparent', fontWeight: activeTab === 'perdas' ? 600 : 400, color: activeTab === 'perdas' ? 'var(--orange-institutional)' : 'var(--text-secondary)', cursor: 'pointer' }}>
-          Perdas Agrícolas (Power BI)
-        </button>
-      </div>
+      <SegmentedTabs tabs={qualityTabs} activeId={activeTab} onChange={setActiveTab} />
 
       {error && (
-        <div className="warning-strip">
-          <AlertTriangle size={16} />
-          <span>Falha ao carregar dados: {error}</span>
-        </div>
+        <StatusBanner tone="danger" icon={AlertTriangle}>
+          Falha ao carregar dados: {error}
+        </StatusBanner>
       )}
 
       {!model.hasProductionBase && !loading && filtered.length > 0 && (
-        <div className="warning-strip">
-          <AlertTriangle size={16} />
-          <span>Percentuais de perdas dependem da base de balanca/producao. As toneladas ja sao estimadas; os percentuais aparecem como N/D ate essa fonte entrar no payload.</span>
-        </div>
+        <StatusBanner icon={AlertTriangle}>
+          Percentuais de perdas dependem da base de balanca/producao. As toneladas ja sao estimadas; os percentuais aparecem como N/D ate essa fonte entrar no payload.
+        </StatusBanner>
       )}
           {activeTab === 'geral' && (
         <div className="fade-in">
           <div className="grid-container grid-cols-4">
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Perdas t"
               value={`${fmt(model.totals.perdasT, 2)} t`}
-              subtitle={`${fmt(model.totals.estimatedCachos)} cachos estimados`}
+              footer={`${fmt(model.totals.estimatedCachos)} cachos estimados`}
               icon={Scale}
               tone="danger"
               loading={loading}
             />
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Perdas %"
               value={lossPctLabel}
-              subtitle={`limite geral ${pct(QUALITY_LOSS_LIMITS.totalPct)}`}
+              footer={`limite geral ${pct(QUALITY_LOSS_LIMITS.totalPct)}`}
               icon={Gauge}
               tone={model.hasProductionBase && model.lossRates.totalPct > QUALITY_LOSS_LIMITS.totalPct ? 'danger' : 'green'}
               loading={loading}
             />
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Peso t YTD"
               value={`${fmt(model.totals.producedTon, 2)} t`}
-              subtitle="base de balanca/producao recebida"
+              footer="base de balanca/producao recebida"
               icon={Truck}
               tone="info"
               loading={loading}
             />
-            <KpiCard
+            <MetricCard
+              variant="kpi"
               title="Coletas"
               value={fmt(model.allTotals.total)}
-              subtitle={`${fmt(model.corteRecords.length)} corte / ${fmt(model.carreamentoRecords.length)} carreamento`}
+              footer={`${fmt(model.corteRecords.length)} corte / ${fmt(model.carreamentoRecords.length)} carreamento`}
               icon={ClipboardCheck}
               tone="green"
               loading={loading}
@@ -637,9 +612,9 @@ export default function QualidadeOperacional({
           </div>
 
           <div className="grid-container grid-cols-3">
-            <KpiCard title="Perdas corte t" value={`${fmt(model.totals.corteT, 2)} t`} subtitle={cortePctLabel} icon={Tractor} tone="danger" loading={loading} />
-            <KpiCard title="Perdas carreamento t" value={`${fmt(model.totals.carreamentoT, 2)} t`} subtitle={carreamentoPctLabel} icon={Truck} tone="orange" loading={loading} />
-            <KpiCard title="Perdas t YTD" value={`${fmt(perdasYtd, 2)} t`} subtitle={`Peso YTD ${fmt(pesoYtd, 2)} t`} icon={BarChart3} tone="info" loading={loading} />
+            <MetricCard variant="kpi" title="Perdas corte t" value={`${fmt(model.totals.corteT, 2)} t`} footer={cortePctLabel} icon={Tractor} tone="danger" loading={loading} />
+            <MetricCard variant="kpi" title="Perdas carreamento t" value={`${fmt(model.totals.carreamentoT, 2)} t`} footer={carreamentoPctLabel} icon={Truck} tone="orange" loading={loading} />
+            <MetricCard variant="kpi" title="Perdas t YTD" value={`${fmt(perdasYtd, 2)} t`} footer={`Peso YTD ${fmt(pesoYtd, 2)} t`} icon={BarChart3} tone="info" loading={loading} />
           </div>
 
           <RiskMatrix parcelas={model.parcelaRows} loading={loading} />
@@ -682,9 +657,7 @@ export default function QualidadeOperacional({
                     </tr>
                   ))}
                   {!loading && model.farmRows.length === 0 && (
-                    <tr>
-                      <td colSpan="9" className="empty-table-cell">Nenhuma coleta encontrada para os filtros atuais.</td>
-                    </tr>
+                    <EmptyTableRow colSpan={9} message="Nenhuma coleta encontrada para os filtros atuais." />
                   )}
                 </tbody>
                          </table>

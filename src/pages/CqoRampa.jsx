@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, Box, ClipboardCheck, Leaf, Maximize2, MonitorPlay, Scale, Truck, X } from 'lucide-react';
+import EmptyTableRow from '../components/ui/EmptyTableRow';
+import StatusBanner from '../components/ui/StatusBanner';
 import { useBonificacaoData } from '../utils/bonificacaoData';
 
 const RAMPA_PRODUCERS = [
@@ -388,11 +390,10 @@ function ProducerQualityTable({ rows, total }) {
                 <td>{fmt(row.pesoT, 2)}</td>
               </tr>
             )) : (
-              <tr>
-                <td colSpan="6" className="empty-table-cell">
-                  Nenhum dado de rampa encontrado para o período selecionado. Troque ano, mês ou produtor para conferir outra janela.
-                </td>
-              </tr>
+              <EmptyTableRow
+                colSpan={6}
+                message="Nenhum dado de rampa encontrado para o período selecionado. Troque ano, mês ou produtor para conferir outra janela."
+              />
             )}
           </tbody>
         </table>
@@ -495,9 +496,7 @@ function SemAvaliacaoTable({ rows, updateLabel }) {
                 <td />
               </tr>
             ) : (
-              <tr>
-                <td colSpan="3" className="empty-table-cell">Nenhuma caixa sem avaliação no período selecionado.</td>
-              </tr>
+              <EmptyTableRow colSpan={3} message="Nenhuma caixa sem avaliação no período selecionado." />
             )}
           </tbody>
         </table>
@@ -508,10 +507,6 @@ function SemAvaliacaoTable({ rows, updateLabel }) {
       </div>
     </div>
   );
-}
-
-function RampaDeveloperSignature() {
-  return <div className="developer-signature">Desenvolvedor: Vinicius Dev.</div>;
 }
 
 function formatSourceDate(value) {
@@ -615,17 +610,15 @@ function RampaBoard({
       </div>
 
       {sourceInfo.notice ? (
-        <div className="warning-strip rampa-bi-warning">
-          <AlertTriangle size={16} />
-          <span>{sourceInfo.notice}</span>
-        </div>
+        <StatusBanner icon={AlertTriangle} className="rampa-bi-warning">
+          {sourceInfo.notice}
+        </StatusBanner>
       ) : null}
 
       {periodFallbackActive ? (
-        <div className="warning-strip rampa-bi-warning">
-          <AlertTriangle size={16} />
-          <span>O período selecionado não tem registros na fonte da Rampa; exibindo o acumulado disponível do snapshot para evitar leitura zerada.</span>
-        </div>
+        <StatusBanner icon={AlertTriangle} className="rampa-bi-warning">
+          O período selecionado não tem registros na fonte da Rampa; exibindo o acumulado disponível do snapshot para evitar leitura zerada.
+        </StatusBanner>
       ) : null}
 
       <div className="rampa-bi-control-kpi-grid">
@@ -662,7 +655,6 @@ function RampaBoard({
         <SemAvaliacaoTable rows={semAvaliacaoRows} updateLabel={updateLabel} />
       </div>
 
-      <RampaDeveloperSignature />
     </div>
   );
 }

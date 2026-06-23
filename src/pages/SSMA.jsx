@@ -1,6 +1,7 @@
 import React from 'react';
 import { ShieldCheck, AlertOctagon, Heart, Eye, Award, CheckSquare, AlertTriangle } from 'lucide-react';
 import CustomChart from '../components/CustomChart';
+import PageHeader from '../components/ui/PageHeader';
 import { SSMA_MOCK, getChartData } from '../utils/mockData';
 
 export default function SSMA({ farmFilter }) {
@@ -39,34 +40,15 @@ export default function SSMA({ farmFilter }) {
 
   return (
     <div className="fade-in page-shell">
-      {/* Title section */}
-      <div className="page-header">
-        <div className="page-title-block">
-          <h2>
-            SSMA — Saúde, Segurança e Meio Ambiente (ESG)
-          </h2>
-          <p>
-            Monitoramento de conformidade de segurança e metas de sustentabilidade agrícola.
-          </p>
-        </div>
-        <div
-          className="card ssma-goal-card"
-          style={{
-            padding: '10px 20px',
-            backgroundColor: 'var(--status-success-bg)',
-            borderColor: 'var(--status-success)',
-            color: 'var(--status-success)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontWeight: '800',
-            fontSize: '0.9rem'
-          }}
-        >
+      <PageHeader
+        title="SSMA - Saúde, Segurança e Meio Ambiente (ESG)"
+        description="Monitoramento de conformidade de segurança e metas de sustentabilidade agrícola."
+      >
+        <div className="card ssma-goal-card">
           <ShieldCheck size={20} />
           <span>Meta Zero Acidentes: ATINGIDA</span>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Metric Cards Row */}
       <div className="grid-container grid-cols-4">

@@ -19,6 +19,7 @@ import {
   Check,
   Tractor,
 } from 'lucide-react';
+import PageHeader from '../components/ui/PageHeader';
 
 export default function FormBuilder() {
   const [formFields, setFormFields] = useState([
@@ -107,24 +108,18 @@ export default function FormBuilder() {
 
   return (
     <div className="fade-in page-shell">
-      {/* Title section */}
-      <div className="page-header">
-        <div className="page-title-block">
-          <span className="page-eyebrow">Modelos digitais</span>
-          <h2>
-            Gestão de Formulários & Checklist
-          </h2>
-          <p>
-            Crie e gerencie relatórios de inspeção digital e coletas de campo sem programar.
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Modelos digitais"
+        title="Gestão de Formulários & Checklist"
+        description="Crie e gerencie relatórios de inspeção digital e coletas de campo sem programar."
+      >
         <div className="page-actions">
           <button onClick={handleSaveForm} className="btn btn-primary">
             {isSaved ? <Check size={18} /> : <Save size={18} />}
             <span>{isSaved ? 'Modelo Salvo!' : 'Salvar Modelo'}</span>
           </button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Main Builder Split Layout */}
       <div className="builder-container">

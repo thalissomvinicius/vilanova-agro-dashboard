@@ -7,21 +7,24 @@ import {
   Download,
   Eye,
   MapPin,
-  RotateCcw,
   Rows3,
   Search,
   ThumbsDown,
   ThumbsUp,
   Trash2,
   User,
+  X,
 } from 'lucide-react';
-import { SUPABASE_CONFIG, filterRecords, updateResponseReviewStatus, deleteResponseRecord, refreshCqoData, useCqoData } from '../utils/cqoData';
+import EmptyTableRow from '../components/ui/EmptyTableRow';
+import PageHeader from '../components/ui/PageHeader';
+import StatusBanner from '../components/ui/StatusBanner';
+import { canUseDashboardAction, dashboardErrorMessage, filterRecords, updateResponseReviewStatus, deleteResponseRecord, refreshCqoData, useCqoData } from '../utils/cqoData';
+import { devWarn } from '../utils/devLog';
 import { exportDashboardRecord } from '../utils/reportExporter';
 
 function statusBadge(status) {
   if (status === 'Aprovado') return 'badge-success';
   if (status === 'Reprovado') return 'badge-danger';
-  if (status === 'Auditoria fechada') return 'badge-info';
   if (status === 'Pendente validação') return 'badge-warning';
   if (status === 'Sincronizado') return 'badge-success';
   if (status === 'Falha') return 'badge-danger';
@@ -33,221 +36,6 @@ function formatNumber(value, digits = 0) {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   }).format(Number(value || 0));
-}
-
-function reviewStatusLabel(status) {
-  if (status === 'aprovado') return 'Aprovado';
-  if (status === 'reprovado') return 'Reprovado';
-  if (status === 'auditoria_fechada') return 'Auditoria fechada';
-  return 'Reprovado';
-}
-
-const PHOTO_FIELD_PATTERN = /(foto|fotos|evidencia|evidencias|imagem|image|photo|anexo|anexos)/i;
-const STORAGE_BUCKET_CANDIDATES = ['mobile-anexos', 'mobile_anexos', 'anexos', 'evidencias', 'fotos', 'cqo-anexos'];
-
-function isLocalOnlyReference(value) {
-  return /^(content|file):\/\//i.test(String(value || '').trim()) || /^[a-z]:\\/i.test(String(value || '').trim());
-}
-
-function normalizeEvidencePhoto(value, fieldId, index = 0) {
-  if (!value) return null;
-
-  if (typeof value === 'string') {
-    const text = value.trim();
-    if (!text) return null;
-    const isDataUrl = /^data:image\//i.test(text);
-    const isHttpUrl = /^https?:\/\//i.test(text);
-    const looksLikeBase64 = !isDataUrl && !isHttpUrl && text.length > 120 && /^[a-z0-9+/=\s]+$/i.test(text);
-    return {
-      id: `${fieldId}_${index}`,
-      fieldId,
-      fileName: fieldId,
-      mimeType: 'image/jpeg',
-      base64: looksLikeBase64 ? text : null,
-      url: isDataUrl || isHttpUrl ? text : null,
-      storagePath: !looksLikeBase64 && !isDataUrl && !isHttpUrl ? text : null,
-      bucket: null,
-      capturedAt: null,
-      gps: null,
-      raw: value,
-    };
-  }
-
-  if (typeof value !== 'object') return null;
-  const rawUrl = value.url || value.publicUrl || value.public_url || value.storage_url || value.download_url || value.uri || null;
-  const urlIsDisplayable = rawUrl && (/^https?:\/\//i.test(rawUrl) || /^data:image\//i.test(rawUrl));
-  const urlLooksLocalOnly = rawUrl && isLocalOnlyReference(rawUrl);
-  const storagePath = value.storagePath
-    || value.storage_path
-    || value.path
-    || value.caminho
-    || value.arquivo_path
-    || (!urlIsDisplayable && !urlLooksLocalOnly ? rawUrl : null);
-  const url = rawUrl || null;
-  const base64 = value.base64 || value.arquivo_base64 || value.conteudo_base64 || value.file_base64 || null;
-  const hasImagePayload = Boolean(base64 || url || storagePath);
-
-  if (!hasImagePayload) return null;
-
-  return {
-    id: value.id || `${fieldId}_${index}`,
-    fieldId,
-    fileName: value.fileName || value.nome_arquivo || value.filename || value.file_name || fieldId,
-    mimeType: value.mimeType || value.mime_type || value.tipo_mime || 'image/jpeg',
-    base64,
-    url,
-    storagePath,
-    bucket: value.bucket || value.bucket_id || value.storage_bucket || null,
-    capturedAt: value.capturedAt || value.capturado_em || value.created_at || value.criado_em || null,
-    gps: value.gps || value.location || null,
-    raw: value,
-  };
-}
-
-function collectEvidencePhotos(value, path = 'evidencia', photos = []) {
-  if (!value || typeof value !== 'object') return photos;
-
-  if (Array.isArray(value)) {
-    value.forEach((item, index) => collectEvidencePhotos(item, `${path}_${index + 1}`, photos));
-    return photos;
-  }
-
-  const directPhoto = PHOTO_FIELD_PATTERN.test(path)
-    ? normalizeEvidencePhoto(value, path, photos.length + 1)
-    : null;
-  if (directPhoto) {
-    photos.push(directPhoto);
-  }
-
-  Object.entries(value).forEach(([key, childValue]) => {
-    if (!childValue) return;
-    const keyLooksPhoto = PHOTO_FIELD_PATTERN.test(key);
-    if (keyLooksPhoto) {
-      const childPhoto = normalizeEvidencePhoto(childValue, key, photos.length + 1);
-      if (childPhoto) photos.push(childPhoto);
-    }
-    if (typeof childValue === 'object') {
-      const childPath = keyLooksPhoto ? key : `${path}_${key}`;
-      collectEvidencePhotos(childValue, childPath, photos);
-    }
-  });
-
-  return photos;
-}
-
-function normalizeStoragePublicUrl(photo) {
-  if (!photo?.storagePath || !SUPABASE_CONFIG.url) return '';
-  const rawPath = String(photo.storagePath).trim();
-  if (!rawPath) return '';
-  if (/^https?:\/\//i.test(rawPath)) return rawPath;
-  if (isLocalOnlyReference(rawPath)) return '';
-
-  const cleanPath = rawPath.replace(/^\/+/, '');
-  const [firstSegment, ...restSegments] = cleanPath.split('/');
-  const inferredBucket = photo.bucket || (STORAGE_BUCKET_CANDIDATES.includes(firstSegment) ? firstSegment : 'mobile-anexos');
-  const objectPath = inferredBucket === firstSegment && restSegments.length ? restSegments.join('/') : cleanPath;
-  const encodedPath = objectPath.split('/').filter(Boolean).map(encodeURIComponent).join('/');
-
-  return `${SUPABASE_CONFIG.url}/storage/v1/object/public/${encodeURIComponent(inferredBucket)}/${encodedPath}`;
-}
-
-function storagePublicUrl(bucket, path) {
-  if (!bucket || !path || !SUPABASE_CONFIG.url) return '';
-  const encodedPath = String(path).split('/').filter(Boolean).map(encodeURIComponent).join('/');
-  return `${SUPABASE_CONFIG.url}/storage/v1/object/public/${encodeURIComponent(bucket)}/${encodedPath}`;
-}
-
-function photoDisplayCandidates(photo) {
-  const candidates = [];
-  if (photo?.base64) candidates.push(`data:${photo.mimeType || 'image/jpeg'};base64,${photo.base64}`);
-  if (photo?.url && /^data:image\//i.test(photo.url)) candidates.push(photo.url);
-  if (photo?.url && /^https?:\/\//i.test(photo.url)) candidates.push(photo.url);
-
-  const publicUrl = normalizeStoragePublicUrl(photo);
-  if (publicUrl) candidates.push(publicUrl);
-
-  if (photo?.storagePath && SUPABASE_CONFIG.url) {
-    const rawPath = String(photo.storagePath).trim().replace(/^\/+/, '');
-    if (isLocalOnlyReference(rawPath)) return [...new Set(candidates.filter(Boolean))];
-    const parts = rawPath.split('/');
-    const firstSegment = parts[0];
-    const pathWithoutKnownBucket = STORAGE_BUCKET_CANDIDATES.includes(firstSegment) && parts.length > 1
-      ? parts.slice(1).join('/')
-      : rawPath;
-    const bucketCandidates = [
-      photo.bucket,
-      firstSegment && STORAGE_BUCKET_CANDIDATES.includes(firstSegment) ? firstSegment : '',
-      ...STORAGE_BUCKET_CANDIDATES,
-    ].filter(Boolean);
-
-    bucketCandidates.forEach((bucket) => {
-      candidates.push(storagePublicUrl(bucket, pathWithoutKnownBucket));
-    });
-  }
-
-  return [...new Set(candidates.filter(Boolean))];
-}
-
-function photoDiagnosticText(photo, failedCandidates = false) {
-  const rawReference = String(photo?.url || photo?.storagePath || '').trim();
-  if (/^(content|file):\/\//i.test(rawReference)) {
-    return 'Foto encontrada no formulário, mas veio só como caminho local do celular. O app precisa enviar o arquivo para o Supabase Storage/mobile_anexos.';
-  }
-  if (failedCandidates) {
-    return 'Arquivo localizado, mas o Storage não liberou a imagem. Verifique bucket público/política de leitura ou caminho salvo no mobile_anexos.';
-  }
-  return 'Arquivo sincronizado sem URL pública de imagem.';
-}
-
-function EvidencePhotoCard({ photo }) {
-  const candidates = useMemo(() => photoDisplayCandidates(photo), [photo]);
-  const [candidateIndex, setCandidateIndex] = useState(0);
-  const imageSrc = candidates[candidateIndex] || '';
-  const failedCandidates = candidates.length > 0 && candidateIndex >= candidates.length;
-
-  return (
-    <div className="evidence-photo">
-      {imageSrc ? (
-        <img
-          src={imageSrc}
-          alt={photo.fieldId}
-          onError={() => setCandidateIndex((current) => current + 1)}
-        />
-      ) : (
-        <div className="evidence-file-placeholder">
-          <Download size={18} />
-          <span>{failedCandidates ? 'Imagem bloqueada' : 'Sem arquivo web'}</span>
-        </div>
-      )}
-      <div>
-        <strong>{photo.fileName || photo.fieldId}</strong>
-        <span>{photo.capturedAt ? new Date(photo.capturedAt).toLocaleString('pt-BR') : 'Sem data'}</span>
-        <span>
-          {photo.gps
-            ? `${Number(photo.gps.latitude ?? photo.gps.lat).toFixed(6)}, ${Number(photo.gps.longitude ?? photo.gps.lng).toFixed(6)}`
-            : 'Sem GPS'}
-        </span>
-        {photo.storagePath ? <span>{photo.storagePath}</span> : null}
-        {!imageSrc ? <small>{photoDiagnosticText(photo, failedCandidates)}</small> : null}
-      </div>
-    </div>
-  );
-}
-
-function dedupePhotos(photos) {
-  const seen = new Set();
-  return photos.filter((photo) => {
-    const key = [
-      photo.id || '',
-      photo.fieldId || '',
-      photo.storagePath || '',
-      photo.url || '',
-      photo.base64 ? photo.base64.slice(0, 48) : '',
-    ].join('|');
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
 }
 
 function lineColumns(record) {
@@ -279,27 +67,19 @@ function lineColumns(record) {
   ];
 }
 
-export default function Collections({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, searchTerm }) {
-  const { loading, records, source, error } = useCqoData({
-    sourceFilter,
-    includeForms: false,
-    includeAttachments: sourceFilter !== 'excel',
-    appLimit: sourceFilter === 'app' ? 200 : 1000,
-  });
+export default function Collections({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, searchTerm, user }) {
+  const { loading, records, source, error } = useCqoData();
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchFicha, setSearchFicha] = useState('');
   const [reviewOverrides, setReviewOverrides] = useState({});
   const [deletedRecords, setDeletedRecords] = useState(new Set());
-  const [selectedIds, setSelectedIds] = useState(new Set());
   const [isReviewing, setIsReviewing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isBulkReviewing, setIsBulkReviewing] = useState(false);
-
-  const clearLocalFilters = () => {
-    setSearchFicha('');
-    setStatusFilter('all');
-  };
+  const [deleteCandidate, setDeleteCandidate] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+  const canReviewResponses = canUseDashboardAction(user, 'review_response');
+  const canDeleteResponses = canUseDashboardAction(user, 'delete_response');
 
   const displayRecords = records
     .filter(record => !deletedRecords.has(record.id))
@@ -326,19 +106,6 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
            String(record.formId || '').toLowerCase().includes(term);
   });
 
-  const selectableFilteredRecords = useMemo(
-    () => filteredRecords.filter((record) => record.source !== 'excel'),
-    [filteredRecords]
-  );
-
-  const selectedAppRecords = useMemo(
-    () => selectableFilteredRecords.filter((record) => selectedIds.has(record.id)),
-    [selectableFilteredRecords, selectedIds]
-  );
-
-  const allVisibleSelected = selectableFilteredRecords.length > 0
-    && selectableFilteredRecords.every((record) => selectedIds.has(record.id));
-
   const collectionStats = useMemo(() => {
     const gpsEligible = filteredRecords.filter((record) => record.gpsApplicable !== false).length;
     const withGps = filteredRecords.filter((record) => record.gpsApplicable !== false && (record.gps || record.gpsOccurrences?.length)).length;
@@ -359,12 +126,12 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   const sourceLabel = useMemo(() => {
     if (loading) return 'Carregando...';
     if (sourceFilter === 'excel') return 'Excel / cqo_import_snapshots';
-    if (sourceFilter === 'app') return 'Supabase / mobile_respostas';
+    if (sourceFilter === 'app') return 'App Android / serviço online';
     return source || 'App + Excel';
   }, [loading, source, sourceFilter]);
 
   const selectedPhotos = selectedRecord
-    ? dedupePhotos([
+    ? [
       ...(selectedRecord.attachments || []),
       ...Object.entries(selectedRecord.raw || {})
       .filter(([, value]) => value && typeof value === 'object' && value.base64)
@@ -378,159 +145,111 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
         capturedAt: value.capturedAt || value.capturado_em || null,
         gps: value.gps || null,
       })),
-      ...collectEvidencePhotos(selectedRecord.raw || {}),
-      ...collectEvidencePhotos(selectedRecord.lines || {}),
-    ])
+    ]
     : [];
 
-  const toggleRecordSelection = (record) => {
-    if (record.source === 'excel') return;
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(record.id)) {
-        next.delete(record.id);
-      } else {
-        next.add(record.id);
-      }
-      return next;
-    });
-  };
-
-  const toggleVisibleSelection = () => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (allVisibleSelected) {
-        selectableFilteredRecords.forEach((record) => next.delete(record.id));
-      } else {
-        selectableFilteredRecords.forEach((record) => next.add(record.id));
-      }
-      return next;
-    });
+  const showFeedback = (title, message, tone = 'warning') => {
+    setFeedback({ title, message, tone });
   };
 
   const handleReview = async (status) => {
     if (!selectedRecord) return;
+    if (!canReviewResponses) {
+      showFeedback(
+        'Acesso restrito',
+        'Seu perfil não tem permissão para validar fichas no dashboard.'
+      );
+      return;
+    }
     if (selectedRecord.source === 'excel') {
-      window.alert('Registro histórico do Excel: validação deve ser feita apenas nas coletas do app.');
+      showFeedback(
+        'Registro histórico',
+        'A validação pelo dashboard está disponível apenas para coletas recebidas pelo app.'
+      );
       return;
     }
     setIsReviewing(true);
     try {
-      await updateResponseReviewStatus(selectedRecord.id, status);
-      const label = reviewStatusLabel(status);
+      await updateResponseReviewStatus(selectedRecord.id, status, user);
+      const label = status === 'aprovado' ? 'Aprovado' : 'Reprovado';
       setReviewOverrides((prev) => ({ ...prev, [selectedRecord.id]: label }));
       setSelectedRecord((prev) => (prev ? { ...prev, status: label } : prev));
       await refreshCqoData().catch((syncError) => {
-        console.warn('Nao foi possivel atualizar o cache global apos validacao:', syncError);
+        devWarn('Nao foi possivel atualizar o cache global apos validacao:', syncError);
       });
     } catch (reviewError) {
-      window.alert(`Não foi possível atualizar a validação: ${reviewError.message}`);
+      showFeedback(
+        'Não foi possível atualizar a validação',
+        dashboardErrorMessage(reviewError, 'Tente novamente em instantes.'),
+        'danger'
+      );
     } finally {
       setIsReviewing(false);
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selectedRecord) return;
-    if (selectedRecord.source === 'excel') {
-      window.alert('Registro histórico do Excel: exclusão pelo dashboard vale apenas para coletas do app.');
+    if (!canDeleteResponses) {
+      showFeedback(
+        'Acesso restrito',
+        'Seu perfil não tem permissão para excluir fichas no dashboard.'
+      );
       return;
     }
-    if (!window.confirm(`Tem certeza que deseja excluir a ficha ${selectedRecord.id}? Esta ação não pode ser desfeita e removerá os dados permanentemente do Supabase.`)) return;
-    
-    setIsDeleting(true);
-    try {
-      await deleteResponseRecord(selectedRecord.id);
-      setDeletedRecords(prev => new Set(prev).add(selectedRecord.id));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(selectedRecord.id);
-        return next;
-      });
-      setSelectedRecord(null);
-      await refreshCqoData().catch((syncError) => {
-        console.warn('Nao foi possivel atualizar o cache global apos exclusao:', syncError);
-      });
-    } catch (error) {
-      window.alert(`Não foi possível excluir a ficha: ${error.message}`);
-    } finally {
-      setIsDeleting(false);
+    if (selectedRecord.source === 'excel') {
+      showFeedback(
+        'Registro histórico',
+        'A exclusão pelo dashboard está disponível apenas para coletas recebidas pelo app.'
+      );
+      return;
     }
+    setDeleteCandidate(selectedRecord);
   };
 
-  const handleBulkReview = async (action) => {
-    const targets = selectedAppRecords;
-    if (!targets.length) {
-      window.alert('Selecione pelo menos uma coleta do App.');
-      return;
-    }
+  const confirmDelete = async () => {
+    if (!deleteCandidate) return;
 
-    if (action === 'excluir' && !window.confirm(`Excluir ${targets.length} ficha(s) selecionada(s)? Esta ação marca os registros como excluídos no Supabase.`)) {
-      return;
-    }
-
-    setIsBulkReviewing(true);
+    setIsDeleting(true);
     try {
-      if (action === 'excluir') {
-        await Promise.all(targets.map((record) => deleteResponseRecord(record.id)));
-        setDeletedRecords((prev) => {
-          const next = new Set(prev);
-          targets.forEach((record) => next.add(record.id));
-          return next;
-        });
-        if (selectedRecord && targets.some((record) => record.id === selectedRecord.id)) {
-          setSelectedRecord(null);
-        }
-      } else {
-        await Promise.all(targets.map((record) => updateResponseReviewStatus(record.id, action)));
-        const label = reviewStatusLabel(action);
-        setReviewOverrides((prev) => {
-          const next = { ...prev };
-          targets.forEach((record) => {
-            next[record.id] = label;
-          });
-          return next;
-        });
-        if (selectedRecord && targets.some((record) => record.id === selectedRecord.id)) {
-          setSelectedRecord((prev) => (prev ? { ...prev, status: label } : prev));
-        }
-      }
-
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        targets.forEach((record) => next.delete(record.id));
-        return next;
-      });
+      await deleteResponseRecord(deleteCandidate.id, user);
+      setDeletedRecords(prev => new Set(prev).add(deleteCandidate.id));
+      setSelectedRecord((prev) => (prev?.id === deleteCandidate.id ? null : prev));
+      setDeleteCandidate(null);
       await refreshCqoData().catch((syncError) => {
-        console.warn('Nao foi possivel atualizar o cache global apos acao em lote:', syncError);
+        devWarn('Nao foi possivel atualizar o cache global apos exclusao:', syncError);
       });
-    } catch (error) {
-      window.alert(`Não foi possível concluir a ação em lote: ${error.message}`);
+    } catch (deleteError) {
+      setDeleteCandidate(null);
+      showFeedback(
+        'Não foi possível excluir a ficha',
+        dashboardErrorMessage(deleteError, 'Tente novamente em instantes.'),
+        'danger'
+      );
     } finally {
-      setIsBulkReviewing(false);
+      setIsDeleting(false);
     }
   };
 
   return (
     <>
       <div className="fade-in page-shell collection-page">
-        <div className="dashboard-page-header operational-hero collections-hero">
-        <div>
-          <span className="page-eyebrow">Auditoria de dados</span>
-          <h2>Central de Coletas CQO</h2>
-          <p>
-            Consulta operacional das fichas recebidas do aplicativo, com detalhamento por linha e rastreio de GPS/acompanhamento.
-          </p>
-        </div>
-        <div className="operational-hero-stats">
-          <div><span>Registros</span><strong>{formatNumber(collectionStats.total)}</strong></div>
-          <div><span>GPS app</span><strong>{formatNumber(collectionStats.withGps)}</strong></div>
-          <div><span>Corte</span><strong>{formatNumber(collectionStats.corte)}</strong></div>
-          <div><span>Carream.</span><strong>{formatNumber(collectionStats.carreamento)}</strong></div>
-        </div>
-      </div>
+        <PageHeader
+          variant="dashboard"
+          className="collections-hero"
+          eyebrow="Auditoria de dados"
+          title="Central de Coletas CQO"
+          description="Consulta operacional das fichas recebidas do aplicativo, com detalhamento por linha e rastreio de GPS/acompanhamento."
+        >
+          <div className="operational-hero-stats">
+            <div><span>Registros</span><strong>{formatNumber(collectionStats.total)}</strong></div>
+            <div><span>GPS app</span><strong>{formatNumber(collectionStats.withGps)}</strong></div>
+            <div><span>Corte</span><strong>{formatNumber(collectionStats.corte)}</strong></div>
+            <div><span>Carream.</span><strong>{formatNumber(collectionStats.carreamento)}</strong></div>
+          </div>
+        </PageHeader>
 
-      <div className="operational-filter-bar has-clear">
+      <div className="operational-filter-bar">
         <div className="table-search operational-search">
             <Search size={16} />
             <input
@@ -552,7 +271,6 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
             <option value="Pendente validação">Pendente validação</option>
             <option value="Aprovado">Aprovado</option>
             <option value="Reprovado">Reprovado</option>
-            <option value="Auditoria fechada">Auditoria fechada</option>
             <option value="Pendente">Pendente</option>
             <option value="Falha">Falha</option>
           </select>
@@ -561,23 +279,9 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
             <span>Fonte</span>
             <strong>{sourceLabel}</strong>
           </div>
-          <button
-            type="button"
-            className="operational-clear-btn"
-            onClick={clearLocalFilters}
-            title="Limpar filtros da tela"
-          >
-            <RotateCcw size={15} />
-            Limpar
-          </button>
       </div>
 
-      {error ? (
-        <div className="warning-strip">
-          <AlertCircle size={16} />
-          <span>Sem leitura direta do Supabase neste momento: {error}. Exibindo amostra tecnica para validar o painel.</span>
-        </div>
-      ) : null}
+      {error ? <StatusBanner tone="danger">{error}</StatusBanner> : null}
 
       <div className="collection-summary-strip">
         <div><CheckCircle2 size={16} /><span>Aprovadas/sincronizadas</span><strong>{formatNumber(collectionStats.approved)}</strong></div>
@@ -585,75 +289,11 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
         <div><ClipboardList size={16} /><span>Auditoria filtrada</span><strong>{formatNumber(collectionStats.total)}</strong></div>
       </div>
 
-      <div className={`bulk-audit-bar ${selectedAppRecords.length ? 'is-active' : ''}`}>
-        <div className="bulk-audit-copy">
-          <strong>{formatNumber(selectedAppRecords.length)} selecionada(s)</strong>
-          <span>{selectedAppRecords.length ? 'Ações aplicadas somente nas coletas do App.' : 'Selecione as caixas da tabela para auditar várias coletas.'}</span>
-        </div>
-        <div className="bulk-audit-actions">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setSelectedIds(new Set())}
-            disabled={!selectedAppRecords.length || isBulkReviewing}
-          >
-            Limpar
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => handleBulkReview('auditoria_fechada')}
-            disabled={!selectedAppRecords.length || isBulkReviewing}
-          >
-            <ClipboardList size={14} />
-            Fechar auditoria
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => handleBulkReview('excluir')}
-            disabled={!selectedAppRecords.length || isBulkReviewing}
-            style={{ color: 'var(--status-danger)', borderColor: 'var(--status-danger)' }}
-          >
-            <Trash2 size={14} />
-            Excluir
-          </button>
-          <button
-            type="button"
-            className="btn btn-danger"
-            onClick={() => handleBulkReview('reprovado')}
-            disabled={!selectedAppRecords.length || isBulkReviewing}
-          >
-            <ThumbsDown size={14} />
-            Reprovar
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => handleBulkReview('aprovado')}
-            disabled={!selectedAppRecords.length || isBulkReviewing}
-          >
-            <ThumbsUp size={14} />
-            Aprovar
-          </button>
-        </div>
-      </div>
-
       <div className="card page-card data-surface-card">
         <div className="table-wrapper">
           <table className="custom-table dense-table">
             <thead>
               <tr>
-                <th className="selection-cell">
-                  <input
-                    type="checkbox"
-                    className="table-row-checkbox"
-                    checked={allVisibleSelected}
-                    disabled={!selectableFilteredRecords.length || loading}
-                    onChange={toggleVisibleSelection}
-                    aria-label="Selecionar coletas visíveis"
-                  />
-                </th>
                 <th>Ficha</th>
                 <th>Data / Hora</th>
                 <th>Formulário</th>
@@ -664,14 +304,13 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 <th>GPS</th>
                 <th>Acomp.</th>
                 <th>Linhas</th>
-                <th style={{ textAlign: 'center' }}>Ação</th>
+                <th className="table-action-cell">Ação</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={`skeleton-${i}`}>
-                    <td><span className="skeleton-text skeleton-sm" /></td>
                     <td><span className="skeleton-text skeleton-sm" /></td>
                     <td>
                       <div className="stack-cell">
@@ -701,26 +340,11 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                   </tr>
                 ))
               ) : filteredRecords.length === 0 ? (
-                <tr>
-                  <td colSpan="12" className="empty-table-cell">
-                    Nenhuma coleta encontrada para os filtros atuais.
-                  </td>
-                </tr>
+                <EmptyTableRow colSpan={11} message="Nenhuma coleta encontrada para os filtros atuais." />
               ) : (
                 filteredRecords.map((record) => (
                   <tr key={record.id}>
-                    <td className="selection-cell">
-                      <input
-                        type="checkbox"
-                        className="table-row-checkbox"
-                        checked={selectedIds.has(record.id)}
-                        disabled={record.source === 'excel'}
-                        onChange={() => toggleRecordSelection(record)}
-                        aria-label={`Selecionar ficha ${record.id}`}
-                        title={record.source === 'excel' ? 'Registro Excel não permite auditoria em lote' : 'Selecionar coleta'}
-                      />
-                    </td>
-                    <td style={{ fontWeight: 800, color: 'var(--text-primary)' }}>#{record.id}</td>
+                    <td className="table-key-cell">#{record.id}</td>
                     <td>
                       <div className="stack-cell">
                         <strong>{record.date}</strong>
@@ -770,11 +394,10 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                       )}
                     </td>
                     <td>{formatNumber(record.lines.length)}</td>
-                    <td style={{ textAlign: 'center' }}>
+                    <td className="table-action-cell">
                       <button
                         onClick={() => setSelectedRecord(record)}
-                        className="btn btn-secondary btn-icon"
-                        style={{ width: 34, height: 34 }}
+                        className="btn btn-secondary btn-icon btn-icon-sm"
                         title="Abrir coleta"
                       >
                         <Eye size={14} />
@@ -795,7 +418,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
           <div className="modal-content wide-modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <h3>
-                <ClipboardList size={18} style={{ color: 'var(--green-institutional)' }} />
+                <ClipboardList size={18} className="modal-title-icon-success" />
                 Ficha #{selectedRecord.id}
               </h3>
               <button className="modal-close" onClick={() => setSelectedRecord(null)}>&times;</button>
@@ -840,7 +463,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 </div>
               </div>
 
-              <div className="grid-container grid-cols-3" style={{ marginBottom: 18 }}>
+              <div className="grid-container grid-cols-3 modal-section-grid">
                 {Object.entries(selectedRecord.totals).map(([key, value]) => (
                   <div className="mini-metric" key={key}>
                     <span>{key.replace(/([A-Z])/g, ' $1')}</span>
@@ -849,7 +472,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 ))}
               </div>
 
-              <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 18 }}>
+              <div className="card modal-embedded-card">
                 <div className="table-wrapper">
                   <table className="custom-table dense-table">
                     <thead>
@@ -903,8 +526,8 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
               </div>
 
               {selectedRecord.source !== 'excel' && selectedRecord.gpsOccurrences?.length ? (
-                <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 18 }}>
-                  <div className="card-header" style={{ padding: '14px 16px', marginBottom: 0 }}>
+                <div className="card modal-embedded-card">
+                  <div className="card-header modal-embedded-card-header">
                     <div>
                       <h3 className="card-title">Ocorrencias georreferenciadas</h3>
                       <span className="card-subtitle">Pontos capturados no momento do registro da linha.</span>
@@ -939,7 +562,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
 
               {selectedPhotos.length ? (
                 <div className="evidence-section">
-                  <div className="card-header" style={{ marginBottom: 10 }}>
+                  <div className="card-header modal-section-header-compact">
                     <div>
                       <h3 className="card-title">Imagens geolocalizadas</h3>
                       <span className="card-subtitle">Evidências enviadas pelo app com coordenadas da captura.</span>
@@ -947,10 +570,29 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                   </div>
                   <div className="evidence-grid">
                     {selectedPhotos.map((photo) => (
-                      <EvidencePhotoCard
-                        key={photo.id || `${photo.fieldId}_${photo.storagePath || photo.url || photo.fileName}`}
-                        photo={photo}
-                      />
+                      <div className="evidence-photo" key={photo.id || photo.fieldId}>
+                        {photo.base64 || photo.url ? (
+                          <img
+                            src={photo.base64 ? `data:${photo.mimeType || 'image/jpeg'};base64,${photo.base64}` : photo.url}
+                            alt={photo.fieldId}
+                          />
+                        ) : (
+                          <div className="evidence-file-placeholder">
+                            <Download size={18} />
+                            <span>Arquivo sincronizado</span>
+                          </div>
+                        )}
+                        <div>
+                          <strong>{photo.fileName || photo.fieldId}</strong>
+                          <span>{photo.capturedAt ? new Date(photo.capturedAt).toLocaleString('pt-BR') : 'Sem data'}</span>
+                          <span>
+                            {photo.gps
+                              ? `${Number(photo.gps.latitude ?? photo.gps.lat).toFixed(6)}, ${Number(photo.gps.longitude ?? photo.gps.lng).toFixed(6)}`
+                              : 'Sem GPS'}
+                          </span>
+                          {photo.storagePath ? <span>{photo.storagePath}</span> : null}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -958,7 +600,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
             </div>
 
             <div className="modal-footer">
-              <span style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: selectedRecord.status === 'Sincronizado' ? 'var(--status-success)' : 'var(--status-warning)' }}>
+              <span className={`collection-transmission-status ${selectedRecord.status === 'Sincronizado' ? 'is-success' : ''}`}>
                 {selectedRecord.status === 'Sincronizado' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
                 Transmissão: {selectedRecord.status}
               </span>
@@ -970,29 +612,116 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 <Download size={14} />
                 Excel
               </button>
-              <button onClick={handleDelete} className="btn btn-secondary" style={{ color: 'var(--status-danger)', borderColor: 'var(--status-danger)' }} disabled={isDeleting || selectedRecord.source === 'excel'}>
+              <button onClick={handleDelete} className="btn btn-secondary btn-outline-danger" disabled={isDeleting || selectedRecord.source === 'excel' || !canDeleteResponses} title={canDeleteResponses ? 'Excluir ficha' : 'Permissão necessária'}>
                 <Trash2 size={14} />
                 Excluir
               </button>
-              <button onClick={() => handleReview('reprovado')} className="btn btn-danger" disabled={isReviewing || isDeleting || selectedRecord.source === 'excel'}>
+              <button onClick={() => handleReview('reprovado')} className="btn btn-danger" disabled={isReviewing || isDeleting || selectedRecord.source === 'excel' || !canReviewResponses} title={canReviewResponses ? 'Reprovar ficha' : 'Permissão necessária'}>
                 <ThumbsDown size={14} />
                 Reprovar
               </button>
-              <button onClick={() => handleReview('aprovado')} className="btn btn-primary" disabled={isReviewing || isDeleting || selectedRecord.source === 'excel'}>
+              <button onClick={() => handleReview('aprovado')} className="btn btn-primary" disabled={isReviewing || isDeleting || selectedRecord.source === 'excel' || !canReviewResponses} title={canReviewResponses ? 'Aprovar ficha' : 'Permissão necessária'}>
                 <ThumbsUp size={14} />
                 Aprovar
               </button>
-              <button onClick={() => handleReview('auditoria_fechada')} className="btn btn-secondary" disabled={isReviewing || isDeleting || selectedRecord.source === 'excel'}>
-                <ClipboardList size={14} />
-                Fechar auditoria
-              </button>
               <button onClick={() => setSelectedRecord(null)} className="btn btn-primary">
-                Fechar janela
+                Fechar auditoria
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {deleteCandidate ? (
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirmar exclusão de ficha"
+          onClick={() => (!isDeleting ? setDeleteCandidate(null) : null)}
+        >
+          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                <Trash2 size={18} className="modal-title-icon-danger" />
+                Excluir ficha #{deleteCandidate.id}
+              </h3>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setDeleteCandidate(null)}
+                disabled={isDeleting}
+                aria-label="Fechar confirmação de exclusão"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p>
+                Esta ação remove permanentemente a ficha do Supabase e não pode ser desfeita.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setDeleteCandidate(null)}
+                disabled={isDeleting}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={confirmDelete}
+                disabled={isDeleting}
+              >
+                <Trash2 size={14} />
+                {isDeleting ? 'Excluindo...' : 'Excluir ficha'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {feedback ? (
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label={feedback.title}
+          onClick={() => setFeedback(null)}
+        >
+          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                {feedback.tone === 'danger' ? (
+                  <AlertCircle size={18} className="modal-title-icon-danger" />
+                ) : (
+                  <AlertCircle size={18} className="modal-title-icon-warning" />
+                )}
+                {feedback.title}
+              </h3>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setFeedback(null)}
+                aria-label="Fechar aviso"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p>{feedback.message}</p>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-primary" onClick={() => setFeedback(null)}>
+                Entendi
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

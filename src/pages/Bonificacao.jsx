@@ -10,6 +10,8 @@ import {
   Warehouse,
 } from 'lucide-react';
 import CustomChart from '../components/CustomChart';
+import MetricCard from '../components/ui/MetricCard';
+import PageHeader from '../components/ui/PageHeader';
 import { BONIFICACAO_SOURCE, useBonificacaoData } from '../utils/bonificacaoData';
 
 function fmt(value, digits = 0) {
@@ -19,29 +21,12 @@ function fmt(value, digits = 0) {
   }).format(Number(value || 0));
 }
 
-function KpiCard({ title, value, subtitle, icon: Icon, tone = 'green' }) {
-  return (
-    <div className="card kpi-card">
-      <div className="kpi-card-header">
-        <span className="kpi-title">{title}</span>
-        <div className={`kpi-icon-wrapper kpi-icon-${tone}`}>
-          <Icon size={18} />
-        </div>
-      </div>
-      <div className="kpi-body">
-        <span className="kpi-value">{value}</span>
-      </div>
-      <span className="kpi-footer">{subtitle}</span>
-    </div>
-  );
-}
-
 function DataBox({ title, value, subtitle }) {
   return (
     <div className="mini-metric">
       <span>{title}</span>
       <strong>{value}</strong>
-      <small style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{subtitle}</small>
+      <small>{subtitle}</small>
     </div>
   );
 }
@@ -67,24 +52,23 @@ export default function Bonificacao() {
 
   return (
     <div className="fade-in page-shell">
-      <div className="page-header">
-        <div className="page-title-block">
-          <span className="page-eyebrow">Bonificacao e Qualidade</span>
-          <h2>Base Qualidade CFF</h2>
-          <p>Consolidacao do workbook de rampa, faturamento e entrada de CFF. O painel busca primeiro o snapshot online no Supabase e usa a base local apenas como fallback.</p>
-        </div>
+      <PageHeader
+        eyebrow="Bonificacao e Qualidade"
+        title="Base Qualidade CFF"
+        description="Consolidacao do workbook de rampa, faturamento e entrada de CFF. O painel busca primeiro o snapshot online no Supabase e usa a base local apenas como fallback."
+      >
         <div className="source-card compact">
           <span>Fonte</span>
           <strong>{data.sourceLabel || 'Excel / Supabase'}</strong>
           <small>{data.workbook}</small>
         </div>
-      </div>
+      </PageHeader>
 
       <div className="grid-container grid-cols-4">
-        <KpiCard title="Entrada de CFF" value={fmt(data.entradaDeCff?.totalRegistros ?? counts.entradaDeCff)} subtitle="f_Balanca / tickets recebidos" icon={Scale} tone="info" />
-        <KpiCard title="CQO - Rampa" value={fmt(data.cqoRampa?.totalRegistros ?? counts.cqoRampa)} subtitle="f_CQO / avaliacao de rampa" icon={Truck} tone="orange" />
-        <KpiCard title="Faturamento" value={fmt(data.faturamento?.totalRegistros ?? counts.faturamento)} subtitle="f_Faturamento / saidas contabilizadas" icon={Warehouse} tone="green" />
-        <KpiCard title="Fornecedores" value={fmt(counts.tipoFornecedor)} subtitle="tabela de tipo e preco" icon={Building2} tone="info" />
+        <MetricCard variant="kpi" title="Entrada de CFF" value={fmt(data.entradaDeCff?.totalRegistros ?? counts.entradaDeCff)} footer="f_Balanca / tickets recebidos" icon={Scale} tone="info" />
+        <MetricCard variant="kpi" title="CQO - Rampa" value={fmt(data.cqoRampa?.totalRegistros ?? counts.cqoRampa)} footer="f_CQO / avaliacao de rampa" icon={Truck} tone="orange" />
+        <MetricCard variant="kpi" title="Faturamento" value={fmt(data.faturamento?.totalRegistros ?? counts.faturamento)} footer="f_Faturamento / saidas contabilizadas" icon={Warehouse} tone="green" />
+        <MetricCard variant="kpi" title="Fornecedores" value={fmt(counts.tipoFornecedor)} footer="tabela de tipo e preco" icon={Building2} tone="info" />
       </div>
 
       <div className="grid-container grid-cols-2">
@@ -94,7 +78,7 @@ export default function Bonificacao() {
               <h3 className="card-title">Mapa das fontes</h3>
               <span className="card-subtitle">Tabelas e arquivos que sustentam o BI.</span>
             </div>
-            <ClipboardCheck size={20} style={{ color: 'var(--green-institutional)' }} />
+            <ClipboardCheck size={20} className="panel-icon-brand" />
           </div>
           <div className="compact-list">
             <SourceChip label="Entrada de CFF" value={counts.entradaDeCff} />

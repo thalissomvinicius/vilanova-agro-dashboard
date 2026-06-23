@@ -11,7 +11,7 @@ import {
   UserRound,
   Wifi,
 } from 'lucide-react';
-import { authenticateDashboardUser } from '../utils/cqoData';
+import { authenticateDashboardUser, dashboardErrorMessage } from '../utils/cqoData';
 
 export default function Login({ onLogin }) {
   const [matricula, setMatricula] = useState('');
@@ -19,6 +19,7 @@ export default function Login({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const canSubmit = Boolean(matricula.trim() && senha.trim() && !loading);
 
   useEffect(() => {
     document.body.classList.add('login-active');
@@ -36,7 +37,7 @@ export default function Login({ onLogin }) {
       const profile = await authenticateDashboardUser(matricula, senha);
       onLogin(profile);
     } catch (err) {
-      setError(err.message || 'Não foi possível entrar.');
+      setError(dashboardErrorMessage(err, 'Não foi possível entrar.'));
     } finally {
       setLoading(false);
     }
@@ -65,7 +66,7 @@ export default function Login({ onLogin }) {
           <div className="login-preview-header">
             <div>
               <span>Operação conectada</span>
-              <strong>Supabase / Android</strong>
+              <strong>App de campo / serviço online</strong>
             </div>
             <div className="login-live-pill">
               <Wifi size={14} />
@@ -125,6 +126,7 @@ export default function Login({ onLogin }) {
                 inputMode="numeric"
                 autoComplete="username"
                 placeholder="Ex: 2170"
+                required
               />
             </div>
           </label>
@@ -139,30 +141,30 @@ export default function Login({ onLogin }) {
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 placeholder="Digite sua senha"
+                required
               />
-              <button type="button" onClick={() => setShowPassword((value) => !value)} title="Mostrar senha">
+              <button type="button" onClick={() => setShowPassword((value) => !value)} title={showPassword ? 'Ocultar senha' : 'Mostrar senha'}>
                 {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
               </button>
             </div>
           </label>
 
-          {error ? <div className="auth-error">{error}</div> : null}
+          {error ? <div className="auth-error" role="alert" aria-live="polite">{error}</div> : null}
 
-          <button className="btn btn-primary login-submit" type="submit" disabled={loading}>
+          <button className="btn btn-primary login-submit" type="submit" disabled={!canSubmit}>
             <span>{loading ? 'Validando acesso...' : 'Acessar dashboard'}</span>
             <ChevronRight size={18} />
           </button>
 
           <div className="login-security-strip">
             <ShieldCheck size={16} />
-            <span>Ambiente homologado para testes operacionais CQO.</span>
+            <span>Acesso operacional protegido por matrícula autorizada.</span>
           </div>
         </form>
 
         <div className="login-footer-note">
           <strong>Vila Nova Agroindustrial</strong>
           <span>Corte / Carreamento / Fruto Solto</span>
-          <span>Desenvolvedor: Vinicius Dev.</span>
         </div>
       </div>
     </div>
