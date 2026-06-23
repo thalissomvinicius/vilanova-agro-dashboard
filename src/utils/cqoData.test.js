@@ -79,6 +79,15 @@ describe('parseRecordDateValue', () => {
   it('retorna null para valor vazio', () => {
     expect(parseRecordDateValue('')).toBeNull();
   });
+
+  it('interpreta datas seriais do Excel usadas no snapshot CQO', () => {
+    const parsed = parseRecordDateValue('45474');
+
+    expect(parsed).toBeInstanceOf(Date);
+    expect(parsed.getFullYear()).toBe(2024);
+    expect(parsed.getMonth()).toBe(6);
+    expect(parsed.getDate()).toBe(1);
+  });
 });
 
 describe('filterRecords', () => {
@@ -112,6 +121,20 @@ describe('filterRecords', () => {
     ], { periodFilter: 'all' });
 
     expect(result.map((item) => item.id)).toEqual(['valid']);
+  });
+
+  it('filtra registros do Excel por ano mesmo quando a data vem como serial', () => {
+    const result = filterRecords([
+      record({ id: 'excel-2024', source: 'excel', raw: { data_avaliacao: '45474' }, date: '01/07/2024' }),
+      record({ id: 'app-2026', raw: { data_avaliacao: '2026-06-15' } }),
+    ], {
+      periodFilter: 'custom',
+      dateFrom: '2024-01-01',
+      dateTo: '2024-12-31',
+      sourceFilter: 'all',
+    });
+
+    expect(result.map((item) => item.id)).toEqual(['excel-2024']);
   });
 });
 

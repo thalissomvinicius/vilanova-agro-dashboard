@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { Bell, LogOut, MonitorPlay, Moon, RefreshCw, Search, Sun } from 'lucide-react';
-import { ACTIVE_CQO_FARM_IDS, CQO_FARMS } from '../utils/cqoData';
-
-import { useCqoData } from '../utils/cqoData';
+import { ACTIVE_CQO_FARM_IDS, CQO_FARMS, parseRecordDateValue, useCqoData } from '../utils/cqoData';
 import { useBonificacaoData } from '../utils/bonificacaoData';
 
 function addYearFromValue(years, value) {
@@ -22,8 +20,8 @@ function addYearFromValue(years, value) {
     }
   }
 
-  const date = new Date(value);
-  if (!Number.isNaN(date.getTime())) {
+  const date = parseRecordDateValue(value);
+  if (date && !Number.isNaN(date.getTime())) {
     years.add(String(date.getFullYear()));
   }
 }
@@ -82,7 +80,11 @@ export default function Header({
   ];
 
   const yearOptions = React.useMemo(() => {
-    const years = new Set([String(new Date().getFullYear()), String(yearFilter)]);
+    const years = new Set([String(new Date().getFullYear())]);
+    if (/^\d{4}$/.test(String(yearFilter || ''))) {
+      years.add(String(yearFilter));
+    }
+
     records.forEach((record) => {
       [
         record.raw?.data_avaliacao,
@@ -100,7 +102,7 @@ export default function Header({
     (bonificacaoData?.entradaDeCff?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));
     (bonificacaoData?.faturamento?.byMonth || []).forEach((row) => addYearFromValue(years, row.monthKey));
 
-    return Array.from(years).sort((a, b) => Number(b) - Number(a));
+    return ['all', ...Array.from(years).sort((a, b) => Number(b) - Number(a))];
   }, [records, bonificacaoData, yearFilter]);
 
   const fiscalResponsibles = React.useMemo(() => {
@@ -232,7 +234,7 @@ export default function Header({
                 title="Selecionar ano"
               >
                 {yearOptions.map((year) => (
-                  <option key={year} value={year}>{year}</option>
+                  <option key={year} value={year}>{year === 'all' ? 'Todos os anos' : year}</option>
                 ))}
               </select>
             </label>
@@ -245,7 +247,8 @@ export default function Header({
                 className="header-filter-select"
                 value={monthFilter}
                 onChange={(event) => setMonthFilter(event.target.value)}
-                title="Selecionar mês"
+                disabled={yearFilter === 'all'}
+                title={yearFilter === 'all' ? 'Selecione um ano para filtrar por mês' : 'Selecionar mês'}
               >
                 <option value="all">Todos os meses</option>
                 {monthOptions.map((month) => (

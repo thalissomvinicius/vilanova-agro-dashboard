@@ -973,7 +973,9 @@ function groupCqoSnapshotRows(rows, type, snapshot) {
 
   return Array.from(groups.values()).map((group) => {
     const first = group.firstRow;
-    const date = cqoSnapshotDate(first) || cqoSnapshotMonth(first) || snapshot?.imported_at || snapshot?.updated_at || new Date().toISOString();
+    const date = normalizeSnapshotDateValue(cqoSnapshotDate(first) || cqoSnapshotMonth(first))
+      || normalizeSnapshotDateValue(snapshot?.imported_at || snapshot?.updated_at)
+      || new Date().toISOString();
     const lines = group.rows.map(({ row, index }) => (
       type === 'carreamento' ? buildCarreamentoSnapshotLine(row, index) : buildCorteSnapshotLine(row, index)
     ));
@@ -1298,12 +1300,32 @@ function parseDateBoundary(value, endOfDay = false) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function parseExcelDateSerial(value) {
+  const serial = Number(String(value ?? '').replace(',', '.'));
+  if (!Number.isFinite(serial) || serial < 20000 || serial > 80000) return null;
+
+  const utcDate = new Date(Date.UTC(1899, 11, 30) + Math.floor(serial) * 24 * 60 * 60 * 1000);
+  if (Number.isNaN(utcDate.getTime())) return null;
+
+  return new Date(
+    utcDate.getUTCFullYear(),
+    utcDate.getUTCMonth(),
+    utcDate.getUTCDate(),
+    12,
+    0,
+    0
+  );
+}
+
 export function parseRecordDateValue(value) {
   if (!value) return null;
 
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return value;
   }
+
+  const excelSerialDate = parseExcelDateSerial(value);
+  if (excelSerialDate) return excelSerialDate;
 
   if (typeof value === 'string') {
     const brDate = value.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/);
@@ -1346,6 +1368,19 @@ export function parseRecordDateValue(value) {
 
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatInputDate(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+function normalizeSnapshotDateValue(value) {
+  const parsed = parseRecordDateValue(value);
+  return parsed ? formatInputDate(parsed) : String(value || '').trim();
 }
 
 function resolveFilterDate(record) {

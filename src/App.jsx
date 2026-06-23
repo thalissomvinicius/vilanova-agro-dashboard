@@ -35,7 +35,7 @@ const Development = lazy(() => import('./pages/Development'));
 const LeafletMap = lazy(() => import('./components/LeafletMap'));
 
 const FILTER_STORAGE_KEY = 'vilanova_dashboard_filters';
-const FILTER_STORAGE_VERSION = 2;
+const FILTER_STORAGE_VERSION = 3;
 const AUTH_STORAGE_KEY = 'vilanova_dashboard_session';
 const LEGACY_AUTH_STORAGE_KEY = 'vilanova_dashboard_user';
 const AUTH_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
@@ -58,6 +58,10 @@ function accessiblePagesForUser(user) {
 }
 
 function monthDateRange(yearValue, monthValue) {
+  if (yearValue === 'all') {
+    return { from: '', to: '' };
+  }
+
   const year = Number(yearValue) || new Date().getFullYear();
 
   if (monthValue === 'all') {
@@ -122,14 +126,14 @@ function searchFilters() {
 }
 
 function compactFilters(filters) {
-  const currentYear = String(new Date().getFullYear());
-  const yearFilter = /^\d{4}$/.test(String(filters.yearFilter || '')) ? String(filters.yearFilter) : currentYear;
+  const rawYearFilter = String(filters.yearFilter || '');
+  const yearFilter = rawYearFilter === 'all' || /^\d{4}$/.test(rawYearFilter) ? rawYearFilter : 'all';
   const monthFilter = VALID_MONTHS.has(String(filters.monthFilter || '')) ? String(filters.monthFilter) : 'all';
   const defaultRange = monthDateRange(yearFilter, monthFilter);
   let dateFrom = isDateInputValue(filters.dateFrom) ? String(filters.dateFrom) : defaultRange.from;
   let dateTo = isDateInputValue(filters.dateTo) ? String(filters.dateTo) : defaultRange.to;
 
-  if (dateFrom > dateTo) {
+  if (dateFrom && dateTo && dateFrom > dateTo) {
     [dateFrom, dateTo] = [dateTo, dateFrom];
   }
 
@@ -194,8 +198,8 @@ function getStoredSessionExpiresAt() {
 function buildSearch(filters) {
   const params = new URLSearchParams();
   if (filters.farmFilter !== 'all') params.set('fazenda', filters.farmFilter);
-  if (filters.yearFilter) params.set('ano', filters.yearFilter);
-  if (filters.monthFilter) params.set('mes', filters.monthFilter);
+  if (filters.yearFilter && filters.yearFilter !== 'all') params.set('ano', filters.yearFilter);
+  if (filters.monthFilter && filters.monthFilter !== 'all') params.set('mes', filters.monthFilter);
   if (filters.cycleFilter !== 'all') params.set('ciclo', filters.cycleFilter);
   if (filters.evaluatorFilter !== 'all') params.set('fiscal', filters.evaluatorFilter);
   if (filters.sourceFilter !== 'all') params.set('fonte', filters.sourceFilter);
@@ -374,14 +378,17 @@ export default function App() {
 
   const applyYearFilter = (nextYear) => {
     setYearFilter(nextYear);
-    const range = monthDateRange(nextYear, monthFilter);
+    const nextMonth = nextYear === 'all' ? 'all' : monthFilter;
+    setMonthFilter(nextMonth);
+    const range = monthDateRange(nextYear, nextMonth);
     setDateFrom(range.from);
     setDateTo(range.to);
   };
 
   const applyMonthFilter = (nextMonth) => {
-    setMonthFilter(nextMonth);
-    const range = monthDateRange(yearFilter, nextMonth);
+    const effectiveMonth = yearFilter === 'all' ? 'all' : nextMonth;
+    setMonthFilter(effectiveMonth);
+    const range = monthDateRange(yearFilter, effectiveMonth);
     setDateFrom(range.from);
     setDateTo(range.to);
   };
