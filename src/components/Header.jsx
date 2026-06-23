@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, LogOut, MonitorPlay, Moon, RefreshCw, Search, Sun } from 'lucide-react';
+import { Bell, LogOut, MonitorPlay, Moon, RefreshCw, RotateCcw, Search, Sun } from 'lucide-react';
 import { ACTIVE_CQO_FARM_IDS, CQO_FARMS, parseRecordDateValue, useCqoData } from '../utils/cqoData';
 import { useBonificacaoData } from '../utils/bonificacaoData';
 
@@ -53,6 +53,7 @@ export default function Header({
   user,
   onLogout,
   onOpenTvMode,
+  onResetFilters,
   activePage,
   visibleFilters = [],
 }) {
@@ -303,6 +304,17 @@ export default function Header({
         </div>
 
         <div className="header-actions">
+          {hasFieldFilters ? (
+            <button
+              onClick={onResetFilters}
+              className="header-btn header-reset-filters-btn"
+              title="Limpar filtros"
+              aria-label="Limpar filtros"
+            >
+              <RotateCcw size={18} />
+            </button>
+          ) : null}
+
           <button
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
             className="header-btn"

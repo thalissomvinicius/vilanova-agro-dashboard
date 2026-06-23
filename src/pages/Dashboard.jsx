@@ -9,6 +9,7 @@ import {
   Maximize2,
   MonitorPlay,
   RefreshCw,
+  RotateCcw,
   SlidersHorizontal,
   X,
 } from 'lucide-react';
@@ -230,7 +231,7 @@ function DataHealthPanel({ diagnostics, loading }) {
   );
 }
 
-function FieldBiEmptyState({ diagnostics }) {
+function FieldBiEmptyState({ diagnostics, onResetFilters }) {
   const hasDataOutsideFilters = diagnostics.transformedRecords > 0;
 
   return (
@@ -242,6 +243,12 @@ function FieldBiEmptyState({ diagnostics }) {
         <span>{diagnostics.status}</span>
         <h3>{hasDataOutsideFilters ? 'Há dados na base, mas não neste recorte' : 'Nenhum dado CQO disponível'}</h3>
         <p>{diagnostics.message}</p>
+        {hasDataOutsideFilters && onResetFilters ? (
+          <button type="button" className="btn btn-primary field-bi-empty-action" onClick={onResetFilters}>
+            <RotateCcw size={15} />
+            Limpar filtros
+          </button>
+        ) : null}
       </div>
       <div className="field-bi-empty-grid">
         <div><span>Registros na base</span><strong>{formatNumber(diagnostics.transformedRecords)}</strong></div>
@@ -776,6 +783,7 @@ function FieldBiBoard({
   setTotalSection,
   diagnostics,
   recordCount,
+  onResetFilters,
   onPresent,
   presentationMode = false,
 }) {
@@ -843,7 +851,7 @@ function FieldBiBoard({
       ) : null}
 
       {!loading && recordCount === 0 ? (
-        <FieldBiEmptyState diagnostics={diagnostics} />
+        <FieldBiEmptyState diagnostics={diagnostics} onResetFilters={onResetFilters} />
       ) : !isTotalMode ? (
         <>
           <div className="field-bi-kpi-grid">
@@ -885,7 +893,7 @@ function PresentationOverlay(props) {
   );
 }
 
-export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, setDateFrom, setDateTo, searchTerm, lastSyncTime }) {
+export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, setDateFrom, setDateTo, searchTerm, lastSyncTime, onResetFilters }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
   const [boardMode, setBoardMode] = useState('meeting');
   const [totalSection, setTotalSection] = useState('qualidade');
@@ -947,6 +955,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
     setTotalSection,
     diagnostics,
     recordCount: records.length,
+    onResetFilters,
   };
 
   useEffect(() => {

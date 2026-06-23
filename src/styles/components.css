@@ -1644,6 +1644,10 @@ body.presentation-active {
   line-height: 1.5;
 }
 
+.field-bi-empty-action {
+  margin-top: 18px;
+}
+
 .field-bi-empty-grid {
   grid-column: 1 / -1;
   display: grid;

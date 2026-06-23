@@ -717,6 +717,15 @@ body.sidebar-resizing {
   border-color: var(--orange-institutional);
 }
 
+.header-reset-filters-btn {
+  color: var(--orange-institutional);
+}
+
+.header-reset-filters-btn:hover {
+  color: var(--green-institutional);
+  border-color: var(--green-institutional);
+}
+
 .header-sync-refresh-btn {
   width: 28px;
   height: 28px;

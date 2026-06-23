@@ -350,6 +350,19 @@ export default function App() {
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   ));
   const periodFilter = 'custom';
+
+  const resetFieldFilters = () => {
+    setFarmFilter('all');
+    setYearFilter('all');
+    setMonthFilter('all');
+    setDateFrom('');
+    setDateTo('');
+    setCycleFilter('all');
+    setEvaluatorFilter('all');
+    setSourceFilter('all');
+    setSearchTerm('');
+  };
+
   const activeFilters = useMemo(() => compactFilters({
     farmFilter,
     yearFilter,
@@ -373,6 +386,7 @@ export default function App() {
     dateFrom: activeFilters.dateFrom,
     dateTo: activeFilters.dateTo,
     searchTerm,
+    onResetFilters: resetFieldFilters,
     lastSyncTime,
   };
 
@@ -804,6 +818,7 @@ export default function App() {
           user={user}
           onLogout={handleLogout}
           onOpenTvMode={openTvMode}
+          onResetFilters={resetFieldFilters}
         />
         <main className="app-content">
           <Suspense fallback={<PageFallback />}>
