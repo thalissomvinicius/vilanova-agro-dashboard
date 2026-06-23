@@ -1533,13 +1533,32 @@ body.presentation-active {
 .field-bi-farm-bar-line {
   position: relative;
   height: 14px;
+  width: 100%;
   padding-right: 44px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
 }
 
 .field-bi-farm-bar-line span {
   display: block;
   height: 100%;
   min-width: 0;
+  transition: filter var(--transition-fast), transform var(--transition-fast);
+}
+
+.field-bi-farm-bar-line:hover span,
+.field-bi-farm-bar-line:focus-visible span,
+.chart-bar:hover,
+.chart-bar:focus {
+  filter: brightness(1.08);
+}
+
+.field-bi-farm-bar-line:focus-visible {
+  outline: 2px solid var(--orange-institutional);
+  outline-offset: 2px;
 }
 
 .field-bi-farm-bar-line small {
@@ -1609,10 +1628,22 @@ body.presentation-active {
 }
 
 .field-bi-evaluator-card {
+  width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--border-color);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   background: var(--bg-secondary);
   box-shadow: inset 4px 0 0 var(--green-institutional);
+}
+
+.field-bi-evaluator-card:hover,
+.field-bi-evaluator-card:focus-visible {
+  border-color: rgba(232, 145, 0, 0.48);
+  outline: 0;
+  box-shadow: inset 4px 0 0 var(--green-institutional), 0 8px 18px rgba(15, 23, 42, 0.08);
 }
 
 .field-bi-evaluator-card strong {
@@ -1693,6 +1724,171 @@ body.presentation-active {
 .field-bi-daily-panel {
   min-height: 262px;
   margin-top: 10px;
+}
+
+.chart-bar {
+  cursor: pointer;
+}
+
+.field-bi-drill-panel {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(232, 145, 0, 0.28);
+  border-left: 5px solid var(--green-institutional);
+  border-radius: 8px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
+}
+
+.field-bi-drill-danger {
+  border-left-color: var(--status-danger);
+}
+
+.field-bi-drill-warning {
+  border-left-color: var(--orange-institutional);
+}
+
+.field-bi-drill-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  margin-bottom: 10px;
+}
+
+.field-bi-drill-head span,
+.field-bi-drill-stats span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.field-bi-drill-head strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.field-bi-drill-head small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.field-bi-drill-head button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.field-bi-drill-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin-bottom: 9px;
+}
+
+.field-bi-drill-stats div,
+.field-bi-drill-grid div {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.field-bi-drill-stats strong {
+  display: inline-block;
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: 1.02rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.field-bi-drill-stats small {
+  margin-left: 4px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.field-bi-drill-stack {
+  display: flex;
+  height: 16px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  margin-bottom: 9px;
+}
+
+.field-bi-drill-stack span {
+  min-width: 0;
+}
+
+.field-bi-drill-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.field-bi-drill-grid div.active {
+  border-color: rgba(232, 145, 0, 0.56);
+  box-shadow: inset 0 0 0 1px rgba(232, 145, 0, 0.22);
+}
+
+.field-bi-drill-grid span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+.field-bi-drill-grid i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.field-bi-drill-grid strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-primary);
+  font-size: 0.96rem;
+  font-weight: 950;
+}
+
+.field-bi-drill-grid small {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.field-bi-drill-panel p {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 750;
 }
 
 .field-total-panel {
