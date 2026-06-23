@@ -265,6 +265,20 @@ function parcelDensity(props = {}) {
   return areaHa > 0 ? plants / areaHa : 0;
 }
 
+function parcelPopupLatLng(layer, fallback) {
+  if (typeof layer?.getCenter === 'function') {
+    const center = layer.getCenter();
+    if (Number.isFinite(Number(center?.lat)) && Number.isFinite(Number(center?.lng))) return center;
+  }
+
+  if (typeof layer?.getBounds === 'function') {
+    const bounds = layer.getBounds();
+    if (bounds?.isValid?.()) return bounds.getCenter();
+  }
+
+  return fallback;
+}
+
 function perHa(value, areaHa) {
   const parsed = Number(value || 0);
   return areaHa > 0 ? parsed / areaHa : 0;
@@ -1227,28 +1241,27 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           const shapeParcel = shapeParcelCode(props);
           const summary = parcelSummaryByKey.get(parcelHeatKey(props.farmId, shapeParcel));
           const parcelRecords = summary?.records || [];
-
-          layer.bindPopup(parcelNumbersPopup({
+          const popupContent = parcelNumbersPopup({
             props,
             shapeParcel,
             style,
             parcelRecords,
             metric: selectedRiskMetric,
-          }), {
+          });
+          const popupOptions = {
             maxWidth: 460,
             minWidth: 380,
             autoPan: true,
             autoPanPaddingTopLeft: [24, 120],
             autoPanPaddingBottomRight: [380, 70],
+          };
+
+          layer.on('click', (event) => {
+            L.popup(popupOptions)
+              .setLatLng(parcelPopupLatLng(layer, event.latlng))
+              .setContent(popupContent)
+              .openOn(map);
           });
-          if (shapeParcel && mapLayer !== 'route') {
-            layer.bindTooltip(`Parcela ${shapeParcel}`, {
-              sticky: true,
-              direction: 'top',
-              opacity: 0.95,
-              className: 'parcel-hover-tooltip',
-            });
-          }
           if (layer.getBounds) farmLayerBounds.push(layer.getBounds());
         },
       }).addTo(layers);

@@ -5401,21 +5401,6 @@ body.presentation-active {
   display: none;
 }
 
-.parcel-hover-tooltip {
-  border: 0;
-  border-radius: 999px;
-  background: rgba(24, 34, 48, 0.94);
-  color: var(--white);
-  font-family: var(--font-family);
-  font-size: 0.68rem;
-  font-weight: 900;
-  box-shadow: var(--shadow-sm);
-}
-
-.parcel-hover-tooltip::before {
-  display: none;
-}
-
 .gps-occurrence-marker span {
   width: 26px;
   height: 26px;
