@@ -4289,11 +4289,10 @@ body.presentation-active {
 
 .map-presentation-overlay .gps-map-overlay {
   width: min(286px, calc(100vw - 34px));
-  max-height: calc(100vh - 240px);
-  max-height: min(640px, calc(100dvh - 240px));
-  right: 18px;
-  top: 20px;
-  padding: 14px;
+  max-height: calc(100% - 28px);
+  right: 14px;
+  top: 14px;
+  padding: 10px;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
@@ -4301,63 +4300,134 @@ body.presentation-active {
 }
 
 .map-presentation-overlay .gps-base-toggle {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 3px;
 }
 
 .map-presentation-overlay .gps-base-toggle button,
 .map-presentation-overlay .gps-layer-stack .btn,
 .map-presentation-overlay .gps-metric-control select {
-  min-height: 30px;
-  height: 30px;
-  font-size: 0.68rem;
+  min-height: 28px;
+  height: 28px;
+  font-size: 0.64rem;
 }
 
 .map-presentation-overlay .gps-layer-stack {
-  gap: 6px;
+  gap: 5px;
+}
+
+.map-presentation-overlay .gps-base-note {
+  margin-top: 5px;
+  font-size: 0.62rem;
+  line-height: 1.22;
+}
+
+.map-presentation-overlay .gps-overlay-section-title {
+  margin-top: 9px;
 }
 
 .map-presentation-overlay .gps-map-stats {
-  margin-top: 9px;
-  padding-top: 8px;
+  margin-top: 7px;
+  padding-top: 7px;
+}
+
+.map-presentation-overlay .gps-map-stats-total {
+  margin-bottom: 6px;
+  font-size: 0.68rem;
+  line-height: 1.2;
 }
 
 .map-presentation-overlay .gps-sample-grid {
   grid-template-columns: 1fr 1fr;
-  gap: 5px;
+  gap: 4px;
+  margin: 6px 0;
 }
 
 .map-presentation-overlay .gps-sample-grid div {
-  padding: 6px;
+  padding: 5px 6px;
+}
+
+.map-presentation-overlay .gps-sample-grid strong {
+  font-size: 0.82rem;
+}
+
+.map-presentation-overlay .gps-sample-grid span {
+  margin-top: 2px;
+  font-size: 0.56rem;
+  line-height: 1.12;
 }
 
 .map-presentation-overlay .gps-risk-ranking {
-  gap: 5px;
-  padding: 7px;
-  margin: 8px 0;
+  gap: 4px;
+  padding: 6px;
+  margin: 6px 0;
+  max-height: 162px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.map-presentation-overlay .gps-risk-ranking > strong {
+  font-size: 0.62rem;
 }
 
 .map-presentation-overlay .gps-risk-row {
-  grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-columns: 18px minmax(0, 1fr) auto;
   gap: 5px;
-  min-height: 34px;
-  padding: 5px;
+  min-height: 28px;
+  padding: 4px 5px;
 }
 
 .map-presentation-overlay .gps-risk-row b {
-  grid-column: 2;
-  justify-self: start;
+  grid-column: auto;
+  justify-self: end;
   max-width: 100%;
-  white-space: normal;
+  white-space: nowrap;
   overflow-wrap: anywhere;
+  font-size: 0.6rem;
+}
+
+.map-presentation-overlay .gps-risk-row em {
+  font-size: 0.61rem;
+}
+
+.map-presentation-overlay .gps-risk-row span {
+  width: 17px;
+  height: 17px;
+  font-size: 0.58rem;
 }
 
 .map-presentation-overlay .gps-map-note {
-  margin-top: 7px;
+  margin-top: 5px;
+  font-size: 0.62rem;
+  line-height: 1.22;
+}
+
+.map-presentation-overlay .gps-farm-counts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.map-presentation-overlay .gps-farm-count {
+  gap: 4px;
+  font-size: 0.56rem;
 }
 
 .map-presentation-overlay .gps-heat-legend {
-  margin-top: 7px;
-  padding-top: 7px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 6px;
+  margin-top: 5px;
+  padding-top: 6px;
+}
+
+.map-presentation-overlay .gps-heat-legend div {
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 4px;
+}
+
+.map-presentation-overlay .gps-heat-legend strong {
+  font-size: 0.58rem;
 }
 
 .map-presentation-signature {
@@ -5606,7 +5676,7 @@ body.presentation-active {
   line-height: 1.35;
 }
 
-.gps-map-stats > div:not(.gps-map-stats-total):not(.gps-map-note):not(.gps-sample-grid):not(.gps-risk-ranking):not(.gps-heat-legend) {
+.gps-map-stats > div:not(.gps-map-stats-total):not(.gps-map-note):not(.gps-sample-grid):not(.gps-risk-ranking):not(.gps-heat-legend):not(.gps-farm-counts) {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -5615,7 +5685,7 @@ body.presentation-active {
   opacity: 0.82;
 }
 
-.gps-map-stats > div:not(.gps-map-stats-total):not(.gps-map-note):not(.gps-sample-grid):not(.gps-risk-ranking):not(.gps-heat-legend) span:first-child {
+.gps-map-stats > div:not(.gps-map-stats-total):not(.gps-map-note):not(.gps-sample-grid):not(.gps-risk-ranking):not(.gps-heat-legend):not(.gps-farm-counts) span:first-child {
   width: 9px;
   height: 9px;
   border-radius: 2px;
@@ -5726,6 +5796,38 @@ body.presentation-active {
 .gps-risk-row b {
   font-size: 0.66rem;
   font-weight: 900;
+  white-space: nowrap;
+}
+
+.gps-farm-counts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  margin: 7px 0 0;
+}
+
+.gps-farm-count {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  font-size: 0.66rem;
+  font-weight: 750;
+  opacity: 0.86;
+}
+
+.gps-farm-count span:first-child {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+
+.gps-farm-count span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

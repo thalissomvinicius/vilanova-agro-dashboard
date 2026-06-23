@@ -1556,12 +1556,14 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
               )}
             </div>
           ) : null}
-          {Object.entries(FARM_STYLES).filter(([id]) => id !== 'default').map(([id, style]) => (
-            <div key={id}>
-              <span style={{ backgroundColor: style.fill }} />
-              <span>{style.label}: {geoStats.byFarm[id] || 0}</span>
-            </div>
-          ))}
+          <div className="gps-farm-counts">
+            {Object.entries(FARM_STYLES).filter(([id]) => id !== 'default').map(([id, style]) => (
+              <div key={id} className="gps-farm-count">
+                <span style={{ backgroundColor: style.fill }} />
+                <span>{style.label}: {geoStats.byFarm[id] || 0}</span>
+              </div>
+            ))}
+          </div>
           <div className="gps-map-note">
             <span>
               {mapLayer === 'heat' && `${selectedRiskMetric.label} aplicado na parcela completa com base na amostragem filtrada.`}
