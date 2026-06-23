@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   CalendarDays,
+  Database,
+  FileSpreadsheet,
+  Filter,
   Maximize2,
   MonitorPlay,
   RefreshCw,
@@ -111,6 +114,142 @@ function latestCollectionLabel(records) {
   }, null);
 
   return latest ? new Intl.DateTimeFormat('pt-BR').format(latest) : '--';
+}
+
+function sourceFilterLabel(value) {
+  if (value === 'app') return 'Só App';
+  if (value === 'excel') return 'Só Excel';
+  return 'App + Excel';
+}
+
+function farmFilterLabel(value) {
+  if (value === 'fe-em-deus') return 'Fé em Deus';
+  if (value === 'nova-conceicao') return 'Nova Conceição';
+  if (value === 'vila-nova') return 'Vila Nova';
+  return 'Todas as fazendas';
+}
+
+function dateTimeLabel(value) {
+  const date = parseRecordDateValue(value);
+  if (!date) return '--';
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(date);
+}
+
+function buildDataDiagnostics({
+  allRecords = [],
+  mobileRecords = [],
+  excelRecords = [],
+  visibleRecords = [],
+  cqoImport = {},
+  filters = {},
+}) {
+  const rawExcelRows = Number(cqoImport?.corteRows || 0) + Number(cqoImport?.carreamentoRows || 0);
+  const transformedRecords = allRecords.length;
+  const visibleCount = visibleRecords.length;
+  const hiddenByFilters = Math.max(transformedRecords - visibleCount, 0);
+  const snapshot = cqoImport?.snapshot || null;
+  const updatedAt = snapshot?.updated_at || snapshot?.imported_at || snapshot?.file_last_write_time || '';
+
+  let tone = 'success';
+  let status = 'Dados disponíveis';
+  let message = 'O pipeline carregou os dados e há registros visíveis nos filtros atuais.';
+
+  if (rawExcelRows > 0 && transformedRecords === 0) {
+    tone = 'danger';
+    status = 'Falha na transformação';
+    message = 'O snapshot CQO tem linhas brutas, mas elas não viraram registros operacionais.';
+  } else if (transformedRecords > 0 && visibleCount === 0) {
+    tone = 'warning';
+    status = 'Filtros sem resultado';
+    message = `${formatNumber(transformedRecords)} registro(s) existem na base, mas nenhum passou pelos filtros atuais.`;
+  } else if (rawExcelRows === 0 && transformedRecords === 0) {
+    tone = 'warning';
+    status = 'Sem carga CQO';
+    message = 'Nenhum snapshot ou coleta CQO foi encontrado para montar o dashboard.';
+  }
+
+  return {
+    tone,
+    status,
+    message,
+    rawExcelRows,
+    transformedRecords,
+    visibleCount,
+    hiddenByFilters,
+    mobileCount: mobileRecords.length,
+    excelCount: excelRecords.length,
+    snapshotLabel: snapshot?.source_file || snapshot?.import_key || 'Sem snapshot',
+    updatedAtLabel: dateTimeLabel(updatedAt),
+    filterLabel: [
+      farmFilterLabel(filters.farmFilter),
+      sourceFilterLabel(filters.sourceFilter),
+      periodLabel(filters.dateFrom, filters.dateTo),
+    ].filter(Boolean).join(' · '),
+  };
+}
+
+function DataHealthPanel({ diagnostics, loading }) {
+  const cards = [
+    { label: 'Excel bruto', value: diagnostics.rawExcelRows, icon: FileSpreadsheet },
+    { label: 'Transformados', value: diagnostics.transformedRecords, icon: Database },
+    { label: 'No filtro', value: diagnostics.visibleCount, icon: Filter },
+  ];
+
+  return (
+    <section className={`field-data-health field-data-health-${diagnostics.tone}`}>
+      <div className="field-data-health-status">
+        <Database size={18} />
+        <div>
+          <span>Integridade dos dados</span>
+          <strong className={loading ? 'skeleton-text skeleton-sm' : ''}>{loading ? '\u00A0' : diagnostics.status}</strong>
+          {!loading ? <p>{diagnostics.message}</p> : null}
+        </div>
+      </div>
+
+      <div className="field-data-health-metrics">
+        {cards.map(({ label, value, icon: Icon }) => (
+          <div key={label}>
+            <Icon size={16} />
+            <span>{label}</span>
+            <strong className={loading ? 'skeleton-text skeleton-sm' : ''}>{loading ? '\u00A0' : formatNumber(value)}</strong>
+          </div>
+        ))}
+      </div>
+
+      {!loading ? (
+        <div className="field-data-health-meta">
+          <span>{diagnostics.snapshotLabel}</span>
+          <strong>{diagnostics.updatedAtLabel}</strong>
+          <small>{diagnostics.filterLabel}</small>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function FieldBiEmptyState({ diagnostics }) {
+  const hasDataOutsideFilters = diagnostics.transformedRecords > 0;
+
+  return (
+    <div className={`field-bi-empty-state field-bi-empty-${diagnostics.tone}`}>
+      <div className="field-bi-empty-icon">
+        <AlertTriangle size={30} />
+      </div>
+      <div>
+        <span>{diagnostics.status}</span>
+        <h3>{hasDataOutsideFilters ? 'Há dados na base, mas não neste recorte' : 'Nenhum dado CQO disponível'}</h3>
+        <p>{diagnostics.message}</p>
+      </div>
+      <div className="field-bi-empty-grid">
+        <div><span>Registros na base</span><strong>{formatNumber(diagnostics.transformedRecords)}</strong></div>
+        <div><span>Ocultos por filtro</span><strong>{formatNumber(diagnostics.hiddenByFilters)}</strong></div>
+        <div><span>Snapshot</span><strong>{diagnostics.updatedAtLabel}</strong></div>
+      </div>
+    </div>
+  );
 }
 
 function buildDailyBunchRows(records) {
@@ -635,6 +774,8 @@ function FieldBiBoard({
   setBoardMode,
   totalSection,
   setTotalSection,
+  diagnostics,
+  recordCount,
   onPresent,
   presentationMode = false,
 }) {
@@ -701,7 +842,9 @@ function FieldBiBoard({
         </div>
       ) : null}
 
-      {!isTotalMode ? (
+      {!loading && recordCount === 0 ? (
+        <FieldBiEmptyState diagnostics={diagnostics} />
+      ) : !isTotalMode ? (
         <>
           <div className="field-bi-kpi-grid">
             <FieldBiKpiCard loading={loading} label="Cacho Maduro %" value={quality.cachoMaduroPct} meta={85} goodWhen="high" />
@@ -746,7 +889,15 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
   const [presentationOpen, setPresentationOpen] = useState(false);
   const [boardMode, setBoardMode] = useState('meeting');
   const [totalSection, setTotalSection] = useState('qualidade');
-  const { loading, records, error } = useCqoDashboard({
+  const {
+    loading,
+    records,
+    allRecords = [],
+    mobileRecords = [],
+    excelRecords = [],
+    cqoImport = {},
+    error,
+  } = useCqoDashboard({
     farmFilter,
     areaFilter,
     periodFilter,
@@ -764,6 +915,19 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
   const periodText = periodLabel(dateFrom, dateTo);
   const updateText = updateLabel(lastSyncTime);
   const latestCollectionText = loading ? 'Carregando...' : latestCollectionLabel(records);
+  const diagnostics = useMemo(() => buildDataDiagnostics({
+    allRecords,
+    mobileRecords,
+    excelRecords,
+    visibleRecords: records,
+    cqoImport,
+    filters: {
+      farmFilter,
+      sourceFilter,
+      dateFrom,
+      dateTo,
+    },
+  }), [allRecords, mobileRecords, excelRecords, records, cqoImport, farmFilter, sourceFilter, dateFrom, dateTo]);
 
   const boardProps = {
     loading,
@@ -781,6 +945,8 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
     setBoardMode,
     totalSection,
     setTotalSection,
+    diagnostics,
+    recordCount: records.length,
   };
 
   useEffect(() => {
@@ -829,6 +995,8 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
           Falha ao carregar dados: {error}
         </StatusBanner>
       )}
+
+      <DataHealthPanel diagnostics={diagnostics} loading={loading} />
 
       <FieldBiBoard
         {...boardProps}

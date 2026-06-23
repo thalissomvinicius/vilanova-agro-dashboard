@@ -1718,6 +1718,7 @@ export function useCqoDashboard(filters) {
 
   return {
     ...data,
+    allRecords: data.records,
     records: filtered,
     totals,
     charts,

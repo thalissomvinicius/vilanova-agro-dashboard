@@ -1365,6 +1365,133 @@ body.presentation-active {
   padding: 8px 2px 10px;
 }
 
+.field-data-health {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.15fr) minmax(320px, 1.35fr) minmax(220px, 0.8fr);
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-left-width: 5px;
+  border-radius: 8px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.field-data-health-success {
+  border-left-color: var(--status-success);
+}
+
+.field-data-health-warning {
+  border-left-color: var(--status-warning);
+}
+
+.field-data-health-danger {
+  border-left-color: var(--status-danger);
+}
+
+.field-data-health-status {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.field-data-health-status > svg {
+  margin-top: 3px;
+  color: var(--green-institutional);
+  flex-shrink: 0;
+}
+
+.field-data-health-warning .field-data-health-status > svg {
+  color: var(--status-warning);
+}
+
+.field-data-health-danger .field-data-health-status > svg {
+  color: var(--status-danger);
+}
+
+.field-data-health-status span,
+.field-data-health-meta span,
+.field-data-health-metrics span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.field-data-health-status strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 850;
+}
+
+.field-data-health-status p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.field-data-health-metrics {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.field-data-health-metrics div {
+  min-width: 0;
+  min-height: 62px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.field-data-health-metrics svg {
+  color: var(--orange-institutional);
+  margin-bottom: 4px;
+}
+
+.field-data-health-metrics strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 1.12rem;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+.field-data-health-meta {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.field-data-health-meta strong,
+.field-data-health-meta small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-data-health-meta strong {
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+}
+
+.field-data-health-meta small {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
 .field-bi-mode-switch {
   display: inline-flex;
   align-items: center;
@@ -1463,6 +1590,81 @@ body.presentation-active {
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 10px;
+}
+
+.field-bi-empty-state {
+  min-height: 340px;
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  margin-top: 10px;
+  padding: clamp(24px, 4vw, 42px);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.field-bi-empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--status-warning);
+  background: var(--status-warning-bg);
+}
+
+.field-bi-empty-danger .field-bi-empty-icon {
+  color: var(--status-danger);
+  background: var(--status-danger-bg);
+}
+
+.field-bi-empty-state span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.field-bi-empty-state h3 {
+  margin: 4px 0 8px;
+  color: var(--text-primary);
+  font-size: clamp(1.2rem, 2vw, 1.65rem);
+  line-height: 1.12;
+}
+
+.field-bi-empty-state p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.field-bi-empty-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.field-bi-empty-grid div {
+  min-height: 70px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.field-bi-empty-grid strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-primary);
+  font-size: 1.05rem;
+  font-weight: 850;
 }
 
 .field-bi-kpi {
@@ -6647,6 +6849,10 @@ body.presentation-active {
     grid-template-columns: 150px minmax(0, 1fr);
   }
 
+  .field-data-health {
+    grid-template-columns: 1fr;
+  }
+
   .field-bi-present-btn {
     grid-column: 1 / -1;
     width: 100%;
@@ -6843,6 +7049,11 @@ body.presentation-active {
     padding: 6px;
   }
 
+  .field-data-health-metrics,
+  .field-bi-empty-grid {
+    grid-template-columns: 1fr;
+  }
+
   .field-bi-header {
     grid-template-columns: 1fr;
     justify-items: center;
@@ -6852,6 +7063,12 @@ body.presentation-active {
 
   .field-bi-logo {
     width: 132px;
+  }
+
+  .field-bi-empty-state {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
   }
 
   .field-bi-header h2 {
