@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   aggregateRecords,
   filterRecords,
+  normalizeCqoFarmId,
   normalizeText,
   parseRecordDateValue,
 } from './cqoData';
@@ -52,6 +53,14 @@ function record(overrides = {}) {
 describe('normalizeText', () => {
   it('normaliza acentos, caixa e separadores para filtros', () => {
     expect(normalizeText('Fé em Deus / CQO Rampa')).toBe('fe-em-deus-cqo-rampa');
+  });
+});
+
+describe('normalizeCqoFarmId', () => {
+  it('mapeia nomes de fazenda com prefixos para o escopo CQO ativo', () => {
+    expect(normalizeCqoFarmId('Fazenda Vila Nova')).toBe('vila-nova');
+    expect(normalizeCqoFarmId('FAZ. FÉ EM DEUS')).toBe('fe-em-deus');
+    expect(normalizeCqoFarmId('Nova Conceição')).toBe('nova-conceicao');
   });
 });
 

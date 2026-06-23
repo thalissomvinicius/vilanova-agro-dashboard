@@ -145,6 +145,19 @@ export function normalizeText(value) {
     .replace(/^-+|-+$/g, '');
 }
 
+export function normalizeCqoFarmId(value) {
+  const normalized = normalizeText(value);
+  const withoutPrefix = normalized
+    .replace(/^(fazenda|faz)-+/, '')
+    .replace(/-+(fazenda|faz)$/, '');
+
+  if (withoutPrefix.includes('fe-em-deus')) return 'fe-em-deus';
+  if (withoutPrefix.includes('nova-conceicao')) return 'nova-conceicao';
+  if (withoutPrefix.includes('vila-nova')) return 'vila-nova';
+
+  return withoutPrefix || normalized || 'sem-fazenda';
+}
+
 function formatPersonName(value) {
   const text = String(value || '').trim().replace(/\s+/g, ' ');
   if (!text || text === '--') return '';
@@ -580,7 +593,7 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
     source: isExcelSource ? 'excel' : 'app',
     sourceLabel: isExcelSource ? 'Excel / Supabase' : 'App / Supabase',
     farm: data.nome_fazenda || 'Sem fazenda',
-    farmId: normalizeText(data.nome_fazenda || 'sem-fazenda'),
+    farmId: normalizeCqoFarmId(data.nome_fazenda || 'sem-fazenda'),
     parcel: data.parcela || '--',
     cycle: data.ciclo_mes || '--',
     evaluatorMatricula: matricula,

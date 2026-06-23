@@ -570,8 +570,10 @@ begin
       imported_at,
       updated_at
     from public.cqo_import_snapshots
-    where import_key = 'cqo_1_digitacao_cqo'
-    order by updated_at desc nulls last, imported_at desc nulls last
+    order by
+      case when import_key = 'cqo_1_digitacao_cqo' then 0 else 1 end,
+      updated_at desc nulls last,
+      imported_at desc nulls last
     limit 1
   ) row_data;
 
