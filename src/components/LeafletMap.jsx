@@ -416,15 +416,76 @@ function applyMapLabelZoomClass(map) {
   container.classList.add(mapLabelZoomClass(map.getZoom()));
 }
 
+function parcelLabelTone(summary) {
+  if (summary?.color === RISK_COLORS.critical) return 'critical';
+  if (summary?.color === RISK_COLORS.attention) return 'attention';
+  if (summary?.color === RISK_COLORS.good) return 'good';
+  return 'empty';
+}
+
+function parcelLabelPriority(summary) {
+  const tone = parcelLabelTone(summary);
+  if (tone === 'critical') return 4;
+  if (tone === 'attention') return 3;
+  if (summary?.totals) return 2;
+  return 1;
+}
+
+function rectsOverlap(first, second) {
+  return first.left < second.right
+    && first.right > second.left
+    && first.top < second.bottom
+    && first.bottom > second.top;
+}
+
+function labelEstimatedRect(map, latLng, label) {
+  const point = map.latLngToContainerPoint(latLng);
+  const width = Math.max(18, Math.min(38, String(label || '').length * 4.2 + 7));
+  const height = 11;
+
+  return {
+    left: point.x - (width / 2) - 3,
+    right: point.x + (width / 2) + 3,
+    top: point.y - (height / 2) - 3,
+    bottom: point.y + (height / 2) + 3,
+  };
+}
+
+function layerPixelSize(map, layer) {
+  if (!layer?.getBounds) return { width: 0, height: 0 };
+  const bounds = layer.getBounds();
+  if (!bounds?.isValid?.()) return { width: 0, height: 0 };
+  const northWest = map.latLngToContainerPoint(bounds.getNorthWest());
+  const southEast = map.latLngToContainerPoint(bounds.getSouthEast());
+  return {
+    width: Math.abs(southEast.x - northWest.x),
+    height: Math.abs(southEast.y - northWest.y),
+  };
+}
+
+function shouldRenderParcelLabel({ map, layer, labelLatLng, label, summary, placedRects }) {
+  const zoom = map.getZoom();
+  const priority = parcelLabelPriority(summary);
+
+  if (zoom < 13.5 && priority < 4) return false;
+  if (zoom < 14.5 && priority < 3) return false;
+  if (zoom < 15.5 && priority < 2) return false;
+
+  const size = layerPixelSize(map, layer);
+  const minWidth = zoom < 14.5 ? 42 : zoom < 15.5 ? 30 : 18;
+  const minHeight = zoom < 14.5 ? 20 : zoom < 15.5 ? 14 : 9;
+  if (size.width < minWidth || size.height < minHeight) return false;
+
+  const rect = labelEstimatedRect(map, labelLatLng, label);
+  if (placedRects.some((placed) => rectsOverlap(rect, placed))) return false;
+
+  placedRects.push(rect);
+  return true;
+}
+
 function parcelLabelIcon(label, summary) {
   const hasData = Boolean(summary?.totals);
-  const tone = summary?.color === RISK_COLORS.critical
-    ? 'critical'
-    : summary?.color === RISK_COLORS.attention
-      ? 'attention'
-      : summary?.color === RISK_COLORS.good
-        ? 'good'
-        : 'empty';
+  const tone = parcelLabelTone(summary);
   return L.divIcon({
     className: [
       'parcel-label-icon',
@@ -1037,6 +1098,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const layerGroupRef = useRef(null);
+  const autoViewportKeyRef = useRef('');
   const [mapLayer, setMapLayer] = useState('heat');
   const [baseLayer, setBaseLayer] = useState('standard');
   const [riskMetricId, setRiskMetricId] = useState('qualidade_cachos');
@@ -1044,6 +1106,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   const [parcelGeoLoading, setParcelGeoLoading] = useState(true);
   const [mapRendering, setMapRendering] = useState(true);
   const [tileLoading, setTileLoading] = useState(true);
+  const [mapZoom, setMapZoom] = useState(12);
   const { records, loading: dataLoading } = useCqoData({
     sourceFilter,
     includeAttachments: false,
@@ -1241,7 +1304,10 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       });
 
       L.control.zoom({ position: 'bottomright' }).addTo(map);
-      map.on('zoomend', () => applyMapLabelZoomClass(map));
+      map.on('zoomend', () => {
+        applyMapLabelZoomClass(map);
+        setMapZoom(map.getZoom());
+      });
       applyMapLabelZoomClass(map);
       mapInstanceRef.current = map;
       layerGroupRef.current = L.layerGroup().addTo(map);
@@ -1327,6 +1393,22 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       .addTo(map);
 
     const farmLayerBounds = [];
+    const placedLabelRects = [];
+    const viewportKey = [
+      farmFilter,
+      areaFilter,
+      periodFilter,
+      cycleFilter,
+      evaluatorFilter,
+      mapLayer,
+      sourceFilter,
+      dateFrom,
+      dateTo,
+      filteredParcelFeatures.length,
+      allGpsPoints.length,
+    ].join('|');
+    const shouldAutoViewport = autoViewportKeyRef.current !== viewportKey;
+    autoViewportKeyRef.current = viewportKey;
 
     if (parcelGeoJson?.features?.length) {
       const filteredParcels = {
@@ -1401,7 +1483,14 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           });
           if (shapeParcel && mapLayer !== 'route') {
             const labelLatLng = featureLabelLatLng(feature);
-            if (labelLatLng) {
+            if (labelLatLng && shouldRenderParcelLabel({
+              map,
+              layer,
+              labelLatLng,
+              label: shapeParcel,
+              summary,
+              placedRects: placedLabelRects,
+            })) {
               L.marker(labelLatLng, {
                 icon: parcelLabelIcon(shapeParcel, summary),
                 interactive: false,
@@ -1630,8 +1719,13 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
 
     const frame = window.requestAnimationFrame(() => {
       map.whenReady(() => {
-        applyViewport();
-        secondViewportTimer = window.setTimeout(applyViewport, 120);
+        if (shouldAutoViewport) {
+          applyViewport();
+          secondViewportTimer = window.setTimeout(applyViewport, 120);
+        } else {
+          map.invalidateSize({ pan: false, debounceMoveend: false });
+          applyMapLabelZoomClass(map);
+        }
         finishRenderTimer = window.setTimeout(() => setMapRendering(false), 240);
       });
     });
@@ -1643,7 +1737,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       window.clearTimeout(finishRenderTimer);
       tileLayer.off();
     };
-  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, selectedRiskMetric, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, filteredParcelFeatures, parcelSummaryByKey]);
+  }, [theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo, mapLayer, baseLayer, selectedRiskMetric, mapZoom, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, filteredParcelFeatures, parcelSummaryByKey]);
 
   const mapIsLoading = dataLoading || parcelGeoLoading || mapRendering || tileLoading;
   const mapLoadingText = dataLoading
