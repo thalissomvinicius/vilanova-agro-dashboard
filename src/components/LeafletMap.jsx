@@ -27,6 +27,7 @@ const BASE_LAYER_NOTES = {
 };
 
 const RISK_METRICS = [
+  { id: 'qualidade_cachos', label: 'Qualidade dos cachos', unit: 'status', goodWhen: 'composite', meta: null, metricIds: ['maduro', 'passado', 'verde', 'avermelhado'] },
   { id: 'farol_bi', label: 'Farol CQO (metas BI)', unit: 'status', goodWhen: 'composite', meta: null },
   { id: 'nota', label: 'Nota CQO', unit: '%', goodWhen: 'high', meta: 90 },
   { id: 'perda_t_ha', label: 'Perda estimada t/ha', unit: 't/ha', goodWhen: 'low', meta: 0.08 },
@@ -42,6 +43,7 @@ const RISK_METRICS = [
 ];
 
 const BI_GOAL_METRIC_IDS = ['maduro', 'passado', 'verde', 'avermelhado', 'talo', 'estrela'];
+const BUNCH_QUALITY_METRIC_IDS = ['maduro', 'passado', 'verde', 'avermelhado'];
 
 const RISK_COLORS = {
   good: '#22C55E',
@@ -448,7 +450,9 @@ function metricValue(metric, totals, areaHa) {
 
   switch (metric.id) {
     case 'farol_bi':
-      return qualityGoalScore(totals);
+      return qualityGoalScore(totals, BI_GOAL_METRIC_IDS);
+    case 'qualidade_cachos':
+      return qualityGoalScore(totals, BUNCH_QUALITY_METRIC_IDS);
     case 'nota':
       return Number(totals.generalScore || 0);
     case 'perda_t_ha':
@@ -509,16 +513,16 @@ function metricColor(metric, value, hasData) {
   return RISK_COLORS.critical;
 }
 
-function qualityGoalMetrics() {
-  return BI_GOAL_METRIC_IDS
+function qualityGoalMetrics(metricIds = BI_GOAL_METRIC_IDS) {
+  return metricIds
     .map((id) => RISK_METRICS.find((metric) => metric.id === id))
     .filter(Boolean);
 }
 
-function qualityGoalRows(totals) {
+function qualityGoalRows(totals, metricIds = BI_GOAL_METRIC_IDS) {
   if (!totals) return [];
 
-  return qualityGoalMetrics()
+  return qualityGoalMetrics(metricIds)
     .map((metric) => {
       const value = metricValue(metric, totals, 0);
       const color = metricColor(metric, value, true);
@@ -532,8 +536,8 @@ function qualityGoalRows(totals) {
     .filter((item) => item.value !== null && item.value !== undefined && Number.isFinite(Number(item.value)));
 }
 
-function qualityGoalScore(totals) {
-  const rows = qualityGoalRows(totals);
+function qualityGoalScore(totals, metricIds = BI_GOAL_METRIC_IDS) {
+  const rows = qualityGoalRows(totals, metricIds);
   if (!rows.length) return null;
   return Math.max(...rows.map((item) => item.severity));
 }
@@ -582,15 +586,15 @@ function metricTargetText(metric) {
 function metricExplanation(metric, value, color) {
   if (metric.goodWhen === 'composite') {
     if (value === null || value === undefined || !Number.isFinite(Number(value))) {
-      return 'Sem dados suficientes para comparar as metas do BI nesta parcela.';
+      return `Sem dados suficientes para comparar ${metric.label.toLowerCase()} nesta parcela.`;
     }
     if (Number(value) >= 2) {
-      return 'crítico: pelo menos uma meta principal do BI ficou fora do limite.';
+      return `crítico: pelo menos um item de ${metric.label.toLowerCase()} ficou fora da meta.`;
     }
     if (Number(value) >= 1) {
-      return 'atenção: existe indicador próximo do limite definido no BI.';
+      return `atenção: existe item de ${metric.label.toLowerCase()} próximo do limite.`;
     }
-    return 'dentro da meta: os indicadores principais respeitam as metas do BI.';
+    return `dentro da meta: ${metric.label.toLowerCase()} respeita os limites definidos.`;
   }
 
   if (value === null || value === undefined || !Number.isFinite(Number(value))) {
@@ -730,16 +734,17 @@ function topCauseRows(totals) {
     .slice(0, 4);
 }
 
-function popupBiGoalChecklist(totals) {
-  const rows = qualityGoalRows(totals);
+function popupBiGoalChecklist(totals, metric) {
+  const metricIds = metric?.metricIds || BI_GOAL_METRIC_IDS;
+  const rows = qualityGoalRows(totals, metricIds);
   if (!rows.length) {
-    return '<div class="parcel-popup-empty">Sem base de cachos suficiente para comparar com as metas do BI.</div>';
+    return '<div class="parcel-popup-empty">Sem base de cachos suficiente para comparar este indicador.</div>';
   }
 
   return `
     <div class="parcel-popup-chart-card">
       <div class="parcel-popup-chart-head">
-        <span>Farol CQO - metas BI</span>
+        <span>${escapeHtml(metric?.label || 'Farol CQO')}</span>
         <strong style="color:${rows.some((row) => row.severity >= 2) ? RISK_COLORS.critical : rows.some((row) => row.severity >= 1) ? RISK_COLORS.attention : RISK_COLORS.good};">
           ${rows.some((row) => row.severity >= 2) ? 'Fora da meta' : rows.some((row) => row.severity >= 1) ? 'Atenção' : 'Dentro da meta'}
         </strong>
@@ -759,7 +764,7 @@ function popupBiGoalChecklist(totals) {
 
 function popupMetricChart(metric, value, color, totals = null) {
   if (metric.goodWhen === 'composite') {
-    return popupBiGoalChecklist(totals);
+    return popupBiGoalChecklist(totals, metric);
   }
 
   const width = metricProgressWidth(metric, value);
@@ -808,22 +813,27 @@ function popupCauseChart(totals) {
   `;
 }
 
-function popupBunchStack(totals) {
-  const visibleParts = [
+function popupBunchStack(totals, mode = 'full') {
+  const mainParts = [
     { label: 'Maduro', value: Number(totals?.cachoMaduro || 0), color: '#FB8A4B' },
     { label: 'Passado', value: Number(totals?.cachoPassado || 0), color: '#6B4B3E' },
     { label: 'Verde', value: Number(totals?.cachoVerde || 0), color: '#22C55E' },
     { label: 'Averm.', value: Number(totals?.cachoAvermelhado || 0), color: '#B91C1C' },
-    { label: 'Estrela', value: Number(totals?.cachoEstrela || 0), color: '#F2B544' },
-    { label: 'Talo', value: Number(totals?.taloComprido || 0), color: '#D98C10' },
   ];
+  const visibleParts = mode === 'bunch'
+    ? mainParts
+    : [
+      ...mainParts,
+      { label: 'Estrela', value: Number(totals?.cachoEstrela || 0), color: '#F2B544' },
+      { label: 'Talo', value: Number(totals?.taloComprido || 0), color: '#D98C10' },
+    ];
   const visibleTotal = visibleParts.reduce((sum, item) => sum + item.value, 0);
   const observedTotal = Number(totals?.cachosObservados || 0);
   const total = Math.max(observedTotal, visibleTotal);
   const others = Math.max(0, total - visibleTotal);
   const parts = [
     ...visibleParts,
-    ...(others > 0 ? [{ label: 'Outros', value: others, color: '#94A3B8' }] : []),
+    ...(mode !== 'bunch' && others > 0 ? [{ label: 'Outros', value: others, color: '#94A3B8' }] : []),
   ];
 
   if (!total) return '<div class="parcel-popup-empty">Sem composição de cachos observados nesta parcela.</div>';
@@ -903,7 +913,7 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
   const densityShape = parcelDensity(props);
   const score = totals?.generalScore ?? 0;
   const scoreColor = totals ? getScoreColor(score) : '#94A3B8';
-  const selectedMetric = metric || RISK_METRICS[1];
+  const selectedMetric = metric || RISK_METRICS[0];
   const selectedValue = metricValue(selectedMetric, totals, areaHa);
   const selectedColor = metricColor(selectedMetric, selectedValue, Boolean(totals));
   const statusText = totals
@@ -975,7 +985,7 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
         <div class="parcel-popup-section">O que aconteceu</div>
         ${popupCauseChart(totals)}
         <div class="parcel-popup-section">Composição dos cachos</div>
-        ${popupBunchStack(totals)}
+        ${popupBunchStack(totals, selectedMetric.id === 'qualidade_cachos' ? 'bunch' : 'full')}
         <div class="parcel-popup-section">Fiscal responsável</div>
         <div class="parcel-popup-person-list">
           ${fiscalRows || '<div class="parcel-popup-empty">Sem fiscal responsável informado.</div>'}
@@ -1003,7 +1013,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   const layerGroupRef = useRef(null);
   const [mapLayer, setMapLayer] = useState('heat');
   const [baseLayer, setBaseLayer] = useState('standard');
-  const [riskMetricId, setRiskMetricId] = useState('farol_bi');
+  const [riskMetricId, setRiskMetricId] = useState('qualidade_cachos');
   const [parcelGeoJson, setParcelGeoJson] = useState(null);
   const { records } = useCqoData({
     sourceFilter,
