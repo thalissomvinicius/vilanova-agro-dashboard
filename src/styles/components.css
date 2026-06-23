@@ -5223,14 +5223,36 @@ body.presentation-active {
   background: rgba(255, 255, 255, 0.9);
   color: #1f2937;
   font-family: var(--font-family);
-  font-size: 0.5rem;
+  font-size: 0.45rem;
   font-weight: 950;
   line-height: 1;
   letter-spacing: 0;
-  padding: 2px 4px;
-  box-shadow: 0 1px 5px rgba(15, 23, 42, 0.16);
+  padding: 1px 3px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.14);
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.gps-map-canvas.label-zoom-overview .parcel-label-icon:not(.parcel-label-critical),
+.gps-map-canvas.label-zoom-mid .parcel-label-icon:not(.parcel-label-critical):not(.parcel-label-attention),
+.gps-map-canvas.label-zoom-detail .parcel-label-icon-muted {
+  display: none !important;
+}
+
+.gps-map-canvas.label-zoom-overview .parcel-label-icon span,
+.gps-map-canvas.label-zoom-mid .parcel-label-icon span {
+  font-size: 0.42rem;
+  padding: 1px 3px;
+}
+
+.parcel-label-critical span {
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  color: #991b1b;
+}
+
+.parcel-label-attention span {
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  color: #92400e;
 }
 
 .parcel-label-icon-muted span {

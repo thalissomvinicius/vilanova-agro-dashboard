@@ -402,9 +402,35 @@ function featureLabelLatLng(feature) {
   return [labelPoint[1], labelPoint[0]];
 }
 
-function parcelLabelIcon(label, hasData) {
+function mapLabelZoomClass(zoom) {
+  if (zoom < 13.5) return 'label-zoom-overview';
+  if (zoom < 14.5) return 'label-zoom-mid';
+  if (zoom < 15.5) return 'label-zoom-detail';
+  return 'label-zoom-full';
+}
+
+function applyMapLabelZoomClass(map) {
+  const container = map?.getContainer?.();
+  if (!container) return;
+  container.classList.remove('label-zoom-overview', 'label-zoom-mid', 'label-zoom-detail', 'label-zoom-full');
+  container.classList.add(mapLabelZoomClass(map.getZoom()));
+}
+
+function parcelLabelIcon(label, summary) {
+  const hasData = Boolean(summary?.totals);
+  const tone = summary?.color === RISK_COLORS.critical
+    ? 'critical'
+    : summary?.color === RISK_COLORS.attention
+      ? 'attention'
+      : summary?.color === RISK_COLORS.good
+        ? 'good'
+        : 'empty';
   return L.divIcon({
-    className: `parcel-label-icon ${hasData ? '' : 'parcel-label-icon-muted'}`,
+    className: [
+      'parcel-label-icon',
+      `parcel-label-${tone}`,
+      hasData ? 'parcel-label-icon-data' : 'parcel-label-icon-muted',
+    ].join(' '),
     html: `<span>${escapeHtml(label)}</span>`,
     iconSize: [1, 1],
     iconAnchor: [0, 0],
@@ -1215,6 +1241,8 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       });
 
       L.control.zoom({ position: 'bottomright' }).addTo(map);
+      map.on('zoomend', () => applyMapLabelZoomClass(map));
+      applyMapLabelZoomClass(map);
       mapInstanceRef.current = map;
       layerGroupRef.current = L.layerGroup().addTo(map);
     }
@@ -1375,7 +1403,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             const labelLatLng = featureLabelLatLng(feature);
             if (labelLatLng) {
               L.marker(labelLatLng, {
-                icon: parcelLabelIcon(shapeParcel, Boolean(summary?.totals)),
+                icon: parcelLabelIcon(shapeParcel, summary),
                 interactive: false,
                 keyboard: false,
                 pane: 'tooltipPane',
@@ -1593,6 +1621,8 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           map.setView([selectedFarm.Lat, selectedFarm.Lng], 14, { animate: false });
         }
       }
+
+      applyMapLabelZoomClass(map);
     };
 
     let secondViewportTimer;
