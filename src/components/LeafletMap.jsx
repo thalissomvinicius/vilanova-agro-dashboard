@@ -570,13 +570,6 @@ function metricTargetPosition(metric, value) {
   return Math.max(6, Math.min(94, (Number(metric.meta || 0) / base) * 100));
 }
 
-function uniqueCompact(values, limit = 4) {
-  return Array.from(new Set(values
-    .map((value) => String(value || '').trim())
-    .filter((value) => value && value !== '--')))
-    .slice(0, limit);
-}
-
 function dateOrderValue(value) {
   const text = String(value || '').trim();
   const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -595,13 +588,28 @@ function sortDateTexts(values) {
     .sort((a, b) => dateOrderValue(a) - dateOrderValue(b));
 }
 
-function parcelFiscalRows(records) {
-  const byFiscal = new Map();
+function personLabel(matricula, nome) {
+  const code = String(matricula || '').trim();
+  const name = String(nome || '').trim();
+  if (code && name && name !== code) return `${code} - ${name}`;
+  return name || code || '';
+}
 
-  records.forEach((record) => {
-    const fiscal = record.fiscal || 'Sem fiscal';
-    const current = byFiscal.get(fiscal) || {
-      fiscal,
+function rawPersonValue(record, key) {
+  return String(record?.raw?.[key] || '').trim();
+}
+
+function parcelResponsibilityRows(records) {
+  const byPerson = new Map();
+
+  const pushPerson = (role, label, record) => {
+    const person = String(label || '').trim();
+    if (!person || person === '--') return;
+
+    const key = `${role}|${person}`;
+    const current = byPerson.get(key) || {
+      role,
+      person,
       count: 0,
       dates: [],
       sources: new Set(),
@@ -609,12 +617,21 @@ function parcelFiscalRows(records) {
     current.count += 1;
     if (record.date && record.date !== '--') current.dates.push(record.date);
     current.sources.add(record.source === 'excel' ? 'Excel' : 'App');
-    byFiscal.set(fiscal, current);
+    byPerson.set(key, current);
+  };
+
+  records.forEach((record) => {
+    pushPerson('Fiscal da equipe', rawPersonValue(record, 'fiscal_resp_equipe') || record.fiscal, record);
+    pushPerson('Avaliador da coleta', personLabel(record.evaluatorMatricula, record.evaluator), record);
+    const informedFiscal = rawPersonValue(record, 'fiscal_resp');
+    if (informedFiscal && informedFiscal !== rawPersonValue(record, 'fiscal_resp_equipe')) {
+      pushPerson('Fiscal informado', informedFiscal, record);
+    }
   });
 
-  return Array.from(byFiscal.values())
+  return Array.from(byPerson.values())
     .sort((a, b) => b.count - a.count)
-    .slice(0, 3)
+    .slice(0, 5)
     .map((item) => {
       const sortedDates = sortDateTexts(item.dates);
       const dateText = sortedDates.length
@@ -622,22 +639,12 @@ function parcelFiscalRows(records) {
         : 'Sem data';
       return `
         <div class="parcel-popup-person-row">
-          <strong>${escapeHtml(item.fiscal)}</strong>
+          <strong>${escapeHtml(item.person)}</strong>
+          <em>${escapeHtml(item.role)}</em>
           <span>${formatInteger(item.count)} coleta(s) · ${escapeHtml(dateText)} · ${escapeHtml(Array.from(item.sources).join(' + '))}</span>
         </div>
       `;
     }).join('');
-}
-
-function parcelCollaboratorCodes(records) {
-  return uniqueCompact(records.flatMap((record) => (
-    (record.lines || []).flatMap((line) => [
-      line.matricula_colaborador,
-      line.MatriculaColaborador,
-      line.MatriculaCortador,
-      line.colaborador_matricula,
-    ])
-  )), 8);
 }
 
 function parcelLatestRows(records) {
@@ -645,12 +652,12 @@ function parcelLatestRows(records) {
     .sort((a, b) => dateOrderValue(b.date) - dateOrderValue(a.date))
     .slice(0, 4)
     .map((record) => {
-      const collaboratorCodes = parcelCollaboratorCodes([record]);
+      const evaluatorLabel = personLabel(record.evaluatorMatricula, record.evaluator);
       return `
         <div class="parcel-popup-event-row">
           <strong>${escapeHtml(record.date || '--')}</strong>
-          <span>${escapeHtml(record.form || record.type || 'CQO')} · ${escapeHtml(record.fiscal || 'Sem fiscal')}</span>
-          <small>${escapeHtml(record.source === 'excel' ? 'Excel' : 'App')}${collaboratorCodes.length ? ` · Colab. ${escapeHtml(collaboratorCodes.join(', '))}` : ''}</small>
+          <span>${escapeHtml(record.form || record.type || 'CQO')} · Fiscal equipe: ${escapeHtml(record.fiscal || 'Sem fiscal')}</span>
+          <small>${escapeHtml(record.source === 'excel' ? 'Excel' : 'App')}${evaluatorLabel ? ` · Avaliador: ${escapeHtml(evaluatorLabel)}` : ''}</small>
         </div>
       `;
     }).join('');
@@ -720,25 +727,30 @@ function popupCauseChart(totals) {
 }
 
 function popupBunchStack(totals) {
+  const total = Number(totals?.cachosObservados || 0);
   const parts = [
     { label: 'Maduro', value: Number(totals?.cachoMaduro || 0), color: '#FB8A4B' },
     { label: 'Passado', value: Number(totals?.cachoPassado || 0), color: '#6B4B3E' },
     { label: 'Verde', value: Number(totals?.cachoVerde || 0), color: '#22C55E' },
     { label: 'Averm.', value: Number(totals?.cachoAvermelhado || 0), color: '#B91C1C' },
   ];
-  const total = parts.reduce((sum, item) => sum + item.value, 0);
+  const classifiedTotal = parts.reduce((sum, item) => sum + item.value, 0);
+  const remainder = Math.max(0, total - classifiedTotal);
+  const stackParts = remainder
+    ? [...parts, { label: 'Outros', value: remainder, color: '#CBD5E1' }]
+    : parts;
 
   if (!total) return '<div class="parcel-popup-empty">Sem composição de cachos observados nesta parcela.</div>';
 
   return `
     <div class="parcel-popup-stack">
       <div class="parcel-popup-stackbar">
-        ${parts.map((item) => `
+        ${stackParts.map((item) => `
           <span style="width:${Math.max(item.value ? 3 : 0, (item.value / total) * 100)}%; background:${item.color};" title="${escapeHtml(item.label)}"></span>
         `).join('')}
       </div>
       <div class="parcel-popup-stack-legend">
-        ${parts.map((item) => `
+        ${stackParts.map((item) => `
           <span><i style="background:${item.color};"></i>${escapeHtml(item.label)} ${formatDecimal(percentOf(item.value, total), 1)}%</span>
         `).join('')}
       </div>
@@ -818,8 +830,7 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
     ? `${dateValues[0]}${dateValues[0] !== dateValues[dateValues.length - 1] ? ` a ${dateValues[dateValues.length - 1]}` : ''}`
     : 'Sem data';
   const latestDate = dateValues[dateValues.length - 1] || 'Sem data';
-  const collaboratorCodes = parcelCollaboratorCodes(parcelRecords);
-  const fiscalRows = parcelFiscalRows(parcelRecords);
+  const responsibilityRows = parcelResponsibilityRows(parcelRecords);
   const latestRows = parcelLatestRows(parcelRecords);
 
   const riskBlock = totals
@@ -877,20 +888,14 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
         ${popupCauseChart(totals)}
         <div class="parcel-popup-section">Composição dos cachos</div>
         ${popupBunchStack(totals)}
-        <div class="parcel-popup-section">Fiscal responsável</div>
+        <div class="parcel-popup-section">Responsáveis da coleta</div>
         <div class="parcel-popup-person-list">
-          ${fiscalRows || '<div class="parcel-popup-empty">Sem fiscal responsável informado.</div>'}
+          ${responsibilityRows || '<div class="parcel-popup-empty">Sem responsáveis informados.</div>'}
         </div>
         <div class="parcel-popup-section">Coletas no período</div>
         <div class="parcel-popup-event-list">
           ${latestRows || '<div class="parcel-popup-empty">Sem coleta dentro dos filtros atuais.</div>'}
         </div>
-        ${collaboratorCodes.length ? `
-          <div class="parcel-popup-section">Matrículas de colaboradores</div>
-          <div class="parcel-popup-chip-list">
-            ${collaboratorCodes.map((code) => `<span>${escapeHtml(code)}</span>`).join('')}
-          </div>
-        ` : ''}
         <div class="parcel-popup-section">Percentuais principais</div>
         <div class="parcel-popup-percent-list">${percentMetrics}</div>
       </div>

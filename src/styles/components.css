@@ -4806,6 +4806,7 @@ body.presentation-active {
 
 .parcel-popup-person-row strong,
 .parcel-popup-person-row span,
+.parcel-popup-person-row em,
 .parcel-popup-event-row strong,
 .parcel-popup-event-row span,
 .parcel-popup-event-row small {
@@ -4829,6 +4830,14 @@ body.presentation-active {
   color: var(--text-secondary);
   font-size: 0.68rem;
   font-weight: 750;
+}
+
+.parcel-popup-person-row em {
+  margin-top: 2px;
+  color: var(--green-institutional);
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 850;
 }
 
 .parcel-popup-event-row small {
