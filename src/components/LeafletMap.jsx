@@ -971,7 +971,13 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   const [baseLayer, setBaseLayer] = useState('standard');
   const [riskMetricId, setRiskMetricId] = useState('perda_t_ha');
   const [parcelGeoJson, setParcelGeoJson] = useState(null);
-  const { records } = useCqoData();
+  const [parcelGeoStatus, setParcelGeoStatus] = useState('loading');
+  const [mapRenderState, setMapRenderState] = useState({
+    loading: true,
+    progress: 10,
+    label: 'Preparando mapa',
+  });
+  const { records, loading: recordsLoading } = useCqoData();
   const selectedRiskMetric = useMemo(() => activeRiskMetric(riskMetricId), [riskMetricId]);
 
   const filteredRecords = useMemo(() => filterRecords(records, {
@@ -1184,10 +1190,16 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
         return response.json();
       })
       .then((geojson) => {
-        if (mounted) setParcelGeoJson(geojson);
+        if (mounted) {
+          setParcelGeoJson(geojson);
+          setParcelGeoStatus('ready');
+        }
       })
       .catch(() => {
-        if (mounted) setParcelGeoJson(null);
+        if (mounted) {
+          setParcelGeoJson(null);
+          setParcelGeoStatus('fallback');
+        }
       });
 
     return () => {
@@ -1198,44 +1210,62 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   useEffect(() => {
     const map = mapInstanceRef.current;
     const layers = layerGroupRef.current;
-    if (!map || !layers) return;
+    if (!map || !layers) return undefined;
 
-    layers.clearLayers();
-    map.eachLayer((layer) => {
-      if (layer instanceof L.TileLayer) {
-        map.removeLayer(layer);
+    const prepTimer = window.setTimeout(() => {
+      setMapRenderState({
+        loading: true,
+        progress: parcelGeoStatus === 'loading' ? 32 : 48,
+        label: parcelGeoStatus === 'loading' ? 'Carregando parcelas do mapa' : 'Atualizando filtros do mapa',
+      });
+    }, 0);
+    let viewportFrame = 0;
+    let viewportTimer = 0;
+    let finishTimer = 0;
+
+    const drawTimer = window.setTimeout(() => {
+      setMapRenderState({
+        loading: true,
+        progress: 66,
+        label: 'Renderizando camadas',
+      });
+
+      layers.clearLayers();
+      map.eachLayer((layer) => {
+        if (layer instanceof L.TileLayer) {
+          map.removeLayer(layer);
+        }
+      });
+
+      let tileUrl = theme === 'dark'
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+      let tileOptions = {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 20,
+      };
+
+      if (baseLayer === 'satellite') {
+        tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+        tileOptions = {
+          attribution: 'Tiles &copy; Esri',
+          maxZoom: 20,
+        };
       }
-    });
 
-    let tileUrl = theme === 'dark'
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-    let tileOptions = {
-      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-      subdomains: 'abcd',
-      maxZoom: 20,
-    };
+      if (baseLayer === 'sentinel') {
+        tileUrl = SENTINEL_TILE_URL;
+        tileOptions = {
+          attribution: SENTINEL_ATTRIBUTION,
+          maxZoom: 20,
+          maxNativeZoom: 16,
+        };
+      }
 
-    if (baseLayer === 'satellite') {
-      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-      tileOptions = {
-        attribution: 'Tiles &copy; Esri',
-        maxZoom: 20,
-      };
-    }
+      L.tileLayer(tileUrl, tileOptions).addTo(map);
 
-    if (baseLayer === 'sentinel') {
-      tileUrl = SENTINEL_TILE_URL;
-      tileOptions = {
-        attribution: SENTINEL_ATTRIBUTION,
-        maxZoom: 20,
-        maxNativeZoom: 16,
-      };
-    }
-
-    L.tileLayer(tileUrl, tileOptions).addTo(map);
-
-    const farmLayerBounds = [];
+      const farmLayerBounds = [];
 
     if (parcelGeoJson?.features?.length) {
       const filteredParcels = {
@@ -1531,19 +1561,64 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       }
     };
 
-    const frame = window.requestAnimationFrame(() => {
-      map.whenReady(() => {
-        applyViewport();
-        window.setTimeout(applyViewport, 120);
+      viewportFrame = window.requestAnimationFrame(() => {
+        map.whenReady(() => {
+          setMapRenderState({
+            loading: true,
+            progress: 92,
+            label: 'Ajustando visualização',
+          });
+          applyViewport();
+          viewportTimer = window.setTimeout(applyViewport, 120);
+          finishTimer = window.setTimeout(() => {
+            setMapRenderState({
+              loading: false,
+              progress: 100,
+              label: 'Mapa pronto',
+            });
+          }, 180);
+        });
       });
-    });
+    }, 45);
 
-    return () => window.cancelAnimationFrame(frame);
-  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, selectedRiskMetric, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, filteredParcelFeatures, parcelSummaryByKey]);
+    return () => {
+      window.clearTimeout(prepTimer);
+      window.clearTimeout(drawTimer);
+      window.cancelAnimationFrame(viewportFrame);
+      window.clearTimeout(viewportTimer);
+      window.clearTimeout(finishTimer);
+    };
+  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, selectedRiskMetric, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, parcelGeoStatus, filteredParcelFeatures, parcelSummaryByKey]);
+
+  const mapIsLoading = recordsLoading || parcelGeoStatus === 'loading' || mapRenderState.loading;
+  const mapProgress = recordsLoading
+    ? 24
+    : parcelGeoStatus === 'loading'
+      ? 42
+      : mapRenderState.progress;
+  const mapLoadingLabel = recordsLoading
+    ? 'Buscando coletas no Supabase'
+    : parcelGeoStatus === 'loading'
+      ? 'Carregando parcelas do mapa'
+      : mapRenderState.label;
 
   return (
     <div className={`card gps-map-card ${presentationMode ? 'gps-map-card-presentation' : ''}`}>
       <div ref={mapContainerRef} className="gps-map-canvas" />
+
+      {mapIsLoading ? (
+        <div className="gps-map-loading" role="status" aria-live="polite">
+          <div className="gps-map-loading-box">
+            <div className="gps-map-loading-spinner" />
+            <strong>{mapLoadingLabel}</strong>
+            <span>Atualizando dados, filtros e camadas do mapa.</span>
+            <div className="gps-map-loading-bar" aria-hidden="true">
+              <i style={{ width: `${Math.max(8, Math.min(100, mapProgress))}%` }} />
+            </div>
+            <em>{Math.round(Math.max(0, Math.min(100, mapProgress)))}%</em>
+          </div>
+        </div>
+      ) : null}
 
       <div className="map-overlay-card gps-map-overlay">
         <h4>Visualização</h4>
