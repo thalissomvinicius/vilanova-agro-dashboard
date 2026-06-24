@@ -736,8 +736,11 @@ function popupBunchStack(totals) {
   ];
   const classifiedTotal = parts.reduce((sum, item) => sum + item.value, 0);
   const remainder = Math.max(0, total - classifiedTotal);
+  const otherDetail = bunchOtherRows(totals, total, classifiedTotal)
+    .map((row) => `${row.label}: ${formatInteger(row.value)} (${formatDecimal(percentOf(row.value, total), 1)}%)`)
+    .join(' · ');
   const stackParts = remainder
-    ? [...parts, { label: 'Outros', value: remainder, color: '#CBD5E1' }]
+    ? [...parts, { label: 'Outros', value: remainder, color: '#CBD5E1', detail: otherDetail }]
     : parts;
 
   if (!total) return '<div class="parcel-popup-empty">Sem composição de cachos observados nesta parcela.</div>';
@@ -751,16 +754,18 @@ function popupBunchStack(totals) {
       </div>
       <div class="parcel-popup-stack-legend">
         ${stackParts.map((item) => `
-          <span><i style="background:${item.color};"></i>${escapeHtml(item.label)} ${formatDecimal(percentOf(item.value, total), 1)}%</span>
+          <div class="parcel-popup-stack-item${item.detail ? ' has-detail' : ''}">
+            <span><i style="background:${item.color};"></i>${escapeHtml(item.label)} ${formatDecimal(percentOf(item.value, total), 1)}%</span>
+            ${item.detail ? `<small>${escapeHtml(item.detail)}</small>` : ''}
+          </div>
         `).join('')}
       </div>
     </div>
   `;
 }
 
-function maturityPercentRows(totals) {
-  const total = Number(totals?.cachosObservados || 0);
-  const otherRows = [
+function bunchOtherRows(totals, total = Number(totals?.cachosObservados || 0), classifiedTotal = 0) {
+  const rows = [
     { label: 'Cacho esquecido', value: Number(totals?.cachoEsquecido || 0) },
     { label: 'Cacho infermo', value: Number(totals?.cachoInfermo || 0) },
     { label: 'Bucha', value: Number(totals?.bucha || 0) },
@@ -768,6 +773,18 @@ function maturityPercentRows(totals) {
     { label: 'Cacho estrela', value: Number(totals?.cachoEstrela || 0) },
     { label: 'Cacho brocado', value: Number(totals?.cachoBrocado || 0) },
   ].filter((row) => row.value > 0);
+
+  const knownOtherTotal = rows.reduce((sum, row) => sum + row.value, 0);
+  const unclassified = Math.max(0, total - classifiedTotal - knownOtherTotal);
+  if (unclassified > 0) {
+    rows.push({ label: 'Sem categoria informada', value: unclassified });
+  }
+
+  return rows;
+}
+
+function maturityPercentRows(totals) {
+  const total = Number(totals?.cachosObservados || 0);
   const rows = [
     { label: 'Cacho maduro', value: Number(totals?.cachoMaduro || 0), color: '#22C55E' },
     { label: 'Cacho verde', value: Number(totals?.cachoVerde || 0), color: '#F59E0B' },
@@ -778,6 +795,8 @@ function maturityPercentRows(totals) {
     percent: Math.round(percentOf(row.value, total) * 10) / 10,
   }));
   const usedPercent = rows.reduce((sum, row) => sum + row.percent, 0);
+  const classifiedTotal = rows.reduce((sum, row) => sum + row.value, 0);
+  const otherRows = bunchOtherRows(totals, total, classifiedTotal);
 
   return [
     ...rows,
