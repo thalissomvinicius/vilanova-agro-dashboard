@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   aggregateRecords,
   filterRecords,
+  normalizeResponse,
   normalizeCqoFarmId,
   normalizeText,
   parseRecordDateValue,
@@ -135,6 +136,27 @@ describe('filterRecords', () => {
     });
 
     expect(result.map((item) => item.id)).toEqual(['excel-2024']);
+  });
+});
+
+describe('normalizeResponse', () => {
+  it('usa o fiscal responsavel da equipe como fiscal principal do dashboard', () => {
+    const normalized = normalizeResponse({
+      id: 'res-fiscal-equipe',
+      formulario_id: 'form_cqo_corte',
+      usuario_id: '2170',
+      criado_em: '2026-06-24T12:00:00.000Z',
+      status: 'aprovado',
+      dados_json: {
+        nome_fazenda: 'Vila Nova',
+        data_avaliacao: '2026-06-24',
+        fiscal_resp: 'Daniel Souza',
+        fiscal_resp_equipe: 'Luan Souza Ferreira',
+        linhas_corte: [],
+      },
+    });
+
+    expect(normalized.fiscal).toBe('Luan Souza Ferreira');
   });
 });
 

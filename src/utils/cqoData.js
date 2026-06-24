@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 
 const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || '').trim();
 const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+const ATTACHMENT_BUCKET = 'mobile-anexos';
+const ATTACHMENT_SIGN_EXPIRES_SECONDS = 6 * 60 * 60;
 
 export const SUPABASE_CONFIG = {
   url: SUPABASE_URL,
@@ -27,6 +29,65 @@ function supabaseHeaders(extraHeaders = {}) {
     Accept: 'application/json',
     ...extraHeaders,
   };
+}
+
+function supabaseStorageOrigin() {
+  const { url } = requireSupabaseConfig();
+  return url.replace(/\/+$/, '');
+}
+
+function encodeStoragePath(path) {
+  return String(path || '')
+    .split('/')
+    .filter(Boolean)
+    .map(encodeURIComponent)
+    .join('/');
+}
+
+async function signAttachmentStoragePath(storagePath) {
+  if (!storagePath || /^(https?:|data:|blob:)/i.test(String(storagePath))) return storagePath || null;
+
+  const origin = supabaseStorageOrigin();
+  const encodedPath = encodeStoragePath(storagePath);
+  if (!encodedPath) return null;
+
+  const response = await fetch(`${origin}/storage/v1/object/sign/${ATTACHMENT_BUCKET}/${encodedPath}`, {
+    method: 'POST',
+    headers: supabaseHeaders({
+      'Content-Type': 'application/json',
+    }),
+    body: JSON.stringify({
+      expiresIn: ATTACHMENT_SIGN_EXPIRES_SECONDS,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await supabaseResponseError(response, 'Assinatura de anexo'));
+  }
+
+  const payload = await response.json();
+  const signedUrl = payload?.signedURL || payload?.signedUrl || payload?.url || '';
+  if (!signedUrl) return null;
+  if (/^https?:/i.test(signedUrl)) return signedUrl;
+  if (signedUrl.startsWith('/')) return `${origin}${signedUrl}`;
+  return `${origin}/${signedUrl.replace(/^\/+/, '')}`;
+}
+
+async function attachSignedStorageUrls(attachmentRows) {
+  if (!Array.isArray(attachmentRows) || attachmentRows.length === 0) return [];
+
+  return Promise.all(attachmentRows.map(async (row) => {
+    const storagePath = row?.storage_path || row?.caminho || row?.path || null;
+    const hasRenderableUrl = row?.url || row?.public_url || row?.storage_url || row?.signed_url;
+    if (!storagePath || hasRenderableUrl) return row;
+
+    try {
+      const signedUrl = await signAttachmentStoragePath(storagePath);
+      return signedUrl ? { ...row, signed_url: signedUrl, url: signedUrl } : row;
+    } catch {
+      return row;
+    }
+  }));
 }
 
 async function supabaseResponseError(response, context) {
@@ -361,7 +422,7 @@ function normalizeAttachment(row, index) {
     fileName: row?.nome_arquivo || row?.filename || row?.file_name || meta?.nome_arquivo || meta?.fileName || '',
     mimeType: row?.mime_type || row?.mimetype || row?.tipo_mime || meta?.mimeType || meta?.mime_type || 'image/jpeg',
     base64: row?.base64 || row?.arquivo_base64 || row?.conteudo_base64 || meta?.base64 || null,
-    url: row?.url || row?.public_url || row?.storage_url || meta?.url || meta?.publicUrl || null,
+    url: row?.url || row?.signed_url || row?.public_url || row?.storage_url || meta?.url || meta?.signedUrl || meta?.publicUrl || null,
     storagePath: row?.storage_path || row?.caminho || row?.path || meta?.storagePath || meta?.storage_path || null,
     capturedAt: row?.capturado_em || row?.criado_em || meta?.capturedAt || meta?.capturado_em || null,
     gps,
@@ -503,6 +564,13 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
       if (data.parcela === undefined) data.parcela = cd.Parcela;
       if (data.ciclo_mes === undefined) data.ciclo_mes = cd.ciclo_mes;
       if (data.fiscal_resp === undefined) data.fiscal_resp = cd["Fiscal Resp"] || cd.FiscalResp;
+      if (data.fiscal_resp_equipe === undefined) {
+        data.fiscal_resp_equipe = cd["Fiscal Resp Equipe"]
+          || cd.FiscalRespEquipe
+          || cd["Fiscal Responsavel Equipe"]
+          || cd.FiscalResponsavelEquipe
+          || cd.fiscal_resp_equipe;
+      }
       if (data.observacao === undefined) data.observacao = cd.Observacao;
       if (data.matricula_avaliador === undefined) data.matricula_avaliador = cd.MatriculaAvaliadores || cd.MatriculaDigitador;
       if (data.acompanhamento === undefined) data.acompanhamento = cd.Acompanhamento;
@@ -599,7 +667,7 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
     evaluatorMatricula: matricula,
     evaluator: collaborator?.nome || matricula || 'Sem avaliador',
     evaluatorRole: collaborator?.cargo || '',
-    fiscal: formatPersonName(data.fiscal_resp) || '--',
+    fiscal: formatPersonName(data.fiscal_resp_equipe) || formatPersonName(data.fiscal_resp) || '--',
     observation: data.observacao || '',
     acompanhamento,
     gps: effectiveGps,
@@ -898,7 +966,17 @@ function cqoSnapshotEvaluator(row) {
 }
 
 function cqoSnapshotFiscal(row) {
-  return rowText(row, ['Fiscal Resp', 'FiscalResp', 'Fiscal', 'fiscal_resp']);
+  return rowText(row, [
+    'Fiscal Resp Equipe',
+    'FiscalRespEquipe',
+    'Fiscal Responsavel Equipe',
+    'FiscalResponsavelEquipe',
+    'fiscal_resp_equipe',
+    'Fiscal Resp',
+    'FiscalResp',
+    'Fiscal',
+    'fiscal_resp',
+  ]);
 }
 
 function cqoSnapshotCycle(row) {
@@ -988,6 +1066,7 @@ function groupCqoSnapshotRows(rows, type, snapshot) {
       ciclo_mes: cqoSnapshotCycle(first),
       matricula_avaliador: cqoSnapshotEvaluator(first),
       fiscal_resp: cqoSnapshotFiscal(first),
+      fiscal_resp_equipe: cqoSnapshotFiscal(first),
       observacao: rowText(first, ['Observacao', 'Observação', 'observacao']),
       mapeamento_legado: false,
       fonte_excel: {
@@ -1155,12 +1234,13 @@ async function loadSupabaseDataFromRpc(sessionToken) {
   const dataset = rpcScalarPayload(payload, 'dashboard_cqo_dataset');
   const headcount = normalizeHeadcountSnapshotData(datasetRows(dataset, 'headcount_import_snapshots')[0]).rows;
   const cqoImport = normalizeCqoImportSnapshotData(datasetRows(dataset, 'cqo_import_snapshots')[0]);
+  const attachmentRows = await attachSignedStorageUrls(datasetRows(dataset, 'mobile_anexos'));
 
   return buildSupabaseData({
     responseRows: datasetRows(dataset, 'mobile_respostas'),
     headcount,
     gpsRows: datasetRows(dataset, 'mobile_gps'),
-    attachmentRows: datasetRows(dataset, 'mobile_anexos'),
+    attachmentRows,
     formRows: datasetRows(dataset, 'mobile_formularios'),
     cqoImport,
     source: 'Banco online',

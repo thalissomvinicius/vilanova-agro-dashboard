@@ -201,11 +201,16 @@ function riskStatusLabel(color) {
 }
 
 function normalizeParcelCode(value) {
-  return String(value || '')
+  const compact = String(value || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '');
+
+  const parsed = compact.match(/^([a-z]*)(0*\d+)([a-z]*)$/);
+  if (!parsed) return compact;
+
+  return `${parsed[1]}${Number(parsed[2])}${parsed[3]}`;
 }
 
 function shapeParcelCode(props = {}) {

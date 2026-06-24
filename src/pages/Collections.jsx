@@ -38,6 +38,71 @@ function formatNumber(value, digits = 0) {
   }).format(Number(value || 0));
 }
 
+function isLocalOnlyPhotoUrl(url) {
+  return /^(file|content):\/\//i.test(String(url || ''));
+}
+
+function extractRawPhotos(raw) {
+  const photos = [];
+  const visit = (value, path = []) => {
+    if (!value) return;
+
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => visit(item, [...path, String(index + 1)]));
+      return;
+    }
+
+    if (typeof value !== 'object') return;
+
+    const url = value.url || value.signed_url || value.public_url || value.storage_url || value.uri || null;
+    const hasPhotoPayload = Boolean(value.base64 || url || value.storage_path || value.storagePath);
+    const mimeType = value.mimeType || value.tipo_mime || value.mime_type || 'image/jpeg';
+
+    if (hasPhotoPayload && /^image\//i.test(mimeType)) {
+      const fieldId = value.campo_id || value.fieldId || path.filter(Boolean).join('.') || `foto_${photos.length + 1}`;
+      photos.push({
+        id: `${fieldId}_${photos.length + 1}`,
+        fieldId,
+        fileName: value.nome_arquivo || value.fileName || fieldId,
+        mimeType,
+        base64: value.base64 || null,
+        url,
+        localOnly: isLocalOnlyPhotoUrl(url),
+        storagePath: value.storage_path || value.storagePath || null,
+        capturedAt: value.capturedAt || value.capturado_em || value.criado_em || null,
+        gps: value.gps || null,
+      });
+    }
+
+    Object.entries(value).forEach(([key, child]) => visit(child, [...path, key]));
+  };
+
+  visit(raw);
+  return photos;
+}
+
+function uniquePhotos(photos) {
+  const seen = new Set();
+  return photos.filter((photo) => {
+    const key = [
+      photo.id,
+      photo.fieldId,
+      photo.url,
+      photo.storagePath,
+      photo.fileName,
+    ].filter(Boolean).join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function photoImageSrc(photo) {
+  if (photo?.base64) return `data:${photo.mimeType || 'image/jpeg'};base64,${photo.base64}`;
+  if (photo?.url && !photo.localOnly && !isLocalOnlyPhotoUrl(photo.url)) return photo.url;
+  return '';
+}
+
 function lineColumns(record) {
   if (record.type === 'carreamento') {
     return [
@@ -131,21 +196,10 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   }, [loading, source, sourceFilter]);
 
   const selectedPhotos = selectedRecord
-    ? [
+    ? uniquePhotos([
       ...(selectedRecord.attachments || []),
-      ...Object.entries(selectedRecord.raw || {})
-      .filter(([, value]) => value && typeof value === 'object' && value.base64)
-      .map(([fieldId, value]) => ({
-        id: fieldId,
-        fieldId,
-        fileName: fieldId,
-        mimeType: value.mimeType || 'image/jpeg',
-        base64: value.base64,
-        url: value.url || null,
-        capturedAt: value.capturedAt || value.capturado_em || null,
-        gps: value.gps || null,
-      })),
-    ]
+      ...extractRawPhotos(selectedRecord.raw || {}),
+    ])
     : [];
 
   const showFeedback = (title, message, tone = 'warning') => {
@@ -569,17 +623,19 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                     </div>
                   </div>
                   <div className="evidence-grid">
-                    {selectedPhotos.map((photo) => (
+                    {selectedPhotos.map((photo) => {
+                      const src = photoImageSrc(photo);
+                      return (
                       <div className="evidence-photo" key={photo.id || photo.fieldId}>
-                        {photo.base64 || photo.url ? (
+                        {src ? (
                           <img
-                            src={photo.base64 ? `data:${photo.mimeType || 'image/jpeg'};base64,${photo.base64}` : photo.url}
+                            src={src}
                             alt={photo.fieldId}
                           />
                         ) : (
                           <div className="evidence-file-placeholder">
                             <Download size={18} />
-                            <span>Arquivo sincronizado</span>
+                            <span>{photo.localOnly ? 'Foto no app, upload pendente' : 'Arquivo sem prévia'}</span>
                           </div>
                         )}
                         <div>
@@ -593,7 +649,8 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                           {photo.storagePath ? <span>{photo.storagePath}</span> : null}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ) : null}
