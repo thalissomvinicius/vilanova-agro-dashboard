@@ -758,6 +758,30 @@ function popupBunchStack(totals) {
   `;
 }
 
+function maturityPercentRows(totals) {
+  const total = Number(totals?.cachosObservados || 0);
+  const rows = [
+    { label: 'Cacho maduro', value: Number(totals?.cachoMaduro || 0), color: '#22C55E' },
+    { label: 'Cacho verde', value: Number(totals?.cachoVerde || 0), color: '#F59E0B' },
+    { label: 'Cacho passado', value: Number(totals?.cachoPassado || 0), color: '#F59E0B' },
+    { label: 'Avermelhado', value: Number(totals?.cachoAvermelhado || 0), color: '#EF4444' },
+  ].map((row) => ({
+    ...row,
+    percent: Math.round(percentOf(row.value, total) * 10) / 10,
+  }));
+  const usedPercent = rows.reduce((sum, row) => sum + row.percent, 0);
+
+  return [
+    ...rows,
+    {
+      label: 'Outros / não classificados',
+      value: Math.max(0, total - rows.reduce((sum, row) => sum + row.value, 0)),
+      color: '#64748B',
+      percent: Math.max(0, Math.round((100 - usedPercent) * 10) / 10),
+    },
+  ];
+}
+
 function buildParcelSummary({ feature, records, heatSummary, metric }) {
   const props = feature?.properties || {};
   const shapeParcel = shapeParcelCode(props);
@@ -859,12 +883,12 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
     popupMetric('Perda fruta/ha', areaHa ? `${formatDecimal(perHa(totals?.lostFrutosTon || 0, areaHa), 3)} t/ha` : 'N/D', '#EF4444'),
   ].join('');
 
-  const percentMetrics = [
-    popupPercentRow('Cacho maduro', `${formatDecimal(percentOf(totals?.cachoMaduro, totals?.cachosObservados), 1)}%`, '#22C55E'),
+  const maturityMetrics = maturityPercentRows(totals)
+    .map((row) => popupPercentRow(row.label, `${formatDecimal(row.percent, 1)}%`, row.color))
+    .join('');
+
+  const operationalMetrics = [
     popupPercentRow('Perda corte', `${formatDecimal(totals?.perdaCorteRate || 0, 1)}%`, '#EF4444'),
-    popupPercentRow('Cacho verde', `${formatDecimal(totals?.cachoVerdeRate || 0, 1)}%`, '#F59E0B'),
-    popupPercentRow('Cacho passado', `${formatDecimal(totals?.cachoPassadoRate || 0, 1)}%`, '#F59E0B'),
-    popupPercentRow('Avermelhado', `${formatDecimal(percentOf(totals?.cachoAvermelhado, totals?.cachosObservados), 1)}%`, '#EF4444'),
     popupPercentRow('Talo comprido', `${formatDecimal(totals?.taloCompridoRate || 0, 1)}%`, '#D98C10'),
     popupPercentRow('Nao carreado', `${formatDecimal(totals?.cachoNaoCarreadoRate || 0, 1)}%`, '#EF4444'),
   ].join('');
@@ -896,8 +920,10 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
         <div class="parcel-popup-event-list">
           ${latestRows || '<div class="parcel-popup-empty">Sem coleta dentro dos filtros atuais.</div>'}
         </div>
-        <div class="parcel-popup-section">Percentuais principais</div>
-        <div class="parcel-popup-percent-list">${percentMetrics}</div>
+        <div class="parcel-popup-section">Maturação dos cachos</div>
+        <div class="parcel-popup-percent-list">${maturityMetrics}</div>
+        <div class="parcel-popup-section">Indicadores operacionais</div>
+        <div class="parcel-popup-percent-list">${operationalMetrics}</div>
       </div>
     </div>
   `;
