@@ -177,10 +177,10 @@ function occurrenceHeatColor(point, fallbackColor) {
   if (field.includes('esquecido') || field.includes('nao_carreado') || field.includes('fruto_solto')) {
     return '#EF4444';
   }
-  if (field.includes('verde') || field.includes('passado') || field.includes('avermelhado') || field.includes('mal_posicionado')) {
+  if (field.includes('verde') || field.includes('passado') || field.includes('avermelhado')) {
     return '#F59E0B';
   }
-  if (field.includes('talo') || field.includes('folha') || field.includes('estrela') || field.includes('brocado')) {
+  if (field.includes('talo') || field.includes('folha') || field.includes('estrela') || field.includes('brocado') || field.includes('mal_posicionado')) {
     return '#D98C10';
   }
   return fallbackColor || '#F59E0B';
@@ -189,7 +189,7 @@ function occurrenceHeatColor(point, fallbackColor) {
 function occurrenceSeverity(point) {
   const field = String(point?.fieldId || '').toLowerCase();
   if (field.includes('esquecido') || field.includes('nao_carreado') || field.includes('fruto_solto')) return 3;
-  if (field.includes('verde') || field.includes('passado') || field.includes('avermelhado') || field.includes('mal_posicionado')) return 2;
+  if (field.includes('verde') || field.includes('passado') || field.includes('avermelhado')) return 2;
   return 1;
 }
 
@@ -673,7 +673,7 @@ function topCauseRows(totals) {
     { label: 'Passado', value: Number(totals.cachoPassadoRate || 0), detail: `${formatInteger(totals.cachoPassado || 0)} cacho(s)`, color: '#6B4B3E' },
     { label: 'Avermelhado', value: percentOf(totals.cachoAvermelhado, totals.cachosObservados), detail: `${formatInteger(totals.cachoAvermelhado || 0)} cacho(s)`, color: '#B91C1C' },
     { label: 'Talo comprido', value: Number(totals.taloCompridoRate || 0), detail: `${formatInteger(totals.taloComprido || 0)} ocorr.`, color: '#D98C10' },
-    { label: 'Mal posicionado', value: Number(totals.cachoMalPosicionadoRate || 0), detail: `${formatInteger(totals.cachoMalPosicionado || 0)} ocorr.`, color: '#F97316' },
+    { label: 'Palha mal empilhada', value: Number(totals.cachoMalPosicionadoRate || 0), detail: `${formatInteger(totals.cachoMalPosicionado || 0)} ocorr.`, color: '#F97316' },
   ].filter((item) => item.value > 0 || !/^0\b/.test(String(item.detail)))
     .sort((a, b) => b.value - a.value)
     .slice(0, 4);
@@ -765,7 +765,6 @@ function maturityPercentRows(totals) {
     { label: 'Cacho infermo', value: Number(totals?.cachoInfermo || 0) },
     { label: 'Bucha', value: Number(totals?.bucha || 0) },
     { label: 'Talo comprido', value: Number(totals?.taloComprido || 0) },
-    { label: 'Mal posicionado', value: Number(totals?.cachoMalPosicionado || 0) },
     { label: 'Cacho estrela', value: Number(totals?.cachoEstrela || 0) },
     { label: 'Cacho brocado', value: Number(totals?.cachoBrocado || 0) },
   ].filter((row) => row.value > 0);
@@ -905,6 +904,7 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
   const operationalMetrics = [
     popupPercentRow('Perda corte', `${formatDecimal(totals?.perdaCorteRate || 0, 1)}%`, '#EF4444'),
     popupPercentRow('Talo comprido', `${formatDecimal(totals?.taloCompridoRate || 0, 1)}%`, '#D98C10'),
+    popupPercentRow('Palha mal empilhada', `${formatDecimal(totals?.cachoMalPosicionadoRate || 0, 1)}%`, '#D98C10'),
     popupPercentRow('Nao carreado', `${formatDecimal(totals?.cachoNaoCarreadoRate || 0, 1)}%`, '#EF4444'),
   ].join('');
 

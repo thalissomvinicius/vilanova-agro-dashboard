@@ -128,7 +128,7 @@ function lineColumns(record) {
     ['cacho_estrela', 'Estrela'],
     ['cacho_avermelhado', 'Avermelhado'],
     ['cacho_brocado', 'Brocado'],
-    ['cacho_mal_posicionado', 'Mal posicionado'],
+    ['cacho_mal_posicionado', 'Palha mal empilhada'],
   ];
 }
 

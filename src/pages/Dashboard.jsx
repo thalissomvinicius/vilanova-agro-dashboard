@@ -665,7 +665,7 @@ function buildTotalMetricGroups(model) {
         { label: 'Talo comprido', value: formatNumber(totals.taloComprido), detail: `${formatPercent(safePct(totals.taloComprido, basePlantas))} das plantas`, tone: quality.taloCompridoPct > 3 ? 'danger' : 'warning' },
         { label: 'Folha cortada indevida', value: formatNumber(totals.folhaCortada), detail: `${formatPercent(safePct(totals.folhaCortada, basePlantas))} das plantas`, tone: 'warning' },
         { label: 'Folha mamando', value: formatNumber(totals.folhaMamando), detail: `${formatPercent(safePct(totals.folhaMamando, basePlantas))} das plantas`, tone: 'warning' },
-        { label: 'Mal posicionado', value: formatNumber(totals.cachoMalPosicionado), detail: `${formatPercent(safePct(totals.cachoMalPosicionado, baseCachos))} dos cachos`, tone: 'warning' },
+        { label: 'Palha mal empilhada', value: formatNumber(totals.cachoMalPosicionado), detail: `${formatPercent(safePct(totals.cachoMalPosicionado, basePlantas))} das plantas`, tone: 'warning' },
         { label: 'Bucha', value: formatNumber(totals.bucha), detail: `${formatPercent(safePct(totals.bucha, baseCachos))} dos cachos`, tone: 'neutral' },
       ],
     },

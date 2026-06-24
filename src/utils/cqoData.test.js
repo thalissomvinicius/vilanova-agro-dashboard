@@ -158,6 +158,30 @@ describe('normalizeResponse', () => {
 
     expect(normalized.fiscal).toBe('Luan Souza Ferreira');
   });
+
+  it('nao conta palha mal empilhada como cacho observado no corte', () => {
+    const normalized = normalizeResponse({
+      id: 'res-palha-mal-empilhada',
+      formulario_id: 'form_cqo_corte',
+      usuario_id: '2170',
+      criado_em: '2026-06-24T12:00:00.000Z',
+      status: 'aprovado',
+      dados_json: {
+        nome_fazenda: 'Vila Nova',
+        data_avaliacao: '2026-06-24',
+        linhas_corte: [
+          {
+            cacho_maduro: 2,
+            cacho_passado: 1,
+            cacho_mal_posicionado: 4,
+          },
+        ],
+      },
+    });
+
+    expect(normalized.totals.cachosObservados).toBe(3);
+    expect(normalized.totals.cachoMalPosicionado).toBe(4);
+  });
 });
 
 describe('aggregateRecords', () => {

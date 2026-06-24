@@ -45,6 +45,10 @@ const columnLabels = {
   peso_medio: 'Peso (kg)',
 };
 
+const corteColumnLabels = {
+  cacho_mal_posicionado: 'Palha M.E.',
+};
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -83,6 +87,7 @@ function totals(lines, columns) {
 function htmlFor(record) {
   const isCarreamento = record.type === 'carreamento';
   const columns = isCarreamento ? carreamentoColumns : corteColumns;
+  const labels = isCarreamento ? columnLabels : { ...columnLabels, ...corteColumnLabels };
   const title = isCarreamento
     ? 'Controle de Qualidade Agrícola: Perdas / Frutos Soltos e Carreamento'
     : 'Controle de Qualidade Agrícola: Corte';
@@ -149,7 +154,7 @@ function htmlFor(record) {
                 </td>
               </tr>
               <tr class="spacer-row"><td colspan="${columns.length}"></td></tr>
-              <tr>${columns.map((column) => `<th>${escapeHtml(columnLabels[column] || column.replaceAll('_', ' '))}</th>`).join('')}</tr>
+              <tr>${columns.map((column) => `<th>${escapeHtml(labels[column] || column.replaceAll('_', ' '))}</th>`).join('')}</tr>
             </thead>
             <tbody>${tableRows(record.lines, columns, isCarreamento ? 11 : 10)}</tbody>
             <tfoot>

@@ -277,7 +277,6 @@ const CORTE_OBSERVED_BUNCH_GROUPS = [
   ['cacho_infermo', 'CachoInfermo'],
   ['bucha', 'Bucha'],
   ['cacho_talo_comprido', 'TaloComprido', 'CachoTaloComprido'],
-  ['cacho_mal_posicionado', 'CachoMalPosicionado'],
   ['cacho_estrela', 'cachos_estrela', 'CachoEstrela'],
   ['cacho_avermelhado', 'cachos_avermelhados', 'CachoAvermelhado'],
 ];
