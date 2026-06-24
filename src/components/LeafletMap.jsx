@@ -760,6 +760,15 @@ function popupBunchStack(totals) {
 
 function maturityPercentRows(totals) {
   const total = Number(totals?.cachosObservados || 0);
+  const otherRows = [
+    { label: 'Cacho esquecido', value: Number(totals?.cachoEsquecido || 0) },
+    { label: 'Cacho infermo', value: Number(totals?.cachoInfermo || 0) },
+    { label: 'Bucha', value: Number(totals?.bucha || 0) },
+    { label: 'Talo comprido', value: Number(totals?.taloComprido || 0) },
+    { label: 'Mal posicionado', value: Number(totals?.cachoMalPosicionado || 0) },
+    { label: 'Cacho estrela', value: Number(totals?.cachoEstrela || 0) },
+    { label: 'Cacho brocado', value: Number(totals?.cachoBrocado || 0) },
+  ].filter((row) => row.value > 0);
   const rows = [
     { label: 'Cacho maduro', value: Number(totals?.cachoMaduro || 0), color: '#22C55E' },
     { label: 'Cacho verde', value: Number(totals?.cachoVerde || 0), color: '#F59E0B' },
@@ -774,10 +783,13 @@ function maturityPercentRows(totals) {
   return [
     ...rows,
     {
-      label: 'Outros / não classificados',
+      label: 'Outros avaliados',
       value: Math.max(0, total - rows.reduce((sum, row) => sum + row.value, 0)),
       color: '#64748B',
       percent: Math.max(0, Math.round((100 - usedPercent) * 10) / 10),
+      detail: otherRows.length
+        ? otherRows.map((row) => `${row.label}: ${formatInteger(row.value)} (${formatDecimal(percentOf(row.value, total), 1)}%)`).join(' · ')
+        : 'Sem detalhamento adicional no formulário',
     },
   ];
 }
@@ -826,10 +838,13 @@ function popupMetric(label, value, tone = '') {
   `;
 }
 
-function popupPercentRow(label, value, tone = '') {
+function popupPercentRow(label, value, tone = '', detail = '') {
   return `
     <div class="parcel-popup-percent-row">
-      <span>${escapeHtml(label)}</span>
+      <span>
+        <b>${escapeHtml(label)}</b>
+        ${detail ? `<small>${escapeHtml(detail)}</small>` : ''}
+      </span>
       <strong style="color:${tone || '#182230'};">${escapeHtml(value)}</strong>
     </div>
   `;
@@ -884,7 +899,7 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
   ].join('');
 
   const maturityMetrics = maturityPercentRows(totals)
-    .map((row) => popupPercentRow(row.label, `${formatDecimal(row.percent, 1)}%`, row.color))
+    .map((row) => popupPercentRow(row.label, `${formatDecimal(row.percent, 1)}%`, row.color, row.detail))
     .join('');
 
   const operationalMetrics = [

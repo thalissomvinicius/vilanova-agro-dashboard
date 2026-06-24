@@ -4873,10 +4873,35 @@ body.presentation-active {
 }
 
 .parcel-popup-percent-row {
+  gap: 12px;
   min-height: 22px;
   color: var(--text-secondary);
   font-size: 0.72rem;
   font-weight: 750;
+}
+
+.parcel-popup-percent-row span {
+  min-width: 0;
+}
+
+.parcel-popup-percent-row b,
+.parcel-popup-percent-row small {
+  display: block;
+}
+
+.parcel-popup-percent-row b {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.parcel-popup-percent-row small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: normal;
 }
 
 .parcel-popup-percent-row strong {
