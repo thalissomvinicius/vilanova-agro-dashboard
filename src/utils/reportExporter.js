@@ -62,16 +62,29 @@ function numberValue(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function hasValue(value) {
+  return value !== undefined && value !== null && String(value).trim() !== '';
+}
+
+function textValue(value) {
+  return hasValue(value) ? value : '-';
+}
+
+function tableCellValue(row, column) {
+  const value = row?.[column];
+  if (hasValue(value)) return value;
+  return column === 'linha' ? '-' : '0';
+}
+
 function formatTotal(value) {
-  if (!value) return '';
-  return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value);
+  return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(numberValue(value));
 }
 
 function tableRows(lines, columns, targetRows) {
   const rows = [...(lines || [])].slice(0, targetRows);
   while (rows.length < targetRows) rows.push({});
   return rows.map((row) => `
-    <tr>${columns.map((column) => `<td>${escapeHtml(row[column])}</td>`).join('')}</tr>
+    <tr>${columns.map((column) => `<td>${escapeHtml(tableCellValue(row, column))}</td>`).join('')}</tr>
   `).join('');
 }
 
@@ -128,29 +141,29 @@ function htmlFor(record) {
               <tr class="header-info">
                 <td colspan="${colSpanVal}">
                   <span class="info-label">Fazenda</span>
-                  <span class="info-value">${escapeHtml(record.farm)}</span>
+                  <span class="info-value">${escapeHtml(textValue(record.farm))}</span>
                 </td>
                 <td colspan="${colSpanVal}">
                   <span class="info-label">Parcela</span>
-                  <span class="info-value">${escapeHtml(record.parcel)}</span>
+                  <span class="info-value">${escapeHtml(textValue(record.parcel))}</span>
                 </td>
                 <td colspan="${colSpanVal + colSpanRemainder}">
                   <span class="info-label">Data e Hora</span>
-                  <span class="info-value">${escapeHtml(record.date)} ${escapeHtml(record.time || '')}</span>
+                  <span class="info-value">${escapeHtml(textValue(record.date))} ${escapeHtml(textValue(record.time))}</span>
                 </td>
               </tr>
               <tr class="header-info">
                 <td colspan="${colSpanVal}">
                   <span class="info-label">Ciclo</span>
-                  <span class="info-value">${escapeHtml(record.cycle)}</span>
+                  <span class="info-value">${escapeHtml(textValue(record.cycle))}</span>
                 </td>
                 <td colspan="${colSpanVal}">
                   <span class="info-label">Avaliador</span>
-                  <span class="info-value">${escapeHtml(record.evaluator)} ${record.evaluatorMatricula ? `(Mat. ${escapeHtml(record.evaluatorMatricula)})` : ''}</span>
+                  <span class="info-value">${escapeHtml(textValue(record.evaluator))} ${record.evaluatorMatricula ? `(Mat. ${escapeHtml(record.evaluatorMatricula)})` : ''}</span>
                 </td>
                 <td colspan="${colSpanVal + colSpanRemainder}">
                   <span class="info-label">Ficha (ID)</span>
-                  <span class="info-value">${escapeHtml(record.id)}</span>
+                  <span class="info-value">${escapeHtml(textValue(record.id))}</span>
                 </td>
               </tr>
               <tr class="spacer-row"><td colspan="${columns.length}"></td></tr>
