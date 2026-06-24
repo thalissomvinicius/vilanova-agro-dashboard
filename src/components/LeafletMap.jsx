@@ -1331,7 +1331,8 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     }
 
     geoRecords.forEach((record) => {
-      if (record.gpsOccurrences?.length && mapLayer !== 'polygon') return;
+      if (mapLayer !== 'route') return;
+      if (record.gpsOccurrences?.length) return;
       const style = farmStyle(record.farmId);
       const markerPoint = firstValidGpsPoint(record);
       if (!markerPoint) return;
