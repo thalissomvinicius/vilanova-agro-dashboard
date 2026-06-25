@@ -4465,7 +4465,7 @@ body.presentation-active {
 }
 
 .map-frame .leaflet-popup-pane {
-  z-index: 30;
+  z-index: 1300;
 }
 
 .map-frame .leaflet-popup-close-button {
