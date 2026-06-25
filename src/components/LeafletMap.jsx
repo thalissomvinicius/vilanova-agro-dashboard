@@ -882,6 +882,89 @@ function popupCauseChart(totals, operation) {
   `;
 }
 
+function issuePriority(color) {
+  if (color === RISK_COLORS.critical) return 3;
+  if (color === RISK_COLORS.attention) return 2;
+  return 1;
+}
+
+function analysisIssueRows({ records, operation, areaHa }) {
+  const metricIds = (operation?.metrics || []).filter((metricId) => metricId !== 'nota');
+
+  return metricIds
+    .map((metricId) => {
+      const metric = activeRiskMetric(metricId);
+      const metricTotals = aggregateForMetric(records, metric, operation);
+      const value = metricValue(metric, metricTotals, areaHa, operation);
+      const color = metricColor(metric, value, Boolean(metricTotals));
+      if (!metricTotals || color === RISK_COLORS.good || color === RISK_COLORS.neutral) return null;
+
+      const displayMetric = metricDisplay(metric, operation);
+      return {
+        metric,
+        displayMetric,
+        value,
+        color,
+        status: riskStatusLabel(color),
+        detail: metricCalculationDetail(metric, metricTotals, areaHa, operation),
+        explanation: metricExplanation(displayMetric, value, color),
+        priority: issuePriority(color),
+        riskScore: metricRiskScore(metric, value),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (b.priority - a.priority) || (b.riskScore - a.riskScore))
+    .slice(0, 4);
+}
+
+function popupAnalysisPanel({ issues, operation, hasData }) {
+  if (!hasData) {
+    return `
+      <div class="parcel-popup-analysis is-neutral">
+        <div class="parcel-popup-analysis-head">
+          <strong>Análise</strong>
+          <span>Sem dados aprovados</span>
+        </div>
+        <p>Não há coleta aprovada para esta parcela dentro do filtro atual.</p>
+      </div>
+    `;
+  }
+
+  if (!issues.length) {
+    return `
+      <div class="parcel-popup-analysis is-good">
+        <div class="parcel-popup-analysis-head">
+          <strong>Análise</strong>
+          <span>Sem desvio relevante</span>
+        </div>
+        <p>Os indicadores de ${escapeHtml(operationLabel(operation).toLowerCase())} estão dentro da meta para as coletas encontradas neste período.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="parcel-popup-analysis">
+      <div class="parcel-popup-analysis-head">
+        <strong>Pontos de atenção</strong>
+        <span>${formatInteger(issues.length)} indicador(es) fora da meta</span>
+      </div>
+      <div class="parcel-popup-issue-list">
+        ${issues.map((issue) => `
+          <div class="parcel-popup-issue-row" style="--issue-color:${issue.color};">
+            <div>
+              <strong>${escapeHtml(issue.displayMetric.label)}</strong>
+              <span>${escapeHtml(issue.explanation)}</span>
+              <small>${escapeHtml(issue.detail)}</small>
+            </div>
+            <em>${escapeHtml(issue.status)}</em>
+            <b>${formatMetricValue(issue.metric, issue.value)}</b>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 function popupBunchStack(totals) {
   const total = Number(totals?.cachosObservados || 0);
   const parts = [
@@ -1104,6 +1187,19 @@ function popupPercentRow(label, value, tone = '', detail = '') {
   `;
 }
 
+function collectionDateSummary(records) {
+  const dateValues = sortDateTexts(records.map((record) => record.date));
+  const firstDate = dateValues[0] || 'Sem data';
+  const lastDate = dateValues[dateValues.length - 1] || 'Sem data';
+
+  return {
+    firstDate,
+    lastDate,
+    latestDate: lastDate,
+    label: dateValues.length && firstDate !== lastDate ? `${firstDate} a ${lastDate}` : firstDate,
+  };
+}
+
 function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric, operation }) {
   const totals = parcelRecords.length ? aggregateRecords(parcelRecords) : null;
   const corteTotals = aggregateByType(parcelRecords, 'corte');
@@ -1128,34 +1224,19 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric, 
     : 'Sem coleta aprovada';
   const excelCount = operationRecords.filter((record) => record.source === 'excel').length;
   const appCount = operationRecords.filter((record) => record.source === 'app').length;
-  const dateValues = sortDateTexts(operationRecords.map((record) => record.date));
-  const dateRange = dateValues.length
-    ? `${dateValues[0]}${dateValues[0] !== dateValues[dateValues.length - 1] ? ` a ${dateValues[dateValues.length - 1]}` : ''}`
-    : 'Sem data';
-  const latestDate = dateValues[dateValues.length - 1] || 'Sem data';
+  const collectionDates = collectionDateSummary(operationRecords);
+  const dateRange = collectionDates.label;
   const responsibilityRows = parcelResponsibilityRows(operationRecords);
   const latestRows = parcelLatestRows(operationRecords);
-
-  const riskBlock = selectedMetricTotals
-    ? `
-      <div class="parcel-popup-heat">
-        <strong style="color:${selectedColor};">${riskStatusLabel(selectedColor)} - ${selectedDisplayMetric.label}</strong>
-        <span>${formatMetricValue(selectedMetric, selectedValue)} aplicado na parcela completa a partir da amostragem de ${operationLabel(operation).toLowerCase()}.</span>
-        <span>Base: ${escapeHtml(selectedDetail)}</span>
-      </div>
-    `
-    : `
-      <div class="parcel-popup-heat parcel-popup-heat-neutral">
-        <strong>Sem avaliação no período</strong>
-        <span>Esta parcela não tem coleta aprovada ou registro Excel dentro dos filtros atuais.</span>
-      </div>
-    `;
+  const issues = analysisIssueRows({ records: operationRecords, operation, areaHa });
+  const analysisPanel = popupAnalysisPanel({ issues, operation, hasData: Boolean(operationTotals) });
 
   const mainMetrics = [
     popupMetric(operation?.id === 'perdas' ? 'Nota CQO' : `Nota ${operationLabel(operation)}`, score !== null && score !== undefined ? `${formatDecimal(score, 0)}%` : 'N/D', scoreColor),
     popupMetric('Area', areaHa ? `${formatDecimal(areaHa, 2)} ha` : 'N/D'),
     popupMetric('Densidade', densityShape ? `${formatDecimal(densityShape, 0)} pl/ha` : 'N/D'),
-    popupMetric('Periodo', dateRange),
+    popupMetric('Primeira coleta', collectionDates.firstDate),
+    popupMetric('Última coleta', collectionDates.lastDate),
     popupMetric('Fonte', operationTotals ? `${excelCount} Excel / ${appCount} App` : 'N/D'),
     popupMetric('Linhas amostradas', formatInteger(operationTotals?.linhas || 0)),
     popupMetric('Plantas obs.', formatInteger(operationTotals?.plantasObservadas || 0)),
@@ -1179,11 +1260,19 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric, 
   const causeTotals = operation?.id === 'carreamento' ? carreamentoTotals : corteTotals;
 
   return `
-    <div class="parcel-popup-card">
+    <div class="parcel-popup-card" style="--parcel-accent:${style.color};">
       <div class="parcel-popup-head">
-        <strong style="color:${style.color};">${escapeHtml(props.farmName || 'Fazenda')}</strong>
-        <span>Parcela: <b>${escapeHtml(shapeParcel || '--')}</b> | Fonte: shapefile</span>
-        <small>${formatInteger(operationRecords.length)} coleta(s) | ${statusText} | Último dado: ${escapeHtml(latestDate)}</small>
+        <div class="parcel-popup-title-row">
+          <div>
+            <strong>${escapeHtml(props.farmName || 'Fazenda')}</strong>
+            <span>Parcela <b>${escapeHtml(shapeParcel || '--')}</b> · Fonte shapefile</span>
+          </div>
+          <em>${escapeHtml(operationLabel(operation))}</em>
+        </div>
+        <div class="parcel-popup-head-meta">
+          <span>Coletas: <b>${escapeHtml(dateRange)}</b></span>
+          <span>${formatInteger(operationRecords.length)} coleta(s) · ${escapeHtml(statusText)}</span>
+        </div>
       </div>
       <div class="parcel-popup-scroll">
         <div class="parcel-popup-executive" style="color:${selectedColor};">
@@ -1191,8 +1280,8 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric, 
           <span>${escapeHtml(metricExplanation(selectedDisplayMetric, selectedValue, selectedColor))}</span>
         </div>
         ${selectedMetricTotals ? popupMetricChart(selectedDisplayMetric, selectedValue, selectedColor, selectedDetail) : ''}
+        ${analysisPanel}
         <div class="parcel-popup-grid">${mainMetrics}</div>
-        ${riskBlock}
         ${showLossComposition ? `
           <div class="parcel-popup-section">Composição das perdas</div>
           ${popupLossComposition({ corteTotals, carreamentoTotals, areaHa })}
@@ -1593,8 +1682,8 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             metric: selectedRiskMetric,
             operation: selectedOperation,
           }), {
-            maxWidth: 460,
-            minWidth: 380,
+            maxWidth: 500,
+            minWidth: 360,
             autoPan: true,
             autoPanPaddingTopLeft: [24, 120],
             autoPanPaddingBottomRight: [380, 70],
