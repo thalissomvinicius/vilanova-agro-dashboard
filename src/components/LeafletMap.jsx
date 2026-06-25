@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import { Layers, Map as MapIcon, Route, Satellite } from 'lucide-react';
+import { ArrowLeft, Layers, Map as MapIcon, Route, Satellite } from 'lucide-react';
 import { FARMS } from '../utils/mockData';
 import { filterRecords, useCqoData, aggregateRecords } from '../utils/cqoData';
 
@@ -1465,6 +1465,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   const [baseLayer, setBaseLayer] = useState('standard');
   const [mapOperation, setMapOperation] = useState('perdas');
   const [riskMetricId, setRiskMetricId] = useState('perda_t_ha');
+  const [selectedParcelKey, setSelectedParcelKey] = useState(null);
   const [parcelGeoJson, setParcelGeoJson] = useState(null);
   const [parcelGeoStatus, setParcelGeoStatus] = useState('loading');
   const [mapRenderState, setMapRenderState] = useState({
@@ -1617,6 +1618,22 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       .sort((a, b) => b.riskScore - a.riskScore)
       .slice(0, 5)
   ), [parcelSummaries]);
+
+  const selectedParcelSummary = useMemo(() => (
+    selectedParcelKey ? parcelSummaryByKey.get(selectedParcelKey) || null : null
+  ), [selectedParcelKey, parcelSummaryByKey]);
+
+  const selectedParcelDetailHtml = useMemo(() => {
+    if (!selectedParcelSummary) return '';
+    return parcelNumbersPopup({
+      props: selectedParcelSummary.props,
+      shapeParcel: selectedParcelSummary.shapeParcel,
+      style: farmStyle(selectedParcelSummary.props?.farmId),
+      parcelRecords: selectedParcelSummary.records || [],
+      metric: selectedRiskMetric,
+      operation: selectedOperation,
+    });
+  }, [selectedParcelSummary, selectedRiskMetric, selectedOperation]);
 
   const heatPoints = useMemo(() => {
     const sourcePoints = occurrencePoints.length ? occurrencePoints : trackPoints;
@@ -1813,26 +1830,28 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
         },
         onEachFeature: (feature, layer) => {
           const props = feature.properties || {};
-          const style = farmStyle(props.farmId);
-          
+
           const shapeParcel = shapeParcelCode(props);
           const summary = parcelSummaryByKey.get(parcelHeatKey(props.farmId, shapeParcel));
-          const parcelRecords = summary?.records || [];
 
-          layer.bindPopup(parcelNumbersPopup({
-            props,
-            shapeParcel,
-            style,
-            parcelRecords,
-            metric: selectedRiskMetric,
-            operation: selectedOperation,
-          }), {
-            maxWidth: 500,
-            minWidth: 360,
-            autoPan: true,
-            autoPanPaddingTopLeft: [24, 120],
-            autoPanPaddingBottomRight: [380, 70],
+          layer.on('click', () => {
+            const key = parcelHeatKey(props.farmId, shapeParcel);
+            setSelectedParcelKey(key);
           });
+
+          layer.on('mouseover', () => {
+            if (mapLayer === 'polygon') layer.setStyle({ weight: 3.2, opacity: 1 });
+          });
+
+          layer.on('mouseout', () => {
+            if (mapLayer === 'polygon') {
+              layer.setStyle({
+                weight: summary?.totals ? 2.5 : 1,
+                opacity: 0.9,
+              });
+            }
+          });
+
           if (shapeParcel && mapLayer !== 'route') {
             const labelLatLng = featureLabelLatLng(feature);
             if (labelLatLng) {
@@ -2122,7 +2141,27 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
         </div>
       ) : null}
 
-      <div className="map-overlay-card gps-map-overlay">
+      <div className={`map-overlay-card gps-map-overlay ${selectedParcelSummary && mapLayer !== 'route' ? 'gps-map-detail-panel' : ''}`}>
+        {selectedParcelSummary && mapLayer !== 'route' ? (
+          <div className="gps-detail-view">
+            <div className="gps-detail-toolbar">
+              <button type="button" onClick={() => setSelectedParcelKey(null)}>
+                <ArrowLeft size={14} />
+                Voltar aos filtros
+              </button>
+              <span>
+                {selectedParcelSummary.props?.farmName || selectedParcelSummary.props?.farmId || 'Fazenda'}
+                {' / '}
+                {selectedParcelSummary.shapeParcel || '--'}
+              </span>
+            </div>
+            <div
+              className="gps-detail-content"
+              dangerouslySetInnerHTML={{ __html: selectedParcelDetailHtml }}
+            />
+          </div>
+        ) : (
+          <>
         <h4>Visualização</h4>
         <div className="gps-base-toggle" aria-label="Tipo de mapa">
           <button
@@ -2183,7 +2222,10 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             <span>Qualidade (Semáforo)</span>
           </button>
           <button
-            onClick={() => setMapLayer('route')}
+            onClick={() => {
+              setSelectedParcelKey(null);
+              setMapLayer('route');
+            }}
             className={`btn ${mapLayer === 'route' ? 'btn-primary' : 'btn-secondary'}`}
           >
             <Route size={14} />
@@ -2242,7 +2284,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
                         const key = parcelHeatKey(props.farmId, shapeParcelCode(props));
                         if (key === summary.key && item.getBounds) {
                           map.fitBounds(item.getBounds().pad(0.22), { maxZoom: 17, animate: true });
-                          item.openPopup();
+                          setSelectedParcelKey(summary.key);
                         }
                       }
                     });
@@ -2303,6 +2345,8 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             )}
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -5773,6 +5773,78 @@ body.presentation-active {
   color: var(--text-primary);
 }
 
+.gps-map-overlay.gps-map-detail-panel {
+  width: min(480px, calc(100% - 40px));
+  max-height: calc(100% - 40px);
+  padding: 0;
+  overflow: hidden;
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.gps-detail-view {
+  display: flex;
+  min-height: 0;
+  max-height: calc(100vh - 260px);
+  max-height: min(660px, calc(100dvh - 260px));
+  flex-direction: column;
+}
+
+.gps-detail-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-card);
+}
+
+.gps-detail-toolbar button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.gps-detail-toolbar span {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 850;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gps-detail-content {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.gps-detail-content .parcel-popup-card {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.gps-detail-content .parcel-popup-scroll {
+  overflow: visible;
+}
+
 .gps-map-overlay h4 {
   margin-bottom: 10px;
   color: inherit;
