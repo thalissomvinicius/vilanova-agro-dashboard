@@ -673,6 +673,19 @@ export default function App() {
             dateTo={dateTo}
           />
         );
+      case 'cqo-poda':
+        return (
+          <Analytics
+            farmFilter={farmFilter}
+            areaFilter="poda"
+            periodFilter={periodFilter}
+            cycleFilter={cycleFilter}
+            evaluatorFilter={evaluatorFilter}
+            sourceFilter={fieldSourceFilter}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+          />
+        );
       case 'perdas-agricola':
         return (
           <LossesAgricola

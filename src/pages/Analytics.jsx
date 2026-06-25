@@ -533,14 +533,17 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
   const filtered = filterRecords(allRecords, { farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo });
   const corteRecords = filtered.filter((r) => r.type === 'corte');
   const carreamentoRecords = filtered.filter((r) => r.type === 'carreamento');
+  const podaRecords = filtered.filter((r) => r.type === 'poda');
 
   const totalsGeral = aggregateRecords(filtered);
   const totalsCorte = aggregateRecords(corteRecords);
   const totalsCarreamento = aggregateRecords(carreamentoRecords);
+  const totalsPoda = aggregateRecords(podaRecords);
 
   const chartsGeral = buildCharts(filtered);
   const chartsCorte = buildCharts(corteRecords);
   const chartsCarreamento = buildCharts(carreamentoRecords);
+  const chartsPoda = buildCharts(podaRecords);
 
   // Corte computed
   const taxaPerda = totalsCorte.cachosObservados > 0
@@ -567,10 +570,26 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
     ? (totalsCarreamento.pesoMedio / carreamentoRecords.length).toFixed(1)
     : '0';
 
+  const taxaPlantaSemPodar = totalsPoda.plantaSemPodarRate.toFixed(1);
+  const taxaCachoExposto = totalsPoda.cachoExpostoRate.toFixed(1);
+  const taxaPodaMeiaCoroa = totalsPoda.podaMeiaCoroaRate.toFixed(1);
+  const taxaPodaMaior = totalsPoda.podaMaiorUmParaUmRate.toFixed(1);
+  const taxaBicoGaita = totalsPoda.bicoGaitaRate.toFixed(1);
+  const taxaCachoPodre = totalsPoda.cachoPodrePlantaRate.toFixed(1);
+  const taxaPalhaPoda = totalsPoda.palhaMalEmpilhadaRate.toFixed(1);
+  const taxaFolhaMamandoPoda = totalsPoda.folhaMamandoPodaRate.toFixed(1);
+  const mediaLinhasPoda = podaRecords.length > 0
+    ? (totalsPoda.linhas / podaRecords.length).toFixed(1)
+    : '0';
+  const mediaPlantasPoda = totalsPoda.linhas > 0
+    ? (totalsPoda.plantasObservadas / totalsPoda.linhas).toFixed(1)
+    : '0';
+
   const availableTabs = [
     { id: 'geral', label: 'Visão Geral' },
-    ...(areaFilter !== 'carreamento' ? [{ id: 'corte', label: 'CQO Corte' }] : []),
-    ...(areaFilter !== 'corte' ? [{ id: 'carreamento', label: 'CQO Carreamento' }] : []),
+    ...(areaFilter !== 'carreamento' && areaFilter !== 'poda' ? [{ id: 'corte', label: 'CQO Corte' }] : []),
+    ...(areaFilter !== 'corte' && areaFilter !== 'poda' ? [{ id: 'carreamento', label: 'CQO Carreamento' }] : []),
+    ...(areaFilter !== 'corte' && areaFilter !== 'carreamento' ? [{ id: 'poda', label: 'CQO Poda' }] : []),
   ];
 
   const currentTab = availableTabs.some((t) => t.id === activeTab) ? activeTab : 'geral';
@@ -655,8 +674,8 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
 
       <PageHeader
         eyebrow={areaFilter === 'carreamento' ? 'CQO Carreamento' : 'CQO Campo'}
-        title={areaFilter === 'carreamento' ? 'Painel de Indicadores de Carreamento' : 'Painel de Indicadores de Campo'}
-        description={areaFilter === 'carreamento' ? 'Modulo dedicado ao acompanhamento das respostas de carreamento sincronizadas pelo aplicativo.' : 'Dados calculados em tempo real a partir das respostas sincronizadas pelo aplicativo Android. A rampa é tratada em uma visão separada.'}
+        title={areaFilter === 'carreamento' ? 'Painel de Indicadores de Carreamento' : areaFilter === 'poda' ? 'Painel de Indicadores de Poda' : 'Painel de Indicadores de Campo'}
+        description={areaFilter === 'carreamento' ? 'Modulo dedicado ao acompanhamento das respostas de carreamento sincronizadas pelo aplicativo.' : areaFilter === 'poda' ? 'Modulo dedicado ao controle de qualidade da poda por amostragem de ruas.' : 'Dados calculados em tempo real a partir das respostas sincronizadas pelo aplicativo Android. A rampa é tratada em uma visão separada.'}
       >
         <div className="page-actions field-presentation-actions">
           {areaFilter === 'carreamento' && (
@@ -691,14 +710,14 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
           <SectionHeader eyebrow="Indicadores de Conformidade" title="Avaliação Geral da Qualidade Operacional de Campo" color="var(--green-institutional)" />
 
           {/* Gauge scores */}
-          <div className={`grid-container ${areaFilter === 'all' ? 'grid-cols-3' : 'grid-cols-2'}`} style={{ marginBottom: 4 }}>
+          <div className={`grid-container ${areaFilter === 'all' ? 'grid-cols-4' : 'grid-cols-2'}`} style={{ marginBottom: 4 }}>
             <CustomChart
               type="gauge"
               title="Nota Geral CQO"
               data={[{ label: 'Média consolidada de qualidade', value: totalsGeral.generalScore }]}
               loading={loading}
             />
-            {areaFilter !== 'carreamento' && (
+            {areaFilter !== 'carreamento' && areaFilter !== 'poda' && (
               <CustomChart
                 type="gauge"
                 title="Nota CQO Corte"
@@ -706,11 +725,19 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
                 loading={loading}
               />
             )}
-            {areaFilter !== 'corte' && (
+            {areaFilter !== 'corte' && areaFilter !== 'poda' && (
               <CustomChart
                 type="gauge"
                 title="Nota CQO Carreamento"
                 data={[{ label: `${fmt(totalsGeral.carreamento)} coletas de transporte`, value: totalsGeral.carreamentoScore }]}
+                loading={loading}
+              />
+            )}
+            {areaFilter !== 'corte' && areaFilter !== 'carreamento' && (
+              <CustomChart
+                type="gauge"
+                title="Nota CQO Poda"
+                data={[{ label: `${fmt(totalsGeral.poda)} coletas de poda`, value: totalsGeral.podaScore }]}
                 loading={loading}
               />
             )}
@@ -719,15 +746,17 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
           <SectionHeader eyebrow="Volumes e Amostragem" title="Escopo do Monitoramento de Campo" color="var(--orange-institutional)" />
           <div className={`grid-container ${areaFilter === 'carreamento' ? 'grid-cols-3' : 'grid-cols-4'}`}>
             <MetricCard variant="kpi" title="Coletas Recebidas" value={fmt(totalsGeral.total)} footer="Total de fichas no banco de dados" icon={ClipboardCheck} tone="green" loading={loading} />
-            {areaFilter !== 'carreamento' && (
+            {areaFilter !== 'carreamento' && areaFilter !== 'poda' && (
               <MetricCard variant="kpi" title="Cachos Observados" value={fmt(totalsGeral.cachosObservados)} footer="Cachos auditados nas linhas" icon={CheckCircle2} tone="info" loading={loading} />
             )}
             <MetricCard variant="kpi" title="Linhas Avaliadas" value={fmt(totalsGeral.linhas)} footer={totalsGeral.gpsEligible ? `${fmt(totalsGeral.gpsPoints)} pontos GPS no trajeto` : 'Excel sem GPS'} icon={Rows3} tone="orange" loading={loading} />
             <MetricCard variant="kpi" title="Plantas Observadas" value={fmt(totalsGeral.plantasObservadas)} footer="Base para cálculo de perdas" icon={Sprout} tone="green" loading={loading} />
           </div>
 
-          <SectionHeader eyebrow="Desperdício de Matéria-Prima" title="Estimativa Física de Perdas no Campo" color="var(--status-danger)" />
-          <div className="grid-container grid-cols-3" style={{ marginBottom: '24px' }}>
+          {areaFilter !== 'poda' && (
+          <>
+            <SectionHeader eyebrow="Desperdício de Matéria-Prima" title="Estimativa Física de Perdas no Campo" color="var(--status-danger)" />
+            <div className="grid-container grid-cols-3" style={{ marginBottom: '24px' }}>
             <MetricCard
               variant="kpi"
               title={areaFilter === 'corte' ? "Cachos Perdidos (Corte)" : areaFilter === 'carreamento' ? "Cachos Perdidos (Logística)" : "Cachos Perdidos (Corte/Logística)"}
@@ -755,7 +784,9 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
               tone="danger"
               loading={loading}
             />
-          </div>
+            </div>
+          </>
+          )}
 
           {/* Charts */}
           {/* Charts */}
@@ -1141,6 +1172,213 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
           {/* Ranking */}
           <SectionHeader eyebrow="Performance Individual" title="Ranking de Avaliadores — Carreamento" color="var(--orange-institutional)" />
           <RankingAvaliadores records={carreamentoRecords} loading={loading} />
+        </>
+      )}
+
+      {/* ============ CQO PODA ============ */}
+      {currentTab === 'poda' && (loading || podaRecords.length > 0) && (
+        <>
+          <SectionHeader eyebrow="Formulário CQO Poda" title="Indicadores de qualidade da poda" color="var(--green-institutional)" />
+
+          <div className="grid-container grid-cols-4">
+            <CustomChart
+              type="gauge"
+              title="Nota CQO Poda"
+              data={[{ label: 'Score geral de conformidade da poda', value: totalsPoda.podaScore }]}
+              loading={loading}
+            />
+            <MetricCard
+              variant="kpi"
+              title="Fichas de poda"
+              value={fmt(podaRecords.length)}
+              footer={`${mediaLinhasPoda} linhas por ficha (média)`}
+              icon={Scissors}
+              tone="green"
+              loading={loading}
+            />
+            <MetricCard
+              variant="kpi"
+              title="Plantas amostradas"
+              value={fmt(totalsPoda.plantasObservadas)}
+              footer={`${mediaPlantasPoda} plantas por linha (média)`}
+              icon={Sprout}
+              tone="green"
+              loading={loading}
+            />
+            <MetricCard
+              variant="kpi"
+              title="Base projetada"
+              value={fmt(totalsPoda.plantasProjetadas || totalsPoda.plantasObservadas)}
+              footer={totalsPoda.podaComProjecao ? `${fmt(totalsPoda.podaComProjecao)} ficha(s) com total da parcela` : 'Sem total informado; usando amostra'}
+              icon={BarChart3}
+              tone="info"
+              loading={loading}
+            />
+          </div>
+
+          <SectionHeader eyebrow="Falhas de poda" title="Ocorrências sobre a amostragem da parcela" color="var(--orange-institutional)" />
+          <div className="grid-container grid-cols-4" style={{ marginBottom: '18px' }}>
+            <MetricCard
+              variant="kpi"
+              title="Planta sem podar"
+              value={`${taxaPlantaSemPodar.replace('.', ',')}%`}
+              footer={`${fmt(totalsPoda.plantaSemPodar)} ocorrência(s)`}
+              icon={AlertTriangle}
+              tone={totalsPoda.plantaSemPodarRate > 1 ? 'danger' : totalsPoda.plantaSemPodarRate > 0.5 ? 'warning' : 'green'}
+              loading={loading}
+            />
+            <MetricCard
+              variant="kpi"
+              title="Cacho exposto"
+              value={`${taxaCachoExposto.replace('.', ',')}%`}
+              footer={`${fmt(totalsPoda.cachoExposto)} ocorrência(s)`}
+              icon={Leaf}
+              tone={totalsPoda.cachoExpostoRate > 2 ? 'danger' : totalsPoda.cachoExpostoRate > 1 ? 'warning' : 'green'}
+              loading={loading}
+            />
+            <MetricCard
+              variant="kpi"
+              title="Poda meia coroa"
+              value={`${taxaPodaMeiaCoroa.replace('.', ',')}%`}
+              footer={`${fmt(totalsPoda.podaMeiaCoroa)} ocorrência(s)`}
+              icon={Gauge}
+              tone={totalsPoda.podaMeiaCoroaRate > 2 ? 'danger' : totalsPoda.podaMeiaCoroaRate > 1 ? 'warning' : 'green'}
+              loading={loading}
+            />
+            <MetricCard
+              variant="kpi"
+              title="Cacho podre na planta"
+              value={`${taxaCachoPodre.replace('.', ',')}%`}
+              footer={`${fmt(totalsPoda.cachoPodrePlanta)} ocorrência(s)`}
+              icon={ThumbsDown}
+              tone={totalsPoda.cachoPodrePlantaRate > 1 ? 'danger' : totalsPoda.cachoPodrePlantaRate > 0.5 ? 'warning' : 'green'}
+              loading={loading}
+            />
+          </div>
+
+          <div className="grid-container grid-cols-4" style={{ marginBottom: '18px' }}>
+            <MetricCard
+              variant="kpi"
+              title="Poda maior que 1:1"
+              value={`${taxaPodaMaior.replace('.', ',')}%`}
+              footer={`${fmt(totalsPoda.podaMaiorUmParaUm)} ocorrência(s)`}
+              icon={TrendingUp}
+              tone={totalsPoda.podaMaiorUmParaUmRate > 2 ? 'danger' : totalsPoda.podaMaiorUmParaUmRate > 1 ? 'warning' : 'green'}
+              loading={loading}
+            />
+            <MetricCard
+              variant="kpi"
+              title="Bico de gaita"
+              value={`${taxaBicoGaita.replace('.', ',')}%`}
+              footer={`${fmt(totalsPoda.bicoGaita)} ocorrência(s)`}
+              icon={BarChart3}
+              tone={totalsPoda.bicoGaitaRate > 2 ? 'danger' : totalsPoda.bicoGaitaRate > 1 ? 'warning' : 'green'}
+              loading={loading}
+            />
+            <MetricCard
+              variant="kpi"
+              title="Folha mamando"
+              value={`${taxaFolhaMamandoPoda.replace('.', ',')}%`}
+              footer={`${fmt(totalsPoda.folhaMamando)} ocorrência(s)`}
+              icon={Leaf}
+              tone={totalsPoda.folhaMamandoPodaRate > 2 ? 'danger' : totalsPoda.folhaMamandoPodaRate > 1 ? 'warning' : 'green'}
+              loading={loading}
+            />
+            <MetricCard
+              variant="kpi"
+              title="Palha mal empilhada"
+              value={`${taxaPalhaPoda.replace('.', ',')}%`}
+              footer={`${fmt(totalsPoda.palhaMalEmpilhada)} ocorrência(s)`}
+              icon={Rows3}
+              tone={totalsPoda.palhaMalEmpilhadaRate > 2 ? 'danger' : totalsPoda.palhaMalEmpilhadaRate > 1 ? 'warning' : 'green'}
+              loading={loading}
+            />
+          </div>
+
+          <div className="grid-container grid-cols-2" style={{ marginBottom: '24px' }}>
+            <div className="card" style={{ padding: '16px' }}>
+              <div className="card-header" style={{ marginBottom: 14 }}>
+                <div>
+                  <h3 className="card-title">Farol de Alertas de Poda</h3>
+                  <span className="card-subtitle">Metas provisórias até definição operacional final</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <AlertFarol label="Plantas sem podar" meta="Meta provisória: < 1,0%" value={taxaPlantaSemPodar} danger={1} warning={0.5} />
+                <AlertFarol label="Cachos podres na planta" meta="Meta provisória: < 1,0%" value={taxaCachoPodre} danger={1} warning={0.5} />
+                <AlertFarol label="Cachos expostos" meta="Meta provisória: < 2,0%" value={taxaCachoExposto} danger={2} warning={1} />
+                <AlertFarol label="Poda em meia coroa" meta="Meta provisória: < 2,0%" value={taxaPodaMeiaCoroa} danger={2} warning={1} />
+                <AlertFarol label="Palha mal empilhada" meta="Meta provisória: < 2,0%" value={taxaPalhaPoda} danger={2} warning={1} />
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="card-header">
+                <div>
+                  <h3 className="card-title">Composição das ocorrências</h3>
+                  <span className="card-subtitle">Quantidade registrada em cada tipo de falha</span>
+                </div>
+              </div>
+              <div className="quality-stack">
+                <QualityBar label="Planta sem podar" value={totalsPoda.plantaSemPodar} max={Math.max(totalsPoda.plantasObservadas, 1)} color="var(--status-danger)" loading={loading} />
+                <QualityBar label="Cacho exposto" value={totalsPoda.cachoExposto} max={Math.max(totalsPoda.plantasObservadas, 1)} color="var(--orange-institutional)" loading={loading} />
+                <QualityBar label="Poda meia coroa" value={totalsPoda.podaMeiaCoroa} max={Math.max(totalsPoda.plantasObservadas, 1)} color="#F59E0B" loading={loading} />
+                <QualityBar label="Poda maior que 1:1" value={totalsPoda.podaMaiorUmParaUm} max={Math.max(totalsPoda.plantasObservadas, 1)} color="#B45309" loading={loading} />
+                <QualityBar label="Bico de gaita" value={totalsPoda.bicoGaita} max={Math.max(totalsPoda.plantasObservadas, 1)} color="#8B5CF6" loading={loading} />
+                <QualityBar label="Cacho podre na planta" value={totalsPoda.cachoPodrePlanta} max={Math.max(totalsPoda.plantasObservadas, 1)} color="#DC2626" loading={loading} />
+                <QualityBar label="Folha mamando" value={totalsPoda.folhaMamando} max={Math.max(totalsPoda.plantasObservadas, 1)} color="#64748B" loading={loading} />
+                <QualityBar label="Palha mal empilhada" value={totalsPoda.palhaMalEmpilhada} max={Math.max(totalsPoda.plantasObservadas, 1)} color="var(--status-warning)" loading={loading} />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid-container grid-cols-2">
+            <div className="card">
+              <div className="card-header">
+                <div>
+                  <h3 className="card-title">Rastreabilidade e aprovação</h3>
+                  <span className="card-subtitle">Distribuição por status e registros de campo</span>
+                </div>
+              </div>
+              <div style={{ padding: '4px 0' }}>
+                <StatusBadgeRow label="Sincronizados" value={podaRecords.filter((r) => r.status === 'Sincronizado').length} total={podaRecords.length} color="var(--status-success)" loading={loading} />
+                <StatusBadgeRow label="Aprovados" value={podaRecords.filter((r) => r.status === 'Aprovado').length} total={podaRecords.length} color="var(--status-success)" loading={loading} />
+                <StatusBadgeRow label="Reprovados" value={podaRecords.filter((r) => r.status === 'Reprovado').length} total={podaRecords.length} color="var(--status-danger)" loading={loading} />
+                <StatusBadgeRow label="Pendente validação" value={podaRecords.filter((r) => r.status === 'Pendente validação').length} total={podaRecords.length} color="var(--status-warning)" loading={loading} />
+                <StatusBadgeRow label="Com GPS app" value={podaRecords.filter((r) => r.gpsApplicable !== false && r.gps).length} total={podaRecords.filter((r) => r.gpsApplicable !== false).length} color="var(--status-info)" loading={loading} />
+                <StatusBadgeRow label="Com acompanhamento" value={podaRecords.filter((r) => r.acompanhamento?.teve === 'sim').length} total={podaRecords.length} color="var(--status-info)" loading={loading} />
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="card-header">
+                <div>
+                  <h3 className="card-title">Amostragem operacional</h3>
+                  <span className="card-subtitle">Base usada para estimar a qualidade da parcela</span>
+                </div>
+              </div>
+              <div style={{ padding: '4px 0' }}>
+                <StatusBadgeRow label="Linhas avaliadas" value={totalsPoda.linhas} total={Math.max(totalsPoda.linhas, 1)} color="var(--green-institutional)" loading={loading} />
+                <StatusBadgeRow label="Plantas amostradas" value={totalsPoda.plantasObservadas} total={Math.max(totalsPoda.plantasObservadas, 1)} color="var(--green-institutional)" loading={loading} />
+                <StatusBadgeRow label="Plantas projetadas" value={totalsPoda.plantasProjetadas || totalsPoda.plantasObservadas} total={Math.max(totalsPoda.plantasProjetadas || totalsPoda.plantasObservadas, 1)} color="var(--status-info)" loading={loading} />
+                <StatusBadgeRow label="Ocorrências críticas" value={totalsPoda.plantaSemPodar + totalsPoda.cachoPodrePlanta} total={Math.max(totalsPoda.plantasObservadas, 1)} color="var(--status-danger)" loading={loading} />
+                <StatusBadgeRow label="Ocorrências operacionais" value={totalsPoda.cachoExposto + totalsPoda.podaMeiaCoroa + totalsPoda.podaMaiorUmParaUm + totalsPoda.bicoGaita + totalsPoda.folhaMamando + totalsPoda.palhaMalEmpilhada} total={Math.max(totalsPoda.plantasObservadas, 1)} color="var(--orange-institutional)" loading={loading} />
+                <StatusBadgeRow label="Ocorrências projetadas" value={totalsPoda.ocorrenciasPodaProjetadas || 0} total={Math.max(totalsPoda.plantasProjetadas || totalsPoda.plantasObservadas, 1)} color="var(--status-warning)" loading={loading} />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid-container grid-cols-2" style={{ marginTop: '16px' }}>
+            <CustomChart loading={loading} type="line" data={chartsPoda.byDayOfMonth} title="Evolução por dia do mês — Nota CQO Poda" />
+            <CustomChart loading={loading} type="bar" data={chartsPoda.byFarm} title="Nota CQO Poda por Fazenda" />
+          </div>
+          <div className="grid-container grid-cols-2">
+            <CustomChart loading={loading} type="bar" data={chartsPoda.byEvaluator} title="Nota CQO Poda por Avaliador" />
+            <CustomChart loading={loading} type="bar" data={chartsPoda.byCycle} title="Nota CQO Poda por ciclo" />
+          </div>
+
+          <SectionHeader eyebrow="Performance Individual" title="Ranking de Avaliadores — Poda" color="var(--green-institutional)" />
+          <RankingAvaliadores records={podaRecords} loading={loading} />
         </>
       )}
     </div>

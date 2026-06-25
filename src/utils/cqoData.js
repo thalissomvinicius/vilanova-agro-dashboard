@@ -185,6 +185,7 @@ export const CQO_AREAS = [
   { id: 'all', name: 'Todos os formulários' },
   { id: 'corte', name: 'CQO Corte' },
   { id: 'carreamento', name: 'CQO Carreamento' },
+  { id: 'poda', name: 'CQO Poda' },
 ];
 
 function parseJson(value) {
@@ -522,6 +523,9 @@ function findGpsOccurrences(data, gpsRows = []) {
 }
 
 function formType(formularioId, data) {
+  if (formularioId === 'form_cqo_poda' || Array.isArray(data.linhas_poda)) {
+    return 'poda';
+  }
   if (formularioId === 'form_cqo_carreamento_fruto_solto' || Array.isArray(data.linhas_carreamento)) {
     return 'carreamento';
   }
@@ -561,6 +565,10 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
       const cd = legacy.campos_digitados;
       if (data.nome_fazenda === undefined) data.nome_fazenda = cd.NomeFazenda;
       if (data.parcela === undefined) data.parcela = cd.Parcela;
+      if (data.ano_plantio === undefined) data.ano_plantio = cd.AnoPlantio;
+      if (data.atividade === undefined) data.atividade = cd.Atividade;
+      if (data.empresa === undefined) data.empresa = cd.Empresa;
+      if (data.equipe === undefined) data.equipe = cd.Equipe;
       if (data.ciclo_mes === undefined) data.ciclo_mes = cd.ciclo_mes;
       if (data.fiscal_resp === undefined) data.fiscal_resp = cd["Fiscal Resp"] || cd.FiscalResp;
       if (data.fiscal_resp_equipe === undefined) {
@@ -608,12 +616,25 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
         // Carreamento
         if (newLine.cacho_nao_carreado === undefined) newLine.cacho_nao_carreado = line.CachoNaoCarreado || line.Cachonaocarreado;
         if (newLine.peso_medio === undefined) newLine.peso_medio = line.PesoMedio || line.pesoMedio;
+
+        // Poda
+        if (newLine.planta_sem_podar === undefined) newLine.planta_sem_podar = line.PlantaSemPodar;
+        if (newLine.cacho_exposto === undefined) newLine.cacho_exposto = line.CachoExposto;
+        if (newLine.poda_meia_coroa === undefined) newLine.poda_meia_coroa = line.PodaMeiaCoroa;
+        if (newLine.poda_maior_1_1 === undefined) newLine.poda_maior_1_1 = line.PodaMaiorUmParaUm;
+        if (newLine.bico_gaita === undefined) newLine.bico_gaita = line.BicoGaita;
+        if (newLine.cacho_podre_planta === undefined) newLine.cacho_podre_planta = line.CachoPodrePlanta;
+        if (newLine.palha_mal_empilhada === undefined) newLine.palha_mal_empilhada = line.PalhaMalEmpilhada;
         
         return newLine;
       });
 
-      const isCarreamento = formType(row.formulario_id, data) === 'carreamento';
-      if (isCarreamento) {
+      const legacyType = formType(row.formulario_id, data);
+      if (legacyType === 'poda') {
+        if (!Array.isArray(data.linhas_poda)) {
+          data.linhas_poda = normalizedLines;
+        }
+      } else if (legacyType === 'carreamento') {
         if (!Array.isArray(data.linhas_carreamento)) {
           data.linhas_carreamento = normalizedLines;
         }
@@ -626,9 +647,11 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
   }
 
   const type = formType(row.formulario_id, data);
-  const lines = type === 'carreamento'
-    ? (Array.isArray(data.linhas_carreamento) ? data.linhas_carreamento : [])
-    : (Array.isArray(data.linhas_corte) ? data.linhas_corte : []);
+  const lines = type === 'poda'
+    ? (Array.isArray(data.linhas_poda) ? data.linhas_poda : [])
+    : type === 'carreamento'
+      ? (Array.isArray(data.linhas_carreamento) ? data.linhas_carreamento : [])
+      : (Array.isArray(data.linhas_corte) ? data.linhas_corte : []);
   const gps = findGps(data, type);
   const gpsOccurrences = findGpsOccurrences(data, gpsRows);
   const gpsTrack = findGpsTrack(data, gps, gpsRows);
@@ -648,7 +671,7 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
   const base = {
     id: row.id,
     type,
-    form: type === 'carreamento' ? 'CQO Carreamento e Fruto Solto' : 'CQO Corte',
+    form: type === 'poda' ? 'CQO Poda' : type === 'carreamento' ? 'CQO Carreamento e Fruto Solto' : 'CQO Corte',
     formularioId: row.formulario_id,
     formularioVersao: row.formulario_versao || '',
     status: statusLabel(row.status),
@@ -678,6 +701,9 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
     raw: data,
     lines,
     plantingYear: data.ano_plantio || '',
+    activity: data.atividade || '',
+    company: data.empresa || '',
+    team: data.equipe || '',
     density: data.densidade || '',
     totalPlantsParcel: numberValue(data.total_plantas_parcela),
     totalBunchesCarried: numberValue(data.total_cachos_carreados),
@@ -698,6 +724,50 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
         pesoMedio: sumRows(lines, ['peso_medio']),
         totalPlantasParcela: numberValue(data.total_plantas_parcela),
         totalCachosCarreados: numberValue(data.total_cachos_carreados),
+      },
+    };
+  }
+
+  if (type === 'poda') {
+    const plantasLinha = sumRows(lines, ['numero_plantas_linha']);
+    const totalPlantasParcela = numberValue(data.total_plantas_parcela);
+    const plantasProjetadas = totalPlantasParcela || plantasLinha;
+    const projectOccurrence = (value) => {
+      if (!plantasLinha || !plantasProjetadas) return value || 0;
+      return Math.round(((value || 0) / plantasLinha) * plantasProjetadas);
+    };
+    const plantaSemPodar = sumRows(lines, ['planta_sem_podar']);
+    const cachoExposto = sumRows(lines, ['cacho_exposto']);
+    const podaMeiaCoroa = sumRows(lines, ['poda_meia_coroa']);
+    const folhaMamando = sumRows(lines, ['folha_mamando']);
+    const podaMaiorUmParaUm = sumRows(lines, ['poda_maior_1_1']);
+    const bicoGaita = sumRows(lines, ['bico_gaita']);
+    const cachoPodrePlanta = sumRows(lines, ['cacho_podre_planta']);
+    const palhaMalEmpilhada = sumRows(lines, ['palha_mal_empilhada']);
+    return {
+      ...base,
+      totals: {
+        linhas: lines.length,
+        plantasLinha,
+        plantasObservadas: plantasLinha,
+        plantasProjetadas,
+        totalPlantasParcela,
+        plantaSemPodar,
+        cachoExposto,
+        podaMeiaCoroa,
+        folhaMamando,
+        podaMaiorUmParaUm,
+        bicoGaita,
+        cachoPodrePlanta,
+        palhaMalEmpilhada,
+        plantaSemPodarProjetada: projectOccurrence(plantaSemPodar),
+        cachoExpostoProjetado: projectOccurrence(cachoExposto),
+        podaMeiaCoroaProjetada: projectOccurrence(podaMeiaCoroa),
+        folhaMamandoProjetada: projectOccurrence(folhaMamando),
+        podaMaiorUmParaUmProjetada: projectOccurrence(podaMaiorUmParaUm),
+        bicoGaitaProjetado: projectOccurrence(bicoGaita),
+        cachoPodrePlantaProjetado: projectOccurrence(cachoPodrePlanta),
+        palhaMalEmpilhadaProjetada: projectOccurrence(palhaMalEmpilhada),
       },
     };
   }
@@ -1532,6 +1602,16 @@ export function aggregateRecords(records) {
     acc.linhas += record.totals.linhas || 0;
     acc.plantasObservadas += record.totals.plantasObservadas || 0;
     acc.cachosObservados += record.totals.cachosObservados || 0;
+    if (record.type === 'corte') {
+      acc.cortePlantasObservadas += record.totals.plantasObservadas || 0;
+      acc.corteCachosObservados += record.totals.cachosObservados || 0;
+    }
+    if (record.type === 'carreamento') {
+      acc.carreamentoPlantasObservadas += record.totals.plantasObservadas || 0;
+    }
+    if (record.type === 'poda') {
+      acc.podaPlantasObservadas += record.totals.plantasObservadas || 0;
+    }
     acc.cachoEsquecido += record.totals.cachoEsquecido || 0;
     acc.cachoVerde += record.totals.cachoVerde || 0;
     acc.cachoMaduro += record.totals.cachoMaduro || 0;
@@ -1541,6 +1621,23 @@ export function aggregateRecords(records) {
     acc.cachoMalPosicionado += record.totals.cachoMalPosicionado || 0;
     acc.cachoNaoCarreado += record.totals.cachoNaoCarreado || 0;
     acc.pesoMedio += record.totals.pesoMedio || 0;
+    acc.plantaSemPodar += record.totals.plantaSemPodar || 0;
+    acc.cachoExposto += record.totals.cachoExposto || 0;
+    acc.podaMeiaCoroa += record.totals.podaMeiaCoroa || 0;
+    acc.podaMaiorUmParaUm += record.totals.podaMaiorUmParaUm || 0;
+    acc.bicoGaita += record.totals.bicoGaita || 0;
+    acc.cachoPodrePlanta += record.totals.cachoPodrePlanta || 0;
+    acc.palhaMalEmpilhada += record.totals.palhaMalEmpilhada || 0;
+    acc.plantasProjetadas += record.totals.plantasProjetadas || 0;
+    acc.podaComProjecao += record.totals.totalPlantasParcela ? 1 : 0;
+    acc.plantaSemPodarProjetada += record.totals.plantaSemPodarProjetada || 0;
+    acc.cachoExpostoProjetado += record.totals.cachoExpostoProjetado || 0;
+    acc.podaMeiaCoroaProjetada += record.totals.podaMeiaCoroaProjetada || 0;
+    acc.folhaMamandoProjetada += record.totals.folhaMamandoProjetada || 0;
+    acc.podaMaiorUmParaUmProjetada += record.totals.podaMaiorUmParaUmProjetada || 0;
+    acc.bicoGaitaProjetado += record.totals.bicoGaitaProjetado || 0;
+    acc.cachoPodrePlantaProjetado += record.totals.cachoPodrePlantaProjetado || 0;
+    acc.palhaMalEmpilhadaProjetada += record.totals.palhaMalEmpilhadaProjetada || 0;
     if (record.gpsApplicable !== false) {
       acc.gpsEligible += 1;
       acc.gps += record.gps ? 1 : 0;
@@ -1567,9 +1664,14 @@ export function aggregateRecords(records) {
     total: 0,
     corte: 0,
     carreamento: 0,
+    poda: 0,
     linhas: 0,
     plantasObservadas: 0,
     cachosObservados: 0,
+    cortePlantasObservadas: 0,
+    corteCachosObservados: 0,
+    carreamentoPlantasObservadas: 0,
+    podaPlantasObservadas: 0,
     cachoEsquecido: 0,
     cachoVerde: 0,
     cachoMaduro: 0,
@@ -1579,6 +1681,23 @@ export function aggregateRecords(records) {
     cachoMalPosicionado: 0,
     cachoNaoCarreado: 0,
     pesoMedio: 0,
+    plantaSemPodar: 0,
+    cachoExposto: 0,
+    podaMeiaCoroa: 0,
+    podaMaiorUmParaUm: 0,
+    bicoGaita: 0,
+    cachoPodrePlanta: 0,
+    palhaMalEmpilhada: 0,
+    plantasProjetadas: 0,
+    podaComProjecao: 0,
+    plantaSemPodarProjetada: 0,
+    cachoExpostoProjetado: 0,
+    podaMeiaCoroaProjetada: 0,
+    folhaMamandoProjetada: 0,
+    podaMaiorUmParaUmProjetada: 0,
+    bicoGaitaProjetado: 0,
+    cachoPodrePlantaProjetado: 0,
+    palhaMalEmpilhadaProjetada: 0,
     gpsEligible: 0,
     gps: 0,
     gpsPoints: 0,
@@ -1602,34 +1721,63 @@ export function aggregateRecords(records) {
   totals.validationRate = totals.total ? Math.round(((totals.aprovados + totals.reprovados) / totals.total) * 100) : 0;
   totals.approvalRate = (totals.aprovados + totals.reprovados) ? Math.round((totals.aprovados / (totals.aprovados + totals.reprovados)) * 100) : 0;
   totals.gpsRate = totals.gpsEligible ? Math.round((totals.gps / totals.gpsEligible) * 100) : 0;
-  totals.perdaCorteRate = totals.cachosObservados ? ((totals.cachoEsquecido / totals.cachosObservados) * 100).toFixed(1) : '0.0';
+  totals.perdaCorteRate = totals.corteCachosObservados ? ((totals.cachoEsquecido / totals.corteCachosObservados) * 100).toFixed(1) : '0.0';
   totals.mediaPesoFrutos = totals.carreamento ? (totals.pesoMedio / totals.carreamento).toFixed(1) : '0.0';
 
   // --- Novos Cálculos de Qualidade Operacional ---
   
   // Taxas individuais de qualidade do Corte
-  totals.cachoVerdeRate = totals.cachosObservados ? (totals.cachoVerde / totals.cachosObservados) * 100 : 0;
-  totals.cachoPassadoRate = totals.cachosObservados ? (totals.cachoPassado / totals.cachosObservados) * 100 : 0;
-  totals.taloCompridoRate = totals.plantasObservadas ? (totals.taloComprido / totals.plantasObservadas) * 100 : 0;
-  totals.folhaCortadaRate = totals.plantasObservadas ? (totals.folhaCortada / totals.plantasObservadas) * 100 : 0;
-  totals.pragasRate = totals.cachosObservados ? (totals.cachoBrocado / totals.cachosObservados) * 100 : 0;
+  totals.cachoVerdeRate = totals.corteCachosObservados ? (totals.cachoVerde / totals.corteCachosObservados) * 100 : 0;
+  totals.cachoPassadoRate = totals.corteCachosObservados ? (totals.cachoPassado / totals.corteCachosObservados) * 100 : 0;
+  totals.taloCompridoRate = totals.cortePlantasObservadas ? (totals.taloComprido / totals.cortePlantasObservadas) * 100 : 0;
+  totals.folhaCortadaRate = totals.cortePlantasObservadas ? (totals.folhaCortada / totals.cortePlantasObservadas) * 100 : 0;
+  totals.pragasRate = totals.corteCachosObservados ? (totals.cachoBrocado / totals.corteCachosObservados) * 100 : 0;
 
   // Nota de Qualidade do Corte (Score 0-100)
   const cLoss = (Number(totals.perdaCorteRate) * 12) + (totals.cachoVerdeRate * 8) + (totals.cachoPassadoRate * 4) + (totals.taloCompridoRate * 3) + (totals.folhaCortadaRate * 3);
   totals.corteScore = totals.corte > 0 ? Math.max(0, Math.min(100, Math.round(100 - cLoss))) : 100;
 
   // Taxas individuais de qualidade do Carreamento
-  totals.cachoNaoCarreadoRate = totals.plantasObservadas ? (totals.cachoNaoCarreado / totals.plantasObservadas) * 100 : 0;
-  totals.cachoMalPosicionadoRate = totals.plantasObservadas ? (totals.cachoMalPosicionado / totals.plantasObservadas) * 100 : 0;
+  totals.cachoNaoCarreadoRate = totals.carreamentoPlantasObservadas ? (totals.cachoNaoCarreado / totals.carreamentoPlantasObservadas) * 100 : 0;
+  totals.cachoMalPosicionadoRate = totals.carreamentoPlantasObservadas ? (totals.cachoMalPosicionado / totals.carreamentoPlantasObservadas) * 100 : 0;
 
   // Nota de Qualidade do Carreamento (Score 0-100)
   const carLoss = (totals.cachoNaoCarreadoRate * 15) + (totals.cachoMalPosicionadoRate * 6);
   totals.carreamentoScore = totals.carreamento > 0 ? Math.max(0, Math.min(100, Math.round(100 - carLoss))) : 100;
 
+  // Taxas individuais de qualidade da Poda
+  totals.plantaSemPodarRate = totals.podaPlantasObservadas ? (totals.plantaSemPodar / totals.podaPlantasObservadas) * 100 : 0;
+  totals.cachoExpostoRate = totals.podaPlantasObservadas ? (totals.cachoExposto / totals.podaPlantasObservadas) * 100 : 0;
+  totals.podaMeiaCoroaRate = totals.podaPlantasObservadas ? (totals.podaMeiaCoroa / totals.podaPlantasObservadas) * 100 : 0;
+  totals.folhaMamandoPodaRate = totals.podaPlantasObservadas ? (totals.folhaMamando / totals.podaPlantasObservadas) * 100 : 0;
+  totals.podaMaiorUmParaUmRate = totals.podaPlantasObservadas ? (totals.podaMaiorUmParaUm / totals.podaPlantasObservadas) * 100 : 0;
+  totals.bicoGaitaRate = totals.podaPlantasObservadas ? (totals.bicoGaita / totals.podaPlantasObservadas) * 100 : 0;
+  totals.cachoPodrePlantaRate = totals.podaPlantasObservadas ? (totals.cachoPodrePlanta / totals.podaPlantasObservadas) * 100 : 0;
+  totals.palhaMalEmpilhadaRate = totals.podaPlantasObservadas ? (totals.palhaMalEmpilhada / totals.podaPlantasObservadas) * 100 : 0;
+
+  const podaLoss = (totals.plantaSemPodarRate * 14)
+    + (totals.cachoPodrePlantaRate * 10)
+    + (totals.cachoExpostoRate * 8)
+    + (totals.podaMeiaCoroaRate * 6)
+    + (totals.podaMaiorUmParaUmRate * 6)
+    + (totals.bicoGaitaRate * 5)
+    + (totals.folhaMamandoPodaRate * 4)
+    + (totals.palhaMalEmpilhadaRate * 4);
+  totals.podaScore = totals.poda > 0 ? Math.max(0, Math.min(100, Math.round(100 - podaLoss))) : 100;
+  totals.ocorrenciasPodaProjetadas = totals.plantaSemPodarProjetada
+    + totals.cachoExpostoProjetado
+    + totals.podaMeiaCoroaProjetada
+    + totals.folhaMamandoProjetada
+    + totals.podaMaiorUmParaUmProjetada
+    + totals.bicoGaitaProjetado
+    + totals.cachoPodrePlantaProjetado
+    + totals.palhaMalEmpilhadaProjetada;
+
   // Nota Geral de Qualidade CQO (Média simples dos formulários ativos)
   let validScores = [];
   if (totals.corte > 0) validScores.push(totals.corteScore);
   if (totals.carreamento > 0) validScores.push(totals.carreamentoScore);
+  if (totals.poda > 0) validScores.push(totals.podaScore);
   totals.generalScore = validScores.length ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : 100;
 
   // Estimativa de Perdas (Volume de Frutos e Óleo de Palma)
