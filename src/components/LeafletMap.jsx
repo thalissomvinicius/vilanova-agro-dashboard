@@ -812,6 +812,46 @@ function parcelLatestRows(records) {
     }).join('');
 }
 
+function teamFiscalSummary(records) {
+  const byPerson = new Map();
+
+  records.forEach((record) => {
+    const person = rawPersonValue(record, 'fiscal_resp_equipe') || record.fiscal || 'Fiscal não informado';
+    const key = String(person).trim() || 'Fiscal não informado';
+    const current = byPerson.get(key) || {
+      person: key,
+      count: 0,
+      dates: [],
+      sources: new Set(),
+    };
+    current.count += 1;
+    if (record.date && record.date !== '--') current.dates.push(record.date);
+    current.sources.add(record.source === 'excel' ? 'Excel' : 'App');
+    byPerson.set(key, current);
+  });
+
+  const selected = Array.from(byPerson.values()).sort((a, b) => b.count - a.count)[0];
+  if (!selected) {
+    return {
+      person: 'Fiscal não informado',
+      count: 0,
+      dateText: 'Sem data',
+      sources: '',
+    };
+  }
+
+  const sortedDates = sortDateTexts(selected.dates);
+  const dateText = sortedDates.length
+    ? `${sortedDates[0]}${sortedDates[0] !== sortedDates[sortedDates.length - 1] ? ` a ${sortedDates[sortedDates.length - 1]}` : ''}`
+    : 'Sem data';
+
+  return {
+    ...selected,
+    dateText,
+    sources: Array.from(selected.sources).join(' + '),
+  };
+}
+
 function topCauseRows(totals, operation) {
   if (!totals) return [];
 
@@ -960,6 +1000,100 @@ function popupAnalysisPanel({ issues, operation, hasData }) {
             <b>${formatMetricValue(issue.metric, issue.value)}</b>
           </div>
         `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function worstRecordForIssue(records, issue, operation, areaHa) {
+  if (!issue) return null;
+
+  return records
+    .map((record) => {
+      const metricTotals = aggregateForMetric([record], issue.metric, operation);
+      const value = metricValue(issue.metric, metricTotals, areaHa, operation);
+      const riskScore = metricRiskScore(issue.metric, value);
+      if (!metricTotals || !Number.isFinite(riskScore)) return null;
+
+      return {
+        record,
+        value,
+        riskScore,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.riskScore - a.riskScore)[0] || null;
+}
+
+function actionSuggestion(issue, operation) {
+  if (!issue) {
+    return 'Manter acompanhamento no próximo período e registrar nova coleta se houver mudança em campo.';
+  }
+
+  const label = operationLabel(operation).toLowerCase();
+  switch (issue.metric.id) {
+    case 'perda_corte':
+      return 'Retornar à parcela com a equipe, revisar padrão de corte e conferir cachos esquecidos nas linhas amostradas.';
+    case 'maduro':
+      return 'Alinhar ponto de maturação com a equipe antes da próxima entrada na parcela.';
+    case 'verde':
+      return 'Reforçar seleção de cacho verde e orientar a equipe sobre o padrão aceito para colheita.';
+    case 'passado':
+      return 'Verificar atraso de passagem na parcela e ajustar frequência de corte com o fiscal da equipe.';
+    case 'avermelhado':
+      return 'Revisar critério de classificação do cacho avermelhado e comparar com o padrão em campo.';
+    case 'talo':
+      return 'Reorientar comprimento de talo e fazer conferência visual nas próximas linhas cortadas.';
+    case 'mal_posicionado':
+      return operation?.id === 'corte'
+        ? 'Corrigir padrão de palha mal empilhada na linha e reforçar organização pós-corte.'
+        : 'Corrigir posicionamento dos cachos para facilitar carreamento e reduzir retrabalho.';
+    case 'nao_carreado':
+      return 'Conferir rota de carreamento e validar se os cachos ficaram na linha após a equipe sair da área.';
+    case 'perda_t_ha':
+    case 'cachos_ha':
+      return `Priorizar visita de campo, identificar origem da perda em ${label} e pactuar correção com a equipe responsável.`;
+    default:
+      return `Revisar o indicador de ${label} com a equipe responsável e registrar nova amostragem após o alinhamento.`;
+  }
+}
+
+function popupMeetingBrief({ issue, responsible, criticalRecord, collectionDates, operation }) {
+  const hasIssue = Boolean(issue);
+  const problemLabel = hasIssue ? issue.displayMetric.label : 'Sem desvio relevante';
+  const problemValue = hasIssue ? formatMetricValue(issue.metric, issue.value) : 'Dentro da meta';
+  const criticalDate = criticalRecord?.record?.date || collectionDates.latestDate || 'Sem data';
+  const criticalSource = criticalRecord?.record
+    ? `${criticalRecord.record.source === 'excel' ? 'Excel' : 'App'} · ${criticalRecord.record.form || operationLabel(operation)}`
+    : operationLabel(operation);
+  const action = actionSuggestion(issue, operation);
+
+  return `
+    <div class="parcel-popup-brief${hasIssue ? '' : ' is-clear'}">
+      <div class="parcel-popup-brief-head">
+        <strong>Resumo para reunião</strong>
+        <span>${hasIssue ? 'Alinhar em campo' : 'Monitorar'}</span>
+      </div>
+      <div class="parcel-popup-brief-grid">
+        <div>
+          <span>Fiscal da equipe</span>
+          <strong>${escapeHtml(responsible.person)}</strong>
+          <small>${formatInteger(responsible.count)} coleta(s) · ${escapeHtml(responsible.dateText)}</small>
+        </div>
+        <div>
+          <span>Data crítica</span>
+          <strong>${escapeHtml(criticalDate)}</strong>
+          <small>${escapeHtml(criticalSource)}</small>
+        </div>
+        <div>
+          <span>Problema principal</span>
+          <strong>${escapeHtml(problemLabel)}</strong>
+          <small>${escapeHtml(problemValue)}</small>
+        </div>
+      </div>
+      <div class="parcel-popup-action">
+        <span>Ação sugerida</span>
+        <strong>${escapeHtml(action)}</strong>
       </div>
     </div>
   `;
@@ -1230,6 +1364,16 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric, 
   const latestRows = parcelLatestRows(operationRecords);
   const issues = analysisIssueRows({ records: operationRecords, operation, areaHa });
   const analysisPanel = popupAnalysisPanel({ issues, operation, hasData: Boolean(operationTotals) });
+  const primaryIssue = issues[0] || null;
+  const responsible = teamFiscalSummary(operationRecords);
+  const criticalRecord = worstRecordForIssue(operationRecords, primaryIssue, operation, areaHa);
+  const meetingBrief = popupMeetingBrief({
+    issue: primaryIssue,
+    responsible,
+    criticalRecord,
+    collectionDates,
+    operation,
+  });
 
   const mainMetrics = [
     popupMetric(operation?.id === 'perdas' ? 'Nota CQO' : `Nota ${operationLabel(operation)}`, score !== null && score !== undefined ? `${formatDecimal(score, 0)}%` : 'N/D', scoreColor),
@@ -1280,6 +1424,7 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric, 
           <span>${escapeHtml(metricExplanation(selectedDisplayMetric, selectedValue, selectedColor))}</span>
         </div>
         ${selectedMetricTotals ? popupMetricChart(selectedDisplayMetric, selectedValue, selectedColor, selectedDetail) : ''}
+        ${meetingBrief}
         ${analysisPanel}
         <div class="parcel-popup-grid">${mainMetrics}</div>
         ${showLossComposition ? `

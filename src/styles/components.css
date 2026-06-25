@@ -4671,6 +4671,112 @@ body.presentation-active {
   line-height: 1.3;
 }
 
+.parcel-popup-brief {
+  display: grid;
+  gap: 9px;
+  margin-bottom: 9px;
+  padding: 10px;
+  border: 1px solid rgba(232, 145, 0, 0.24);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 251, 235, 0.94), rgba(255, 255, 255, 0.9)),
+    var(--bg-card);
+}
+
+.parcel-popup-brief.is-clear {
+  border-color: rgba(34, 197, 94, 0.22);
+  background:
+    linear-gradient(135deg, rgba(240, 253, 244, 0.96), rgba(255, 255, 255, 0.9)),
+    var(--bg-card);
+}
+
+.parcel-popup-brief-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.parcel-popup-brief-head strong {
+  color: var(--text-primary);
+  font-size: 0.76rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.parcel-popup-brief-head span {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(232, 145, 0, 0.12);
+  color: var(--orange-institutional);
+  font-size: 0.6rem;
+  font-weight: 950;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.parcel-popup-brief-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.parcel-popup-brief-grid div {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.parcel-popup-brief-grid span,
+.parcel-popup-action span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.parcel-popup-brief-grid strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-primary);
+  font-size: 0.74rem;
+  font-weight: 950;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.parcel-popup-brief-grid small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.61rem;
+  font-weight: 760;
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+}
+
+.parcel-popup-action {
+  padding: 8px 9px;
+  border: 1px solid rgba(23, 77, 43, 0.16);
+  border-radius: 8px;
+  background: rgba(23, 77, 43, 0.06);
+}
+
+.parcel-popup-action strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-primary);
+  font-size: 0.7rem;
+  font-weight: 820;
+  line-height: 1.35;
+}
+
 .parcel-popup-analysis {
   display: grid;
   gap: 7px;
@@ -5135,6 +5241,10 @@ body.presentation-active {
 
   .parcel-popup-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .parcel-popup-brief-grid {
+    grid-template-columns: 1fr;
   }
 
   .parcel-popup-stack-legend {
