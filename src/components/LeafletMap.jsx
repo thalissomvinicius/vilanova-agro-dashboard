@@ -1618,6 +1618,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   const selectedParcelSummary = useMemo(() => (
     selectedParcelKey ? parcelSummaryByKey.get(selectedParcelKey) || null : null
   ), [selectedParcelKey, parcelSummaryByKey]);
+  const isParcelDetailOpen = Boolean(selectedParcelSummary && mapLayer !== 'route');
 
   const selectedParcelDetailHtml = useMemo(() => {
     if (!selectedParcelSummary) return '';
@@ -2107,6 +2108,17 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     };
   }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, selectedRiskMetric, selectedOperation, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, parcelGeoStatus, filteredParcelFeatures, parcelSummaryByKey]);
 
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return undefined;
+
+    const resizeTimer = window.setTimeout(() => {
+      map.invalidateSize({ pan: false, debounceMoveend: false });
+    }, 120);
+
+    return () => window.clearTimeout(resizeTimer);
+  }, [isParcelDetailOpen, presentationMode]);
+
   const mapIsLoading = recordsLoading || parcelGeoStatus === 'loading' || mapRenderState.loading;
   const mapProgress = recordsLoading
     ? 24
@@ -2120,7 +2132,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       : mapRenderState.label;
 
   return (
-    <div className={`card gps-map-card ${presentationMode ? 'gps-map-card-presentation' : ''}`}>
+    <div className={`card gps-map-card ${presentationMode ? 'gps-map-card-presentation' : ''} ${isParcelDetailOpen ? 'gps-map-card-detail-open' : 'gps-map-card-controls-open'}`}>
       <div ref={mapContainerRef} className="gps-map-canvas" />
 
       {mapIsLoading ? (
@@ -2137,8 +2149,8 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
         </div>
       ) : null}
 
-      <div className={`map-overlay-card gps-map-overlay ${selectedParcelSummary && mapLayer !== 'route' ? 'gps-map-detail-panel' : ''}`}>
-        {selectedParcelSummary && mapLayer !== 'route' ? (
+      <div className={`gps-map-overlay ${isParcelDetailOpen ? 'gps-map-detail-panel' : ''}`}>
+        {isParcelDetailOpen ? (
           <div className="gps-detail-view">
             <div className="gps-detail-toolbar">
               <button type="button" onClick={() => setSelectedParcelKey(null)}>
