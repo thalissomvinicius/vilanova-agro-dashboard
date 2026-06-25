@@ -3521,7 +3521,7 @@ body.presentation-active {
 
 .poda-bi-page {
   gap: 0;
-  height: calc(100dvh - 233px);
+  height: 100%;
   min-height: 0;
   overflow: hidden;
 }
@@ -3584,6 +3584,14 @@ body.presentation-active {
   display: none;
 }
 
+.poda-bi-header-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
 .poda-bi-demo-pill {
   min-height: 30px;
   display: inline-flex;
@@ -3597,6 +3605,31 @@ body.presentation-active {
   font-size: 0.78rem;
   font-weight: 850;
   white-space: nowrap;
+}
+
+.poda-bi-present-btn {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  background: var(--orange-institutional);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 900;
+  white-space: nowrap;
+  transition: transform var(--transition-fast), filter var(--transition-fast);
+}
+
+.poda-bi-present-btn:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
 }
 
 .poda-bi-filter-strip {
@@ -3722,7 +3755,7 @@ body.presentation-active {
 }
 
 .poda-bi-left-stack {
-  grid-template-rows: minmax(170px, 0.9fr) minmax(150px, 0.85fr);
+  grid-template-rows: minmax(178px, 1fr) minmax(136px, 0.72fr);
 }
 
 .poda-bi-center-stack {
@@ -3765,19 +3798,110 @@ body.presentation-active {
   line-height: 1.2;
 }
 
+.poda-decision-panel {
+  border-left: 5px solid var(--orange-institutional);
+}
+
+.poda-decision-danger {
+  border-left-color: var(--status-danger);
+}
+
+.poda-decision-warning {
+  border-left-color: var(--status-warning);
+}
+
+.poda-decision-ok {
+  border-left-color: var(--status-success);
+}
+
+.poda-decision-body {
+  height: calc(100% - 40px);
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 42px minmax(0, 1fr);
+  gap: 3px;
+  padding: 5px;
+}
+
+.poda-decision-status {
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+}
+
+.poda-decision-status span,
+.poda-decision-grid span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.52rem;
+  font-weight: 900;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.poda-decision-status strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  line-height: 1.1;
+}
+
+.poda-decision-status small,
+.poda-decision-grid small {
+  display: block;
+  margin-top: 1px;
+  color: var(--text-secondary);
+  font-size: 0.5rem;
+  font-weight: 750;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.poda-decision-grid {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.poda-decision-grid div {
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+}
+
+.poda-decision-grid strong {
+  display: block;
+  margin-top: 1px;
+  color: var(--text-primary);
+  font-size: 0.62rem;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .poda-score-content {
   height: calc(100% - 40px);
   min-height: 0;
   display: grid;
-  grid-template-columns: 104px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
+  grid-template-columns: 108px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 9px 10px;
 }
 
 .poda-score-ring {
-  width: 96px;
-  height: 96px;
+  width: 92px;
+  height: 92px;
+  margin: 4px auto 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3791,7 +3915,7 @@ body.presentation-active {
 
 .poda-score-ring strong {
   color: var(--score-color);
-  font-size: 1.72rem;
+  font-size: 1.58rem;
   line-height: 1;
 }
 
@@ -3804,13 +3928,14 @@ body.presentation-active {
 .poda-score-facts {
   min-width: 0;
   display: grid;
-  gap: 6px;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 7px;
 }
 
 .poda-score-facts div,
 .poda-bi-summary-list div {
   min-width: 0;
-  padding: 6px;
+  padding: 6px 8px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--bg-primary);
@@ -3829,18 +3954,25 @@ body.presentation-active {
 .poda-score-facts strong,
 .poda-bi-summary-list strong {
   display: block;
-  margin-top: 3px;
+  margin-top: 2px;
   color: var(--text-primary);
   font-size: 0.84rem;
-  line-height: 1.2;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .poda-score-facts small {
   display: block;
-  margin-top: 2px;
+  margin-top: 1px;
   color: var(--text-secondary);
-  font-size: 0.68rem;
-  line-height: 1.2;
+  font-size: 0.58rem;
+  font-weight: 750;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .poda-indicator-panel {
@@ -3936,22 +4068,29 @@ body.presentation-active {
   min-height: 0;
   display: grid;
   align-content: start;
-  gap: 5px;
-  padding: 6px 10px;
+  gap: 3px;
+  padding: 5px 9px;
 }
 
 .poda-bi-bar-row {
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 44px;
+  grid-template-areas:
+    "info value"
+    "track track";
   gap: 3px;
   align-items: center;
+}
+
+.poda-bi-bar-row > div:first-child {
+  grid-area: info;
 }
 
 .poda-bi-bar-row strong {
   display: block;
   color: var(--text-primary);
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   line-height: 1.1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3962,7 +4101,7 @@ body.presentation-active {
   display: block;
   margin-top: 1px;
   color: var(--text-muted);
-  font-size: 0.56rem;
+  font-size: 0.52rem;
   line-height: 1.1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3970,8 +4109,8 @@ body.presentation-active {
 }
 
 .poda-bi-bar-track {
-  grid-column: 1 / 3;
-  height: 6px;
+  grid-area: track;
+  height: 5px;
   border-radius: 999px;
   background: var(--bg-tertiary);
   overflow: hidden;
@@ -3985,8 +4124,9 @@ body.presentation-active {
 }
 
 .poda-bi-bar-row small {
+  grid-area: value;
   color: var(--text-primary);
-  font-size: 0.66rem;
+  font-size: 0.62rem;
   font-weight: 900;
   text-align: right;
   white-space: nowrap;
@@ -4039,6 +4179,232 @@ body.presentation-active {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
   padding: 5px;
+}
+
+.poda-presentation-overlay .presentation-scroll {
+  padding: 10px;
+  overflow: hidden;
+}
+
+.poda-presentation-overlay .poda-bi-board {
+  height: calc(100dvh - 20px);
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.poda-bi-board.is-presentation {
+  grid-template-rows: 76px 38px 98px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
+}
+
+.poda-bi-board.is-presentation .poda-bi-header {
+  min-height: 76px;
+  grid-template-columns: 170px minmax(0, 1fr) auto;
+  padding: 12px 62px 12px 18px;
+}
+
+.poda-bi-board.is-presentation .poda-bi-header img {
+  width: 146px;
+  height: 48px;
+}
+
+.poda-bi-board.is-presentation .poda-bi-header h2 {
+  font-size: 2rem;
+}
+
+.poda-bi-board.is-presentation .poda-bi-header p {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+
+.poda-bi-board.is-presentation .poda-bi-demo-pill {
+  min-height: 38px;
+  padding: 0 16px;
+  font-size: 0.9rem;
+}
+
+.poda-bi-board.is-presentation .poda-bi-filter-strip {
+  font-size: 0.82rem;
+}
+
+.poda-bi-board.is-presentation .poda-bi-filter-strip span {
+  min-height: 30px;
+  padding: 5px 11px;
+}
+
+.poda-bi-board.is-presentation .poda-bi-kpi {
+  min-height: 98px;
+  padding: 12px;
+}
+
+.poda-bi-board.is-presentation .poda-bi-kpi strong {
+  font-size: 1.7rem;
+}
+
+.poda-bi-board.is-presentation .poda-bi-kpi span,
+.poda-bi-board.is-presentation .poda-bi-kpi small {
+  font-size: 0.75rem;
+}
+
+.poda-bi-board.is-presentation .poda-bi-main-grid {
+  grid-template-columns: minmax(320px, 0.8fr) minmax(560px, 1.4fr) minmax(320px, 0.82fr);
+  gap: 10px;
+}
+
+.poda-bi-board.is-presentation .poda-bi-panel-title {
+  min-height: 50px;
+  padding: 10px 12px;
+}
+
+.poda-bi-board.is-presentation .poda-bi-panel-title h3 {
+  font-size: 1.08rem;
+}
+
+.poda-bi-board.is-presentation .poda-bi-panel-title span {
+  font-size: 0.78rem;
+}
+
+.poda-bi-board.is-presentation .poda-decision-body {
+  height: calc(100% - 50px);
+  grid-template-rows: 48px minmax(0, 1fr);
+  padding: 7px 8px;
+  gap: 5px;
+}
+
+.poda-bi-board.is-presentation .poda-decision-status strong {
+  font-size: 1.12rem;
+}
+
+.poda-bi-board.is-presentation .poda-decision-grid strong {
+  font-size: 0.82rem;
+}
+
+.poda-bi-board.is-presentation .poda-score-content {
+  height: calc(100% - 50px);
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 14px;
+  padding: 12px;
+}
+
+.poda-bi-board.is-presentation .poda-score-ring {
+  width: 118px;
+  height: 118px;
+}
+
+.poda-bi-board.is-presentation .poda-score-ring strong {
+  font-size: 2.05rem;
+}
+
+.poda-bi-board.is-presentation .poda-score-ring span {
+  font-size: 0.78rem;
+}
+
+.poda-bi-board.is-presentation .poda-score-facts {
+  gap: 7px;
+}
+
+.poda-bi-board.is-presentation .poda-score-facts div {
+  padding: 8px 10px;
+}
+
+.poda-bi-board.is-presentation .poda-score-facts span {
+  font-size: 0.7rem;
+}
+
+.poda-bi-board.is-presentation .poda-score-facts strong {
+  font-size: 0.98rem;
+}
+
+.poda-bi-board.is-presentation .poda-score-facts small {
+  font-size: 0.68rem;
+}
+
+.poda-bi-board.is-presentation .poda-indicator-panel .poda-bi-panel-title {
+  min-height: 46px;
+  padding: 8px 12px;
+}
+
+.poda-bi-board.is-presentation .poda-indicator-list {
+  gap: 6px;
+  padding: 8px;
+}
+
+.poda-bi-board.is-presentation .poda-indicator-row {
+  gap: 3px;
+  padding: 6px 8px;
+}
+
+.poda-bi-board.is-presentation .poda-indicator-head strong {
+  font-size: 0.78rem;
+}
+
+.poda-bi-board.is-presentation .poda-indicator-head span {
+  font-size: 0.9rem;
+}
+
+.poda-bi-board.is-presentation .poda-indicator-track {
+  height: 7px;
+}
+
+.poda-bi-board.is-presentation .poda-indicator-meta span {
+  font-size: 0.64rem;
+}
+
+.poda-bi-board.is-presentation .poda-bi-bars {
+  height: calc(100% - 50px);
+  gap: 9px;
+  padding: 10px 12px;
+}
+
+.poda-bi-board.is-presentation .poda-bi-bar-row strong {
+  font-size: 0.82rem;
+}
+
+.poda-bi-board.is-presentation .poda-bi-bar-row span {
+  font-size: 0.66rem;
+}
+
+.poda-bi-board.is-presentation .poda-bi-bar-row small {
+  font-size: 0.82rem;
+}
+
+.poda-bi-board.is-presentation .poda-bi-bar-track {
+  height: 7px;
+}
+
+.poda-bi-board.is-presentation .poda-bi-summary-list {
+  gap: 5px;
+  padding: 6px;
+}
+
+.poda-bi-board.is-presentation .poda-bi-summary-panel .poda-bi-panel-title {
+  min-height: 42px;
+  padding: 7px 12px;
+}
+
+.poda-bi-board.is-presentation .poda-bi-summary-panel .poda-bi-panel-title h3 {
+  font-size: 1rem;
+}
+
+.poda-bi-board.is-presentation .poda-bi-summary-panel .poda-bi-panel-title span {
+  font-size: 0.72rem;
+}
+
+.poda-bi-board.is-presentation .poda-bi-summary-list div {
+  padding: 5px 7px;
+}
+
+.poda-bi-board.is-presentation .poda-bi-summary-list span {
+  font-size: 0.6rem;
+}
+
+.poda-bi-board.is-presentation .poda-bi-summary-list strong {
+  margin-top: 1px;
+  font-size: 0.8rem;
 }
 
 @media (max-width: 1280px) {

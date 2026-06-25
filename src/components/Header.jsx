@@ -64,6 +64,13 @@ export default function Header({
   const showSearch = visibleFilterSet.has('search');
   const hasFieldFilters = ['farm', 'cycle', 'evaluator', 'source', 'year', 'month', 'dateRange']
     .some((filterId) => visibleFilterSet.has(filterId));
+  const presentationTitle = activePage === 'cqo-poda'
+    ? 'Apresentar CQO Poda'
+    : activePage === 'cqo-carreamento'
+      ? 'Apresentar CQO Carreamento'
+      : activePage === 'mapa'
+        ? 'Apresentar Mapa GPS'
+        : 'Abrir modo TV';
 
   const monthOptions = [
     { value: '01', label: 'Janeiro' },
@@ -326,7 +333,7 @@ export default function Header({
           <button
             onClick={onOpenTvMode}
             className="header-btn header-tv-btn"
-            title="Abrir modo TV"
+            title={presentationTitle}
           >
             <MonitorPlay size={18} />
           </button>

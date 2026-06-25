@@ -38,6 +38,8 @@ const FILTER_STORAGE_KEY = 'vilanova_dashboard_filters';
 const FILTER_STORAGE_VERSION = 3;
 const AUTH_STORAGE_KEY = 'vilanova_dashboard_session';
 const LEGACY_AUTH_STORAGE_KEY = 'vilanova_dashboard_user';
+const OPEN_CARREAMENTO_PRESENTATION_EVENT = 'vilanova:open-carreamento-presentation';
+const OPEN_PODA_PRESENTATION_EVENT = 'vilanova:open-poda-presentation';
 const AUTH_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const VALID_MONTHS = new Set(['all', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']);
 const VALID_SOURCE_FILTERS = new Set(['all', 'app', 'excel', 'sql']);
@@ -649,6 +651,25 @@ export default function App() {
     }
   };
 
+  const openCurrentPresentation = () => {
+    if (effectiveActivePage === 'mapa') {
+      openMapPresentation();
+      return;
+    }
+
+    if (effectiveActivePage === 'cqo-poda') {
+      window.dispatchEvent(new Event(OPEN_PODA_PRESENTATION_EVENT));
+      return;
+    }
+
+    if (effectiveActivePage === 'cqo-carreamento') {
+      window.dispatchEvent(new Event(OPEN_CARREAMENTO_PRESENTATION_EVENT));
+      return;
+    }
+
+    openTvMode();
+  };
+
   const renderActivePage = () => {
     switch (effectiveActivePage) {
       case 'dashboard':
@@ -830,7 +851,7 @@ export default function App() {
           triggerManualSync={triggerManualSync}
           user={user}
           onLogout={handleLogout}
-          onOpenTvMode={openTvMode}
+          onOpenTvMode={openCurrentPresentation}
           onResetFilters={resetFieldFilters}
         />
         <main className="app-content">

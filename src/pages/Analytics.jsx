@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
@@ -27,6 +27,9 @@ import PageHeader from '../components/ui/PageHeader';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import StatusBanner from '../components/ui/StatusBanner';
 import { aggregateRecords, buildCharts, filterRecords, useCqoData } from '../utils/cqoData';
+
+const OPEN_CARREAMENTO_PRESENTATION_EVENT = 'vilanova:open-carreamento-presentation';
+const OPEN_PODA_PRESENTATION_EVENT = 'vilanova:open-poda-presentation';
 
 function fmt(value, digits = 0) {
   return new Intl.NumberFormat('pt-BR', {
@@ -543,10 +546,11 @@ function PodaBiKpi({ label, value, meta, tone = 'green', icon: Icon }) {
   );
 }
 
-function PodaScorePanel({ totals, indicators }) {
+function PodaScorePanel({ totals, indicators, farmRows, evaluatorRows }) {
   const score = Number(totals.podaScore || 0);
-  const critical = indicators.filter((row) => row.status === 'Crítico').length;
-  const topIssue = indicators.find((row) => row.count > 0);
+  const topIssue = indicators.find((row) => row.count > 0) || indicators[0];
+  const topParcel = farmRows[0];
+  const topEvaluator = evaluatorRows[0];
   const tone = podaToneFromScore(score);
   const scoreColor = tone === 'danger' ? 'var(--status-danger)' : tone === 'orange' ? 'var(--orange-institutional)' : 'var(--status-success)';
 
@@ -554,7 +558,7 @@ function PodaScorePanel({ totals, indicators }) {
     <section className="poda-bi-panel poda-bi-score-panel">
       <div className="poda-bi-panel-title">
         <h3>Nota geral</h3>
-        <span>Conformidade da poda no período filtrado.</span>
+        <span>Conformidade da poda no período.</span>
       </div>
       <div className="poda-score-content">
         <div className="poda-score-ring" style={{ '--score-angle': `${score * 3.6}deg`, '--score-color': scoreColor }}>
@@ -564,12 +568,13 @@ function PodaScorePanel({ totals, indicators }) {
         <div className="poda-score-facts">
           <div>
             <span>Pior indicador</span>
-            <strong>{topIssue ? topIssue.label : 'Sem falhas'}</strong>
-            <small>{topIssue ? `${formatPercentValue(topIssue.rate)} da amostra` : 'Amostra conforme'}</small>
+            <strong>{topIssue?.label || 'Sem falha'}</strong>
+            <small>{topIssue ? `${formatPercentValue(topIssue.rate)} da amostra · ${fmt(topIssue.projected)} proj.` : 'Amostra conforme'}</small>
           </div>
           <div>
-            <span>Itens críticos</span>
-            <strong>{fmt(critical)}</strong>
+            <span>Parcela crítica</span>
+            <strong>{topParcel?.label || 'Sem parcela'}</strong>
+            <small>{topEvaluator ? `${topEvaluator.label} · ${fmt(topEvaluator.total)} coleta(s)` : 'Sem fiscal responsável'}</small>
           </div>
         </div>
       </div>
@@ -690,7 +695,7 @@ function PodaTrendPanel({ rows }) {
   );
 }
 
-function PodaBiBoard({ loading, source, totals, records, periodText, demoActive }) {
+function PodaBiBoard({ loading, source, totals, records, periodText, demoActive, onPresent, presentationMode = false }) {
   const indicators = buildPodaIndicatorRows(totals);
   const farmRows = buildPodaGroupedRows(records, (record) => `${record.farm || 'Sem fazenda'} · ${record.parcel || 'Sem parcela'}`);
   const evaluatorRows = buildPodaGroupedRows(records, (record) => record.evaluator || 'Sem fiscal');
@@ -702,7 +707,7 @@ function PodaBiBoard({ loading, source, totals, records, periodText, demoActive 
   const sourceLabel = demoActive ? 'APP + dados manuais' : source;
 
   return (
-    <div className="poda-bi-board">
+    <div className={`poda-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
       <div className="poda-bi-header">
         <img src="/logo.png" alt="Vila Nova Agroindustrial" />
         <div>
@@ -710,7 +715,16 @@ function PodaBiBoard({ loading, source, totals, records, periodText, demoActive 
           <h2>CQO Poda</h2>
           <p>Tela de apresentação: amostragem, projeção da parcela, falhas críticas e fiscal responsável.</p>
         </div>
-        {demoActive && <strong className="poda-bi-demo-pill">Dados manuais temporários</strong>}
+        <div className="poda-bi-header-actions">
+          {demoActive && <strong className="poda-bi-demo-pill">Dados manuais temporários</strong>}
+          {!presentationMode && onPresent && (
+            <button type="button" className="poda-bi-present-btn" onClick={onPresent}>
+              <MonitorPlay size={18} />
+              Apresentar
+              <Maximize2 size={15} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="poda-bi-filter-strip">
@@ -733,7 +747,7 @@ function PodaBiBoard({ loading, source, totals, records, periodText, demoActive 
 
       <div className="poda-bi-main-grid">
         <div className="poda-bi-left-stack">
-          <PodaScorePanel totals={totals} indicators={indicators} />
+          <PodaScorePanel totals={totals} indicators={indicators} farmRows={farmRows} evaluatorRows={evaluatorRows} />
           <PodaMiniBars title="Piores parcelas" subtitle="Maior risco por amostragem." rows={farmRows} maxRows={2} />
         </div>
         <div className="poda-bi-center-stack">
@@ -757,6 +771,20 @@ function PodaBiBoard({ loading, source, totals, records, periodText, demoActive 
         </div>
       </div>
     </div>
+  );
+}
+
+function PodaPresentationOverlay(props) {
+  return createPortal(
+    <div className="presentation-overlay poda-presentation-overlay" role="dialog" aria-modal="true" aria-label="Apresentação CQO Poda">
+      <button type="button" className="presentation-close-btn field-bi-close-btn" onClick={props.onClose} title="Fechar apresentação" aria-label="Fechar apresentação">
+        <X size={22} />
+      </button>
+      <div className="presentation-scroll">
+        <PodaBiBoard {...props} presentationMode />
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1056,6 +1084,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
   const { loading, error, records: allRecords, source } = useCqoData();
   const [activeTab, setActiveTab] = useState('geral');
   const [carreamentoPresentationOpen, setCarreamentoPresentationOpen] = useState(false);
+  const [podaPresentationOpen, setPodaPresentationOpen] = useState(false);
 
   const filtered = filterRecords(allRecords, { farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo });
   const corteRecords = filtered.filter((r) => r.type === 'corte');
@@ -1143,19 +1172,63 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
     };
   }, [carreamentoPresentationOpen]);
 
-  const openCarreamentoPresentation = () => {
+  useEffect(() => {
+    if (!podaPresentationOpen) return undefined;
+
+    document.body.classList.add('presentation-active');
+
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setPodaPresentationOpen(false);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.body.classList.remove('presentation-active');
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [podaPresentationOpen]);
+
+  const openCarreamentoPresentation = useCallback(() => {
     setCarreamentoPresentationOpen(true);
     if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
       document.documentElement.requestFullscreen().catch(() => {});
     }
-  };
+  }, []);
 
-  const closeCarreamentoPresentation = () => {
+  const closeCarreamentoPresentation = useCallback(() => {
     setCarreamentoPresentationOpen(false);
     if (document.fullscreenElement && document.exitFullscreen) {
       document.exitFullscreen().catch(() => {});
     }
-  };
+  }, []);
+
+  const openPodaPresentation = useCallback(() => {
+    setPodaPresentationOpen(true);
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  }, []);
+
+  const closePodaPresentation = useCallback(() => {
+    setPodaPresentationOpen(false);
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (areaFilter !== 'carreamento') return undefined;
+    window.addEventListener(OPEN_CARREAMENTO_PRESENTATION_EVENT, openCarreamentoPresentation);
+    return () => window.removeEventListener(OPEN_CARREAMENTO_PRESENTATION_EVENT, openCarreamentoPresentation);
+  }, [areaFilter, openCarreamentoPresentation]);
+
+  useEffect(() => {
+    if (areaFilter !== 'poda') return undefined;
+    window.addEventListener(OPEN_PODA_PRESENTATION_EVENT, openPodaPresentation);
+    return () => window.removeEventListener(OPEN_PODA_PRESENTATION_EVENT, openPodaPresentation);
+  }, [areaFilter, openPodaPresentation]);
 
   if (areaFilter === 'carreamento') {
     return (
@@ -1192,6 +1265,18 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
   if (areaFilter === 'poda') {
     return (
       <div className="fade-in page-shell poda-bi-page">
+        {podaPresentationOpen && (
+          <PodaPresentationOverlay
+            loading={loading}
+            source={source}
+            totals={totalsPoda}
+            records={podaRecords}
+            periodText={periodText}
+            demoActive={podaDemoActive}
+            onClose={closePodaPresentation}
+          />
+        )}
+
         {error && !podaDemoActive && (
           <StatusBanner tone="danger" icon={AlertTriangle}>
             Falha ao carregar indicadores: {error}
@@ -1205,6 +1290,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
           records={podaRecords}
           periodText={periodText}
           demoActive={podaDemoActive}
+          onPresent={openPodaPresentation}
         />
       </div>
     );
