@@ -46,7 +46,7 @@ const MAP_OPERATION_MODES = [
     label: 'Corte',
     areaFilter: 'corte',
     defaultMetric: 'perda_corte',
-    metrics: ['nota', 'perda_corte', 'maduro', 'verde', 'passado', 'avermelhado', 'talo'],
+    metrics: ['nota', 'perda_corte', 'maduro', 'verde', 'passado', 'avermelhado', 'talo', 'mal_posicionado'],
   },
   {
     id: 'carreamento',
@@ -70,6 +70,9 @@ const RISK_COLORS = {
   critical: '#EF4444',
   neutral: '#CBD5E1',
 };
+
+const CORTE_METRIC_IDS = new Set(['perda_corte', 'maduro', 'verde', 'passado', 'avermelhado', 'talo']);
+const CARREAMENTO_METRIC_IDS = new Set(['nao_carreado']);
 
 function activeRiskMetric(metricId) {
   return RISK_METRICS.find((metric) => metric.id === metricId) || RISK_METRICS[1];
@@ -477,11 +480,125 @@ function formatInteger(value) {
   return parsed.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
 }
 
-function metricValue(metric, totals, areaHa) {
+function operationLabel(operation) {
+  return operation?.label || 'Geral';
+}
+
+function metricDisplay(metric, operation) {
+  if (!metric) return metric;
+  if (metric.id === 'nota') {
+    return {
+      ...metric,
+      label: operation?.id && operation.id !== 'perdas'
+        ? `Nota ${operationLabel(operation)}`
+        : 'Nota CQO',
+    };
+  }
+  if (metric.id === 'mal_posicionado') {
+    return {
+      ...metric,
+      label: operation?.id === 'corte'
+        ? 'Palha mal empilhada %'
+        : 'Cacho mal posicionado %',
+    };
+  }
+  return metric;
+}
+
+function recordsByType(records, type) {
+  if (type === 'all') return records;
+  return records.filter((record) => record.type === type);
+}
+
+function aggregateByType(records, type = 'all') {
+  const scopedRecords = recordsByType(records, type);
+  return scopedRecords.length ? aggregateRecords(scopedRecords) : null;
+}
+
+function metricRecordScope(metric, operation) {
+  if (!metric) return 'all';
+  if (metric.id === 'nota') {
+    if (operation?.id === 'corte') return 'corte';
+    if (operation?.id === 'carreamento') return 'carreamento';
+    return 'all';
+  }
+  if (CORTE_METRIC_IDS.has(metric.id)) return 'corte';
+  if (CARREAMENTO_METRIC_IDS.has(metric.id)) return 'carreamento';
+  if (metric.id === 'mal_posicionado') {
+    return operation?.id === 'carreamento' ? 'carreamento' : 'corte';
+  }
+  return 'all';
+}
+
+function aggregateForMetric(records, metric, operation) {
+  return aggregateByType(records, metricRecordScope(metric, operation));
+}
+
+function operationScore({ totals, corteTotals, carreamentoTotals, operation }) {
+  if (operation?.id === 'corte') {
+    return corteTotals ? Number(corteTotals.corteScore || 0) : null;
+  }
+  if (operation?.id === 'carreamento') {
+    return carreamentoTotals ? Number(carreamentoTotals.carreamentoScore || 0) : null;
+  }
+
+  const scores = [];
+  if (corteTotals) scores.push(Number(corteTotals.corteScore || 0));
+  if (carreamentoTotals) scores.push(Number(carreamentoTotals.carreamentoScore || 0));
+  if (scores.length) {
+    return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+  }
+  return totals ? Number(totals.generalScore || 0) : null;
+}
+
+function operationTotalsFor({ totals, corteTotals, carreamentoTotals, operation }) {
+  if (operation?.id === 'corte') return corteTotals;
+  if (operation?.id === 'carreamento') return carreamentoTotals;
+  return totals;
+}
+
+function metricCalculationDetail(metric, totals, areaHa, operation) {
+  if (!totals) return `Sem base de ${operationLabel(operation).toLowerCase()} neste filtro.`;
+
+  switch (metric.id) {
+    case 'nota':
+      return `${formatInteger(totals.total || 0)} coleta(s) usadas na nota de ${operationLabel(operation).toLowerCase()}.`;
+    case 'perda_t_ha':
+      if (!(areaHa > 0)) return 'Área da parcela não informada no shapefile.';
+      return `${formatDecimal(totals.lostFrutosTon || 0, 3)} t estimadas / ${formatDecimal(areaHa, 2)} ha.`;
+    case 'cachos_ha':
+      if (!(areaHa > 0)) return 'Área da parcela não informada no shapefile.';
+      return `${formatInteger(totals.lostCachosQty || 0)} cacho(s) perdidos / ${formatDecimal(areaHa, 2)} ha.`;
+    case 'perda_corte':
+      return `${formatInteger(totals.cachoEsquecido || 0)} cacho(s) esquecido(s) / ${formatInteger(totals.cachosObservados || 0)} cachos observados.`;
+    case 'nao_carreado':
+      return `${formatInteger(totals.cachoNaoCarreado || 0)} cacho(s) não carreado(s) / ${formatInteger(totals.plantasObservadas || 0)} plantas observadas.`;
+    case 'mal_posicionado':
+      return operation?.id === 'corte'
+        ? `${formatInteger(totals.cachoMalPosicionado || 0)} ocorrência(s) de palha / ${formatInteger(totals.plantasObservadas || 0)} plantas observadas.`
+        : `${formatInteger(totals.cachoMalPosicionado || 0)} cacho(s) mal posicionado(s) / ${formatInteger(totals.plantasObservadas || 0)} plantas observadas.`;
+    case 'maduro':
+      return `${formatInteger(totals.cachoMaduro || 0)} cacho(s) maduros / ${formatInteger(totals.cachosObservados || 0)} cachos observados.`;
+    case 'verde':
+      return `${formatInteger(totals.cachoVerde || 0)} cacho(s) verdes / ${formatInteger(totals.cachosObservados || 0)} cachos observados.`;
+    case 'passado':
+      return `${formatInteger(totals.cachoPassado || 0)} cacho(s) passados / ${formatInteger(totals.cachosObservados || 0)} cachos observados.`;
+    case 'avermelhado':
+      return `${formatInteger(totals.cachoAvermelhado || 0)} cacho(s) avermelhados / ${formatInteger(totals.cachosObservados || 0)} cachos observados.`;
+    case 'talo':
+      return `${formatInteger(totals.taloComprido || 0)} ocorrência(s) / ${formatInteger(totals.plantasObservadas || 0)} plantas observadas.`;
+    default:
+      return '';
+  }
+}
+
+function metricValue(metric, totals, areaHa, operation) {
   if (!totals) return null;
 
   switch (metric.id) {
     case 'nota':
+      if (operation?.id === 'corte') return Number(totals.corteScore || 0);
+      if (operation?.id === 'carreamento') return Number(totals.carreamentoScore || 0);
       return Number(totals.generalScore || 0);
     case 'perda_t_ha':
       if (!(areaHa > 0)) return null;
@@ -695,23 +812,29 @@ function parcelLatestRows(records) {
     }).join('');
 }
 
-function topCauseRows(totals) {
+function topCauseRows(totals, operation) {
   if (!totals) return [];
 
-  return [
+  const corteRows = [
     { label: 'Perda corte', value: Number(totals.perdaCorteRate || 0), detail: `${formatInteger(totals.cachoEsquecido || 0)} cacho(s) esquecido(s)`, color: '#EF4444' },
-    { label: 'Não carreado', value: Number(totals.cachoNaoCarreadoRate || 0), detail: `${formatInteger(totals.cachoNaoCarreado || 0)} cacho(s)`, color: '#EF4444' },
     { label: 'Verde', value: Number(totals.cachoVerdeRate || 0), detail: `${formatInteger(totals.cachoVerde || 0)} cacho(s)`, color: '#F59E0B' },
     { label: 'Passado', value: Number(totals.cachoPassadoRate || 0), detail: `${formatInteger(totals.cachoPassado || 0)} cacho(s)`, color: '#6B4B3E' },
     { label: 'Avermelhado', value: percentOf(totals.cachoAvermelhado, totals.cachosObservados), detail: `${formatInteger(totals.cachoAvermelhado || 0)} cacho(s)`, color: '#B91C1C' },
     { label: 'Talo comprido', value: Number(totals.taloCompridoRate || 0), detail: `${formatInteger(totals.taloComprido || 0)} ocorr.`, color: '#D98C10' },
     { label: 'Palha mal empilhada', value: Number(totals.cachoMalPosicionadoRate || 0), detail: `${formatInteger(totals.cachoMalPosicionado || 0)} ocorr.`, color: '#F97316' },
-  ].filter((item) => item.value > 0 || !/^0\b/.test(String(item.detail)))
+  ];
+  const carreamentoRows = [
+    { label: 'Não carreado', value: Number(totals.cachoNaoCarreadoRate || 0), detail: `${formatInteger(totals.cachoNaoCarreado || 0)} cacho(s)`, color: '#EF4444' },
+    { label: 'Cacho mal posicionado', value: Number(totals.cachoMalPosicionadoRate || 0), detail: `${formatInteger(totals.cachoMalPosicionado || 0)} cacho(s)`, color: '#F97316' },
+  ];
+  const rows = operation?.id === 'carreamento' ? carreamentoRows : corteRows;
+
+  return rows.filter((item) => item.value > 0 || !/^0\b/.test(String(item.detail)))
     .sort((a, b) => b.value - a.value)
     .slice(0, 4);
 }
 
-function popupMetricChart(metric, value, color) {
+function popupMetricChart(metric, value, color, detail = '') {
   const width = metricProgressWidth(metric, value);
   const target = metricTargetPosition(metric, value);
 
@@ -729,12 +852,13 @@ function popupMetricChart(metric, value, color) {
         <span>Meta ${escapeHtml(metricTargetText(metric))}</span>
         <b>${escapeHtml(metricExplanation(metric, value, color))}</b>
       </div>
+      ${detail ? `<div class="parcel-popup-calc">Base: ${escapeHtml(detail)}</div>` : ''}
     </div>
   `;
 }
 
-function popupCauseChart(totals) {
-  const causes = topCauseRows(totals);
+function popupCauseChart(totals, operation) {
+  const causes = topCauseRows(totals, operation);
   if (!causes.length) {
     return '<div class="parcel-popup-empty">Nenhum desvio relevante identificado nos campos calculados.</div>';
   }
@@ -825,6 +949,7 @@ function maturityPercentRows(totals) {
   ].map((row) => ({
     ...row,
     percent: Math.round(percentOf(row.value, total) * 10) / 10,
+    detail: `${formatInteger(row.value)} / ${formatInteger(total)} cachos observados`,
   }));
   const usedPercent = rows.reduce((sum, row) => sum + row.percent, 0);
   const classifiedTotal = rows.reduce((sum, row) => sum + row.value, 0);
@@ -844,16 +969,94 @@ function maturityPercentRows(totals) {
   ];
 }
 
-function buildParcelSummary({ feature, records, heatSummary, metric }) {
+function metricPercentRow(metricId, totals, areaHa, operation, labelOverride = '') {
+  const metric = activeRiskMetric(metricId);
+  const displayMetric = metricDisplay(metric, operation);
+  const value = metricValue(metric, totals, areaHa, operation);
+  const tone = metricColor(metric, value, Boolean(totals));
+  const label = labelOverride || displayMetric.label.replace(/\s*%$/, '');
+
+  return popupPercentRow(
+    label,
+    formatMetricValue(metric, value),
+    tone,
+    metricCalculationDetail(metric, totals, areaHa, operation)
+  );
+}
+
+function operationMetricRows({ operation, totals, corteTotals, carreamentoTotals, areaHa }) {
+  if (operation?.id === 'corte') {
+    return [
+      metricPercentRow('perda_corte', corteTotals, areaHa, operation),
+      metricPercentRow('talo', corteTotals, areaHa, operation),
+      metricPercentRow('mal_posicionado', corteTotals, areaHa, operation, 'Palha mal empilhada'),
+    ].join('');
+  }
+
+  if (operation?.id === 'carreamento') {
+    return [
+      metricPercentRow('nao_carreado', carreamentoTotals, areaHa, operation),
+      metricPercentRow('mal_posicionado', carreamentoTotals, areaHa, operation),
+    ].join('');
+  }
+
+  return [
+    metricPercentRow('perda_t_ha', totals, areaHa, operation),
+    metricPercentRow('cachos_ha', totals, areaHa, operation),
+    metricPercentRow('perda_corte', corteTotals, areaHa, activeOperationMode('corte')),
+    metricPercentRow('nao_carreado', carreamentoTotals, areaHa, activeOperationMode('carreamento')),
+  ].join('');
+}
+
+function popupLossComposition({ corteTotals, carreamentoTotals, areaHa }) {
+  const corteLosses = Number(corteTotals?.cachoEsquecido || 0);
+  const carreamentoLosses = Number(carreamentoTotals?.cachoNaoCarreado || 0);
+  const totalLosses = corteLosses + carreamentoLosses;
+  const totalFruitTon = (totalLosses * 20) / 1000;
+
+  return `
+    <div class="parcel-popup-percent-list">
+      ${popupPercentRow(
+        'Corte - cachos esquecidos',
+        `${formatInteger(corteLosses)} cacho(s)`,
+        corteLosses ? '#EF4444' : '#64748B',
+        metricCalculationDetail(activeRiskMetric('perda_corte'), corteTotals, areaHa, activeOperationMode('corte'))
+      )}
+      ${popupPercentRow(
+        'Carreamento - não carreado',
+        `${formatInteger(carreamentoLosses)} cacho(s)`,
+        carreamentoLosses ? '#EF4444' : '#64748B',
+        metricCalculationDetail(activeRiskMetric('nao_carreado'), carreamentoTotals, areaHa, activeOperationMode('carreamento'))
+      )}
+      ${popupPercentRow(
+        'Perda total estimada',
+        `${formatDecimal(totalFruitTon, 3)} t`,
+        totalLosses ? '#EF4444' : '#64748B',
+        areaHa > 0
+          ? `${formatInteger(totalLosses)} cacho(s) perdidos / ${formatDecimal(areaHa, 2)} ha = ${formatMetricValue(activeRiskMetric('perda_t_ha'), perHa(totalFruitTon, areaHa))}`
+          : `${formatInteger(totalLosses)} cacho(s) perdidos; área da parcela não informada.`
+      )}
+      ${popupPercentRow(
+        'Participação das perdas',
+        totalLosses ? `${formatDecimal(percentOf(corteLosses, totalLosses), 1)}% corte / ${formatDecimal(percentOf(carreamentoLosses, totalLosses), 1)}% carreamento` : '0,0%',
+        '#182230',
+        'Este percentual usa o total de cachos perdidos como base, não cachos observados nem plantas.'
+      )}
+    </div>
+  `;
+}
+
+function buildParcelSummary({ feature, records, heatSummary, metric, operation }) {
   const props = feature?.properties || {};
   const shapeParcel = shapeParcelCode(props);
   const parcelRecords = shapeParcel
     ? records.filter((record) => parcelRecordMatches(record, props, shapeParcel))
     : [];
   const totals = parcelRecords.length ? aggregateRecords(parcelRecords) : null;
+  const metricTotals = aggregateForMetric(parcelRecords, metric, operation);
   const areaHa = parcelAreaHa(props);
-  const value = metricValue(metric, totals, areaHa);
-  const color = metricColor(metric, value, Boolean(totals));
+  const value = metricValue(metric, metricTotals, areaHa, operation);
+  const color = metricColor(metric, value, Boolean(metricTotals));
   const excelCount = parcelRecords.filter((record) => record.source === 'excel').length;
   const appCount = parcelRecords.filter((record) => record.source === 'app').length;
   const firstDate = parcelRecords.map((record) => record.date).filter(Boolean).sort()[0] || '';
@@ -865,6 +1068,7 @@ function buildParcelSummary({ feature, records, heatSummary, metric }) {
     shapeParcel,
     records: parcelRecords,
     totals,
+    metricTotals,
     areaHa,
     heatSummary,
     metric,
@@ -900,33 +1104,44 @@ function popupPercentRow(label, value, tone = '', detail = '') {
   `;
 }
 
-function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }) {
+function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric, operation }) {
   const totals = parcelRecords.length ? aggregateRecords(parcelRecords) : null;
+  const corteTotals = aggregateByType(parcelRecords, 'corte');
+  const carreamentoTotals = aggregateByType(parcelRecords, 'carreamento');
+  const operationTotals = operationTotalsFor({ totals, corteTotals, carreamentoTotals, operation });
+  const operationRecords = recordsByType(
+    parcelRecords,
+    operation?.id === 'corte' || operation?.id === 'carreamento' ? operation.id : 'all'
+  );
   const areaHa = parcelAreaHa(props);
   const densityShape = parcelDensity(props);
-  const score = totals?.generalScore ?? 0;
-  const scoreColor = totals ? getScoreColor(score) : '#94A3B8';
+  const score = operationScore({ totals, corteTotals, carreamentoTotals, operation });
+  const scoreColor = score !== null && score !== undefined ? getScoreColor(score) : '#94A3B8';
   const selectedMetric = metric || RISK_METRICS[1];
-  const selectedValue = metricValue(selectedMetric, totals, areaHa);
-  const selectedColor = metricColor(selectedMetric, selectedValue, Boolean(totals));
-  const statusText = totals
-    ? `${formatInteger(totals.aprovados)} aprov. / ${formatInteger(totals.reprovados)} reprov.`
+  const selectedDisplayMetric = metricDisplay(selectedMetric, operation);
+  const selectedMetricTotals = aggregateForMetric(parcelRecords, selectedMetric, operation);
+  const selectedValue = metricValue(selectedMetric, selectedMetricTotals, areaHa, operation);
+  const selectedColor = metricColor(selectedMetric, selectedValue, Boolean(selectedMetricTotals));
+  const selectedDetail = metricCalculationDetail(selectedMetric, selectedMetricTotals, areaHa, operation);
+  const statusText = operationTotals
+    ? `${formatInteger(operationTotals.aprovados)} aprov. / ${formatInteger(operationTotals.reprovados)} reprov.`
     : 'Sem coleta aprovada';
-  const excelCount = parcelRecords.filter((record) => record.source === 'excel').length;
-  const appCount = parcelRecords.filter((record) => record.source === 'app').length;
-  const dateValues = sortDateTexts(parcelRecords.map((record) => record.date));
+  const excelCount = operationRecords.filter((record) => record.source === 'excel').length;
+  const appCount = operationRecords.filter((record) => record.source === 'app').length;
+  const dateValues = sortDateTexts(operationRecords.map((record) => record.date));
   const dateRange = dateValues.length
     ? `${dateValues[0]}${dateValues[0] !== dateValues[dateValues.length - 1] ? ` a ${dateValues[dateValues.length - 1]}` : ''}`
     : 'Sem data';
   const latestDate = dateValues[dateValues.length - 1] || 'Sem data';
-  const responsibilityRows = parcelResponsibilityRows(parcelRecords);
-  const latestRows = parcelLatestRows(parcelRecords);
+  const responsibilityRows = parcelResponsibilityRows(operationRecords);
+  const latestRows = parcelLatestRows(operationRecords);
 
-  const riskBlock = totals
+  const riskBlock = selectedMetricTotals
     ? `
       <div class="parcel-popup-heat">
-        <strong style="color:${selectedColor};">${riskStatusLabel(selectedColor)} - ${selectedMetric.label}</strong>
-        <span>${formatMetricValue(selectedMetric, selectedValue)} aplicado na parcela completa a partir da amostragem.</span>
+        <strong style="color:${selectedColor};">${riskStatusLabel(selectedColor)} - ${selectedDisplayMetric.label}</strong>
+        <span>${formatMetricValue(selectedMetric, selectedValue)} aplicado na parcela completa a partir da amostragem de ${operationLabel(operation).toLowerCase()}.</span>
+        <span>Base: ${escapeHtml(selectedDetail)}</span>
       </div>
     `
     : `
@@ -937,47 +1152,58 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
     `;
 
   const mainMetrics = [
-    popupMetric('Nota CQO', totals ? `${formatDecimal(score, 0)}%` : 'N/D', scoreColor),
+    popupMetric(operation?.id === 'perdas' ? 'Nota CQO' : `Nota ${operationLabel(operation)}`, score !== null && score !== undefined ? `${formatDecimal(score, 0)}%` : 'N/D', scoreColor),
     popupMetric('Area', areaHa ? `${formatDecimal(areaHa, 2)} ha` : 'N/D'),
     popupMetric('Densidade', densityShape ? `${formatDecimal(densityShape, 0)} pl/ha` : 'N/D'),
     popupMetric('Periodo', dateRange),
-    popupMetric('Fonte', totals ? `${excelCount} Excel / ${appCount} App` : 'N/D'),
-    popupMetric('Linhas amostradas', formatInteger(totals?.linhas || 0)),
-    popupMetric('Plantas obs.', formatInteger(totals?.plantasObservadas || 0)),
-    popupMetric('Cachos obs.', formatInteger(totals?.cachosObservados || 0)),
-    popupMetric('Perda fruta/ha', areaHa ? `${formatDecimal(perHa(totals?.lostFrutosTon || 0, areaHa), 3)} t/ha` : 'N/D', '#EF4444'),
+    popupMetric('Fonte', operationTotals ? `${excelCount} Excel / ${appCount} App` : 'N/D'),
+    popupMetric('Linhas amostradas', formatInteger(operationTotals?.linhas || 0)),
+    popupMetric('Plantas obs.', formatInteger(operationTotals?.plantasObservadas || 0)),
+    popupMetric('Cachos obs.', formatInteger(operationTotals?.cachosObservados || 0)),
+    popupMetric('Perda fruta/ha', areaHa ? `${formatDecimal(perHa(operationTotals?.lostFrutosTon || 0, areaHa), 3)} t/ha` : 'N/D', '#EF4444'),
   ].join('');
 
-  const maturityMetrics = maturityPercentRows(totals)
+  const maturityMetrics = maturityPercentRows(corteTotals)
     .map((row) => popupPercentRow(row.label, `${formatDecimal(row.percent, 1)}%`, row.color, row.detail))
     .join('');
 
-  const operationalMetrics = [
-    popupPercentRow('Perda corte', `${formatDecimal(totals?.perdaCorteRate || 0, 1)}%`, '#EF4444'),
-    popupPercentRow('Talo comprido', `${formatDecimal(totals?.taloCompridoRate || 0, 1)}%`, '#D98C10'),
-    popupPercentRow('Palha mal empilhada', `${formatDecimal(totals?.cachoMalPosicionadoRate || 0, 1)}%`, '#D98C10'),
-    popupPercentRow('Nao carreado', `${formatDecimal(totals?.cachoNaoCarreadoRate || 0, 1)}%`, '#EF4444'),
-  ].join('');
+  const operationalMetrics = operationMetricRows({
+    operation,
+    totals,
+    corteTotals,
+    carreamentoTotals,
+    areaHa,
+  });
+  const showCorteQuality = operation?.id !== 'carreamento' && Boolean(corteTotals);
+  const showLossComposition = operation?.id === 'perdas';
+  const causeTotals = operation?.id === 'carreamento' ? carreamentoTotals : corteTotals;
 
   return `
     <div class="parcel-popup-card">
       <div class="parcel-popup-head">
         <strong style="color:${style.color};">${escapeHtml(props.farmName || 'Fazenda')}</strong>
         <span>Parcela: <b>${escapeHtml(shapeParcel || '--')}</b> | Fonte: shapefile</span>
-        <small>${formatInteger(parcelRecords.length)} coleta(s) | ${statusText} | Último dado: ${escapeHtml(latestDate)}</small>
+        <small>${formatInteger(operationRecords.length)} coleta(s) | ${statusText} | Último dado: ${escapeHtml(latestDate)}</small>
       </div>
       <div class="parcel-popup-scroll">
         <div class="parcel-popup-executive" style="color:${selectedColor};">
           <strong style="color:${selectedColor};">${riskStatusLabel(selectedColor)}</strong>
-          <span>${escapeHtml(metricExplanation(selectedMetric, selectedValue, selectedColor))}</span>
+          <span>${escapeHtml(metricExplanation(selectedDisplayMetric, selectedValue, selectedColor))}</span>
         </div>
-        ${totals ? popupMetricChart(selectedMetric, selectedValue, selectedColor) : ''}
+        ${selectedMetricTotals ? popupMetricChart(selectedDisplayMetric, selectedValue, selectedColor, selectedDetail) : ''}
         <div class="parcel-popup-grid">${mainMetrics}</div>
         ${riskBlock}
-        <div class="parcel-popup-section">O que aconteceu</div>
-        ${popupCauseChart(totals)}
-        <div class="parcel-popup-section">Composição dos cachos</div>
-        ${popupBunchStack(totals)}
+        ${showLossComposition ? `
+          <div class="parcel-popup-section">Composição das perdas</div>
+          ${popupLossComposition({ corteTotals, carreamentoTotals, areaHa })}
+        ` : `
+          <div class="parcel-popup-section">O que aconteceu</div>
+          ${popupCauseChart(causeTotals, operation)}
+        `}
+        ${showCorteQuality ? `
+          <div class="parcel-popup-section">Composição dos cachos</div>
+          ${popupBunchStack(corteTotals)}
+        ` : ''}
         <div class="parcel-popup-section">Responsáveis da coleta</div>
         <div class="parcel-popup-person-list">
           ${responsibilityRows || '<div class="parcel-popup-empty">Sem responsáveis informados.</div>'}
@@ -986,8 +1212,10 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric }
         <div class="parcel-popup-event-list">
           ${latestRows || '<div class="parcel-popup-empty">Sem coleta dentro dos filtros atuais.</div>'}
         </div>
-        <div class="parcel-popup-section">Maturação dos cachos</div>
-        <div class="parcel-popup-percent-list">${maturityMetrics}</div>
+        ${showCorteQuality ? `
+          <div class="parcel-popup-section">Maturação dos cachos</div>
+          <div class="parcel-popup-percent-list">${maturityMetrics}</div>
+        ` : ''}
         <div class="parcel-popup-section">Indicadores operacionais</div>
         <div class="parcel-popup-percent-list">${operationalMetrics}</div>
       </div>
@@ -1016,6 +1244,10 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     RISK_METRICS.filter((metric) => selectedOperation.metrics.includes(metric.id))
   ), [selectedOperation]);
   const selectedRiskMetric = useMemo(() => activeRiskMetric(riskMetricId), [riskMetricId]);
+  const selectedRiskMetricDisplay = useMemo(
+    () => metricDisplay(selectedRiskMetric, selectedOperation),
+    [selectedRiskMetric, selectedOperation]
+  );
   const effectiveAreaFilter = areaFilter && areaFilter !== 'all' ? areaFilter : selectedOperation.areaFilter;
 
   const filteredRecords = useMemo(() => filterRecords(records, {
@@ -1133,8 +1365,9 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           shapeParcelCode(feature?.properties || {})
         )),
         metric: selectedRiskMetric,
+        operation: selectedOperation,
       }))
-  ), [filteredParcelFeatures, filteredRecords, heatByParcel, selectedRiskMetric]);
+  ), [filteredParcelFeatures, filteredRecords, heatByParcel, selectedRiskMetric, selectedOperation]);
 
   const parcelSummaryByKey = useMemo(() => {
     const map = new globalThis.Map();
@@ -1358,6 +1591,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             style,
             parcelRecords,
             metric: selectedRiskMetric,
+            operation: selectedOperation,
           }), {
             maxWidth: 460,
             minWidth: 380,
@@ -1622,7 +1856,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       window.clearTimeout(viewportTimer);
       window.clearTimeout(finishTimer);
     };
-  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, selectedRiskMetric, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, parcelGeoStatus, filteredParcelFeatures, parcelSummaryByKey]);
+  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, selectedRiskMetric, selectedOperation, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, parcelGeoStatus, filteredParcelFeatures, parcelSummaryByKey]);
 
   const mapIsLoading = recordsLoading || parcelGeoStatus === 'loading' || mapRenderState.loading;
   const mapProgress = recordsLoading
@@ -1728,7 +1962,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             <span>Indicador</span>
             <select value={riskMetricId} onChange={(event) => setRiskMetricId(event.target.value)}>
               {metricOptions.map((metric) => (
-                <option key={metric.id} value={metric.id}>{metric.label}</option>
+                <option key={metric.id} value={metric.id}>{metricDisplay(metric, selectedOperation).label}</option>
               ))}
             </select>
           </label>
@@ -1798,7 +2032,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           <div className="gps-map-note">
             <span>
               {mapLayer === 'route' && `GPS detalhado mostra as coordenadas reais de ${selectedOperation.label.toLowerCase()} dentro da parcela.`}
-              {mapLayer === 'polygon' && `${selectedRiskMetric.label} de ${selectedOperation.label.toLowerCase()} aplicado no semaforo por parcela, respeitando os filtros atuais.`}
+              {mapLayer === 'polygon' && `${selectedRiskMetricDisplay.label} de ${selectedOperation.label.toLowerCase()} aplicado no semaforo por parcela, respeitando os filtros atuais.`}
             </span>
           </div>
           <div className="gps-heat-legend" aria-label="Legenda do mapa CQO">
