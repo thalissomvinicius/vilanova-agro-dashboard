@@ -104,6 +104,21 @@ function photoImageSrc(photo) {
 }
 
 function lineColumns(record) {
+  if (record.type === 'poda') {
+    return [
+      ['linha', 'Linha'],
+      ['numero_plantas_linha', 'Plantas linha'],
+      ['planta_sem_podar', 'Planta sem podar'],
+      ['poda_meia_coroa', 'Poda meia coroa'],
+      ['poda_maior_1_1', 'Poda > 1:1'],
+      ['bico_gaita', 'Bico de gaita'],
+      ['cacho_exposto', 'Cacho exposto'],
+      ['cacho_podre_planta', 'Cacho podre'],
+      ['folha_mamando', 'Folha mamando'],
+      ['palha_mal_empilhada', 'Palha mal empilhada'],
+    ];
+  }
+
   if (record.type === 'carreamento') {
     return [
       ['linha', 'Linha'],
@@ -405,7 +420,16 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                         <span>{record.time}</span>
                       </div>
                     </td>
-                    <td>{record.form}</td>
+                    <td>
+                      <div className="stack-cell">
+                        <span>{record.form}</span>
+                        {record.duplicateCount > 1 ? (
+                          <span className="badge badge-warning">
+                            {record.duplicateCount} fichas agrupadas
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
                     <td>
                       <span className={record.source === 'excel' ? 'badge badge-warning' : 'badge badge-info'}>
                         {record.source === 'excel' ? 'Excel' : 'App'}

@@ -302,6 +302,7 @@ function buildGps(latValue, lngValue, accuracyValue) {
   const lat = Number(String(latValue ?? '').replace(',', '.').trim());
   const lng = Number(String(lngValue ?? '').replace(',', '.').trim());
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001) return null;
   const accuracy = Number(String(accuracyValue ?? '').replace(',', '.').trim());
   const suffix = Number.isFinite(accuracy) ? ` (${Math.round(accuracy)}m)` : '';
   return { lat, lng, accuracy: Number.isFinite(accuracy) ? accuracy : null, label: `${lat.toFixed(6)}, ${lng.toFixed(6)}${suffix}` };
@@ -555,6 +556,87 @@ function formatDateTime(value) {
   };
 }
 
+function formatObservation(value) {
+  if (!value) return '';
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (Array.isArray(value)) return value.map(formatObservation).filter(Boolean).join(' | ');
+  if (typeof value === 'object') {
+    const text = value.texto || value.observacao || value.descricao || value.description || value.comentario || value.comment;
+    if (text) return String(text);
+    const photoCount = Array.isArray(value.fotos) ? value.fotos.length : 0;
+    return photoCount ? `${photoCount} foto(s) anexada(s), sem observação textual.` : '';
+  }
+  return '';
+}
+
+function duplicateStatusRank(status) {
+  const normalized = normalizeText(status);
+  if (normalized === 'aprovado' || normalized === 'sincronizado') return 5;
+  if (normalized === 'pendente-validacao') return 4;
+  if (normalized === 'pendente') return 3;
+  if (normalized === 'reprovado') return 2;
+  if (normalized === 'falha') return 1;
+  return 0;
+}
+
+function duplicateRecordKey(record) {
+  if (!record || record.source !== 'app') return `${record?.source || 'registro'}:${record?.id || Math.random()}`;
+
+  const raw = record.raw || {};
+  return [
+    'app',
+    record.formularioId || record.type,
+    record.farmId || record.farm,
+    record.parcel,
+    record.cycle,
+    raw.data_avaliacao || record.date,
+    record.evaluatorMatricula || raw.matricula_avaliador || raw.matricula_digitador,
+    raw.fiscal_resp_equipe || raw.fiscal_resp || record.fiscal,
+  ].map(normalizeText).join('|');
+}
+
+function recordEventTime(record) {
+  const date = parseRecordDateValue(record?.receivedAt || record?.sentAt || record?.createdAt || record?.raw?.data_avaliacao);
+  return date?.getTime?.() || 0;
+}
+
+function preferredDuplicateRecord(a, b) {
+  const rankA = duplicateStatusRank(a?.status);
+  const rankB = duplicateStatusRank(b?.status);
+  if (rankA !== rankB) return rankA > rankB ? a : b;
+  const timeA = recordEventTime(a);
+  const timeB = recordEventTime(b);
+  if (timeA !== timeB) return timeA > timeB ? a : b;
+  return String(a?.id || '') > String(b?.id || '') ? a : b;
+}
+
+function dedupeMobileRecords(records) {
+  const groups = records.reduce((acc, record) => {
+    const key = duplicateRecordKey(record);
+    if (!acc.has(key)) acc.set(key, []);
+    acc.get(key).push(record);
+    return acc;
+  }, new Map());
+
+  return Array.from(groups.values()).map((group) => {
+    if (group.length === 1) return group[0];
+    const selected = group.reduce((best, record) => preferredDuplicateRecord(best, record), group[0]);
+    return {
+      ...selected,
+      duplicateCount: group.length,
+      duplicateIds: group.map((record) => record.id),
+      duplicateRecords: group
+        .filter((record) => record.id !== selected.id)
+        .map((record) => ({
+          id: record.id,
+          status: record.status,
+          createdAt: record.createdAt,
+          receivedAt: record.receivedAt,
+        })),
+    };
+  });
+}
+
 export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentRows = []) {
   const data = parseJson(row.dados_json);
 
@@ -664,7 +746,7 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
   const isExcelSource = Boolean(data.fonte_excel)
     || row.source === 'cqo_import_snapshots'
     || String(row.formulario_id || '').startsWith('excel_');
-  const effectiveGps = isExcelSource ? null : (gps || gpsOccurrences[0] || gpsTrack[0] || null);
+  const effectiveGps = isExcelSource ? null : (gpsOccurrences[0] || gpsTrack[0] || gps || null);
   const effectiveGpsTrack = isExcelSource ? [] : gpsTrack;
   const effectiveGpsOccurrences = isExcelSource ? [] : gpsOccurrences;
 
@@ -690,7 +772,7 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
     evaluator: collaborator?.nome || matricula || 'Sem avaliador',
     evaluatorRole: collaborator?.cargo || '',
     fiscal: formatPersonName(data.fiscal_resp_equipe) || formatPersonName(data.fiscal_resp) || '--',
-    observation: data.observacao || '',
+    observation: formatObservation(data.observacao),
     acompanhamento,
     gps: effectiveGps,
     gpsTrack: effectiveGpsTrack,
@@ -1261,12 +1343,13 @@ function buildSupabaseData({
       return acc;
     }, {});
 
-  const mobileRecords = responseRows.map((row) => normalizeResponse(
+  const mobileRecordsRaw = responseRows.map((row) => normalizeResponse(
       row,
       headcount,
       gpsByResponse[row.id] || [],
       attachmentsByResponse[row.id] || []
   ));
+  const mobileRecords = dedupeMobileRecords(mobileRecordsRaw);
   const excelRecords = cqoImport.rows.map((row) => normalizeResponse(row, headcount));
   const records = [...mobileRecords, ...excelRecords]
     .sort((a, b) => {
