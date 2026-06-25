@@ -1266,6 +1266,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
       L.tileLayer(tileUrl, tileOptions).addTo(map);
 
       const farmLayerBounds = [];
+      const evaluatedLayerBounds = [];
 
     if (parcelGeoJson?.features?.length) {
       const filteredParcels = {
@@ -1349,7 +1350,11 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
               }).addTo(layers);
             }
           }
-          if (layer.getBounds) farmLayerBounds.push(layer.getBounds());
+          if (layer.getBounds) {
+            const bounds = layer.getBounds();
+            farmLayerBounds.push(bounds);
+            if (summary?.totals) evaluatedLayerBounds.push(bounds);
+          }
         },
       }).addTo(layers);
     } else {
@@ -1545,14 +1550,17 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
         .filter(Boolean)
         .map((point) => L.latLng(point.lat, point.lng));
 
-      if (gpsLatLngs.length === 1) {
+      if (mapLayer !== 'route' && evaluatedLayerBounds.length > 0) {
+        const bounds = evaluatedLayerBounds.reduce((acc, item) => acc.extend(item), L.latLngBounds([]));
+        map.fitBounds(bounds.pad(0.24), { maxZoom: 16, animate: false });
+      } else if (mapLayer === 'route' && gpsLatLngs.length === 1) {
         map.setView(gpsLatLngs[0], 17, { animate: false });
-      } else if (gpsLatLngs.length > 1) {
+      } else if (mapLayer === 'route' && gpsLatLngs.length > 1) {
         const bounds = L.latLngBounds(gpsLatLngs);
         map.fitBounds(bounds.pad(0.18), { maxZoom: 17, animate: false });
       } else if (farmLayerBounds.length > 0) {
         const bounds = farmLayerBounds.reduce((acc, item) => acc.extend(item), L.latLngBounds([]));
-        map.fitBounds(bounds.pad(0.08), { maxZoom: 14, animate: false });
+        map.fitBounds(bounds.pad(0.12), { maxZoom: mapLayer === 'route' ? 14 : 15, animate: false });
       } else if (farmFilter !== 'all') {
         const selectedFarm = FARMS.find((farm) => farm.id === farmFilter);
         if (selectedFarm) {
