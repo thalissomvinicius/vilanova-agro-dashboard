@@ -3519,6 +3519,596 @@ body.presentation-active {
   padding-right: 64px;
 }
 
+.poda-bi-page {
+  gap: 0;
+  height: calc(100dvh - 233px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.poda-bi-board {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 58px 28px 68px minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+.poda-bi-header {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--green-institutional);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.poda-bi-header img {
+  width: 112px;
+  height: 34px;
+  object-fit: contain;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--white);
+}
+
+.poda-bi-header span {
+  display: block;
+  color: var(--orange-highlight);
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.poda-bi-header h2 {
+  margin: 0;
+  color: var(--white);
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.poda-bi-header p {
+  display: none;
+}
+
+.poda-bi-demo-pill {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 8px;
+  background: var(--orange-institutional);
+  color: var(--white);
+  font-size: 0.78rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.poda-bi-filter-strip {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.poda-bi-filter-strip span {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  padding: 4px 9px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-card);
+  white-space: nowrap;
+}
+
+.poda-bi-filter-strip span:last-child {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.poda-bi-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 0;
+}
+
+.poda-bi-kpi {
+  min-width: 0;
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.poda-bi-kpi span,
+.poda-bi-kpi small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 850;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.poda-bi-kpi strong {
+  display: block;
+  margin: 4px 0 2px;
+  color: var(--text-primary);
+  font-size: 1.22rem;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.poda-bi-kpi svg {
+  width: 30px;
+  height: 30px;
+  padding: 8px;
+  border-radius: 8px;
+  color: var(--green-institutional);
+  background: var(--status-success-bg);
+}
+
+.poda-bi-kpi-orange svg,
+.poda-bi-kpi-orange strong {
+  color: var(--orange-institutional);
+}
+
+.poda-bi-kpi-danger {
+  border-left: 4px solid var(--status-danger);
+}
+
+.poda-bi-kpi-danger svg,
+.poda-bi-kpi-danger strong {
+  color: var(--status-danger);
+}
+
+.poda-bi-kpi-danger svg {
+  background: var(--status-danger-bg);
+}
+
+.poda-bi-kpi-info svg,
+.poda-bi-kpi-info strong {
+  color: var(--status-info);
+}
+
+.poda-bi-main-grid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(430px, 1.4fr) minmax(270px, 0.9fr);
+  gap: 8px;
+  overflow: hidden;
+}
+
+.poda-bi-left-stack,
+.poda-bi-center-stack,
+.poda-bi-right-stack {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.poda-bi-left-stack {
+  grid-template-rows: minmax(170px, 0.9fr) minmax(150px, 0.85fr);
+}
+
+.poda-bi-center-stack {
+  grid-template-rows: minmax(0, 1fr) 130px;
+}
+
+.poda-bi-right-stack {
+  grid-template-rows: minmax(0, 1fr) 154px;
+}
+
+.poda-bi-panel {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.poda-bi-panel-title {
+  min-height: 40px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.poda-bi-panel-title h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  line-height: 1.15;
+}
+
+.poda-bi-panel-title span {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+
+.poda-score-content {
+  height: calc(100% - 40px);
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+}
+
+.poda-score-ring {
+  width: 96px;
+  height: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, var(--bg-card) 0 56%, transparent 57%),
+    conic-gradient(var(--score-color) 0 var(--score-angle), var(--bg-tertiary) var(--score-angle) 360deg);
+  box-shadow: inset 0 0 0 1px var(--border-color);
+}
+
+.poda-score-ring strong {
+  color: var(--score-color);
+  font-size: 1.72rem;
+  line-height: 1;
+}
+
+.poda-score-ring span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.poda-score-facts {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.poda-score-facts div,
+.poda-bi-summary-list div {
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+}
+
+.poda-score-facts span,
+.poda-bi-summary-list span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 850;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.poda-score-facts strong,
+.poda-bi-summary-list strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  line-height: 1.2;
+}
+
+.poda-score-facts small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+
+.poda-indicator-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.poda-indicator-panel .poda-bi-panel-title {
+  min-height: 36px;
+  padding: 5px 10px;
+}
+
+.poda-indicator-list {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  padding: 5px;
+}
+
+.poda-indicator-row {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 5px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+}
+
+.poda-indicator-danger {
+  border-left: 4px solid var(--status-danger);
+}
+
+.poda-indicator-warning {
+  border-left: 4px solid var(--status-warning);
+}
+
+.poda-indicator-ok {
+  border-left: 4px solid var(--status-success);
+}
+
+.poda-indicator-head,
+.poda-indicator-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.poda-indicator-head strong {
+  color: var(--text-primary);
+  font-size: 0.64rem;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.poda-indicator-head span {
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.poda-indicator-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  overflow: hidden;
+}
+
+.poda-indicator-track i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.poda-indicator-meta span {
+  color: var(--text-secondary);
+  font-size: 0.52rem;
+  font-weight: 800;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.poda-bi-bars {
+  height: calc(100% - 40px);
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 6px 10px;
+}
+
+.poda-bi-bar-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 3px;
+  align-items: center;
+}
+
+.poda-bi-bar-row strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 0.68rem;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.poda-bi-bar-row span {
+  display: block;
+  margin-top: 1px;
+  color: var(--text-muted);
+  font-size: 0.56rem;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.poda-bi-bar-track {
+  grid-column: 1 / 3;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  overflow: hidden;
+}
+
+.poda-bi-bar-track i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--orange-institutional);
+}
+
+.poda-bi-bar-row small {
+  color: var(--text-primary);
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.poda-bi-trend-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.poda-bi-legend {
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px 0;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.poda-bi-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.poda-bi-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.poda-bi-trend-svg {
+  flex: 1;
+  min-height: 0;
+  display: block;
+  padding: 0 6px 4px;
+}
+
+.poda-bi-summary-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.poda-bi-summary-list {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 5px;
+}
+
+@media (max-width: 1280px) {
+  .poda-bi-board {
+    grid-template-rows: 56px 28px 66px minmax(0, 1fr);
+  }
+
+  .poda-bi-header {
+    grid-template-columns: 112px minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .poda-bi-header img {
+    width: 96px;
+  }
+
+  .poda-bi-main-grid {
+    grid-template-columns: minmax(230px, 0.8fr) minmax(380px, 1.35fr) minmax(240px, 0.85fr);
+  }
+
+  .poda-score-content {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .poda-score-ring {
+    width: 92px;
+    height: 92px;
+  }
+
+  .poda-score-ring strong {
+    font-size: 1.55rem;
+  }
+}
+
+@media (max-width: 980px) {
+  .poda-bi-page {
+    height: auto;
+    overflow: visible;
+  }
+
+  .poda-bi-board {
+    height: auto;
+    min-height: 0;
+    grid-template-rows: auto;
+    overflow: visible;
+  }
+
+  .poda-bi-header,
+  .poda-bi-main-grid,
+  .poda-bi-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .poda-bi-header img,
+  .poda-bi-demo-pill {
+    justify-self: start;
+  }
+
+  .poda-bi-left-stack,
+  .poda-bi-center-stack,
+  .poda-bi-right-stack {
+    grid-template-rows: auto;
+    overflow: visible;
+  }
+
+  .poda-indicator-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 .development-page {
   gap: 18px;
 }

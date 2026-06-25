@@ -233,6 +233,533 @@ function formatMonthYear(dateFrom, dateTo) {
   return `${month.charAt(0).toUpperCase()}${month.slice(1)}/${from.getFullYear()}`;
 }
 
+const PODA_PRESENTATION_DEMO_ENABLED = true;
+
+const PODA_DEMO_SPECS = [
+  {
+    farm: 'FÉ EM DEUS',
+    parcel: 'F-15',
+    evaluator: 'RAIMUNDO NONATO DOS SANTOS FURTADO JUNIOR',
+    matricula: '384',
+    dayOffset: 4,
+    linhas: 16,
+    plantas: 320,
+    projetadas: 1080,
+    semPodar: 4,
+    exposto: 9,
+    meiaCoroa: 6,
+    folhaMamando: 3,
+    maiorUmParaUm: 4,
+    bicoGaita: 2,
+    podre: 1,
+    palha: 8,
+    status: 'Pendente validação',
+  },
+  {
+    farm: 'VILA NOVA',
+    parcel: 'D-09',
+    evaluator: 'DANIEL SOUZA',
+    matricula: '1938',
+    dayOffset: 7,
+    linhas: 16,
+    plantas: 336,
+    projetadas: 1120,
+    semPodar: 1,
+    exposto: 3,
+    meiaCoroa: 2,
+    folhaMamando: 1,
+    maiorUmParaUm: 1,
+    bicoGaita: 0,
+    podre: 0,
+    palha: 2,
+    status: 'Aprovado',
+  },
+  {
+    farm: 'FÉ EM DEUS',
+    parcel: 'H-20',
+    evaluator: 'ROBERTO QUEIROZ COUTINHO',
+    matricula: '3102',
+    dayOffset: 11,
+    linhas: 16,
+    plantas: 304,
+    projetadas: 980,
+    semPodar: 0,
+    exposto: 4,
+    meiaCoroa: 3,
+    folhaMamando: 2,
+    maiorUmParaUm: 5,
+    bicoGaita: 1,
+    podre: 0,
+    palha: 1,
+    status: 'Aprovado',
+  },
+  {
+    farm: 'VILA NOVA',
+    parcel: 'E-16',
+    evaluator: 'LUAN SOUZA FERREIRA',
+    matricula: '2170',
+    dayOffset: 14,
+    linhas: 14,
+    plantas: 288,
+    projetadas: 870,
+    semPodar: 2,
+    exposto: 2,
+    meiaCoroa: 1,
+    folhaMamando: 0,
+    maiorUmParaUm: 1,
+    bicoGaita: 3,
+    podre: 2,
+    palha: 5,
+    status: 'Pendente validação',
+  },
+  {
+    farm: 'SANTA MARIA',
+    parcel: 'B-11',
+    evaluator: 'RAIMUNDO NONATO DOS SANTOS FURTADO JUNIOR',
+    matricula: '384',
+    dayOffset: 17,
+    linhas: 16,
+    plantas: 352,
+    projetadas: 1240,
+    semPodar: 0,
+    exposto: 1,
+    meiaCoroa: 1,
+    folhaMamando: 0,
+    maiorUmParaUm: 1,
+    bicoGaita: 0,
+    podre: 0,
+    palha: 1,
+    status: 'Aprovado',
+  },
+  {
+    farm: 'FÉ EM DEUS',
+    parcel: 'F-16',
+    evaluator: 'DANIEL SOUZA',
+    matricula: '1938',
+    dayOffset: 20,
+    linhas: 16,
+    plantas: 320,
+    projetadas: 1040,
+    semPodar: 3,
+    exposto: 6,
+    meiaCoroa: 4,
+    folhaMamando: 1,
+    maiorUmParaUm: 2,
+    bicoGaita: 1,
+    podre: 1,
+    palha: 4,
+    status: 'Reprovado',
+  },
+];
+
+function demoDateFromRange(dayOffset, dateFrom, dateTo) {
+  const fallback = new Date('2026-06-01T00:00:00');
+  const start = dateFrom ? new Date(`${dateFrom}T00:00:00`) : fallback;
+  const end = dateTo ? new Date(`${dateTo}T00:00:00`) : new Date(start);
+  if (Number.isNaN(start.getTime())) return fallback;
+  if (Number.isNaN(end.getTime()) || end < start) return start;
+
+  const spanDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000));
+  const date = new Date(start);
+  date.setDate(start.getDate() + Math.min(dayOffset, spanDays));
+  return date;
+}
+
+function inputDateFromDate(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+function displayDateFromDate(date) {
+  return new Intl.DateTimeFormat('pt-BR').format(date);
+}
+
+function projectPodaOccurrence(value, plantas, projetadas) {
+  if (!plantas || !projetadas) return Number(value || 0);
+  return Math.round((Number(value || 0) / plantas) * projetadas);
+}
+
+function buildPodaDemoRecords(dateFrom, dateTo) {
+  if (!PODA_PRESENTATION_DEMO_ENABLED) return [];
+
+  return PODA_DEMO_SPECS.map((spec, index) => {
+    const date = demoDateFromRange(spec.dayOffset, dateFrom, dateTo);
+    const inputDate = inputDateFromDate(date);
+    const displayDate = displayDateFromDate(date);
+    const gpsLat = -2.84 - index * 0.006;
+    const gpsLng = -48.22 - index * 0.004;
+    const project = (value) => projectPodaOccurrence(value, spec.plantas, spec.projetadas);
+
+    return {
+      id: `demo_poda_${index + 1}`,
+      type: 'poda',
+      form: 'CQO Poda',
+      source: 'app',
+      farm: spec.farm,
+      farmId: spec.farm.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '_'),
+      parcel: spec.parcel,
+      cycle: '2',
+      evaluator: spec.evaluator,
+      evaluatorMatricula: spec.matricula,
+      fiscal: spec.evaluator,
+      status: spec.status,
+      date: displayDate,
+      createdAt: `${inputDate}T09:00:00`,
+      sentAt: `${inputDate}T09:14:00`,
+      gps: { lat: gpsLat, lng: gpsLng, accuracy: 6 },
+      gpsTrack: [
+        { lat: gpsLat, lng: gpsLng, accuracy: 6, capturedAt: `${inputDate}T09:00:00` },
+        { lat: gpsLat + 0.001, lng: gpsLng + 0.001, accuracy: 8, capturedAt: `${inputDate}T09:08:00` },
+      ],
+      gpsOccurrences: [],
+      gpsApplicable: true,
+      acompanhamento: { teve: 'sim' },
+      raw: {
+        data_avaliacao: inputDate,
+        formulario_id: 'form_cqo_poda',
+        formulario_titulo: 'CQO Poda',
+        demonstrativo_temporario: true,
+      },
+      lines: [],
+      activity: 'Poda',
+      company: 'Vila Nova',
+      totals: {
+        linhas: spec.linhas,
+        plantasLinha: spec.plantas,
+        plantasObservadas: spec.plantas,
+        plantasProjetadas: spec.projetadas,
+        totalPlantasParcela: spec.projetadas,
+        plantaSemPodar: spec.semPodar,
+        cachoExposto: spec.exposto,
+        podaMeiaCoroa: spec.meiaCoroa,
+        folhaMamando: spec.folhaMamando,
+        podaMaiorUmParaUm: spec.maiorUmParaUm,
+        bicoGaita: spec.bicoGaita,
+        cachoPodrePlanta: spec.podre,
+        palhaMalEmpilhada: spec.palha,
+        plantaSemPodarProjetada: project(spec.semPodar),
+        cachoExpostoProjetado: project(spec.exposto),
+        podaMeiaCoroaProjetada: project(spec.meiaCoroa),
+        folhaMamandoProjetada: project(spec.folhaMamando),
+        podaMaiorUmParaUmProjetada: project(spec.maiorUmParaUm),
+        bicoGaitaProjetado: project(spec.bicoGaita),
+        cachoPodrePlantaProjetado: project(spec.podre),
+        palhaMalEmpilhadaProjetada: project(spec.palha),
+      },
+    };
+  });
+}
+
+function podaIndicatorDefinitions(totals) {
+  return [
+    { key: 'plantaSemPodar', label: 'Planta sem podar', count: totals.plantaSemPodar, projected: totals.plantaSemPodarProjetada, rate: totals.plantaSemPodarRate, danger: 1, warning: 0.5, color: 'var(--status-danger)' },
+    { key: 'cachoExposto', label: 'Cacho exposto', count: totals.cachoExposto, projected: totals.cachoExpostoProjetado, rate: totals.cachoExpostoRate, danger: 2, warning: 1, color: 'var(--orange-institutional)' },
+    { key: 'podaMeiaCoroa', label: 'Poda meia coroa', count: totals.podaMeiaCoroa, projected: totals.podaMeiaCoroaProjetada, rate: totals.podaMeiaCoroaRate, danger: 2, warning: 1, color: '#B45309' },
+    { key: 'podaMaiorUmParaUm', label: 'Poda maior que 1:1', count: totals.podaMaiorUmParaUm, projected: totals.podaMaiorUmParaUmProjetada, rate: totals.podaMaiorUmParaUmRate, danger: 2, warning: 1, color: '#7C3AED' },
+    { key: 'bicoGaita', label: 'Bico de gaita', count: totals.bicoGaita, projected: totals.bicoGaitaProjetado, rate: totals.bicoGaitaRate, danger: 2, warning: 1, color: 'var(--status-info)' },
+    { key: 'cachoPodrePlanta', label: 'Cacho podre na planta', count: totals.cachoPodrePlanta, projected: totals.cachoPodrePlantaProjetado, rate: totals.cachoPodrePlantaRate, danger: 1, warning: 0.5, color: '#BE123C' },
+    { key: 'folhaMamando', label: 'Folha mamando', count: totals.folhaMamando, projected: totals.folhaMamandoProjetada, rate: totals.folhaMamandoPodaRate, danger: 2, warning: 1, color: '#64748B' },
+    { key: 'palhaMalEmpilhada', label: 'Palha mal empilhada', count: totals.palhaMalEmpilhada, projected: totals.palhaMalEmpilhadaProjetada, rate: totals.palhaMalEmpilhadaRate, danger: 2, warning: 1, color: 'var(--status-warning)' },
+  ].map((row) => ({
+    ...row,
+    count: Number(row.count || 0),
+    projected: Number(row.projected || 0),
+    rate: Number(row.rate || 0),
+    status: Number(row.rate || 0) > row.danger ? 'Crítico' : Number(row.rate || 0) > row.warning ? 'Atenção' : 'Dentro da meta',
+  }));
+}
+
+function buildPodaIndicatorRows(totals) {
+  return podaIndicatorDefinitions(totals).sort((a, b) => b.rate - a.rate);
+}
+
+function podaToneFromScore(score) {
+  if (score < 75) return 'danger';
+  if (score < 90) return 'orange';
+  return 'green';
+}
+
+function buildPodaGroupedRows(records, keyGetter) {
+  const buckets = new Map();
+  records.forEach((record) => {
+    const key = keyGetter(record);
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(record);
+  });
+
+  return Array.from(buckets.entries())
+    .map(([label, recs]) => {
+      const totals = aggregateRecords(recs);
+      const indicators = buildPodaIndicatorRows(totals);
+      const topIssue = indicators.find((row) => row.count > 0) || indicators[0];
+      return {
+        label,
+        total: recs.length,
+        plantas: totals.podaPlantasObservadas,
+        score: totals.podaScore,
+        value: Math.max(0, 100 - totals.podaScore),
+        issue: topIssue?.label || 'Sem falha',
+        issueRate: topIssue?.rate || 0,
+      };
+    })
+    .sort((a, b) => b.value - a.value);
+}
+
+function buildPodaDayRows(records) {
+  const buckets = new Map();
+  records.forEach((record) => {
+    const key = record.raw?.data_avaliacao || record.date || 'Sem data';
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(record);
+  });
+
+  return Array.from(buckets.entries())
+    .sort(([a], [b]) => String(a).localeCompare(String(b)))
+    .map(([key, recs]) => {
+      const totals = aggregateRecords(recs);
+      const date = key.includes('-') ? new Date(`${key}T00:00:00`) : null;
+      return {
+        label: date && !Number.isNaN(date.getTime()) ? String(date.getDate()).padStart(2, '0') : key,
+        score: totals.podaScore,
+        falhas: totals.plantaSemPodar + totals.cachoExposto + totals.podaMeiaCoroa + totals.podaMaiorUmParaUm + totals.bicoGaita + totals.cachoPodrePlanta + totals.folhaMamando + totals.palhaMalEmpilhada,
+      };
+    })
+    .slice(-12);
+}
+
+function PodaBiKpi({ label, value, meta, tone = 'green', icon: Icon }) {
+  return (
+    <div className={`poda-bi-kpi poda-bi-kpi-${tone}`}>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <small>{meta}</small>
+      </div>
+      <Icon size={20} />
+    </div>
+  );
+}
+
+function PodaScorePanel({ totals, indicators }) {
+  const score = Number(totals.podaScore || 0);
+  const critical = indicators.filter((row) => row.status === 'Crítico').length;
+  const topIssue = indicators.find((row) => row.count > 0);
+  const tone = podaToneFromScore(score);
+  const scoreColor = tone === 'danger' ? 'var(--status-danger)' : tone === 'orange' ? 'var(--orange-institutional)' : 'var(--status-success)';
+
+  return (
+    <section className="poda-bi-panel poda-bi-score-panel">
+      <div className="poda-bi-panel-title">
+        <h3>Nota geral</h3>
+        <span>Conformidade da poda no período filtrado.</span>
+      </div>
+      <div className="poda-score-content">
+        <div className="poda-score-ring" style={{ '--score-angle': `${score * 3.6}deg`, '--score-color': scoreColor }}>
+          <strong>{fmt(score)}</strong>
+          <span>/100</span>
+        </div>
+        <div className="poda-score-facts">
+          <div>
+            <span>Pior indicador</span>
+            <strong>{topIssue ? topIssue.label : 'Sem falhas'}</strong>
+            <small>{topIssue ? `${formatPercentValue(topIssue.rate)} da amostra` : 'Amostra conforme'}</small>
+          </div>
+          <div>
+            <span>Itens críticos</span>
+            <strong>{fmt(critical)}</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PodaIndicatorPanel({ indicators }) {
+  const max = Math.max(...indicators.map((row) => row.rate), 1);
+  return (
+    <section className="poda-bi-panel poda-bi-indicator-panel">
+      <div className="poda-bi-panel-title">
+        <h3>Indicadores de falha</h3>
+        <span>Percentual sobre plantas amostradas e projeção da parcela.</span>
+      </div>
+      <div className="poda-indicator-list">
+        {indicators.map((row) => (
+          <div className={`poda-indicator-row poda-indicator-${row.status === 'Crítico' ? 'danger' : row.status === 'Atenção' ? 'warning' : 'ok'}`} key={row.key}>
+            <div className="poda-indicator-head">
+              <strong>{row.label}</strong>
+              <span>{formatPercentValue(row.rate)}</span>
+            </div>
+            <div className="poda-indicator-track">
+              <i style={{ width: `${Math.max((row.rate / max) * 100, row.rate > 0 ? 3 : 0)}%`, background: row.color }} />
+            </div>
+            <div className="poda-indicator-meta">
+              <span>{fmt(row.count)} ocorrência(s)</span>
+              <span>{fmt(row.projected)} projetada(s)</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PodaMiniBars({ title, subtitle, rows, valueLabel = 'risco', maxRows = 3 }) {
+  const visibleRows = rows.slice(0, maxRows);
+  const max = Math.max(...visibleRows.map((row) => Number(row.value || 0)), 1);
+
+  return (
+    <section className="poda-bi-panel">
+      <div className="poda-bi-panel-title">
+        <h3>{title}</h3>
+        <span>{subtitle}</span>
+      </div>
+      <div className="poda-bi-bars">
+        {visibleRows.map((row) => (
+          <div className="poda-bi-bar-row" key={row.label}>
+            <div>
+              <strong>{row.label}</strong>
+              <span>{row.issue} · {fmt(row.total)} coleta(s)</span>
+            </div>
+            <div className="poda-bi-bar-track">
+              <i style={{ width: `${Math.max((Number(row.value || 0) / max) * 100, row.value > 0 ? 3 : 0)}%` }} />
+            </div>
+            <small>{valueLabel === 'score' ? fmt(row.score) : formatPercentValue(row.issueRate)}</small>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PodaTrendPanel({ rows }) {
+  const chartHeight = 160;
+  const padding = { top: 18, right: 16, bottom: 28, left: 34 };
+  const width = 640;
+  const graphWidth = width - padding.left - padding.right;
+  const graphHeight = chartHeight - padding.top - padding.bottom;
+  const maxFailure = Math.max(...rows.map((row) => row.falhas), 1);
+  const scorePoints = rows.map((row, index) => {
+    const x = padding.left + (rows.length <= 1 ? graphWidth / 2 : (index / (rows.length - 1)) * graphWidth);
+    const y = padding.top + graphHeight - (Number(row.score || 0) / 100) * graphHeight;
+    return { x, y, row };
+  });
+  const scorePath = scorePoints.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+
+  return (
+    <section className="poda-bi-panel poda-bi-trend-panel">
+      <div className="poda-bi-panel-title">
+        <h3>Evolução no período</h3>
+        <span>Nota CQO e volume de falhas por dia de coleta.</span>
+      </div>
+      <div className="poda-bi-legend">
+        <span><i style={{ background: 'var(--green-institutional)' }} />Nota CQO</span>
+        <span><i style={{ background: 'var(--orange-institutional)' }} />Falhas</span>
+      </div>
+      <svg className="poda-bi-trend-svg" viewBox={`0 0 ${width} ${chartHeight}`} width="100%" height={chartHeight}>
+        {[0, 0.5, 1].map((ratio) => {
+          const y = padding.top + graphHeight * (1 - ratio);
+          return (
+            <g key={ratio}>
+              <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} className="chart-grid-line" />
+              <text x={padding.left - 8} y={y + 4} textAnchor="end" className="chart-axis-text">{Math.round(ratio * 100)}</text>
+            </g>
+          );
+        })}
+        {rows.map((row, index) => {
+          const barWidth = 18;
+          const x = padding.left + (rows.length <= 1 ? graphWidth / 2 : (index / (rows.length - 1)) * graphWidth) - barWidth / 2;
+          const barHeight = Math.max((row.falhas / maxFailure) * graphHeight, row.falhas > 0 ? 2 : 0);
+          return (
+            <g key={row.label}>
+              <rect x={x} y={padding.top + graphHeight - barHeight} width={barWidth} height={barHeight} rx="3" fill="var(--orange-institutional)" opacity="0.78" />
+              <text x={x + barWidth / 2} y={chartHeight - 8} textAnchor="middle" className="chart-axis-text">{row.label}</text>
+            </g>
+          );
+        })}
+        {scorePath && <path d={scorePath} fill="none" stroke="var(--green-institutional)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+        {scorePoints.map((point) => (
+          <circle key={`${point.row.label}-${point.row.score}`} cx={point.x} cy={point.y} r="4" fill="var(--green-institutional)">
+            <title>{`${point.row.label}: nota ${fmt(point.row.score)} / falhas ${fmt(point.row.falhas)}`}</title>
+          </circle>
+        ))}
+      </svg>
+    </section>
+  );
+}
+
+function PodaBiBoard({ loading, source, totals, records, periodText, demoActive }) {
+  const indicators = buildPodaIndicatorRows(totals);
+  const farmRows = buildPodaGroupedRows(records, (record) => `${record.farm || 'Sem fazenda'} · ${record.parcel || 'Sem parcela'}`);
+  const evaluatorRows = buildPodaGroupedRows(records, (record) => record.evaluator || 'Sem fiscal');
+  const dayRows = buildPodaDayRows(records);
+  const topIssue = indicators.find((row) => row.count > 0) || indicators[0];
+  const gpsEligibleRecords = records.filter((record) => record.gpsApplicable !== false);
+  const gpsPct = gpsEligibleRecords.length ? (gpsEligibleRecords.filter((record) => record.gps).length / gpsEligibleRecords.length) * 100 : null;
+  const projectionBase = totals.plantasProjetadas || totals.plantasObservadas || totals.podaPlantasObservadas;
+  const sourceLabel = demoActive ? 'APP + dados manuais' : source;
+
+  return (
+    <div className="poda-bi-board">
+      <div className="poda-bi-header">
+        <img src="/logo.png" alt="Vila Nova Agroindustrial" />
+        <div>
+          <span>Qualidade Agrícola</span>
+          <h2>CQO Poda</h2>
+          <p>Tela de apresentação: amostragem, projeção da parcela, falhas críticas e fiscal responsável.</p>
+        </div>
+        {demoActive && <strong className="poda-bi-demo-pill">Dados manuais temporários</strong>}
+      </div>
+
+      <div className="poda-bi-filter-strip">
+        <span>{periodText}</span>
+        <span>{loading ? 'Carregando base' : sourceLabel}</span>
+        <span>{fmt(records.length)} coletas</span>
+        <span>{fmt(totals.linhas)} linhas</span>
+        <span>{fmt(totals.podaPlantasObservadas)} plantas amostradas</span>
+        <span>Pior falha: {topIssue ? `${topIssue.label} (${formatPercentValue(topIssue.rate)})` : 'sem ocorrência'}</span>
+      </div>
+
+      <div className="poda-bi-kpi-grid">
+        <PodaBiKpi label="Nota CQO" value={loading ? '--' : fmt(totals.podaScore)} meta="Score de conformidade" tone={podaToneFromScore(totals.podaScore)} icon={Gauge} />
+        <PodaBiKpi label="Coletas" value={loading ? '--' : fmt(records.length)} meta={`${fmt(totals.linhas)} linhas avaliadas`} tone="green" icon={Scissors} />
+        <PodaBiKpi label="Amostra" value={loading ? '--' : fmt(totals.podaPlantasObservadas)} meta="Plantas avaliadas" tone="info" icon={Sprout} />
+        <PodaBiKpi label="Base projetada" value={loading ? '--' : fmt(projectionBase)} meta={`${fmt(totals.podaComProjecao)} ficha(s) com projeção`} tone="green" icon={BarChart3} />
+        <PodaBiKpi label="Ocorrências" value={loading ? '--' : fmt(totals.ocorrenciasPodaProjetadas || 0)} meta="Falhas projetadas" tone={(totals.ocorrenciasPodaProjetadas || 0) > 40 ? 'danger' : 'orange'} icon={AlertTriangle} />
+        <PodaBiKpi label="GPS" value={loading ? '--' : formatPercentValue(gpsPct)} meta={gpsEligibleRecords.length ? 'Rastreabilidade app' : 'Sem exigência'} tone="info" icon={CheckCircle2} />
+      </div>
+
+      <div className="poda-bi-main-grid">
+        <div className="poda-bi-left-stack">
+          <PodaScorePanel totals={totals} indicators={indicators} />
+          <PodaMiniBars title="Piores parcelas" subtitle="Maior risco por amostragem." rows={farmRows} maxRows={2} />
+        </div>
+        <div className="poda-bi-center-stack">
+          <PodaIndicatorPanel indicators={indicators} />
+          <PodaTrendPanel rows={dayRows} />
+        </div>
+        <div className="poda-bi-right-stack">
+          <PodaMiniBars title="Fiscal responsável" subtitle="Onde concentrar alinhamento de campo." rows={evaluatorRows} maxRows={2} />
+          <section className="poda-bi-panel poda-bi-summary-panel">
+            <div className="poda-bi-panel-title">
+              <h3>Leitura executiva</h3>
+              <span>Resumo para apresentação no projetor.</span>
+            </div>
+            <div className="poda-bi-summary-list">
+              <div><span>Falhas críticas</span><strong>{fmt(indicators.filter((row) => row.status === 'Crítico').length)}</strong></div>
+              <div><span>Atenções</span><strong>{fmt(indicators.filter((row) => row.status === 'Atenção').length)}</strong></div>
+              <div><span>Aprovados</span><strong>{fmt(records.filter((record) => record.status === 'Aprovado').length)}</strong></div>
+              <div><span>Pendentes</span><strong>{fmt(records.filter((record) => record.status === 'Pendente validação').length)}</strong></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CarreamentoBiKpi({ label, value, meta, tone = 'green', icon: Icon }) {
   return (
     <div className={`carreamento-bi-kpi carreamento-bi-kpi-${tone}`}>
@@ -533,7 +1060,10 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
   const filtered = filterRecords(allRecords, { farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo });
   const corteRecords = filtered.filter((r) => r.type === 'corte');
   const carreamentoRecords = filtered.filter((r) => r.type === 'carreamento');
-  const podaRecords = filtered.filter((r) => r.type === 'poda');
+  const podaRealRecords = filtered.filter((r) => r.type === 'poda');
+  const podaDemoRecords = areaFilter === 'poda' ? buildPodaDemoRecords(dateFrom, dateTo) : [];
+  const podaRecords = areaFilter === 'poda' ? [...podaDemoRecords, ...podaRealRecords] : podaRealRecords;
+  const podaDemoActive = podaDemoRecords.length > 0;
 
   const totalsGeral = aggregateRecords(filtered);
   const totalsCorte = aggregateRecords(corteRecords);
@@ -654,6 +1184,27 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
           records={carreamentoRecords}
           periodText={periodText}
           onPresent={openCarreamentoPresentation}
+        />
+      </div>
+    );
+  }
+
+  if (areaFilter === 'poda') {
+    return (
+      <div className="fade-in page-shell poda-bi-page">
+        {error && !podaDemoActive && (
+          <StatusBanner tone="danger" icon={AlertTriangle}>
+            Falha ao carregar indicadores: {error}
+          </StatusBanner>
+        )}
+
+        <PodaBiBoard
+          loading={loading}
+          source={source}
+          totals={totalsPoda}
+          records={podaRecords}
+          periodText={periodText}
+          demoActive={podaDemoActive}
         />
       </div>
     );
