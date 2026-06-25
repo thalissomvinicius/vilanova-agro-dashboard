@@ -32,11 +32,36 @@ const RISK_METRICS = [
   { id: 'cachos_ha', label: 'Cachos perdidos/ha', unit: 'cachos/ha', goodWhen: 'low', meta: 4 },
   { id: 'perda_corte', label: 'Perda corte %', unit: '%', goodWhen: 'low', meta: 1 },
   { id: 'nao_carreado', label: 'Não carreado %', unit: '%', goodWhen: 'low', meta: 0.4 },
+  { id: 'mal_posicionado', label: 'Mal posicionado %', unit: '%', goodWhen: 'low', meta: 5 },
   { id: 'maduro', label: 'Cacho maduro %', unit: '%', goodWhen: 'high', meta: 85 },
   { id: 'verde', label: 'Cacho verde %', unit: '%', goodWhen: 'low', meta: 1 },
   { id: 'passado', label: 'Cacho passado %', unit: '%', goodWhen: 'low', meta: 10 },
   { id: 'avermelhado', label: 'Cacho avermelhado %', unit: '%', goodWhen: 'low', meta: 4 },
   { id: 'talo', label: 'Talo comprido %', unit: '%', goodWhen: 'low', meta: 3 },
+];
+
+const MAP_OPERATION_MODES = [
+  {
+    id: 'corte',
+    label: 'Corte',
+    areaFilter: 'corte',
+    defaultMetric: 'perda_corte',
+    metrics: ['nota', 'perda_corte', 'maduro', 'verde', 'passado', 'avermelhado', 'talo'],
+  },
+  {
+    id: 'carreamento',
+    label: 'Carreamento',
+    areaFilter: 'carreamento',
+    defaultMetric: 'nao_carreado',
+    metrics: ['nota', 'nao_carreado', 'mal_posicionado'],
+  },
+  {
+    id: 'perdas',
+    label: 'Perdas',
+    areaFilter: 'all',
+    defaultMetric: 'perda_t_ha',
+    metrics: ['perda_t_ha', 'cachos_ha', 'perda_corte', 'nao_carreado'],
+  },
 ];
 
 const RISK_COLORS = {
@@ -48,6 +73,10 @@ const RISK_COLORS = {
 
 function activeRiskMetric(metricId) {
   return RISK_METRICS.find((metric) => metric.id === metricId) || RISK_METRICS[1];
+}
+
+function activeOperationMode(operationId) {
+  return MAP_OPERATION_MODES.find((mode) => mode.id === operationId) || MAP_OPERATION_MODES[2];
 }
 
 const defaultIcon = L.icon({
@@ -466,6 +495,9 @@ function metricValue(metric, totals, areaHa) {
     case 'nao_carreado':
       if (!hasCarreamentoBase(totals)) return null;
       return Number(totals.cachoNaoCarreadoRate || 0);
+    case 'mal_posicionado':
+      if (!hasCarreamentoBase(totals)) return null;
+      return Number(totals.cachoMalPosicionadoRate || 0);
     case 'maduro':
       if (!hasCorteBunchBase(totals)) return null;
       return percentOf(totals.cachoMaduro, totals.cachosObservados);
@@ -969,6 +1001,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   const layerGroupRef = useRef(null);
   const [mapLayer, setMapLayer] = useState('heat');
   const [baseLayer, setBaseLayer] = useState('standard');
+  const [mapOperation, setMapOperation] = useState('perdas');
   const [riskMetricId, setRiskMetricId] = useState('perda_t_ha');
   const [parcelGeoJson, setParcelGeoJson] = useState(null);
   const [parcelGeoStatus, setParcelGeoStatus] = useState('loading');
@@ -978,18 +1011,23 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
     label: 'Preparando mapa',
   });
   const { records, loading: recordsLoading } = useCqoData();
+  const selectedOperation = useMemo(() => activeOperationMode(mapOperation), [mapOperation]);
+  const metricOptions = useMemo(() => (
+    RISK_METRICS.filter((metric) => selectedOperation.metrics.includes(metric.id))
+  ), [selectedOperation]);
   const selectedRiskMetric = useMemo(() => activeRiskMetric(riskMetricId), [riskMetricId]);
+  const effectiveAreaFilter = areaFilter && areaFilter !== 'all' ? areaFilter : selectedOperation.areaFilter;
 
   const filteredRecords = useMemo(() => filterRecords(records, {
     farmFilter,
-    areaFilter,
+    areaFilter: effectiveAreaFilter,
     periodFilter,
     cycleFilter,
     evaluatorFilter,
     sourceFilter,
     dateFrom,
     dateTo,
-  }), [records, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo]);
+  }), [records, farmFilter, effectiveAreaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo]);
 
   const geoRecords = useMemo(() => filteredRecords.filter((record) => {
     if (record.raw?.mapeamento_legado || record.evaluatorMatricula === 'HISTORICO') return false;
@@ -1662,6 +1700,23 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           {BASE_LAYER_NOTES[baseLayer]}
         </p>
 
+        <h4 className="gps-overlay-section-title">Operação</h4>
+        <div className="gps-operation-toggle" aria-label="Separação operacional do mapa">
+          {MAP_OPERATION_MODES.map((mode) => (
+            <button
+              type="button"
+              key={mode.id}
+              className={mapOperation === mode.id ? 'active' : ''}
+              onClick={() => {
+                setMapOperation(mode.id);
+                setRiskMetricId(mode.defaultMetric);
+              }}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+
         <h4 className="gps-overlay-section-title">Camadas do mapa</h4>
         <div className="gps-layer-stack">
           <button
@@ -1691,7 +1746,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           <label className="gps-metric-control">
             <span>Indicador</span>
             <select value={riskMetricId} onChange={(event) => setRiskMetricId(event.target.value)}>
-              {RISK_METRICS.map((metric) => (
+              {metricOptions.map((metric) => (
                 <option key={metric.id} value={metric.id}>{metric.label}</option>
               ))}
             </select>
@@ -1700,7 +1755,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
 
         <div className="gps-map-stats">
           <div className="gps-map-stats-total">
-            {geoStats.total} coletas / {geoStats.sampledParcels} parcelas avaliadas
+            {geoStats.total} coletas de {selectedOperation.label.toLowerCase()} / {geoStats.sampledParcels} parcelas avaliadas
           </div>
           <div className="gps-sample-grid">
             <div>
@@ -1761,9 +1816,9 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           ))}
           <div className="gps-map-note">
             <span>
-              {mapLayer === 'heat' && `${selectedRiskMetric.label} aplicado na parcela completa com base na amostragem filtrada.`}
-              {mapLayer === 'route' && 'GPS detalhado mostra as coordenadas reais numeradas dentro da parcela.'}
-              {mapLayer === 'polygon' && `${selectedRiskMetric.label} em semaforo por parcela, respeitando os filtros atuais.`}
+              {mapLayer === 'heat' && `${selectedRiskMetric.label} de ${selectedOperation.label.toLowerCase()} aplicado na parcela completa com base na amostragem filtrada.`}
+              {mapLayer === 'route' && `GPS detalhado mostra as coordenadas reais de ${selectedOperation.label.toLowerCase()} dentro da parcela.`}
+              {mapLayer === 'polygon' && `${selectedRiskMetric.label} de ${selectedOperation.label.toLowerCase()} em semaforo por parcela, respeitando os filtros atuais.`}
             </span>
           </div>
           <div className="gps-heat-legend" aria-label="Legenda do mapa CQO">
