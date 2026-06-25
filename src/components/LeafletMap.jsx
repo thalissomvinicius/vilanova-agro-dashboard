@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
-import { Flame, Layers, Map as MapIcon, Route, Satellite } from 'lucide-react';
+import { Layers, Map as MapIcon, Route, Satellite } from 'lucide-react';
 import { FARMS } from '../utils/mockData';
 import { filterRecords, useCqoData, aggregateRecords } from '../utils/cqoData';
 
@@ -999,7 +999,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const layerGroupRef = useRef(null);
-  const [mapLayer, setMapLayer] = useState('heat');
+  const [mapLayer, setMapLayer] = useState('polygon');
   const [baseLayer, setBaseLayer] = useState('standard');
   const [mapOperation, setMapOperation] = useState('perdas');
   const [riskMetricId, setRiskMetricId] = useState('perda_t_ha');
@@ -1318,13 +1318,13 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           const style = farmStyle(props.farmId);
           let fillColor = style.fill;
           let fillOpacity = mapLayer === 'polygon' ? 0.12 : 0.03;
-          let weight = mapLayer === 'heat' ? 2 : 1.4;
+          let weight = mapLayer === 'polygon' ? 2 : 1.4;
 
           const shapeParcel = shapeParcelCode(props);
           const summary = parcelSummaryByKey.get(parcelHeatKey(props.farmId, shapeParcel));
           const parcelTotals = summary?.totals || null;
 
-          if (mapLayer === 'heat') {
+          if (mapLayer === 'polygon') {
             if (parcelTotals && summary) {
               fillColor = summary.color;
               fillOpacity = 0.62;
@@ -1336,20 +1336,8 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             }
           }
 
-          if (mapLayer === 'polygon' && shapeParcel) {
-            if (parcelTotals && summary) {
-              fillColor = summary.color;
-              fillOpacity = 0.5;
-              weight = 2;
-            } else {
-              fillColor = '#CBD5E1'; // Neutral gray for un-evaluated parcels
-              fillOpacity = 0.15;
-              weight = 1;
-            }
-          }
-
           return {
-            color: (mapLayer === 'heat' || mapLayer === 'polygon') && summary?.totals ? summary.color : style.color,
+            color: mapLayer === 'polygon' && summary?.totals ? summary.color : style.color,
             fillColor,
             fillOpacity,
             weight,
@@ -1511,7 +1499,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
         `);
     });
 
-    if (mapLayer === 'heat' && !parcelGeoJson?.features?.length) {
+    if (mapLayer === 'polygon' && !parcelGeoJson?.features?.length) {
       heatPoints.forEach((point) => {
         if (heatByParcel.has(parcelHeatKey(point.record.farmId, point.record.parcel))) return;
         const style = farmStyle(point.record.farmId);
@@ -1727,13 +1715,6 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
             <span>Qualidade (Semáforo)</span>
           </button>
           <button
-            onClick={() => setMapLayer('heat')}
-            className={`btn ${mapLayer === 'heat' ? 'btn-primary' : 'btn-secondary'}`}
-          >
-            <Flame size={14} />
-            <span>Risco por parcela</span>
-          </button>
-          <button
             onClick={() => setMapLayer('route')}
             className={`btn ${mapLayer === 'route' ? 'btn-primary' : 'btn-secondary'}`}
           >
@@ -1775,7 +1756,7 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
               <span>pontos GPS app</span>
             </div>
           </div>
-          {mapLayer === 'heat' ? (
+          {mapLayer === 'polygon' ? (
             <div className="gps-risk-ranking">
               <strong>Top parcelas críticas</strong>
               {rankedParcels.length ? rankedParcels.map((summary, index) => (
@@ -1816,9 +1797,8 @@ export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter
           ))}
           <div className="gps-map-note">
             <span>
-              {mapLayer === 'heat' && `${selectedRiskMetric.label} de ${selectedOperation.label.toLowerCase()} aplicado na parcela completa com base na amostragem filtrada.`}
               {mapLayer === 'route' && `GPS detalhado mostra as coordenadas reais de ${selectedOperation.label.toLowerCase()} dentro da parcela.`}
-              {mapLayer === 'polygon' && `${selectedRiskMetric.label} de ${selectedOperation.label.toLowerCase()} em semaforo por parcela, respeitando os filtros atuais.`}
+              {mapLayer === 'polygon' && `${selectedRiskMetric.label} de ${selectedOperation.label.toLowerCase()} aplicado no semaforo por parcela, respeitando os filtros atuais.`}
             </span>
           </div>
           <div className="gps-heat-legend" aria-label="Legenda do mapa CQO">
