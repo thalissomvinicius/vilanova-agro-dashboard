@@ -6497,12 +6497,17 @@ body.field-map-active {
 }
 
 .parcel-quality-bubble {
+  --quality-bubble-size: 58px;
   position: relative;
   display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: var(--quality-bubble-size) auto;
+  align-items: center;
+  justify-items: center;
+  gap: 4px;
   min-width: 0;
-  min-height: 94px;
-  place-items: center;
-  padding: 8px 5px;
+  min-height: 92px;
+  padding: 7px 5px 6px;
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(255, 255, 255, 0.95));
@@ -6510,9 +6515,9 @@ body.field-map-active {
 }
 
 .parcel-quality-bubble::before {
-  position: absolute;
-  width: 58px;
-  height: 58px;
+  grid-area: 1 / 1;
+  width: var(--quality-bubble-size);
+  height: var(--quality-bubble-size);
   border-radius: 999px;
   background:
     radial-gradient(circle at center, var(--bg-card) 0 55%, transparent 56%),
@@ -6522,13 +6527,17 @@ body.field-map-active {
 
 .parcel-quality-bubble div,
 .parcel-quality-bubble small {
-  position: relative;
   z-index: 1;
 }
 
 .parcel-quality-bubble div {
-  display: grid;
-  place-items: center;
+  grid-area: 1 / 1;
+  width: var(--quality-bubble-size);
+  height: var(--quality-bubble-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
   min-width: 0;
 }
 
@@ -6540,8 +6549,8 @@ body.field-map-active {
 }
 
 .parcel-quality-bubble span {
-  max-width: 76px;
-  margin-top: 3px;
+  max-width: calc(var(--quality-bubble-size) - 8px);
+  margin-top: 2px;
   color: var(--text-secondary);
   font-size: 0.57rem;
   font-weight: 900;
@@ -6551,7 +6560,8 @@ body.field-map-active {
 }
 
 .parcel-quality-bubble small {
-  align-self: end;
+  grid-area: 2 / 1;
+  align-self: center;
   color: var(--text-muted);
   font-size: 0.56rem;
   font-weight: 820;
@@ -8124,27 +8134,21 @@ body.field-map-active {
 
 .gps-home-summary .parcel-quality-bubble,
 .gps-detail-content .parcel-quality-bubble {
+  --quality-bubble-size: 48px;
   min-height: 76px;
-  padding: 5px 4px;
+  padding: 5px 4px 4px;
   border-radius: 9px;
-}
-
-.gps-home-summary .parcel-quality-bubble::before,
-.gps-detail-content .parcel-quality-bubble::before {
-  width: 48px;
-  height: 48px;
 }
 
 .gps-home-summary .parcel-quality-bubble strong,
 .gps-detail-content .parcel-quality-bubble strong {
-  font-size: 0.66rem;
+  font-size: 0.62rem;
 }
 
 .gps-home-summary .parcel-quality-bubble span,
 .gps-detail-content .parcel-quality-bubble span {
-  max-width: 62px;
   margin-top: 2px;
-  font-size: 0.5rem;
+  font-size: 0.46rem;
 }
 
 .gps-home-summary .parcel-quality-bubble small,
