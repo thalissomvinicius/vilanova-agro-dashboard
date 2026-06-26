@@ -864,9 +864,9 @@ function PodaMiniBars({ title, subtitle, rows, valueLabel = 'risco', maxRows = 3
 }
 
 function PodaTrendPanel({ rows, issueLabel = 'Falhas', title = 'Evolução no período', subtitle }) {
-  const chartHeight = 220;
-  const padding = { top: 26, right: 34, bottom: 38, left: 62 };
-  const width = 1900;
+  const chartHeight = 200;
+  const padding = { top: 22, right: 30, bottom: 34, left: 48 };
+  const width = 980;
   const graphWidth = width - padding.left - padding.right;
   const graphHeight = chartHeight - padding.top - padding.bottom;
   const maxFailure = Math.max(...rows.map((row) => row.falhas), 1);

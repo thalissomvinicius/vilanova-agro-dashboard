@@ -5475,7 +5475,7 @@ body.field-map-active {
 }
 
 .poda-bi-board.poda-executive-board {
-  grid-template-rows: 76px 52px 112px 82px minmax(190px, 1fr) 142px 24px;
+  grid-template-rows: 76px 42px 132px 108px minmax(200px, 1fr) 160px 22px;
   gap: 8px;
   padding: 8px;
   border: 0;
@@ -5557,11 +5557,11 @@ body.field-map-active {
 }
 
 .poda-executive-board .poda-bi-filter-strip {
-  min-height: 52px;
+  min-height: 42px;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 6px 10px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 10px;
   background: #FFFFFF;
@@ -5570,7 +5570,7 @@ body.field-map-active {
 }
 
 .poda-executive-board .poda-bi-filter-strip span {
-  min-height: 32px;
+  min-height: 28px;
   align-items: center;
   border: 1px solid var(--border-color);
   border-radius: 6px;
@@ -5602,11 +5602,45 @@ body.field-map-active {
 }
 
 .poda-reference-overview .poda-alert-card {
-  gap: 4px;
+  gap: 5px;
+  padding: 10px 11px;
 }
 
 .poda-reference-overview .poda-alert-metric strong {
-  font-size: 2rem;
+  font-size: 1.95rem;
+}
+
+.poda-reference-overview .poda-alert-details div {
+  padding: 5px 8px;
+}
+
+.poda-reference-overview .poda-score-exec-card {
+  padding: 10px 11px;
+}
+
+.poda-reference-overview .poda-score-exec-card .poda-score-exec-body {
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.poda-reference-overview .poda-score-exec-card .poda-score-ring {
+  width: 70px;
+  height: 70px;
+}
+
+.poda-reference-overview .poda-score-exec-card .poda-score-ring strong {
+  font-size: 1.5rem;
+}
+
+.poda-reference-overview .poda-score-status strong {
+  min-height: 22px;
+  font-size: 0.64rem;
+}
+
+.poda-reference-overview .poda-score-status span {
+  margin-top: 4px;
+  font-size: 0.62rem;
+  line-height: 1.2;
 }
 
 .poda-team-stats-card {
@@ -5679,7 +5713,7 @@ body.field-map-active {
 }
 
 .poda-team-stat-rate strong {
-  font-size: 1.28rem;
+  font-size: 1.2rem;
   line-height: 1;
   font-weight: 950;
 }
@@ -5742,7 +5776,7 @@ body.field-map-active {
     "track track"
     "meta meta";
   gap: 2px 6px;
-  padding: 8px 10px;
+  padding: 6px 9px;
   border: 0;
   border-left: 2px solid var(--fault-color, var(--orange-institutional));
   border-radius: 0;
@@ -5768,7 +5802,7 @@ body.field-map-active {
 .poda-fault-strip .poda-fault-row strong {
   grid-area: value;
   color: var(--text-primary);
-  font-size: 1.08rem;
+  font-size: 1rem;
   line-height: 1;
 }
 
@@ -5808,7 +5842,7 @@ body.field-map-active {
 .poda-reference-chart-grid .poda-bi-trend-panel {
   min-height: 0;
   display: grid;
-  grid-template-rows: 40px 20px minmax(0, 1fr);
+  grid-template-rows: 38px 20px minmax(0, 1fr);
   padding: 10px 12px;
 }
 
@@ -5825,7 +5859,7 @@ body.field-map-active {
 .poda-reference-bottom-grid {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(260px, 0.78fr) minmax(330px, 0.95fr) minmax(470px, 1.45fr);
+  grid-template-columns: minmax(270px, 0.8fr) minmax(330px, 0.9fr) minmax(500px, 1.5fr);
   gap: 8px;
   overflow: hidden;
 }
@@ -5895,7 +5929,7 @@ body.field-map-active {
 
 .poda-bi-board.poda-executive-board.is-presentation {
   height: calc(100dvh - 20px);
-  grid-template-rows: 76px 52px 112px 82px minmax(190px, 1fr) 142px 24px;
+  grid-template-rows: 76px 42px 132px 108px minmax(200px, 1fr) 160px 22px;
   gap: 8px;
   padding: 8px;
 }
@@ -5921,7 +5955,7 @@ body.field-map-active {
 }
 
 .poda-executive-board.is-presentation .poda-bi-filter-strip {
-  min-height: 52px;
+  min-height: 42px;
   font-size: 0.76rem;
 }
 
