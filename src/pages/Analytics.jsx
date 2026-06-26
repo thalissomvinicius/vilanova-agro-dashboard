@@ -549,6 +549,17 @@ function podaMonthLabel(record) {
   return month.replace('.', '').replace(/\s+de\s+/i, '/');
 }
 
+function formatPodaChartLabel(label) {
+  const text = String(label || '');
+  const week = text.match(/Semana\s+(\d+)/i);
+  if (week) return `Sem. ${week[1]}`;
+
+  const date = text.match(/^(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?$/);
+  if (date) return `${date[1].padStart(2, '0')}/${date[2].padStart(2, '0')}`;
+
+  return text.length > 10 ? `${text.slice(0, 9)}...` : text;
+}
+
 function podaDateLabel(record) {
   const date = parsePodaRecordDate(record);
   if (!date) return record?.date || 'Sem data';
@@ -755,8 +766,8 @@ function PodaTeamStatsPanel({ rows, indicator }) {
               <em>{row.status === 'Dentro da meta' ? '↓' : '↑'}</em>
             </div>
             <div className="poda-team-stat-meta">
-              <span>Ocorrências <b>{fmt(row.count)}</b></span>
-              <span>Projetadas <b>{fmt(row.projected)}</b></span>
+              <div><span>Ocorrências</span><strong>{fmt(row.count)}</strong></div>
+              <div><span>Projetadas</span><strong>{fmt(row.projected)}</strong></div>
             </div>
           </div>
         )) : (
@@ -909,7 +920,7 @@ function PodaTrendPanel({ rows, issueLabel = 'Falhas', title = 'Evolução no pe
               {row.falhas > 0 && (
                 <text x={x + barWidth / 2} y={Math.max(padding.top + 12, padding.top + graphHeight - barHeight - 6)} textAnchor="middle" className="chart-value-text">{fmt(row.falhas)}</text>
               )}
-              <text x={x + barWidth / 2} y={chartHeight - 8} textAnchor="middle" className="chart-axis-text">{row.label}</text>
+              <text x={x + barWidth / 2} y={chartHeight - 8} textAnchor="middle" className="chart-axis-text">{formatPodaChartLabel(row.label)}</text>
             </g>
           );
         })}

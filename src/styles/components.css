@@ -5728,16 +5728,30 @@ body.field-map-active {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
-  color: var(--text-secondary);
-  font-size: 0.58rem;
-  font-weight: 760;
 }
 
-.poda-team-stat-meta b {
+.poda-team-stat-meta div {
+  min-width: 0;
+}
+
+.poda-team-stat-meta span,
+.poda-team-stat-meta strong {
   display: block;
+  min-width: 0;
+}
+
+.poda-team-stat-meta span {
+  color: var(--text-secondary);
+  font-size: 0.56rem;
+  font-weight: 820;
+}
+
+.poda-team-stat-meta strong {
   margin-top: 2px;
   color: var(--text-primary);
-  font-size: 0.72rem;
+  font-size: 0.82rem;
+  line-height: 1;
+  font-weight: 950;
 }
 
 .poda-team-empty {
@@ -5849,6 +5863,16 @@ body.field-map-active {
 .poda-reference-chart-grid .poda-bi-trend-svg {
   min-height: 0;
   padding: 0;
+}
+
+.poda-reference-chart-grid .chart-axis-text {
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.poda-reference-chart-grid .chart-value-text,
+.poda-reference-chart-grid .chart-score-text {
+  font-size: 13px;
 }
 
 .poda-reference-chart-grid .poda-section-title {
