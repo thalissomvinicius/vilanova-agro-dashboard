@@ -8097,6 +8097,52 @@ body.field-map-active {
   margin: 0 0 12px;
 }
 
+.gps-summary-operation-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.055);
+}
+
+.gps-summary-operation-tabs-home {
+  margin: 0 0 8px;
+}
+
+.gps-summary-operation-tabs-detail {
+  margin: 8px 8px 0;
+  flex: 0 0 auto;
+}
+
+.gps-summary-operation-tabs button {
+  min-width: 0;
+  min-height: 32px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.64rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.05;
+  transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.gps-summary-operation-tabs button.active {
+  background: var(--green-institutional);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+
+.gps-summary-operation-tabs button:focus-visible {
+  outline: 2px solid var(--orange-institutional);
+  outline-offset: 2px;
+}
+
 .gps-home-summary .parcel-popup-card,
 .gps-detail-content .parcel-popup-card {
   width: 100%;
@@ -8264,6 +8310,11 @@ body.field-map-active {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.gps-home-summary .parcel-operation-bubble-card-poda .parcel-operation-bubble-grid,
+.gps-detail-content .parcel-operation-bubble-card-poda .parcel-operation-bubble-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .gps-home-summary .parcel-operation-bubble-note,
 .gps-detail-content .parcel-operation-bubble-note {
   padding: 5px 7px;
@@ -8382,7 +8433,7 @@ body.field-map-active {
 
 .gps-operation-toggle {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   padding: 4px;
   border: 1px solid rgba(148, 163, 184, 0.34);

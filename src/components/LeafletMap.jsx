@@ -33,6 +33,14 @@ const RISK_METRICS = [
   { id: 'perda_corte', label: 'Perda corte %', unit: '%', goodWhen: 'low', meta: 1 },
   { id: 'nao_carreado', label: 'Não carreado %', unit: '%', goodWhen: 'low', meta: 0.4 },
   { id: 'mal_posicionado', label: 'Mal posicionado %', unit: '%', goodWhen: 'low', meta: 5 },
+  { id: 'poda_planta_sem_podar', label: 'Planta sem podar %', unit: '%', goodWhen: 'low', meta: 1 },
+  { id: 'poda_cacho_exposto', label: 'Cacho exposto %', unit: '%', goodWhen: 'low', meta: 2 },
+  { id: 'poda_meia_coroa', label: 'Poda meia coroa %', unit: '%', goodWhen: 'low', meta: 2 },
+  { id: 'poda_maior_1_1', label: 'Poda > 1:1 %', unit: '%', goodWhen: 'low', meta: 2 },
+  { id: 'poda_bico_gaita', label: 'Bico de gaita %', unit: '%', goodWhen: 'low', meta: 2 },
+  { id: 'poda_cacho_podre', label: 'Cacho podre %', unit: '%', goodWhen: 'low', meta: 1 },
+  { id: 'poda_folha_mamando', label: 'Folha mamando %', unit: '%', goodWhen: 'low', meta: 2 },
+  { id: 'poda_palha_mal_empilhada', label: 'Palha mal empilhada %', unit: '%', goodWhen: 'low', meta: 2 },
   { id: 'maduro', label: 'Cacho maduro %', unit: '%', goodWhen: 'high', meta: 85 },
   { id: 'verde', label: 'Cacho verde %', unit: '%', goodWhen: 'low', meta: 1 },
   { id: 'passado', label: 'Cacho passado %', unit: '%', goodWhen: 'low', meta: 10 },
@@ -56,12 +64,36 @@ const MAP_OPERATION_MODES = [
     metrics: ['nota', 'nao_carreado', 'mal_posicionado'],
   },
   {
+    id: 'poda',
+    label: 'Poda',
+    areaFilter: 'poda',
+    defaultMetric: 'poda_planta_sem_podar',
+    metrics: [
+      'nota',
+      'poda_planta_sem_podar',
+      'poda_cacho_exposto',
+      'poda_meia_coroa',
+      'poda_maior_1_1',
+      'poda_bico_gaita',
+      'poda_cacho_podre',
+      'poda_folha_mamando',
+      'poda_palha_mal_empilhada',
+    ],
+  },
+  {
     id: 'perdas',
     label: 'Perdas',
     areaFilter: 'all',
     defaultMetric: 'perda_t_ha',
     metrics: ['perda_t_ha', 'cachos_ha', 'perda_corte', 'nao_carreado'],
   },
+];
+
+const SUMMARY_OPERATION_MODES = [
+  { id: 'all', label: 'Todos' },
+  { id: 'corte', label: 'Corte' },
+  { id: 'carreamento', label: 'Carreamento' },
+  { id: 'poda', label: 'Poda' },
 ];
 
 const RISK_COLORS = {
@@ -73,13 +105,32 @@ const RISK_COLORS = {
 
 const CORTE_METRIC_IDS = new Set(['perda_corte', 'maduro', 'verde', 'passado', 'avermelhado', 'talo']);
 const CARREAMENTO_METRIC_IDS = new Set(['nao_carreado']);
+const PODA_METRIC_IDS = new Set([
+  'poda_planta_sem_podar',
+  'poda_cacho_exposto',
+  'poda_meia_coroa',
+  'poda_maior_1_1',
+  'poda_bico_gaita',
+  'poda_cacho_podre',
+  'poda_folha_mamando',
+  'poda_palha_mal_empilhada',
+]);
 
 function activeRiskMetric(metricId) {
-  return RISK_METRICS.find((metric) => metric.id === metricId) || RISK_METRICS[1];
+  return RISK_METRICS.find((metric) => metric.id === metricId)
+    || RISK_METRICS.find((metric) => metric.id === 'perda_t_ha')
+    || RISK_METRICS[0];
 }
 
 function activeOperationMode(operationId) {
-  return MAP_OPERATION_MODES.find((mode) => mode.id === operationId) || MAP_OPERATION_MODES[2];
+  return MAP_OPERATION_MODES.find((mode) => mode.id === operationId)
+    || MAP_OPERATION_MODES.find((mode) => mode.id === 'perdas')
+    || MAP_OPERATION_MODES[0];
+}
+
+function activeSummaryOperation(summaryOperationId) {
+  return SUMMARY_OPERATION_MODES.find((mode) => mode.id === summaryOperationId)
+    || SUMMARY_OPERATION_MODES[0];
 }
 
 const defaultIcon = L.icon({
@@ -465,6 +516,10 @@ function hasCarreamentoBase(totals) {
   return Number(totals?.carreamento || 0) > 0 && Number(totals?.plantasObservadas || 0) > 0;
 }
 
+function hasPodaPlantBase(totals) {
+  return Number(totals?.poda || 0) > 0 && Number(totals?.podaPlantasObservadas || totals?.plantasObservadas || 0) > 0;
+}
+
 function formatDecimal(value, digits = 1) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return '0';
@@ -520,10 +575,12 @@ function metricRecordScope(metric, operation) {
   if (metric.id === 'nota') {
     if (operation?.id === 'corte') return 'corte';
     if (operation?.id === 'carreamento') return 'carreamento';
+    if (operation?.id === 'poda') return 'poda';
     return 'all';
   }
   if (CORTE_METRIC_IDS.has(metric.id)) return 'corte';
   if (CARREAMENTO_METRIC_IDS.has(metric.id)) return 'carreamento';
+  if (PODA_METRIC_IDS.has(metric.id)) return 'poda';
   if (metric.id === 'mal_posicionado') {
     return operation?.id === 'carreamento' ? 'carreamento' : 'corte';
   }
@@ -534,26 +591,31 @@ function aggregateForMetric(records, metric, operation) {
   return aggregateByType(records, metricRecordScope(metric, operation));
 }
 
-function operationScore({ totals, corteTotals, carreamentoTotals, operation }) {
+function operationScore({ totals, corteTotals, carreamentoTotals, podaTotals, operation }) {
   if (operation?.id === 'corte') {
     return corteTotals ? Number(corteTotals.corteScore || 0) : null;
   }
   if (operation?.id === 'carreamento') {
     return carreamentoTotals ? Number(carreamentoTotals.carreamentoScore || 0) : null;
   }
+  if (operation?.id === 'poda') {
+    return podaTotals ? Number(podaTotals.podaScore || 0) : null;
+  }
 
   const scores = [];
   if (corteTotals) scores.push(Number(corteTotals.corteScore || 0));
   if (carreamentoTotals) scores.push(Number(carreamentoTotals.carreamentoScore || 0));
+  if (podaTotals) scores.push(Number(podaTotals.podaScore || 0));
   if (scores.length) {
     return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
   }
   return totals ? Number(totals.generalScore || 0) : null;
 }
 
-function operationTotalsFor({ totals, corteTotals, carreamentoTotals, operation }) {
+function operationTotalsFor({ totals, corteTotals, carreamentoTotals, podaTotals, operation }) {
   if (operation?.id === 'corte') return corteTotals;
   if (operation?.id === 'carreamento') return carreamentoTotals;
+  if (operation?.id === 'poda') return podaTotals;
   return totals;
 }
 
@@ -564,6 +626,7 @@ function metricValue(metric, totals, areaHa, operation) {
     case 'nota':
       if (operation?.id === 'corte') return Number(totals.corteScore || 0);
       if (operation?.id === 'carreamento') return Number(totals.carreamentoScore || 0);
+      if (operation?.id === 'poda') return Number(totals.podaScore || 0);
       return Number(totals.generalScore || 0);
     case 'perda_t_ha':
       if (!(areaHa > 0)) return null;
@@ -578,8 +641,36 @@ function metricValue(metric, totals, areaHa, operation) {
       if (!hasCarreamentoBase(totals)) return null;
       return Number(totals.cachoNaoCarreadoRate || 0);
     case 'mal_posicionado':
+      if (operation?.id === 'corte') {
+        if (!hasCortePlantBase(totals)) return null;
+        return percentOf(totals.cachoMalPosicionado, totals.cortePlantasObservadas || totals.plantasObservadas);
+      }
       if (!hasCarreamentoBase(totals)) return null;
       return Number(totals.cachoMalPosicionadoRate || 0);
+    case 'poda_planta_sem_podar':
+      if (!hasPodaPlantBase(totals)) return null;
+      return Number(totals.plantaSemPodarRate || 0);
+    case 'poda_cacho_exposto':
+      if (!hasPodaPlantBase(totals)) return null;
+      return Number(totals.cachoExpostoRate || 0);
+    case 'poda_meia_coroa':
+      if (!hasPodaPlantBase(totals)) return null;
+      return Number(totals.podaMeiaCoroaRate || 0);
+    case 'poda_maior_1_1':
+      if (!hasPodaPlantBase(totals)) return null;
+      return Number(totals.podaMaiorUmParaUmRate || 0);
+    case 'poda_bico_gaita':
+      if (!hasPodaPlantBase(totals)) return null;
+      return Number(totals.bicoGaitaRate || 0);
+    case 'poda_cacho_podre':
+      if (!hasPodaPlantBase(totals)) return null;
+      return Number(totals.cachoPodrePlantaRate || 0);
+    case 'poda_folha_mamando':
+      if (!hasPodaPlantBase(totals)) return null;
+      return Number(totals.folhaMamandoPodaRate || 0);
+    case 'poda_palha_mal_empilhada':
+      if (!hasPodaPlantBase(totals)) return null;
+      return Number(totals.palhaMalEmpilhadaRate || 0);
     case 'maduro':
       if (!hasCorteBunchBase(totals)) return null;
       return percentOf(totals.cachoMaduro, totals.cachosObservados);
@@ -728,6 +819,12 @@ function compactMetaText(metric) {
   return `Meta ${signal} ${formatMetricValue(metric, metric.meta)}`;
 }
 
+function compactOccurrenceDetail(count, projected = null) {
+  const countText = `${formatInteger(count || 0)} ocorr.`;
+  if (projected === null || projected === undefined) return countText;
+  return `${countText} · ${formatInteger(projected || 0)} proj.`;
+}
+
 function compactMetricBox(label, value, detail = '', color = '#182230') {
   return `
     <div class="parcel-compact-metric">
@@ -811,19 +908,25 @@ function compactParcelSummaryHtml({
   totals,
   corteTotals,
   carreamentoTotals,
+  podaTotals,
   parcelRecords,
   areaHa,
   densityShape,
   collectionDates,
+  summaryOperation = 'all',
 }) {
-  const generalScore = operationScore({
+  const summaryMode = activeSummaryOperation(summaryOperation);
+  const corteScore = corteTotals ? Number(corteTotals.corteScore || 0) : null;
+  const carreamentoScore = carreamentoTotals ? Number(carreamentoTotals.carreamentoScore || 0) : null;
+  const podaScore = podaTotals ? Number(podaTotals.podaScore || 0) : null;
+  const summaryScore = operationScore({
     totals,
     corteTotals,
     carreamentoTotals,
-    operation: activeOperationMode('perdas'),
+    podaTotals,
+    operation: summaryMode.id === 'all' ? activeOperationMode('perdas') : summaryMode,
   });
-  const corteScore = corteTotals ? Number(corteTotals.corteScore || 0) : null;
-  const carreamentoScore = carreamentoTotals ? Number(carreamentoTotals.carreamentoScore || 0) : null;
+  const summaryScoreDetail = summaryMode.id === 'all' ? 'Corte + carreamento + poda' : summaryMode.label;
   const qualityTotal = Number(corteTotals?.cachosObservados || 0);
   const palhaRate = corteTotals?.cortePlantasObservadas
     ? percentOf(corteTotals.cachoMalPosicionado, corteTotals.cortePlantasObservadas)
@@ -838,6 +941,14 @@ function compactParcelSummaryHtml({
   const palhaMetric = activeRiskMetric('mal_posicionado');
   const naoCarreadoMetric = activeRiskMetric('nao_carreado');
   const malPosicionadoMetric = activeRiskMetric('mal_posicionado');
+  const plantaSemPodarMetric = activeRiskMetric('poda_planta_sem_podar');
+  const cachoExpostoMetric = activeRiskMetric('poda_cacho_exposto');
+  const podaMeiaCoroaMetric = activeRiskMetric('poda_meia_coroa');
+  const podaMaiorMetric = activeRiskMetric('poda_maior_1_1');
+  const bicoGaitaMetric = activeRiskMetric('poda_bico_gaita');
+  const cachoPodreMetric = activeRiskMetric('poda_cacho_podre');
+  const folhaMamandoPodaMetric = activeRiskMetric('poda_folha_mamando');
+  const palhaPodaMetric = activeRiskMetric('poda_palha_mal_empilhada');
 
   const corteBubbles = corteTotals ? [
     {
@@ -930,29 +1041,121 @@ function compactParcelSummaryHtml({
     },
   ] : [];
 
-  return `
-    <div class="parcel-popup-summary-grid">
-      ${compactMetricBox('Nota geral', generalScore !== null && generalScore !== undefined ? `${formatDecimal(generalScore, 0)}%` : 'N/D', 'Corte + carreamento', generalScore !== null && generalScore !== undefined ? getScoreColor(generalScore) : '#64748B')}
-      ${compactMetricBox('Área', areaHa ? `${formatDecimal(areaHa, 2)} ha` : 'N/D', densityShape ? `${formatDecimal(densityShape, 0)} pl/ha` : 'densidade N/D')}
-      ${compactMetricBox('Fiscal equipe', parcelMainFiscal(parcelRecords), `${formatInteger(parcelRecords.length)} coleta(s)`)}
-    </div>
+  const podaBubbles = podaTotals ? [
+    {
+      label: 'Nota',
+      value: podaScore,
+      valueDisplay: podaScore !== null ? `${formatDecimal(podaScore, 0)}%` : 'N/D',
+      detail: `${formatInteger(podaTotals.total || 0)} coleta(s)`,
+      meta: compactMetaText(notaMetric),
+      color: podaScore !== null ? getScoreColor(podaScore) : '#64748B',
+    },
+    {
+      label: 'Sem podar',
+      value: Number(podaTotals.plantaSemPodarRate || 0),
+      detail: compactOccurrenceDetail(podaTotals.plantaSemPodar, podaTotals.plantaSemPodarProjetada),
+      meta: compactMetaText(plantaSemPodarMetric),
+      color: metricColor(plantaSemPodarMetric, Number(podaTotals.plantaSemPodarRate || 0), hasPodaPlantBase(podaTotals)),
+    },
+    {
+      label: 'Cacho exp.',
+      value: Number(podaTotals.cachoExpostoRate || 0),
+      detail: compactOccurrenceDetail(podaTotals.cachoExposto, podaTotals.cachoExpostoProjetado),
+      meta: compactMetaText(cachoExpostoMetric),
+      color: metricColor(cachoExpostoMetric, Number(podaTotals.cachoExpostoRate || 0), hasPodaPlantBase(podaTotals)),
+    },
+    {
+      label: 'Meia coroa',
+      value: Number(podaTotals.podaMeiaCoroaRate || 0),
+      detail: compactOccurrenceDetail(podaTotals.podaMeiaCoroa, podaTotals.podaMeiaCoroaProjetada),
+      meta: compactMetaText(podaMeiaCoroaMetric),
+      color: metricColor(podaMeiaCoroaMetric, Number(podaTotals.podaMeiaCoroaRate || 0), hasPodaPlantBase(podaTotals)),
+    },
+    {
+      label: 'Poda >1:1',
+      value: Number(podaTotals.podaMaiorUmParaUmRate || 0),
+      detail: compactOccurrenceDetail(podaTotals.podaMaiorUmParaUm, podaTotals.podaMaiorUmParaUmProjetada),
+      meta: compactMetaText(podaMaiorMetric),
+      color: metricColor(podaMaiorMetric, Number(podaTotals.podaMaiorUmParaUmRate || 0), hasPodaPlantBase(podaTotals)),
+    },
+    {
+      label: 'Bico gaita',
+      value: Number(podaTotals.bicoGaitaRate || 0),
+      detail: compactOccurrenceDetail(podaTotals.bicoGaita, podaTotals.bicoGaitaProjetado),
+      meta: compactMetaText(bicoGaitaMetric),
+      color: metricColor(bicoGaitaMetric, Number(podaTotals.bicoGaitaRate || 0), hasPodaPlantBase(podaTotals)),
+    },
+    {
+      label: 'C. podre',
+      value: Number(podaTotals.cachoPodrePlantaRate || 0),
+      detail: compactOccurrenceDetail(podaTotals.cachoPodrePlanta, podaTotals.cachoPodrePlantaProjetado),
+      meta: compactMetaText(cachoPodreMetric),
+      color: metricColor(cachoPodreMetric, Number(podaTotals.cachoPodrePlantaRate || 0), hasPodaPlantBase(podaTotals)),
+    },
+    {
+      label: 'Folha mam.',
+      value: Number(podaTotals.folhaMamandoPodaRate || 0),
+      detail: compactOccurrenceDetail(podaTotals.folhaMamando, podaTotals.folhaMamandoProjetada),
+      meta: compactMetaText(folhaMamandoPodaMetric),
+      color: metricColor(folhaMamandoPodaMetric, Number(podaTotals.folhaMamandoPodaRate || 0), hasPodaPlantBase(podaTotals)),
+    },
+    {
+      label: 'Palha M.E.',
+      value: Number(podaTotals.palhaMalEmpilhadaRate || 0),
+      detail: compactOccurrenceDetail(podaTotals.palhaMalEmpilhada, podaTotals.palhaMalEmpilhadaProjetada),
+      meta: compactMetaText(palhaPodaMetric),
+      color: metricColor(palhaPodaMetric, Number(podaTotals.palhaMalEmpilhadaRate || 0), hasPodaPlantBase(podaTotals)),
+    },
+  ] : [];
 
-    <div class="parcel-operation-bubble-stack">
-      ${compactOperationBubbleCard({
+  const operationCards = [
+    {
+      id: 'corte',
+      html: compactOperationBubbleCard({
         title: 'Corte',
         subtitle: `${formatInteger(corteTotals?.total || 0)} coleta(s) · ${formatInteger(corteTotals?.cachosObservados || 0)} cachos · ${formatInteger(corteTotals?.plantasObservadas || 0)} plantas`,
         bubbles: corteBubbles,
         emptyText: 'Sem coleta de corte nesta parcela no filtro atual.',
         className: 'parcel-operation-bubble-card-corte',
-      })}
-      ${compactOperationBubbleCard({
+      }),
+    },
+    {
+      id: 'carreamento',
+      html: compactOperationBubbleCard({
         title: 'Carreamento',
         subtitle: `${formatInteger(carreamentoTotals?.total || 0)} coleta(s) · ${formatInteger(carreamentoTotals?.plantasObservadas || 0)} plantas`,
         bubbles: carreamentoBubbles,
         emptyText: 'Sem coleta de carreamento nesta parcela no filtro atual.',
         className: 'parcel-operation-bubble-card-carreamento',
         footer: carreamentoTotals ? `Peso médio: ${formatDecimal(carreamentoTotals.mediaPesoFrutos || 0, 1)} kg · ${formatInteger(carreamentoTotals.plantasObservadas || 0)} planta(s) avaliadas` : '',
-      })}
+      }),
+    },
+    {
+      id: 'poda',
+      html: compactOperationBubbleCard({
+        title: 'Poda',
+        subtitle: `${formatInteger(podaTotals?.total || 0)} coleta(s) · ${formatInteger(podaTotals?.plantasObservadas || 0)} plantas · ${formatInteger(podaTotals?.plantasProjetadas || 0)} projetadas`,
+        bubbles: podaBubbles,
+        emptyText: 'Sem coleta de poda nesta parcela no filtro atual.',
+        className: 'parcel-operation-bubble-card-poda',
+        footer: podaTotals ? `Ocorrências projetadas: ${formatInteger(podaTotals.ocorrenciasPodaProjetadas || 0)} · GPS: ${formatDecimal(podaTotals.gpsRate || 0, 0)}%` : '',
+      }),
+    },
+  ];
+  const visibleOperationCards = operationCards
+    .filter((card) => summaryMode.id === 'all' || card.id === summaryMode.id)
+    .map((card) => card.html)
+    .join('');
+
+  return `
+    <div class="parcel-popup-summary-grid">
+      ${compactMetricBox(summaryMode.id === 'all' ? 'Nota geral' : `Nota ${summaryMode.label}`, summaryScore !== null && summaryScore !== undefined ? `${formatDecimal(summaryScore, 0)}%` : 'N/D', summaryScoreDetail, summaryScore !== null && summaryScore !== undefined ? getScoreColor(summaryScore) : '#64748B')}
+      ${compactMetricBox('Área', areaHa ? `${formatDecimal(areaHa, 2)} ha` : 'N/D', densityShape ? `${formatDecimal(densityShape, 0)} pl/ha` : 'densidade N/D')}
+      ${compactMetricBox('Fiscal equipe', parcelMainFiscal(parcelRecords), `${formatInteger(parcelRecords.length)} coleta(s)`)}
+    </div>
+
+    <div class="parcel-operation-bubble-stack">
+      ${visibleOperationCards}
     </div>
 
     <div class="parcel-compact-footer">
@@ -996,17 +1199,22 @@ function compactSummaryShellHtml({
   `;
 }
 
-function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric: _metric, operation }) {
+function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric: _metric, operation, summaryOperation }) {
   const totals = parcelRecords.length ? aggregateRecords(parcelRecords) : null;
   const corteTotals = aggregateByType(parcelRecords, 'corte');
   const carreamentoTotals = aggregateByType(parcelRecords, 'carreamento');
-  const operationRecords = recordsByType(
-    parcelRecords,
-    operation?.id === 'corte' || operation?.id === 'carreamento' ? operation.id : 'all'
-  );
+  const podaTotals = aggregateByType(parcelRecords, 'poda');
+  const summaryMode = activeSummaryOperation(summaryOperation || (operation?.id === 'perdas' ? 'all' : operation?.id));
+  const operationRecords = recordsByType(parcelRecords, summaryMode.id === 'all' ? 'all' : summaryMode.id);
   const areaHa = parcelAreaHa(props);
   const densityShape = parcelDensity(props);
-  const operationTotals = operationTotalsFor({ totals, corteTotals, carreamentoTotals, operation });
+  const operationTotals = operationTotalsFor({
+    totals,
+    corteTotals,
+    carreamentoTotals,
+    podaTotals,
+    operation: summaryMode.id === 'all' ? activeOperationMode('perdas') : summaryMode,
+  });
   const allDates = collectionDateSummary(parcelRecords);
   const operationDates = collectionDateSummary(operationRecords);
   const statusText = totals
@@ -1016,10 +1224,12 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric: 
     totals,
     corteTotals,
     carreamentoTotals,
+    podaTotals,
     parcelRecords,
     areaHa,
     densityShape,
     collectionDates: allDates,
+    summaryOperation: summaryMode.id,
   });
 
   return compactSummaryShellHtml({
@@ -1030,7 +1240,7 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric: 
     datesLabel: allDates.label,
     statusText: `${formatInteger(parcelRecords.length)} coleta(s) · ${statusText}`,
     summaryHtml,
-    contextText: operationTotals ? `Visão ativa: ${operationLabel(operation)} · ${operationDates.label}` : '',
+    contextText: operationTotals ? `Quadro ativo: ${operationLabel(summaryMode)} · ${operationDates.label}` : '',
   });
 }
 
@@ -1058,6 +1268,7 @@ export default function LeafletMap({
   const [mapLayer, setMapLayer] = useState('polygon');
   const [baseLayer, setBaseLayer] = useState('standard');
   const [mapOperation, setMapOperation] = useState(initialMode.id);
+  const [summaryOperation, setSummaryOperation] = useState(initialMode.id === 'perdas' ? 'all' : initialMode.id);
   const [riskMetricId, setRiskMetricId] = useState(initialMetric);
   const [selectedParcelKey, setSelectedParcelKey] = useState(null);
   const [parcelGeoJson, setParcelGeoJson] = useState(null);
@@ -1227,8 +1438,9 @@ export default function LeafletMap({
       parcelRecords: selectedParcelSummary.records || [],
       metric: selectedRiskMetric,
       operation: selectedOperation,
+      summaryOperation,
     });
-  }, [selectedParcelSummary, selectedRiskMetric, selectedOperation]);
+  }, [selectedParcelSummary, selectedRiskMetric, selectedOperation, summaryOperation]);
 
   const heatPoints = useMemo(() => {
     const sourcePoints = occurrencePoints.length ? occurrencePoints : trackPoints;
@@ -1280,11 +1492,16 @@ export default function LeafletMap({
     const totals = approvedRecords.length ? aggregateRecords(approvedRecords) : null;
     const corteTotals = aggregateByType(approvedRecords, 'corte');
     const carreamentoTotals = aggregateByType(approvedRecords, 'carreamento');
-    const operationRecords = recordsByType(
-      approvedRecords,
-      selectedOperation?.id === 'corte' || selectedOperation?.id === 'carreamento' ? selectedOperation.id : 'all'
-    );
-    const operationTotals = operationTotalsFor({ totals, corteTotals, carreamentoTotals, operation: selectedOperation });
+    const podaTotals = aggregateByType(approvedRecords, 'poda');
+    const summaryMode = activeSummaryOperation(summaryOperation);
+    const operationRecords = recordsByType(approvedRecords, summaryMode.id === 'all' ? 'all' : summaryMode.id);
+    const operationTotals = operationTotalsFor({
+      totals,
+      corteTotals,
+      carreamentoTotals,
+      podaTotals,
+      operation: summaryMode.id === 'all' ? activeOperationMode('perdas') : summaryMode,
+    });
     const allDates = collectionDateSummary(approvedRecords);
     const operationDates = collectionDateSummary(operationRecords);
     const farm = FARMS.find((item) => item.id === farmFilter);
@@ -1298,24 +1515,26 @@ export default function LeafletMap({
       totals,
       corteTotals,
       carreamentoTotals,
+      podaTotals,
       parcelRecords: approvedRecords,
       areaHa: geoStats.evaluatedHa,
       densityShape: 0,
       collectionDates: allDates,
+      summaryOperation: summaryMode.id,
     });
 
     return compactSummaryShellHtml({
       title: farmName,
-      subtitle: `${formatInteger(geoStats.sampledParcels)} parcela(s) avaliadas · ${operationLabel(selectedOperation)}`,
+      subtitle: `${formatInteger(geoStats.sampledParcels)} parcela(s) avaliadas · ${operationLabel(summaryMode)}`,
       badge: 'Fazenda',
       accent: farmFilter === 'all' ? FARM_STYLES.default.color : farmStyle(farmFilter).color,
       datesLabel: allDates.label,
       statusText,
       summaryHtml,
-      contextText: operationTotals ? `Visão ativa: ${operationLabel(selectedOperation)} · ${operationDates.label}` : '',
+      contextText: operationTotals ? `Quadro ativo: ${operationLabel(summaryMode)} · ${operationDates.label}` : '',
       extraClass: 'parcel-popup-home-card',
     });
-  }, [filteredRecords, farmFilter, geoStats.evaluatedHa, geoStats.sampledParcels, selectedOperation]);
+  }, [filteredRecords, farmFilter, geoStats.evaluatedHa, geoStats.sampledParcels, summaryOperation]);
 
   useEffect(() => {
     if (!mapContainerRef.current) return undefined;
@@ -1770,6 +1989,35 @@ export default function LeafletMap({
     : parcelGeoStatus === 'loading'
       ? 'Carregando parcelas do mapa'
       : mapRenderState.label;
+  const activeSummaryOperationId = activeSummaryOperation(summaryOperation).id;
+  const applyMapOperation = (operationId) => {
+    const nextMode = activeOperationMode(operationId);
+    setMapOperation(nextMode.id);
+    setSummaryOperation(nextMode.id === 'perdas' ? 'all' : nextMode.id);
+    setRiskMetricId(nextMode.defaultMetric);
+  };
+  const applySummaryOperation = (summaryOperationId) => {
+    const nextSummaryMode = activeSummaryOperation(summaryOperationId);
+    const nextMapMode = activeOperationMode(nextSummaryMode.id === 'all' ? 'perdas' : nextSummaryMode.id);
+    setSummaryOperation(nextSummaryMode.id);
+    setMapOperation(nextMapMode.id);
+    setRiskMetricId(nextMapMode.defaultMetric);
+  };
+  const renderSummaryOperationTabs = (extraClass = '') => (
+    <div className={`gps-summary-operation-tabs ${extraClass}`} aria-label="Escolher operação do quadro">
+      {SUMMARY_OPERATION_MODES.map((mode) => (
+        <button
+          type="button"
+          key={mode.id}
+          className={activeSummaryOperationId === mode.id ? 'active' : ''}
+          aria-pressed={activeSummaryOperationId === mode.id}
+          onClick={() => applySummaryOperation(mode.id)}
+        >
+          {mode.label}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div className={`card gps-map-card ${presentationMode ? 'gps-map-card-presentation' : ''} ${isParcelDetailOpen ? 'gps-map-card-detail-open' : 'gps-map-card-controls-open'}`}>
@@ -1803,6 +2051,7 @@ export default function LeafletMap({
                 {selectedParcelSummary.shapeParcel || '--'}
               </span>
             </div>
+            {renderSummaryOperationTabs('gps-summary-operation-tabs-detail')}
             <div
               className="gps-detail-content"
               dangerouslySetInnerHTML={{ __html: selectedParcelDetailHtml }}
@@ -1810,6 +2059,7 @@ export default function LeafletMap({
           </div>
         ) : (
           <>
+        {renderSummaryOperationTabs('gps-summary-operation-tabs-home')}
         <div
           className="gps-home-summary"
           dangerouslySetInnerHTML={{ __html: farmHomeSummaryHtml }}
@@ -1855,10 +2105,7 @@ export default function LeafletMap({
               type="button"
               key={mode.id}
               className={mapOperation === mode.id ? 'active' : ''}
-              onClick={() => {
-                setMapOperation(mode.id);
-                setRiskMetricId(mode.defaultMetric);
-              }}
+              onClick={() => applyMapOperation(mode.id)}
             >
               {mode.label}
             </button>
