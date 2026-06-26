@@ -90,7 +90,7 @@ const MAP_OPERATION_MODES = [
 ];
 
 const SUMMARY_OPERATION_MODES = [
-  { id: 'all', label: 'Todos' },
+  { id: 'all', label: 'Geral' },
   { id: 'corte', label: 'Corte' },
   { id: 'carreamento', label: 'Carreamento' },
   { id: 'poda', label: 'Poda' },
@@ -2003,6 +2003,53 @@ export default function LeafletMap({
     setMapOperation(nextMapMode.id);
     setRiskMetricId(nextMapMode.defaultMetric);
   };
+  const focusFarmOverview = (animate = true) => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const visibleFeatures = filteredParcelFeatures.filter(Boolean);
+    if (visibleFeatures.length) {
+      const overviewBounds = L.geoJSON({
+        type: 'FeatureCollection',
+        features: visibleFeatures,
+      }).getBounds();
+
+      if (overviewBounds.isValid()) {
+        map.invalidateSize({ pan: false, debounceMoveend: false });
+        map.fitBounds(overviewBounds.pad(0.14), { maxZoom: 15, animate });
+        return;
+      }
+    }
+
+    const gpsLatLngs = allGpsPoints
+      .map(normalizeLatLng)
+      .filter(Boolean)
+      .map((point) => L.latLng(point.lat, point.lng));
+
+    if (gpsLatLngs.length > 1) {
+      const gpsBounds = L.latLngBounds(gpsLatLngs);
+      map.invalidateSize({ pan: false, debounceMoveend: false });
+      map.fitBounds(gpsBounds.pad(0.2), { maxZoom: 15, animate });
+      return;
+    }
+
+    if (gpsLatLngs.length === 1) {
+      map.setView(gpsLatLngs[0], 15, { animate });
+      return;
+    }
+
+    if (farmFilter !== 'all') {
+      const selectedFarm = FARMS.find((farm) => farm.id === farmFilter);
+      if (selectedFarm) {
+        map.setView([selectedFarm.Lat, selectedFarm.Lng], 14, { animate });
+      }
+    }
+  };
+  const clearParcelSelection = () => {
+    setSelectedParcelKey(null);
+    if (mapLayer === 'route') setMapLayer('polygon');
+    window.setTimeout(() => focusFarmOverview(true), mapLayer === 'route' ? 260 : 80);
+  };
   const renderSummaryOperationTabs = (extraClass = '') => (
     <div className={`gps-summary-operation-tabs ${extraClass}`} aria-label="Escolher operação do quadro">
       {SUMMARY_OPERATION_MODES.map((mode) => (
@@ -2041,9 +2088,9 @@ export default function LeafletMap({
         {isParcelDetailOpen ? (
           <div className="gps-detail-view">
             <div className="gps-detail-toolbar">
-              <button type="button" onClick={() => setSelectedParcelKey(null)}>
+              <button type="button" onClick={clearParcelSelection}>
                 <ArrowLeft size={14} />
-                Voltar aos filtros
+                Ver fazenda toda
               </button>
               <span>
                 {selectedParcelSummary.props?.farmName || selectedParcelSummary.props?.farmId || 'Fazenda'}
