@@ -4870,7 +4870,7 @@ body.field-map-active {
 .poda-executive-main {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(430px, 0.9fr) minmax(430px, 1.05fr) 330px;
   gap: 10px;
   overflow: hidden;
 }
@@ -4982,6 +4982,11 @@ body.field-map-active {
   border-left: 4px solid var(--status-success);
   border-radius: 8px;
   background: #FBFCFB;
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
 }
 
 .poda-fault-warning {
@@ -4990,6 +4995,16 @@ body.field-map-active {
 
 .poda-fault-danger {
   border-left-color: var(--status-danger);
+}
+
+.poda-fault-row.active {
+  border-color: color-mix(in srgb, var(--green-institutional) 42%, var(--border-color) 58%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--green-institutional) 18%, transparent);
+  transform: translateY(-1px);
+}
+
+.poda-fault-row:hover {
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
 }
 
 .poda-fault-row strong,
@@ -5024,6 +5039,216 @@ body.field-map-active {
   display: block;
   height: 100%;
   border-radius: 999px;
+}
+
+.poda-drill-panel {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.poda-drill-panel .poda-section-title {
+  min-height: 46px;
+  margin-bottom: 6px;
+}
+
+.poda-drill-status {
+  flex: 0 0 auto;
+  min-width: 92px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: #F4F7F4;
+  text-align: right;
+}
+
+.poda-drill-status strong,
+.poda-drill-status span {
+  display: block;
+  line-height: 1.1;
+}
+
+.poda-drill-status strong {
+  color: var(--green-institutional);
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.poda-drill-status span {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.poda-drill-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 7px;
+}
+
+.poda-drill-kpis div {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: #F8FAF8;
+}
+
+.poda-drill-kpis span,
+.poda-drill-kpis strong {
+  display: block;
+  min-width: 0;
+}
+
+.poda-drill-kpis span {
+  color: var(--text-muted);
+  font-size: 0.54rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.poda-drill-kpis strong {
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.poda-drill-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: #F4F7F4;
+}
+
+.poda-drill-tabs button {
+  min-height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.poda-drill-tabs button.active {
+  background: var(--green-institutional);
+  color: var(--white);
+}
+
+.poda-drill-table {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding-top: 7px;
+  overflow: hidden;
+}
+
+.poda-drill-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 86px;
+  grid-template-areas:
+    "info rate qty"
+    "track track track";
+  gap: 4px 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--status-success);
+  border-radius: 8px;
+  background: #FBFCFB;
+}
+
+.poda-drill-warning {
+  border-left-color: var(--orange-institutional);
+}
+
+.poda-drill-danger {
+  border-left-color: var(--status-danger);
+}
+
+.poda-drill-row > div:first-child {
+  grid-area: info;
+  min-width: 0;
+}
+
+.poda-drill-row strong,
+.poda-drill-row span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.poda-drill-row strong {
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  line-height: 1.1;
+  font-weight: 950;
+}
+
+.poda-drill-row span {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.56rem;
+  font-weight: 780;
+}
+
+.poda-drill-row em {
+  grid-area: rate;
+  color: var(--text-primary);
+  font-style: normal;
+  font-size: 0.76rem;
+  font-weight: 950;
+  text-align: right;
+}
+
+.poda-drill-row small {
+  grid-area: qty;
+  color: var(--text-secondary);
+  font-size: 0.58rem;
+  font-weight: 850;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.poda-drill-track {
+  grid-area: track;
+  height: 7px;
+  border-radius: 999px;
+  background: #EEF2EF;
+  overflow: hidden;
+}
+
+.poda-drill-track i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--green-institutional);
+}
+
+.poda-drill-empty {
+  padding: 16px;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: center;
 }
 
 .poda-mini-panel {
@@ -5181,7 +5406,7 @@ body.field-map-active {
 }
 
 .poda-executive-board.is-presentation .poda-executive-main {
-  grid-template-columns: minmax(0, 1fr) 390px;
+  grid-template-columns: minmax(460px, 0.9fr) minmax(500px, 1.08fr) 360px;
 }
 
 .poda-executive-board.is-presentation .poda-side-column {
@@ -5204,6 +5429,23 @@ body.field-map-active {
 .poda-executive-board.is-presentation .poda-fault-row strong,
 .poda-executive-board.is-presentation .poda-fault-row span {
   font-size: 0.74rem;
+}
+
+.poda-executive-board.is-presentation .poda-drill-row strong {
+  font-size: 0.78rem;
+}
+
+.poda-executive-board.is-presentation .poda-drill-row span,
+.poda-executive-board.is-presentation .poda-drill-row small {
+  font-size: 0.62rem;
+}
+
+.poda-executive-board.is-presentation .poda-drill-status strong {
+  font-size: 1.12rem;
+}
+
+.poda-executive-board.is-presentation .poda-drill-tabs button {
+  font-size: 0.68rem;
 }
 
 .poda-executive-board.is-presentation .poda-bi-trend-panel .poda-section-title {
@@ -5349,6 +5591,18 @@ body.field-map-active {
 
   .poda-fault-track {
     grid-area: track;
+  }
+
+  .poda-drill-row {
+    grid-template-columns: minmax(0, 1fr) 62px;
+    grid-template-areas:
+      "info rate"
+      "qty qty"
+      "track track";
+  }
+
+  .poda-drill-row small {
+    text-align: left;
   }
 }
 

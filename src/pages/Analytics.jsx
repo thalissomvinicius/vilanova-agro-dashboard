@@ -511,25 +511,90 @@ function buildPodaGroupedRows(records, keyGetter) {
     .sort((a, b) => b.value - a.value);
 }
 
-function buildPodaDayRows(records) {
+function parsePodaRecordDate(record) {
+  const raw = record?.raw?.data_avaliacao || record?.createdAt || record?.date || '';
+  const text = String(raw).trim();
+  if (!text) return null;
+
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) {
+    const parsed = new Date(`${iso[1]}-${iso[2]}-${iso[3]}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const br = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (br) {
+    const parsed = new Date(`${br[3]}-${br[2].padStart(2, '0')}-${br[1].padStart(2, '0')}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function podaWeekLabel(record) {
+  const date = parsePodaRecordDate(record);
+  if (!date) return 'Semana N/D';
+
+  const firstDay = new Date(date.getFullYear(), 0, 1);
+  const dayOfYear = Math.floor((date - firstDay) / 86400000) + 1;
+  const week = Math.ceil((dayOfYear + firstDay.getDay()) / 7);
+  return `Semana ${String(week).padStart(2, '0')}/${date.getFullYear()}`;
+}
+
+function podaMonthLabel(record) {
+  const date = parsePodaRecordDate(record);
+  if (!date) return 'Mês N/D';
+  const month = new Intl.DateTimeFormat('pt-BR', { month: 'short', year: '2-digit' }).format(date);
+  return month.replace('.', '').replace(/\s+de\s+/i, '/');
+}
+
+function podaDateLabel(record) {
+  const date = parsePodaRecordDate(record);
+  if (!date) return record?.date || 'Sem data';
+  return String(date.getDate()).padStart(2, '0');
+}
+
+function podaIndicatorFromTotals(totals, indicatorKey) {
+  return podaIndicatorDefinitions(totals).find((row) => row.key === indicatorKey)
+    || podaIndicatorDefinitions(totals)[0];
+}
+
+function buildPodaSpecificBreakdown(records, indicatorKey, keyGetter) {
   const buckets = new Map();
   records.forEach((record) => {
-    const key = record.raw?.data_avaliacao || record.date || 'Sem data';
+    const key = keyGetter(record) || 'N/D';
     if (!buckets.has(key)) buckets.set(key, []);
     buckets.get(key).push(record);
   });
 
   return Array.from(buckets.entries())
-    .sort(([a], [b]) => String(a).localeCompare(String(b)))
-    .map(([key, recs]) => {
+    .map(([label, recs]) => {
       const totals = aggregateRecords(recs);
-      const date = key.includes('-') ? new Date(`${key}T00:00:00`) : null;
+      const indicator = podaIndicatorFromTotals(totals, indicatorKey);
       return {
-        label: date && !Number.isNaN(date.getTime()) ? String(date.getDate()).padStart(2, '0') : key,
+        label,
+        total: recs.length,
+        plantas: totals.podaPlantasObservadas,
         score: totals.podaScore,
-        falhas: totals.plantaSemPodar + totals.cachoExposto + totals.podaMeiaCoroa + totals.podaMaiorUmParaUm + totals.bicoGaita + totals.cachoPodrePlanta + totals.folhaMamando + totals.palhaMalEmpilhada,
+        count: indicator?.count || 0,
+        projected: indicator?.projected || 0,
+        rate: indicator?.rate || 0,
+        status: indicator?.status || 'Dentro da meta',
+        value: indicator?.rate || 0,
       };
     })
+    .sort((a, b) => (b.rate - a.rate) || (b.count - a.count) || String(a.label).localeCompare(String(b.label)));
+}
+
+function buildPodaSpecificDayRows(records, indicatorKey) {
+  return buildPodaSpecificBreakdown(records, indicatorKey, podaDateLabel)
+    .sort((a, b) => String(a.label).localeCompare(String(b.label)))
+    .map((row) => ({
+      label: row.label,
+      score: row.score,
+      falhas: row.count,
+    }))
     .slice(-12);
 }
 
@@ -612,7 +677,7 @@ function PodaPrimaryAlertCard({ topIssue, topParcel }) {
   );
 }
 
-function PodaFaultRankingPanel({ indicators }) {
+function PodaFaultRankingPanel({ indicators, selectedKey, onSelect }) {
   const max = Math.max(...indicators.map((row) => row.rate), 1);
   return (
     <section className="poda-exec-card poda-fault-panel">
@@ -636,7 +701,12 @@ function PodaFaultRankingPanel({ indicators }) {
           <span>Impacto</span>
         </div>
         {indicators.map((row) => (
-          <div className={`poda-fault-row poda-fault-${row.status === 'Crítico' ? 'danger' : row.status === 'Atenção' ? 'warning' : 'ok'}`} key={row.key}>
+          <button
+            type="button"
+            className={`poda-fault-row poda-fault-${row.status === 'Crítico' ? 'danger' : row.status === 'Atenção' ? 'warning' : 'ok'} ${selectedKey === row.key ? 'active' : ''}`}
+            key={row.key}
+            onClick={() => onSelect?.(row.key)}
+          >
             <strong>{row.label}</strong>
             <span>{formatPercentValue(row.rate)}</span>
             <span>{fmt(row.count)}</span>
@@ -644,8 +714,74 @@ function PodaFaultRankingPanel({ indicators }) {
             <div className="poda-fault-track">
               <i style={{ width: `${Math.max((row.rate / max) * 100, row.rate > 0 ? 3 : 0)}%`, background: row.color }} />
             </div>
-          </div>
+          </button>
         ))}
+      </div>
+    </section>
+  );
+}
+
+function PodaDrilldownPanel({ indicator, activeBreakdown, onBreakdownChange, breakdowns }) {
+  const tabs = [
+    { id: 'parcel', label: 'Parcelas' },
+    { id: 'farm', label: 'Fazendas' },
+    { id: 'fiscal', label: 'Fiscais' },
+    { id: 'week', label: 'Semanas' },
+    { id: 'month', label: 'Meses' },
+  ];
+  const rows = breakdowns[activeBreakdown] || [];
+  const visibleRows = rows.slice(0, 8);
+  const max = Math.max(...visibleRows.map((row) => Number(row.rate || 0)), 1);
+
+  return (
+    <section className="poda-exec-card poda-drill-panel">
+      <div className="poda-section-title">
+        <div>
+          <span className="poda-card-eyebrow">Análise interativa</span>
+          <h3>{indicator?.label || 'Indicador'}</h3>
+          <span>Clique em outra falha no ranking para trocar toda a leitura.</span>
+        </div>
+        <div className="poda-drill-status">
+          <strong>{formatPercentValue(indicator?.rate || 0)}</strong>
+          <span>{indicator?.status || 'Dentro da meta'}</span>
+        </div>
+      </div>
+
+      <div className="poda-drill-kpis">
+        <div><span>Ocorrências</span><strong>{fmt(indicator?.count || 0)}</strong></div>
+        <div><span>Projetadas</span><strong>{fmt(indicator?.projected || 0)}</strong></div>
+        <div><span>Meta</span><strong>{indicator ? `< ${formatPercentValue(indicator.danger)}` : '-'}</strong></div>
+      </div>
+
+      <div className="poda-drill-tabs" aria-label="Dimensão da análise">
+        {tabs.map((tab) => (
+          <button
+            type="button"
+            key={tab.id}
+            className={activeBreakdown === tab.id ? 'active' : ''}
+            onClick={() => onBreakdownChange(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="poda-drill-table">
+        {visibleRows.length ? visibleRows.map((row) => (
+          <div className={`poda-drill-row poda-drill-${row.status === 'Crítico' ? 'danger' : row.status === 'Atenção' ? 'warning' : 'ok'}`} key={row.label}>
+            <div>
+              <strong>{row.label}</strong>
+              <span>{fmt(row.total)} coleta(s) · {fmt(row.plantas)} plantas · nota {fmt(row.score)}</span>
+            </div>
+            <em>{formatPercentValue(row.rate)}</em>
+            <small>{fmt(row.count)} / {fmt(row.projected)} proj.</small>
+            <div className="poda-drill-track">
+              <i style={{ width: `${Math.max((Number(row.rate || 0) / max) * 100, row.rate > 0 ? 3 : 0)}%` }} />
+            </div>
+          </div>
+        )) : (
+          <div className="poda-drill-empty">Sem dados para este indicador no filtro atual.</div>
+        )}
       </div>
     </section>
   );
@@ -681,7 +817,7 @@ function PodaMiniBars({ title, subtitle, rows, valueLabel = 'risco', maxRows = 3
   );
 }
 
-function PodaTrendPanel({ rows }) {
+function PodaTrendPanel({ rows, issueLabel = 'Falhas' }) {
   const chartHeight = 220;
   const padding = { top: 26, right: 34, bottom: 38, left: 62 };
   const width = 1900;
@@ -700,12 +836,12 @@ function PodaTrendPanel({ rows }) {
       <div className="poda-section-title compact">
         <div>
         <h3>Evolução no período</h3>
-        <span>Nota CQO e volume de falhas por dia de coleta.</span>
+        <span>Nota CQO e volume de {issueLabel.toLowerCase()} por dia de coleta.</span>
         </div>
       </div>
       <div className="poda-bi-legend">
         <span><i style={{ background: 'var(--green-institutional)' }} />Nota CQO</span>
-        <span><i style={{ background: 'var(--orange-institutional)' }} />Falhas</span>
+        <span><i style={{ background: 'var(--orange-institutional)' }} />{issueLabel}</span>
       </div>
       <svg className="poda-bi-trend-svg" viewBox={`0 0 ${width} ${chartHeight}`} width="100%" height="100%">
         {[0, 0.5, 1].map((ratio) => {
@@ -747,10 +883,22 @@ function PodaTrendPanel({ rows }) {
 
 function PodaBiBoard({ loading, source, totals, records, periodText, demoActive, onPresent, presentationMode = false }) {
   const indicators = buildPodaIndicatorRows(totals);
-  const farmRows = buildPodaGroupedRows(records, (record) => `${record.farm || 'Sem fazenda'} · ${record.parcel || 'Sem parcela'}`);
+  const parcelRows = buildPodaGroupedRows(records, (record) => `${record.farm || 'Sem fazenda'} · ${record.parcel || 'Sem parcela'}`);
   const evaluatorRows = buildPodaGroupedRows(records, (record) => record.evaluator || 'Sem fiscal');
-  const dayRows = buildPodaDayRows(records);
   const topIssue = indicators.find((row) => row.count > 0) || indicators[0];
+  const [selectedIndicatorKey, setSelectedIndicatorKey] = useState(topIssue?.key || indicators[0]?.key || '');
+  const [activeBreakdown, setActiveBreakdown] = useState('parcel');
+  const selectedIndicator = indicators.find((row) => row.key === selectedIndicatorKey) || topIssue || indicators[0];
+  const selectedKey = selectedIndicator?.key || selectedIndicatorKey;
+  const drilldowns = {
+    parcel: buildPodaSpecificBreakdown(records, selectedKey, (record) => `${record.farm || 'Sem fazenda'} · ${record.parcel || 'Sem parcela'}`),
+    farm: buildPodaSpecificBreakdown(records, selectedKey, (record) => record.farm || 'Sem fazenda'),
+    fiscal: buildPodaSpecificBreakdown(records, selectedKey, (record) => record.evaluator || record.fiscal || 'Sem fiscal'),
+    week: buildPodaSpecificBreakdown(records, selectedKey, podaWeekLabel),
+    month: buildPodaSpecificBreakdown(records, selectedKey, podaMonthLabel),
+  };
+  const dayRows = buildPodaSpecificDayRows(records, selectedKey);
+
   const gpsEligibleRecords = records.filter((record) => record.gpsApplicable !== false);
   const gpsPct = gpsEligibleRecords.length ? (gpsEligibleRecords.filter((record) => record.gps).length / gpsEligibleRecords.length) * 100 : null;
   const projectionBase = totals.plantasProjetadas || totals.plantasObservadas || totals.podaPlantasObservadas;
@@ -793,11 +941,17 @@ function PodaBiBoard({ loading, source, totals, records, periodText, demoActive,
       <div className="poda-diagnostic-grid">
         <PodaScoreExecutiveCard totals={totals} />
         <PodaSamplingSummaryCard totals={totals} records={records} gpsPct={gpsPct} projectionBase={projectionBase} />
-        <PodaPrimaryAlertCard topIssue={topIssue} topParcel={farmRows[0]} />
+        <PodaPrimaryAlertCard topIssue={topIssue} topParcel={parcelRows[0]} />
       </div>
 
       <div className="poda-executive-main">
-        <PodaFaultRankingPanel indicators={indicators} />
+        <PodaFaultRankingPanel indicators={indicators} selectedKey={selectedKey} onSelect={setSelectedIndicatorKey} />
+        <PodaDrilldownPanel
+          indicator={selectedIndicator}
+          activeBreakdown={activeBreakdown}
+          onBreakdownChange={setActiveBreakdown}
+          breakdowns={drilldowns}
+        />
         <aside className="poda-side-column">
           <PodaMiniBars
             title="Fiscal responsável"
@@ -827,11 +981,11 @@ function PodaBiBoard({ loading, source, totals, records, periodText, demoActive,
         <PodaMiniBars
           title="Parcelas com maior risco"
           subtitle="Onde a amostragem indica maior prioridade."
-          rows={farmRows}
+          rows={parcelRows}
           maxRows={2}
           className="poda-risk-panel"
         />
-        <PodaTrendPanel rows={dayRows} />
+        <PodaTrendPanel rows={dayRows} issueLabel={selectedIndicator?.label || 'Falhas'} />
       </div>
     </div>
   );
