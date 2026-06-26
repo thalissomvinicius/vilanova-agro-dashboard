@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
@@ -7,6 +7,7 @@ import {
   FileSpreadsheet,
   Filter,
   Maximize2,
+  MapPinned,
   MonitorPlay,
   RefreshCw,
   RotateCcw,
@@ -16,6 +17,8 @@ import {
 import StatusBanner from '../components/ui/StatusBanner';
 import { parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
 import { buildQualidadeOperacional } from '../utils/qualidadeOperacionalData';
+
+const LeafletMap = lazy(() => import('../components/LeafletMap'));
 
 function formatNumber(value, digits = 0) {
   return new Intl.NumberFormat('pt-BR', {
@@ -785,6 +788,7 @@ function FieldBiBoard({
   recordCount,
   onResetFilters,
   onPresent,
+  onOpenGeoQuality,
   presentationMode = false,
 }) {
   const isTotalMode = !presentationMode && boardMode === 'total';
@@ -802,11 +806,17 @@ function FieldBiBoard({
           </div>
         </div>
         {!presentationMode && (
-          <button type="button" className="field-bi-present-btn" onClick={onPresent}>
-            <MonitorPlay size={18} />
-            Apresentar
-            <Maximize2 size={15} />
-          </button>
+          <div className="field-bi-header-actions">
+            <button type="button" className="field-bi-map-btn" onClick={onOpenGeoQuality}>
+              <MapPinned size={17} />
+              Qualidade por parcela
+            </button>
+            <button type="button" className="field-bi-present-btn" onClick={onPresent}>
+              <MonitorPlay size={18} />
+              Apresentar
+              <Maximize2 size={15} />
+            </button>
+          </div>
         )}
       </div>
 
@@ -893,8 +903,53 @@ function PresentationOverlay(props) {
   );
 }
 
-export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, setDateFrom, setDateTo, searchTerm, lastSyncTime, onResetFilters }) {
+function FieldGeoQualityOverlay({ mapProps, periodText, updateText, latestCollectionText, onClose }) {
+  return createPortal(
+    <div className="field-map-overlay" role="dialog" aria-modal="true" aria-label="Qualidade por parcela no mapa">
+      <button type="button" className="presentation-close-btn field-bi-close-btn" onClick={onClose} title="Fechar mapa" aria-label="Fechar mapa">
+        <X size={22} />
+      </button>
+      <section className="field-map-dialog">
+        <header className="field-map-header">
+          <img src="/logo.png" alt="Vila Nova Agroindustrial" />
+          <div>
+            <span>Georreferenciamento CQO Campo</span>
+            <h2>Qualidade por parcela</h2>
+            <p>Shapes das parcelas com semáforo de qualidade, filtros atuais e detalhe por fazenda, parcela, fiscal e período.</p>
+          </div>
+          <div className="field-map-context">
+            <span>{periodText}</span>
+            <span>Atualizado: {updateText}</span>
+            <span>Última coleta: {latestCollectionText}</span>
+          </div>
+        </header>
+        <div className="field-map-frame">
+          <Suspense
+            fallback={(
+              <div className="field-map-suspense">
+                <div className="gps-map-loading-spinner" />
+                <strong>Carregando mapa das parcelas</strong>
+                <span>Preparando shapefiles e indicadores de qualidade.</span>
+              </div>
+            )}
+          >
+            <LeafletMap
+              {...mapProps}
+              areaFilter="corte"
+              initialOperation="corte"
+              initialMetricId="nota"
+            />
+          </Suspense>
+        </div>
+      </section>
+    </div>,
+    document.body
+  );
+}
+
+export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, setDateFrom, setDateTo, searchTerm, lastSyncTime, onResetFilters }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
+  const [geoQualityOpen, setGeoQualityOpen] = useState(false);
   const [boardMode, setBoardMode] = useState('meeting');
   const [totalSection, setTotalSection] = useState('qualidade');
   const {
@@ -958,6 +1013,18 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
     onResetFilters,
   };
 
+  const mapProps = {
+    theme,
+    farmFilter,
+    areaFilter,
+    periodFilter,
+    cycleFilter,
+    evaluatorFilter,
+    sourceFilter,
+    dateFrom,
+    dateTo,
+  };
+
   useEffect(() => {
     if (!presentationOpen) return undefined;
 
@@ -976,6 +1043,15 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
     };
   }, [presentationOpen]);
 
+  useEffect(() => {
+    if (!geoQualityOpen) return undefined;
+
+    document.body.classList.add('field-map-active');
+    return () => {
+      document.body.classList.remove('field-map-active');
+    };
+  }, [geoQualityOpen]);
+
   const openPresentation = () => {
     setPresentationOpen(true);
     if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
@@ -990,12 +1066,25 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
     }
   };
 
+  const openGeoQuality = () => setGeoQualityOpen(true);
+  const closeGeoQuality = () => setGeoQualityOpen(false);
+
   return (
     <div className="fade-in page-shell field-bi-page">
       {presentationOpen && (
         <PresentationOverlay
           {...boardProps}
           onClose={closePresentation}
+        />
+      )}
+
+      {geoQualityOpen && (
+        <FieldGeoQualityOverlay
+          mapProps={mapProps}
+          periodText={periodText}
+          updateText={updateText}
+          latestCollectionText={latestCollectionText}
+          onClose={closeGeoQuality}
         />
       )}
 
@@ -1010,6 +1099,7 @@ export default function Dashboard({ farmFilter, areaFilter, periodFilter, cycleF
       <FieldBiBoard
         {...boardProps}
         onPresent={openPresentation}
+        onOpenGeoQuality={openGeoQuality}
       />
     </div>
   );

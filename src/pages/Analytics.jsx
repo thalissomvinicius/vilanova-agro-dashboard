@@ -533,76 +533,116 @@ function buildPodaDayRows(records) {
     .slice(-12);
 }
 
-function PodaBiKpi({ label, value, meta, tone = 'green', icon: Icon }) {
-  return (
-    <div className={`poda-bi-kpi poda-bi-kpi-${tone}`}>
-      <div>
-        <span>{label}</span>
-        <strong>{value}</strong>
-        <small>{meta}</small>
-      </div>
-      <Icon size={20} />
-    </div>
-  );
-}
-
-function PodaScorePanel({ totals, indicators, farmRows, evaluatorRows }) {
+function PodaScoreExecutiveCard({ totals }) {
   const score = Number(totals.podaScore || 0);
-  const topIssue = indicators.find((row) => row.count > 0) || indicators[0];
-  const topParcel = farmRows[0];
-  const topEvaluator = evaluatorRows[0];
   const tone = podaToneFromScore(score);
   const scoreColor = tone === 'danger' ? 'var(--status-danger)' : tone === 'orange' ? 'var(--orange-institutional)' : 'var(--status-success)';
+  const statusLabel = score < 70 ? 'Atenção' : score < 90 ? 'Acompanhar' : 'Conforme';
 
   return (
-    <section className="poda-bi-panel poda-bi-score-panel">
-      <div className="poda-bi-panel-title">
-        <h3>Nota geral</h3>
-        <span>Conformidade da poda no período.</span>
+    <section className={`poda-exec-card poda-score-exec-card poda-score-${tone}`}>
+      <div>
+        <span className="poda-card-eyebrow">Nota CQO</span>
+        <h3>Score de conformidade da poda</h3>
       </div>
-      <div className="poda-score-content">
+      <div className="poda-score-exec-body">
         <div className="poda-score-ring" style={{ '--score-angle': `${score * 3.6}deg`, '--score-color': scoreColor }}>
           <strong>{fmt(score)}</strong>
           <span>/100</span>
         </div>
-        <div className="poda-score-facts">
-          <div>
-            <span>Pior indicador</span>
-            <strong>{topIssue?.label || 'Sem falha'}</strong>
-            <small>{topIssue ? `${formatPercentValue(topIssue.rate)} da amostra · ${fmt(topIssue.projected)} proj.` : 'Amostra conforme'}</small>
-          </div>
-          <div>
-            <span>Parcela crítica</span>
-            <strong>{topParcel?.label || 'Sem parcela'}</strong>
-            <small>{topEvaluator ? `${topEvaluator.label} · ${fmt(topEvaluator.total)} coleta(s)` : 'Sem fiscal responsável'}</small>
-          </div>
+        <div className="poda-score-status">
+          <strong>{statusLabel}</strong>
+          <span>Leitura principal para priorizar alinhamento em campo.</span>
         </div>
       </div>
     </section>
   );
 }
 
-function PodaIndicatorPanel({ indicators }) {
+function PodaSamplingSummaryCard({ totals, records, gpsPct, projectionBase }) {
+  const items = [
+    { label: 'Coletas', value: fmt(records.length) },
+    { label: 'Linhas avaliadas', value: fmt(totals.linhas) },
+    { label: 'Plantas avaliadas', value: fmt(totals.podaPlantasObservadas) },
+    { label: 'Plantas projetadas', value: fmt(projectionBase) },
+    { label: 'GPS', value: formatPercentValue(gpsPct) },
+  ];
+
+  return (
+    <section className="poda-exec-card poda-sample-card">
+      <div>
+        <span className="poda-card-eyebrow">Resumo da amostragem</span>
+        <h3>Base analisada</h3>
+      </div>
+      <div className="poda-sample-grid">
+        {items.map((item) => (
+          <div key={item.label}>
+            <strong>{item.value}</strong>
+            <span>{item.label}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PodaPrimaryAlertCard({ topIssue, topParcel }) {
+  return (
+    <section className="poda-exec-card poda-alert-card">
+      <div>
+        <span className="poda-card-eyebrow">Alerta principal</span>
+        <h3>{topIssue?.label || 'Sem falha crítica'}</h3>
+      </div>
+      <div className="poda-alert-metric">
+        <strong>{topIssue ? formatPercentValue(topIssue.rate) : '0,0%'}</strong>
+        <span>da amostra</span>
+      </div>
+      <div className="poda-alert-details">
+        <div>
+          <span>Ocorrências</span>
+          <strong>{fmt(topIssue?.count || 0)}</strong>
+        </div>
+        <div>
+          <span>Projetadas</span>
+          <strong>{fmt(topIssue?.projected || 0)}</strong>
+        </div>
+      </div>
+      <p>Parcela crítica: <strong>{topParcel?.label || 'Sem parcela no filtro'}</strong></p>
+    </section>
+  );
+}
+
+function PodaFaultRankingPanel({ indicators }) {
   const max = Math.max(...indicators.map((row) => row.rate), 1);
   return (
-    <section className="poda-bi-panel poda-bi-indicator-panel">
-      <div className="poda-bi-panel-title">
-        <h3>Indicadores de falha</h3>
-        <span>Percentual sobre plantas amostradas e projeção da parcela.</span>
+    <section className="poda-exec-card poda-fault-panel">
+      <div className="poda-section-title">
+        <div>
+          <span className="poda-card-eyebrow">Ranking operacional</span>
+          <h3>Principais falhas</h3>
+        </div>
+        <div className="poda-fault-tabs" aria-label="Filtros visuais de falhas">
+          {['Todas', 'Críticas', 'Atenção', 'Poda', 'Cacho', 'Planta'].map((tab, index) => (
+            <button type="button" className={index === 0 ? 'active' : ''} key={tab}>{tab}</button>
+          ))}
+        </div>
       </div>
-      <div className="poda-indicator-list">
+      <div className="poda-fault-table">
+        <div className="poda-fault-head">
+          <span>Falha</span>
+          <span>%</span>
+          <span>Ocorr.</span>
+          <span>Proj.</span>
+          <span>Impacto</span>
+        </div>
         {indicators.map((row) => (
-          <div className={`poda-indicator-row poda-indicator-${row.status === 'Crítico' ? 'danger' : row.status === 'Atenção' ? 'warning' : 'ok'}`} key={row.key}>
-            <div className="poda-indicator-head">
-              <strong>{row.label}</strong>
-              <span>{formatPercentValue(row.rate)}</span>
-            </div>
-            <div className="poda-indicator-track">
+          <div className={`poda-fault-row poda-fault-${row.status === 'Crítico' ? 'danger' : row.status === 'Atenção' ? 'warning' : 'ok'}`} key={row.key}>
+            <strong>{row.label}</strong>
+            <span>{formatPercentValue(row.rate)}</span>
+            <span>{fmt(row.count)}</span>
+            <span>{fmt(row.projected)}</span>
+            <div className="poda-fault-track">
               <i style={{ width: `${Math.max((row.rate / max) * 100, row.rate > 0 ? 3 : 0)}%`, background: row.color }} />
-            </div>
-            <div className="poda-indicator-meta">
-              <span>{fmt(row.count)} ocorrência(s)</span>
-              <span>{fmt(row.projected)} projetada(s)</span>
             </div>
           </div>
         ))}
@@ -611,15 +651,17 @@ function PodaIndicatorPanel({ indicators }) {
   );
 }
 
-function PodaMiniBars({ title, subtitle, rows, valueLabel = 'risco', maxRows = 3 }) {
+function PodaMiniBars({ title, subtitle, rows, valueLabel = 'risco', maxRows = 3, className = '' }) {
   const visibleRows = rows.slice(0, maxRows);
   const max = Math.max(...visibleRows.map((row) => Number(row.value || 0)), 1);
 
   return (
-    <section className="poda-bi-panel">
-      <div className="poda-bi-panel-title">
-        <h3>{title}</h3>
-        <span>{subtitle}</span>
+    <section className={`poda-exec-card poda-mini-panel ${className}`.trim()}>
+      <div className="poda-section-title compact">
+        <div>
+          <h3>{title}</h3>
+          <span>{subtitle}</span>
+        </div>
       </div>
       <div className="poda-bi-bars">
         {visibleRows.map((row) => (
@@ -640,9 +682,9 @@ function PodaMiniBars({ title, subtitle, rows, valueLabel = 'risco', maxRows = 3
 }
 
 function PodaTrendPanel({ rows }) {
-  const chartHeight = 160;
-  const padding = { top: 18, right: 16, bottom: 28, left: 34 };
-  const width = 640;
+  const chartHeight = 220;
+  const padding = { top: 26, right: 34, bottom: 38, left: 62 };
+  const width = 1900;
   const graphWidth = width - padding.left - padding.right;
   const graphHeight = chartHeight - padding.top - padding.bottom;
   const maxFailure = Math.max(...rows.map((row) => row.falhas), 1);
@@ -654,16 +696,18 @@ function PodaTrendPanel({ rows }) {
   const scorePath = scorePoints.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
 
   return (
-    <section className="poda-bi-panel poda-bi-trend-panel">
-      <div className="poda-bi-panel-title">
+    <section className="poda-exec-card poda-bi-trend-panel">
+      <div className="poda-section-title compact">
+        <div>
         <h3>Evolução no período</h3>
         <span>Nota CQO e volume de falhas por dia de coleta.</span>
+        </div>
       </div>
       <div className="poda-bi-legend">
         <span><i style={{ background: 'var(--green-institutional)' }} />Nota CQO</span>
         <span><i style={{ background: 'var(--orange-institutional)' }} />Falhas</span>
       </div>
-      <svg className="poda-bi-trend-svg" viewBox={`0 0 ${width} ${chartHeight}`} width="100%" height={chartHeight}>
+      <svg className="poda-bi-trend-svg" viewBox={`0 0 ${width} ${chartHeight}`} width="100%" height="100%">
         {[0, 0.5, 1].map((ratio) => {
           const y = padding.top + graphHeight * (1 - ratio);
           return (
@@ -674,21 +718,27 @@ function PodaTrendPanel({ rows }) {
           );
         })}
         {rows.map((row, index) => {
-          const barWidth = 18;
+          const barWidth = rows.length <= 2 ? 46 : rows.length <= 6 ? 32 : 24;
           const x = padding.left + (rows.length <= 1 ? graphWidth / 2 : (index / (rows.length - 1)) * graphWidth) - barWidth / 2;
           const barHeight = Math.max((row.falhas / maxFailure) * graphHeight, row.falhas > 0 ? 2 : 0);
           return (
             <g key={row.label}>
               <rect x={x} y={padding.top + graphHeight - barHeight} width={barWidth} height={barHeight} rx="3" fill="var(--orange-institutional)" opacity="0.78" />
+              {row.falhas > 0 && (
+                <text x={x + barWidth / 2} y={Math.max(padding.top + 12, padding.top + graphHeight - barHeight - 6)} textAnchor="middle" className="chart-value-text">{fmt(row.falhas)}</text>
+              )}
               <text x={x + barWidth / 2} y={chartHeight - 8} textAnchor="middle" className="chart-axis-text">{row.label}</text>
             </g>
           );
         })}
-        {scorePath && <path d={scorePath} fill="none" stroke="var(--green-institutional)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+        {scorePath && <path d={scorePath} fill="none" stroke="var(--green-institutional)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />}
         {scorePoints.map((point) => (
-          <circle key={`${point.row.label}-${point.row.score}`} cx={point.x} cy={point.y} r="4" fill="var(--green-institutional)">
-            <title>{`${point.row.label}: nota ${fmt(point.row.score)} / falhas ${fmt(point.row.falhas)}`}</title>
-          </circle>
+          <g key={`${point.row.label}-${point.row.score}`}>
+            <circle cx={point.x} cy={point.y} r="6" fill="var(--green-institutional)" stroke="var(--bg-card)" strokeWidth="3">
+              <title>{`${point.row.label}: nota ${fmt(point.row.score)} / falhas ${fmt(point.row.falhas)}`}</title>
+            </circle>
+            <text x={point.x} y={Math.max(padding.top + 10, point.y - 10)} textAnchor="middle" className="chart-score-text">{fmt(point.row.score)}</text>
+          </g>
         ))}
       </svg>
     </section>
@@ -705,9 +755,13 @@ function PodaBiBoard({ loading, source, totals, records, periodText, demoActive,
   const gpsPct = gpsEligibleRecords.length ? (gpsEligibleRecords.filter((record) => record.gps).length / gpsEligibleRecords.length) * 100 : null;
   const projectionBase = totals.plantasProjetadas || totals.plantasObservadas || totals.podaPlantasObservadas;
   const sourceLabel = demoActive ? 'APP + dados manuais' : source;
+  const criticalCount = indicators.filter((row) => row.status === 'Crítico').length;
+  const attentionCount = indicators.filter((row) => row.status === 'Atenção').length;
+  const approvedCount = records.filter((record) => record.status === 'Aprovado').length;
+  const pendingCount = records.filter((record) => record.status === 'Pendente validação').length;
 
   return (
-    <div className={`poda-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
+    <div className={`poda-bi-board poda-executive-board ${presentationMode ? 'is-presentation' : ''}`}>
       <div className="poda-bi-header">
         <img src="/logo.png" alt="Vila Nova Agroindustrial" />
         <div>
@@ -736,39 +790,48 @@ function PodaBiBoard({ loading, source, totals, records, periodText, demoActive,
         <span>Pior falha: {topIssue ? `${topIssue.label} (${formatPercentValue(topIssue.rate)})` : 'sem ocorrência'}</span>
       </div>
 
-      <div className="poda-bi-kpi-grid">
-        <PodaBiKpi label="Nota CQO" value={loading ? '--' : fmt(totals.podaScore)} meta="Score de conformidade" tone={podaToneFromScore(totals.podaScore)} icon={Gauge} />
-        <PodaBiKpi label="Coletas" value={loading ? '--' : fmt(records.length)} meta={`${fmt(totals.linhas)} linhas avaliadas`} tone="green" icon={Scissors} />
-        <PodaBiKpi label="Amostra" value={loading ? '--' : fmt(totals.podaPlantasObservadas)} meta="Plantas avaliadas" tone="info" icon={Sprout} />
-        <PodaBiKpi label="Base projetada" value={loading ? '--' : fmt(projectionBase)} meta={`${fmt(totals.podaComProjecao)} ficha(s) com projeção`} tone="green" icon={BarChart3} />
-        <PodaBiKpi label="Ocorrências" value={loading ? '--' : fmt(totals.ocorrenciasPodaProjetadas || 0)} meta="Falhas projetadas" tone={(totals.ocorrenciasPodaProjetadas || 0) > 40 ? 'danger' : 'orange'} icon={AlertTriangle} />
-        <PodaBiKpi label="GPS" value={loading ? '--' : formatPercentValue(gpsPct)} meta={gpsEligibleRecords.length ? 'Rastreabilidade app' : 'Sem exigência'} tone="info" icon={CheckCircle2} />
+      <div className="poda-diagnostic-grid">
+        <PodaScoreExecutiveCard totals={totals} />
+        <PodaSamplingSummaryCard totals={totals} records={records} gpsPct={gpsPct} projectionBase={projectionBase} />
+        <PodaPrimaryAlertCard topIssue={topIssue} topParcel={farmRows[0]} />
       </div>
 
-      <div className="poda-bi-main-grid">
-        <div className="poda-bi-left-stack">
-          <PodaScorePanel totals={totals} indicators={indicators} farmRows={farmRows} evaluatorRows={evaluatorRows} />
-          <PodaMiniBars title="Piores parcelas" subtitle="Maior risco por amostragem." rows={farmRows} maxRows={2} />
-        </div>
-        <div className="poda-bi-center-stack">
-          <PodaIndicatorPanel indicators={indicators} />
-          <PodaTrendPanel rows={dayRows} />
-        </div>
-        <div className="poda-bi-right-stack">
-          <PodaMiniBars title="Fiscal responsável" subtitle="Onde concentrar alinhamento de campo." rows={evaluatorRows} maxRows={2} />
-          <section className="poda-bi-panel poda-bi-summary-panel">
-            <div className="poda-bi-panel-title">
+      <div className="poda-executive-main">
+        <PodaFaultRankingPanel indicators={indicators} />
+        <aside className="poda-side-column">
+          <PodaMiniBars
+            title="Fiscal responsável"
+            subtitle="Maior incidência para alinhamento de campo."
+            rows={evaluatorRows}
+            maxRows={2}
+            className="poda-fiscal-panel"
+          />
+          <section className="poda-exec-card poda-executive-read-card">
+            <div className="poda-section-title compact">
+              <div>
               <h3>Leitura executiva</h3>
-              <span>Resumo para apresentação no projetor.</span>
+                <span>Resumo objetivo do período filtrado.</span>
+              </div>
             </div>
             <div className="poda-bi-summary-list">
-              <div><span>Falhas críticas</span><strong>{fmt(indicators.filter((row) => row.status === 'Crítico').length)}</strong></div>
-              <div><span>Atenções</span><strong>{fmt(indicators.filter((row) => row.status === 'Atenção').length)}</strong></div>
-              <div><span>Aprovados</span><strong>{fmt(records.filter((record) => record.status === 'Aprovado').length)}</strong></div>
-              <div><span>Pendentes</span><strong>{fmt(records.filter((record) => record.status === 'Pendente validação').length)}</strong></div>
+              <div><span>Falhas críticas</span><strong>{fmt(criticalCount)}</strong></div>
+              <div><span>Atenções</span><strong>{fmt(attentionCount)}</strong></div>
+              <div><span>Aprovados</span><strong>{fmt(approvedCount)}</strong></div>
+              <div><span>Pendentes</span><strong>{fmt(pendingCount)}</strong></div>
             </div>
           </section>
-        </div>
+        </aside>
+      </div>
+
+      <div className="poda-bottom-grid">
+        <PodaMiniBars
+          title="Parcelas com maior risco"
+          subtitle="Onde a amostragem indica maior prioridade."
+          rows={farmRows}
+          maxRows={2}
+          className="poda-risk-panel"
+        />
+        <PodaTrendPanel rows={dayRows} />
       </div>
     </div>
   );

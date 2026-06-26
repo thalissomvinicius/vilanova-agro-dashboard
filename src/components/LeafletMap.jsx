@@ -557,41 +557,6 @@ function operationTotalsFor({ totals, corteTotals, carreamentoTotals, operation 
   return totals;
 }
 
-function metricCalculationDetail(metric, totals, areaHa, operation) {
-  if (!totals) return `Sem base de ${operationLabel(operation).toLowerCase()} neste filtro.`;
-
-  switch (metric.id) {
-    case 'nota':
-      return `${formatInteger(totals.total || 0)} coleta(s) usadas na nota de ${operationLabel(operation).toLowerCase()}.`;
-    case 'perda_t_ha':
-      if (!(areaHa > 0)) return 'Área da parcela não informada no shapefile.';
-      return `${formatDecimal(totals.lostFrutosTon || 0, 3)} t estimadas / ${formatDecimal(areaHa, 2)} ha.`;
-    case 'cachos_ha':
-      if (!(areaHa > 0)) return 'Área da parcela não informada no shapefile.';
-      return `${formatInteger(totals.lostCachosQty || 0)} cacho(s) perdidos / ${formatDecimal(areaHa, 2)} ha.`;
-    case 'perda_corte':
-      return `${formatInteger(totals.cachoEsquecido || 0)} cacho(s) esquecido(s) / ${formatInteger(totals.cachosObservados || 0)} cachos observados.`;
-    case 'nao_carreado':
-      return `${formatInteger(totals.cachoNaoCarreado || 0)} cacho(s) não carreado(s) / ${formatInteger(totals.plantasObservadas || 0)} plantas observadas.`;
-    case 'mal_posicionado':
-      return operation?.id === 'corte'
-        ? `${formatInteger(totals.cachoMalPosicionado || 0)} ocorrência(s) de palha / ${formatInteger(totals.plantasObservadas || 0)} plantas observadas.`
-        : `${formatInteger(totals.cachoMalPosicionado || 0)} cacho(s) mal posicionado(s) / ${formatInteger(totals.plantasObservadas || 0)} plantas observadas.`;
-    case 'maduro':
-      return `${formatInteger(totals.cachoMaduro || 0)} cacho(s) maduros / ${formatInteger(totals.cachosObservados || 0)} cachos observados.`;
-    case 'verde':
-      return `${formatInteger(totals.cachoVerde || 0)} cacho(s) verdes / ${formatInteger(totals.cachosObservados || 0)} cachos observados.`;
-    case 'passado':
-      return `${formatInteger(totals.cachoPassado || 0)} cacho(s) passados / ${formatInteger(totals.cachosObservados || 0)} cachos observados.`;
-    case 'avermelhado':
-      return `${formatInteger(totals.cachoAvermelhado || 0)} cacho(s) avermelhados / ${formatInteger(totals.cachosObservados || 0)} cachos observados.`;
-    case 'talo':
-      return `${formatInteger(totals.taloComprido || 0)} ocorrência(s) / ${formatInteger(totals.plantasObservadas || 0)} plantas observadas.`;
-    default:
-      return '';
-  }
-}
-
 function metricValue(metric, totals, areaHa, operation) {
   if (!totals) return null;
 
@@ -681,44 +646,6 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
-function metricTargetText(metric) {
-  const prefix = metric.goodWhen === 'high' ? 'mín.' : 'máx.';
-  return `${prefix} ${formatMetricValue(metric, metric.meta)}`;
-}
-
-function metricExplanation(metric, value, color) {
-  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
-    return 'Sem valor suficiente para comparar com a meta neste indicador.';
-  }
-
-  const numeric = Number(value);
-  const diff = metric.goodWhen === 'high' ? numeric - metric.meta : metric.meta - numeric;
-  const direction = metric.goodWhen === 'high'
-    ? (diff >= 0 ? 'acima' : 'abaixo')
-    : (diff >= 0 ? 'abaixo' : 'acima');
-  const absDiff = Math.abs(diff);
-  const status = riskStatusLabel(color).toLowerCase();
-
-  return `${status}: ${metric.label} ficou ${direction} da meta em ${formatMetricValue(metric, absDiff)}.`;
-}
-
-function metricProgressWidth(metric, value) {
-  if (value === null || value === undefined || !Number.isFinite(Number(value))) return 0;
-  const numeric = Math.max(0, Number(value));
-  const base = Math.max(Number(metric.meta || 1), numeric);
-  if (metric.goodWhen === 'high') return Math.max(8, Math.min(100, (numeric / base) * 100));
-  return Math.max(8, Math.min(100, (numeric / (metric.meta * 2.4 || base)) * 100));
-}
-
-function metricTargetPosition(metric, value) {
-  if (value === null || value === undefined || !Number.isFinite(Number(value))) return 50;
-  const numeric = Math.max(0, Number(value));
-  const base = metric.goodWhen === 'high'
-    ? Math.max(Number(metric.meta || 1), numeric)
-    : Math.max(Number(metric.meta || 1) * 2.4, numeric);
-  return Math.max(6, Math.min(94, (Number(metric.meta || 0) / base) * 100));
-}
-
 function dateOrderValue(value) {
   const text = String(value || '').trim();
   const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -737,531 +664,8 @@ function sortDateTexts(values) {
     .sort((a, b) => dateOrderValue(a) - dateOrderValue(b));
 }
 
-function personLabel(matricula, nome) {
-  const code = String(matricula || '').trim();
-  const name = String(nome || '').trim();
-  if (code && name && name !== code) return `${code} - ${name}`;
-  return name || code || '';
-}
-
 function rawPersonValue(record, key) {
   return String(record?.raw?.[key] || '').trim();
-}
-
-function parcelResponsibilityRows(records) {
-  const byPerson = new Map();
-
-  const pushPerson = (role, label, record) => {
-    const person = String(label || '').trim();
-    if (!person || person === '--') return;
-
-    const key = `${role}|${person}`;
-    const current = byPerson.get(key) || {
-      role,
-      person,
-      count: 0,
-      dates: [],
-      sources: new Set(),
-    };
-    current.count += 1;
-    if (record.date && record.date !== '--') current.dates.push(record.date);
-    current.sources.add(record.source === 'excel' ? 'Excel' : 'App');
-    byPerson.set(key, current);
-  };
-
-  records.forEach((record) => {
-    pushPerson('Fiscal da equipe', rawPersonValue(record, 'fiscal_resp_equipe') || record.fiscal, record);
-    pushPerson('Avaliador da coleta', personLabel(record.evaluatorMatricula, record.evaluator), record);
-    const informedFiscal = rawPersonValue(record, 'fiscal_resp');
-    if (informedFiscal && informedFiscal !== rawPersonValue(record, 'fiscal_resp_equipe')) {
-      pushPerson('Fiscal informado', informedFiscal, record);
-    }
-  });
-
-  return Array.from(byPerson.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5)
-    .map((item) => {
-      const sortedDates = sortDateTexts(item.dates);
-      const dateText = sortedDates.length
-        ? `${sortedDates[0]}${sortedDates[0] !== sortedDates[sortedDates.length - 1] ? ` a ${sortedDates[sortedDates.length - 1]}` : ''}`
-        : 'Sem data';
-      return `
-        <div class="parcel-popup-person-row">
-          <strong>${escapeHtml(item.person)}</strong>
-          <em>${escapeHtml(item.role)}</em>
-          <span>${formatInteger(item.count)} coleta(s) · ${escapeHtml(dateText)} · ${escapeHtml(Array.from(item.sources).join(' + '))}</span>
-        </div>
-      `;
-    }).join('');
-}
-
-function parcelLatestRows(records) {
-  return [...records]
-    .sort((a, b) => dateOrderValue(b.date) - dateOrderValue(a.date))
-    .slice(0, 4)
-    .map((record) => {
-      const evaluatorLabel = personLabel(record.evaluatorMatricula, record.evaluator);
-      return `
-        <div class="parcel-popup-event-row">
-          <strong>${escapeHtml(record.date || '--')}</strong>
-          <span>${escapeHtml(record.form || record.type || 'CQO')} · Fiscal equipe: ${escapeHtml(record.fiscal || 'Sem fiscal')}</span>
-          <small>${escapeHtml(record.source === 'excel' ? 'Excel' : 'App')}${evaluatorLabel ? ` · Avaliador: ${escapeHtml(evaluatorLabel)}` : ''}</small>
-        </div>
-      `;
-    }).join('');
-}
-
-function topCauseRows(totals, operation) {
-  if (!totals) return [];
-
-  const corteRows = [
-    { label: 'Perda corte', value: Number(totals.perdaCorteRate || 0), detail: `${formatInteger(totals.cachoEsquecido || 0)} cacho(s) esquecido(s)`, color: '#EF4444' },
-    { label: 'Verde', value: Number(totals.cachoVerdeRate || 0), detail: `${formatInteger(totals.cachoVerde || 0)} cacho(s)`, color: '#F59E0B' },
-    { label: 'Passado', value: Number(totals.cachoPassadoRate || 0), detail: `${formatInteger(totals.cachoPassado || 0)} cacho(s)`, color: '#6B4B3E' },
-    { label: 'Avermelhado', value: percentOf(totals.cachoAvermelhado, totals.cachosObservados), detail: `${formatInteger(totals.cachoAvermelhado || 0)} cacho(s)`, color: '#B91C1C' },
-    { label: 'Talo comprido', value: Number(totals.taloCompridoRate || 0), detail: `${formatInteger(totals.taloComprido || 0)} ocorr.`, color: '#D98C10' },
-    { label: 'Palha mal empilhada', value: Number(totals.cachoMalPosicionadoRate || 0), detail: `${formatInteger(totals.cachoMalPosicionado || 0)} ocorr.`, color: '#F97316' },
-  ];
-  const carreamentoRows = [
-    { label: 'Não carreado', value: Number(totals.cachoNaoCarreadoRate || 0), detail: `${formatInteger(totals.cachoNaoCarreado || 0)} cacho(s)`, color: '#EF4444' },
-    { label: 'Cacho mal posicionado', value: Number(totals.cachoMalPosicionadoRate || 0), detail: `${formatInteger(totals.cachoMalPosicionado || 0)} cacho(s)`, color: '#F97316' },
-  ];
-  const rows = operation?.id === 'carreamento' ? carreamentoRows : corteRows;
-
-  return rows.filter((item) => item.value > 0 || !/^0\b/.test(String(item.detail)))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 4);
-}
-
-function popupMetricChart(metric, value, color, detail = '') {
-  const width = metricProgressWidth(metric, value);
-  const target = metricTargetPosition(metric, value);
-
-  return `
-    <div class="parcel-popup-chart-card">
-      <div class="parcel-popup-chart-head">
-        <span>${escapeHtml(metric.label)}</span>
-        <strong style="color:${color};">${formatMetricValue(metric, value)}</strong>
-      </div>
-      <div class="parcel-popup-goalbar">
-        <span style="width:${width}%; background:${color};"></span>
-        <i style="left:${target}%;" title="Meta"></i>
-      </div>
-      <div class="parcel-popup-chart-foot">
-        <span>Meta ${escapeHtml(metricTargetText(metric))}</span>
-        <b>${escapeHtml(metricExplanation(metric, value, color))}</b>
-      </div>
-      ${detail ? `<div class="parcel-popup-calc">Base: ${escapeHtml(detail)}</div>` : ''}
-    </div>
-  `;
-}
-
-function popupCauseChart(totals, operation) {
-  const causes = topCauseRows(totals, operation);
-  if (!causes.length) {
-    return '<div class="parcel-popup-empty">Nenhum desvio relevante identificado nos campos calculados.</div>';
-  }
-  const max = Math.max(...causes.map((item) => item.value), 1);
-
-  return `
-    <div class="parcel-popup-cause-list">
-      ${causes.map((item) => `
-        <div class="parcel-popup-cause-row">
-          <div>
-            <strong>${escapeHtml(item.label)}</strong>
-            <span>${escapeHtml(item.detail)}</span>
-          </div>
-          <div class="parcel-popup-mini-bar">
-            <span style="width:${Math.max(7, (item.value / max) * 100)}%; background:${item.color};"></span>
-          </div>
-          <b>${formatDecimal(item.value, 1)}%</b>
-        </div>
-      `).join('')}
-    </div>
-  `;
-}
-
-function issuePriority(color) {
-  if (color === RISK_COLORS.critical) return 3;
-  if (color === RISK_COLORS.attention) return 2;
-  return 1;
-}
-
-function analysisIssueRows({ records, operation, areaHa }) {
-  const metricIds = (operation?.metrics || []).filter((metricId) => metricId !== 'nota');
-
-  return metricIds
-    .map((metricId) => {
-      const metric = activeRiskMetric(metricId);
-      const metricTotals = aggregateForMetric(records, metric, operation);
-      const value = metricValue(metric, metricTotals, areaHa, operation);
-      const color = metricColor(metric, value, Boolean(metricTotals));
-      if (!metricTotals || color === RISK_COLORS.good || color === RISK_COLORS.neutral) return null;
-
-      const displayMetric = metricDisplay(metric, operation);
-      return {
-        metric,
-        displayMetric,
-        value,
-        color,
-        status: riskStatusLabel(color),
-        detail: metricCalculationDetail(metric, metricTotals, areaHa, operation),
-        explanation: metricExplanation(displayMetric, value, color),
-        priority: issuePriority(color),
-        riskScore: metricRiskScore(metric, value),
-      };
-    })
-    .filter(Boolean)
-    .sort((a, b) => (b.priority - a.priority) || (b.riskScore - a.riskScore))
-    .slice(0, 4);
-}
-
-function popupAnalysisPanel({ issues, operation, hasData }) {
-  if (!hasData) {
-    return `
-      <div class="parcel-popup-analysis is-neutral">
-        <div class="parcel-popup-analysis-head">
-          <strong>Análise</strong>
-          <span>Sem dados aprovados</span>
-        </div>
-        <p>Não há coleta aprovada para esta parcela dentro do filtro atual.</p>
-      </div>
-    `;
-  }
-
-  if (!issues.length) {
-    return `
-      <div class="parcel-popup-analysis is-good">
-        <div class="parcel-popup-analysis-head">
-          <strong>Análise</strong>
-          <span>Sem desvio relevante</span>
-        </div>
-        <p>Os indicadores de ${escapeHtml(operationLabel(operation).toLowerCase())} estão dentro da meta para as coletas encontradas neste período.</p>
-      </div>
-    `;
-  }
-
-  return `
-    <div class="parcel-popup-analysis">
-      <div class="parcel-popup-analysis-head">
-        <strong>Pontos de atenção</strong>
-        <span>${formatInteger(issues.length)} indicador(es) fora da meta</span>
-      </div>
-      <div class="parcel-popup-issue-list">
-        ${issues.map((issue) => `
-          <div class="parcel-popup-issue-row" style="--issue-color:${issue.color};">
-            <div>
-              <strong>${escapeHtml(issue.displayMetric.label)}</strong>
-              <span>${escapeHtml(issue.explanation)}</span>
-              <small>${escapeHtml(issue.detail)}</small>
-            </div>
-            <em>${escapeHtml(issue.status)}</em>
-            <b>${formatMetricValue(issue.metric, issue.value)}</b>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
-
-function popupIndicatorPanel({ records, operation, areaHa }) {
-  const metricIds = Array.from(new Set(['nota', ...(operation?.metrics || [])]));
-  const rows = metricIds.map((metricId) => {
-    const metric = activeRiskMetric(metricId);
-    const metricTotals = aggregateForMetric(records, metric, operation);
-    const displayMetric = metricDisplay(metric, operation);
-    const value = metricValue(metric, metricTotals, areaHa, operation);
-    const hasValue = value !== null && value !== undefined && Number.isFinite(Number(value));
-    const color = metricColor(metric, value, Boolean(metricTotals));
-
-    return {
-      metric,
-      displayMetric,
-      value,
-      hasValue,
-      color,
-      width: metricProgressWidth(metric, value),
-      target: metricTargetPosition(metric, value),
-      detail: metricCalculationDetail(metric, metricTotals, areaHa, operation),
-    };
-  });
-
-  if (!rows.length) {
-    return '<div class="parcel-popup-empty">Sem indicadores disponíveis neste filtro.</div>';
-  }
-
-  return `
-    <div class="parcel-popup-chart-panel">
-      <div class="parcel-popup-panel-head">
-        <strong>Painel de indicadores</strong>
-        <span>${formatInteger(rows.length)} métrica(s)</span>
-      </div>
-      <div class="parcel-popup-indicator-list">
-        ${rows.map((row) => `
-          <div class="parcel-popup-indicator-row">
-            <div class="parcel-popup-indicator-head">
-              <strong>${escapeHtml(row.displayMetric.label)}</strong>
-              <em style="color:${row.color};">${formatMetricValue(row.metric, row.value)}</em>
-            </div>
-            <div class="parcel-popup-indicator-bar">
-              <span style="width:${row.hasValue ? row.width : 0}%; background:${row.color};"></span>
-              <i style="left:${row.target}%;" title="Meta ${escapeHtml(metricTargetText(row.metric))}"></i>
-            </div>
-            <small>Meta ${escapeHtml(metricTargetText(row.metric))} · ${escapeHtml(row.detail)}</small>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
-
-function popupDateDistribution(records) {
-  const byDate = new Map();
-  records.forEach((record) => {
-    const key = record.date || 'Sem data';
-    byDate.set(key, (byDate.get(key) || 0) + 1);
-  });
-
-  const rows = Array.from(byDate.entries())
-    .sort(([a], [b]) => dateOrderValue(a) - dateOrderValue(b))
-    .map(([label, count]) => ({ label, count }));
-  const max = Math.max(...rows.map((row) => row.count), 1);
-
-  if (!rows.length) {
-    return '<div class="parcel-popup-empty">Sem coletas para montar distribuição por data.</div>';
-  }
-
-  return `
-    <div class="parcel-popup-chart-panel">
-      <div class="parcel-popup-panel-head">
-        <strong>Coletas por data</strong>
-        <span>${formatInteger(records.length)} coleta(s)</span>
-      </div>
-      <div class="parcel-popup-distribution-list">
-        ${rows.map((row) => `
-          <div class="parcel-popup-distribution-row">
-            <span>${escapeHtml(row.label)}</span>
-            <div><i style="width:${Math.max(6, (row.count / max) * 100)}%;"></i></div>
-            <strong>${formatInteger(row.count)}</strong>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
-
-function distributionRows(items, color = '#1F7A3A') {
-  const max = Math.max(...items.map((item) => item.count), 1);
-  return items.map((item) => `
-    <div class="parcel-popup-distribution-row">
-      <span>${escapeHtml(item.label)}</span>
-      <div><i style="width:${Math.max(6, (item.count / max) * 100)}%; background:${color};"></i></div>
-      <strong>${formatInteger(item.count)}</strong>
-    </div>
-  `).join('');
-}
-
-function popupSourceStatusPanel(records) {
-  const sourceItems = [
-    { label: 'Excel', count: records.filter((record) => record.source === 'excel').length },
-    { label: 'App', count: records.filter((record) => record.source === 'app').length },
-  ];
-  const statusMap = records.reduce((acc, record) => {
-    const key = record.status || 'Sem status';
-    acc[key] = (acc[key] || 0) + 1;
-    return acc;
-  }, {});
-  const statusItems = Object.entries(statusMap)
-    .map(([label, count]) => ({ label, count }))
-    .sort((a, b) => b.count - a.count);
-
-  return `
-    <div class="parcel-popup-chart-panel parcel-popup-split-panel">
-      <div>
-        <div class="parcel-popup-panel-head">
-          <strong>Fonte</strong>
-          <span>${formatInteger(records.length)}</span>
-        </div>
-        <div class="parcel-popup-distribution-list">
-          ${distributionRows(sourceItems, '#D98C10')}
-        </div>
-      </div>
-      <div>
-        <div class="parcel-popup-panel-head">
-          <strong>Status</strong>
-          <span>${formatInteger(statusItems.length)}</span>
-        </div>
-        <div class="parcel-popup-distribution-list">
-          ${distributionRows(statusItems, '#1F7A3A')}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function popupBunchStack(totals) {
-  const total = Number(totals?.cachosObservados || 0);
-  const parts = [
-    { label: 'Maduro', value: Number(totals?.cachoMaduro || 0), color: '#FB8A4B' },
-    { label: 'Passado', value: Number(totals?.cachoPassado || 0), color: '#6B4B3E' },
-    { label: 'Verde', value: Number(totals?.cachoVerde || 0), color: '#22C55E' },
-    { label: 'Averm.', value: Number(totals?.cachoAvermelhado || 0), color: '#B91C1C' },
-  ];
-  const classifiedTotal = parts.reduce((sum, item) => sum + item.value, 0);
-  const remainder = Math.max(0, total - classifiedTotal);
-  const otherDetail = bunchOtherRows(totals, total, classifiedTotal)
-    .map((row) => `${row.label}: ${formatInteger(row.value)} (${formatDecimal(percentOf(row.value, total), 1)}%)`)
-    .join(' · ');
-  const stackParts = remainder
-    ? [...parts, { label: 'Outros', value: remainder, color: '#CBD5E1', detail: otherDetail }]
-    : parts;
-
-  if (!total) return '<div class="parcel-popup-empty">Sem composição de cachos observados nesta parcela.</div>';
-
-  return `
-    <div class="parcel-popup-stack">
-      <div class="parcel-popup-stackbar">
-        ${stackParts.map((item) => `
-          <span style="width:${Math.max(item.value ? 3 : 0, (item.value / total) * 100)}%; background:${item.color};" title="${escapeHtml(item.label)}"></span>
-        `).join('')}
-      </div>
-      <div class="parcel-popup-stack-legend">
-        ${stackParts.map((item) => `
-          <div class="parcel-popup-stack-item${item.detail ? ' has-detail' : ''}">
-            <span><i style="background:${item.color};"></i>${escapeHtml(item.label)} ${formatDecimal(percentOf(item.value, total), 1)}%</span>
-            ${item.detail ? `<small>${escapeHtml(item.detail)}</small>` : ''}
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
-
-function bunchOtherRows(totals, total = Number(totals?.cachosObservados || 0), classifiedTotal = 0) {
-  const rows = [
-    { label: 'Cacho esquecido', value: Number(totals?.cachoEsquecido || 0) },
-    { label: 'Cacho infermo', value: Number(totals?.cachoInfermo || 0) },
-    { label: 'Bucha', value: Number(totals?.bucha || 0) },
-    { label: 'Talo comprido', value: Number(totals?.taloComprido || 0) },
-    { label: 'Cacho estrela', value: Number(totals?.cachoEstrela || 0) },
-    { label: 'Cacho brocado', value: Number(totals?.cachoBrocado || 0) },
-  ].filter((row) => row.value > 0);
-
-  const knownOtherTotal = rows.reduce((sum, row) => sum + row.value, 0);
-  const unclassified = Math.max(0, total - classifiedTotal - knownOtherTotal);
-  if (unclassified > 0) {
-    rows.push({ label: 'Sem categoria informada', value: unclassified });
-  }
-
-  return rows;
-}
-
-function maturityPercentRows(totals) {
-  const total = Number(totals?.cachosObservados || 0);
-  const rows = [
-    { label: 'Cacho maduro', value: Number(totals?.cachoMaduro || 0), color: '#22C55E' },
-    { label: 'Cacho verde', value: Number(totals?.cachoVerde || 0), color: '#F59E0B' },
-    { label: 'Cacho passado', value: Number(totals?.cachoPassado || 0), color: '#F59E0B' },
-    { label: 'Avermelhado', value: Number(totals?.cachoAvermelhado || 0), color: '#EF4444' },
-  ].map((row) => ({
-    ...row,
-    percent: Math.round(percentOf(row.value, total) * 10) / 10,
-    detail: `${formatInteger(row.value)} / ${formatInteger(total)} cachos observados`,
-  }));
-  const usedPercent = rows.reduce((sum, row) => sum + row.percent, 0);
-  const classifiedTotal = rows.reduce((sum, row) => sum + row.value, 0);
-  const otherRows = bunchOtherRows(totals, total, classifiedTotal);
-
-  return [
-    ...rows,
-    {
-      label: 'Outros avaliados',
-      value: Math.max(0, total - rows.reduce((sum, row) => sum + row.value, 0)),
-      color: '#64748B',
-      percent: Math.max(0, Math.round((100 - usedPercent) * 10) / 10),
-      detail: otherRows.length
-        ? otherRows.map((row) => `${row.label}: ${formatInteger(row.value)} (${formatDecimal(percentOf(row.value, total), 1)}%)`).join(' · ')
-        : 'Sem detalhamento adicional no formulário',
-    },
-  ];
-}
-
-function metricPercentRow(metricId, totals, areaHa, operation, labelOverride = '') {
-  const metric = activeRiskMetric(metricId);
-  const displayMetric = metricDisplay(metric, operation);
-  const value = metricValue(metric, totals, areaHa, operation);
-  const tone = metricColor(metric, value, Boolean(totals));
-  const label = labelOverride || displayMetric.label.replace(/\s*%$/, '');
-
-  return popupPercentRow(
-    label,
-    formatMetricValue(metric, value),
-    tone,
-    metricCalculationDetail(metric, totals, areaHa, operation)
-  );
-}
-
-function operationMetricRows({ operation, totals, corteTotals, carreamentoTotals, areaHa }) {
-  if (operation?.id === 'corte') {
-    return [
-      metricPercentRow('perda_corte', corteTotals, areaHa, operation),
-      metricPercentRow('talo', corteTotals, areaHa, operation),
-      metricPercentRow('mal_posicionado', corteTotals, areaHa, operation, 'Palha mal empilhada'),
-    ].join('');
-  }
-
-  if (operation?.id === 'carreamento') {
-    return [
-      metricPercentRow('nao_carreado', carreamentoTotals, areaHa, operation),
-      metricPercentRow('mal_posicionado', carreamentoTotals, areaHa, operation),
-    ].join('');
-  }
-
-  return [
-    metricPercentRow('perda_t_ha', totals, areaHa, operation),
-    metricPercentRow('cachos_ha', totals, areaHa, operation),
-    metricPercentRow('perda_corte', corteTotals, areaHa, activeOperationMode('corte')),
-    metricPercentRow('nao_carreado', carreamentoTotals, areaHa, activeOperationMode('carreamento')),
-  ].join('');
-}
-
-function popupLossComposition({ corteTotals, carreamentoTotals, areaHa }) {
-  const corteLosses = Number(corteTotals?.cachoEsquecido || 0);
-  const carreamentoLosses = Number(carreamentoTotals?.cachoNaoCarreado || 0);
-  const totalLosses = corteLosses + carreamentoLosses;
-  const totalFruitTon = (totalLosses * 20) / 1000;
-
-  return `
-    <div class="parcel-popup-percent-list">
-      ${popupPercentRow(
-        'Corte - cachos esquecidos',
-        `${formatInteger(corteLosses)} cacho(s)`,
-        corteLosses ? '#EF4444' : '#64748B',
-        metricCalculationDetail(activeRiskMetric('perda_corte'), corteTotals, areaHa, activeOperationMode('corte'))
-      )}
-      ${popupPercentRow(
-        'Carreamento - não carreado',
-        `${formatInteger(carreamentoLosses)} cacho(s)`,
-        carreamentoLosses ? '#EF4444' : '#64748B',
-        metricCalculationDetail(activeRiskMetric('nao_carreado'), carreamentoTotals, areaHa, activeOperationMode('carreamento'))
-      )}
-      ${popupPercentRow(
-        'Perda total estimada',
-        `${formatDecimal(totalFruitTon, 3)} t`,
-        totalLosses ? '#EF4444' : '#64748B',
-        areaHa > 0
-          ? `${formatInteger(totalLosses)} cacho(s) perdidos / ${formatDecimal(areaHa, 2)} ha = ${formatMetricValue(activeRiskMetric('perda_t_ha'), perHa(totalFruitTon, areaHa))}`
-          : `${formatInteger(totalLosses)} cacho(s) perdidos; área da parcela não informada.`
-      )}
-      ${popupPercentRow(
-        'Participação das perdas',
-        totalLosses ? `${formatDecimal(percentOf(corteLosses, totalLosses), 1)}% corte / ${formatDecimal(percentOf(carreamentoLosses, totalLosses), 1)}% carreamento` : '0,0%',
-        '#182230',
-        'Este percentual usa o total de cachos perdidos como base, não cachos observados nem plantas.'
-      )}
-    </div>
-  `;
 }
 
 function buildParcelSummary({ feature, records, heatSummary, metric, operation }) {
@@ -1301,27 +705,6 @@ function buildParcelSummary({ feature, records, heatSummary, metric, operation }
   };
 }
 
-function popupMetric(label, value, tone = '') {
-  return `
-    <div class="parcel-popup-metric">
-      <span>${escapeHtml(label)}</span>
-      <strong style="color:${tone || '#182230'};">${escapeHtml(value)}</strong>
-    </div>
-  `;
-}
-
-function popupPercentRow(label, value, tone = '', detail = '') {
-  return `
-    <div class="parcel-popup-percent-row">
-      <span>
-        <b>${escapeHtml(label)}</b>
-        ${detail ? `<small>${escapeHtml(detail)}</small>` : ''}
-      </span>
-      <strong style="color:${tone || '#182230'};">${escapeHtml(value)}</strong>
-    </div>
-  `;
-}
-
 function collectionDateSummary(records) {
   const dateValues = sortDateTexts(records.map((record) => record.date));
   const firstDate = dateValues[0] || 'Sem data';
@@ -1335,67 +718,231 @@ function collectionDateSummary(records) {
   };
 }
 
-function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric, operation }) {
+function compactPercent(value, digits = 1) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return 'N/D';
+  return `${formatDecimal(value, digits)}%`;
+}
+
+function compactMetricBox(label, value, detail = '', color = '#182230') {
+  return `
+    <div class="parcel-compact-metric">
+      <span>${escapeHtml(label)}</span>
+      <strong style="color:${color};">${escapeHtml(value)}</strong>
+      ${detail ? `<small>${escapeHtml(detail)}</small>` : ''}
+    </div>
+  `;
+}
+
+function compactQualityBubble({ label, value, count, total, color, detail = '' }) {
+  const numeric = Number(value);
+  const hasValue = Number.isFinite(numeric);
+  const percent = hasValue ? Math.max(0, Math.min(100, numeric)) : 0;
+
+  return `
+    <div class="parcel-quality-bubble" style="--bubble-color:${color}; --bubble-pct:${percent}%;">
+      <div>
+        <strong>${hasValue ? compactPercent(numeric, 1) : 'N/D'}</strong>
+        <span>${escapeHtml(label)}</span>
+      </div>
+      <small>${escapeHtml(detail || `${formatInteger(count || 0)} / ${formatInteger(total || 0)}`)}</small>
+    </div>
+  `;
+}
+
+function compactOperationRow({ label, value, detail, color = '#182230' }) {
+  return `
+    <div class="parcel-compact-row">
+      <span>${escapeHtml(label)}</span>
+      <strong style="color:${color};">${escapeHtml(value)}</strong>
+      <small>${escapeHtml(detail)}</small>
+    </div>
+  `;
+}
+
+function compactOperationCard({ title, score, scoreColor, recordsCount, baseLabel, rows, emptyText }) {
+  if (!rows?.length) {
+    return `
+      <section class="parcel-compact-operation">
+        <div class="parcel-compact-operation-head">
+          <strong>${escapeHtml(title)}</strong>
+          <em>Sem base</em>
+        </div>
+        <div class="parcel-popup-empty">${escapeHtml(emptyText)}</div>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="parcel-compact-operation">
+      <div class="parcel-compact-operation-head">
+        <strong>${escapeHtml(title)}</strong>
+        <em style="color:${scoreColor};">${score !== null && score !== undefined ? `${formatDecimal(score, 0)}%` : 'N/D'}</em>
+      </div>
+      <span class="parcel-compact-operation-meta">${formatInteger(recordsCount || 0)} coleta(s) · ${escapeHtml(baseLabel)}</span>
+      <div class="parcel-compact-row-list">
+        ${rows.map(compactOperationRow).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function parcelMainFiscal(records) {
+  const fiscalRows = records
+    .map((record) => rawPersonValue(record, 'fiscal_resp_equipe') || record.fiscal)
+    .filter((value) => value && value !== '--');
+  if (!fiscalRows.length) return 'Sem fiscal informado';
+
+  const counts = fiscalRows.reduce((acc, name) => {
+    acc[name] = (acc[name] || 0) + 1;
+    return acc;
+  }, {});
+
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function compactParcelSummaryHtml({
+  totals,
+  corteTotals,
+  carreamentoTotals,
+  parcelRecords,
+  areaHa,
+  densityShape,
+  collectionDates,
+}) {
+  const generalScore = operationScore({
+    totals,
+    corteTotals,
+    carreamentoTotals,
+    operation: activeOperationMode('perdas'),
+  });
+  const corteScore = corteTotals ? Number(corteTotals.corteScore || 0) : null;
+  const carreamentoScore = carreamentoTotals ? Number(carreamentoTotals.carreamentoScore || 0) : null;
+  const qualityTotal = Number(corteTotals?.cachosObservados || 0);
+  const palhaRate = corteTotals?.cortePlantasObservadas
+    ? percentOf(corteTotals.cachoMalPosicionado, corteTotals.cortePlantasObservadas)
+    : null;
+
+  const qualityBubbles = [
+    { label: 'Maduro', value: percentOf(corteTotals?.cachoMaduro, qualityTotal), count: corteTotals?.cachoMaduro, total: qualityTotal, color: '#22C55E' },
+    { label: 'Passado', value: percentOf(corteTotals?.cachoPassado, qualityTotal), count: corteTotals?.cachoPassado, total: qualityTotal, color: '#6B4B3E' },
+    { label: 'Verde', value: percentOf(corteTotals?.cachoVerde, qualityTotal), count: corteTotals?.cachoVerde, total: qualityTotal, color: '#F59E0B' },
+    { label: 'Avermelhado', value: percentOf(corteTotals?.cachoAvermelhado, qualityTotal), count: corteTotals?.cachoAvermelhado, total: qualityTotal, color: '#EF4444' },
+  ];
+
+  const corteRows = corteTotals ? [
+    {
+      label: 'Perda corte',
+      value: compactPercent(Number(corteTotals.perdaCorteRate || 0), 1),
+      detail: `${formatInteger(corteTotals.cachoEsquecido || 0)} cacho(s) esquecido(s)`,
+      color: metricColor(activeRiskMetric('perda_corte'), Number(corteTotals.perdaCorteRate || 0), true),
+    },
+    {
+      label: 'Talo comprido',
+      value: compactPercent(Number(corteTotals.taloCompridoRate || 0), 1),
+      detail: `${formatInteger(corteTotals.taloComprido || 0)} ocorrência(s)`,
+      color: metricColor(activeRiskMetric('talo'), Number(corteTotals.taloCompridoRate || 0), true),
+    },
+    {
+      label: 'Palha mal empilhada',
+      value: palhaRate === null ? 'N/D' : compactPercent(palhaRate, 1),
+      detail: `${formatInteger(corteTotals.cachoMalPosicionado || 0)} ocorrência(s)`,
+      color: metricColor(activeRiskMetric('mal_posicionado'), palhaRate, palhaRate !== null),
+    },
+  ] : [];
+
+  const carreamentoRows = carreamentoTotals ? [
+    {
+      label: 'Não carreado',
+      value: compactPercent(Number(carreamentoTotals.cachoNaoCarreadoRate || 0), 1),
+      detail: `${formatInteger(carreamentoTotals.cachoNaoCarreado || 0)} cacho(s)`,
+      color: metricColor(activeRiskMetric('nao_carreado'), Number(carreamentoTotals.cachoNaoCarreadoRate || 0), true),
+    },
+    {
+      label: 'Mal posicionado',
+      value: compactPercent(Number(carreamentoTotals.cachoMalPosicionadoRate || 0), 1),
+      detail: `${formatInteger(carreamentoTotals.cachoMalPosicionado || 0)} cacho(s)`,
+      color: metricColor(activeRiskMetric('mal_posicionado'), Number(carreamentoTotals.cachoMalPosicionadoRate || 0), true),
+    },
+    {
+      label: 'Peso médio',
+      value: `${formatDecimal(carreamentoTotals.mediaPesoFrutos || 0, 1)} kg`,
+      detail: `${formatInteger(carreamentoTotals.plantasObservadas || 0)} planta(s) avaliadas`,
+      color: '#2563EB',
+    },
+  ] : [];
+
+  return `
+    <div class="parcel-popup-summary-grid">
+      ${compactMetricBox('Nota geral', generalScore !== null && generalScore !== undefined ? `${formatDecimal(generalScore, 0)}%` : 'N/D', 'Corte + carreamento', generalScore !== null && generalScore !== undefined ? getScoreColor(generalScore) : '#64748B')}
+      ${compactMetricBox('Área', areaHa ? `${formatDecimal(areaHa, 2)} ha` : 'N/D', densityShape ? `${formatDecimal(densityShape, 0)} pl/ha` : 'densidade N/D')}
+      ${compactMetricBox('Fiscal equipe', parcelMainFiscal(parcelRecords), `${formatInteger(parcelRecords.length)} coleta(s)`)}
+    </div>
+
+    <section class="parcel-compact-section">
+      <div class="parcel-compact-title">
+        <strong>Qualidade dos cachos</strong>
+        <span>${formatInteger(qualityTotal)} cacho(s) observados</span>
+      </div>
+      ${qualityTotal ? `
+        <div class="parcel-quality-bubble-grid">
+          ${qualityBubbles.map(compactQualityBubble).join('')}
+        </div>
+      ` : '<div class="parcel-popup-empty">Sem base de corte para exibir percentuais dos cachos.</div>'}
+    </section>
+
+    <div class="parcel-compact-ops-grid">
+      ${compactOperationCard({
+        title: 'Corte',
+        score: corteScore,
+        scoreColor: corteScore !== null ? getScoreColor(corteScore) : '#64748B',
+        recordsCount: corteTotals?.total || 0,
+        baseLabel: `${formatInteger(corteTotals?.cachosObservados || 0)} cachos · ${formatInteger(corteTotals?.plantasObservadas || 0)} plantas`,
+        rows: corteRows,
+        emptyText: 'Sem coleta de corte nesta parcela no filtro atual.',
+      })}
+      ${compactOperationCard({
+        title: 'Carreamento',
+        score: carreamentoScore,
+        scoreColor: carreamentoScore !== null ? getScoreColor(carreamentoScore) : '#64748B',
+        recordsCount: carreamentoTotals?.total || 0,
+        baseLabel: `${formatInteger(carreamentoTotals?.plantasObservadas || 0)} plantas`,
+        rows: carreamentoRows,
+        emptyText: 'Sem coleta de carreamento nesta parcela no filtro atual.',
+      })}
+    </div>
+
+    <div class="parcel-compact-footer">
+      <span>Primeira coleta: <b>${escapeHtml(collectionDates.firstDate)}</b></span>
+      <span>Última coleta: <b>${escapeHtml(collectionDates.lastDate)}</b></span>
+    </div>
+  `;
+}
+
+function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric: _metric, operation }) {
   const totals = parcelRecords.length ? aggregateRecords(parcelRecords) : null;
   const corteTotals = aggregateByType(parcelRecords, 'corte');
   const carreamentoTotals = aggregateByType(parcelRecords, 'carreamento');
-  const operationTotals = operationTotalsFor({ totals, corteTotals, carreamentoTotals, operation });
   const operationRecords = recordsByType(
     parcelRecords,
     operation?.id === 'corte' || operation?.id === 'carreamento' ? operation.id : 'all'
   );
   const areaHa = parcelAreaHa(props);
   const densityShape = parcelDensity(props);
-  const score = operationScore({ totals, corteTotals, carreamentoTotals, operation });
-  const scoreColor = score !== null && score !== undefined ? getScoreColor(score) : '#94A3B8';
-  const selectedMetric = metric || RISK_METRICS[1];
-  const selectedDisplayMetric = metricDisplay(selectedMetric, operation);
-  const selectedMetricTotals = aggregateForMetric(parcelRecords, selectedMetric, operation);
-  const selectedValue = metricValue(selectedMetric, selectedMetricTotals, areaHa, operation);
-  const selectedColor = metricColor(selectedMetric, selectedValue, Boolean(selectedMetricTotals));
-  const selectedDetail = metricCalculationDetail(selectedMetric, selectedMetricTotals, areaHa, operation);
-  const statusText = operationTotals
-    ? `${formatInteger(operationTotals.aprovados)} aprov. / ${formatInteger(operationTotals.reprovados)} reprov.`
+  const operationTotals = operationTotalsFor({ totals, corteTotals, carreamentoTotals, operation });
+  const allDates = collectionDateSummary(parcelRecords);
+  const operationDates = collectionDateSummary(operationRecords);
+  const statusText = totals
+    ? `${formatInteger(totals.aprovados)} aprov. / ${formatInteger(totals.reprovados)} reprov.`
     : 'Sem coleta aprovada';
-  const excelCount = operationRecords.filter((record) => record.source === 'excel').length;
-  const appCount = operationRecords.filter((record) => record.source === 'app').length;
-  const collectionDates = collectionDateSummary(operationRecords);
-  const dateRange = collectionDates.label;
-  const responsibilityRows = parcelResponsibilityRows(operationRecords);
-  const latestRows = parcelLatestRows(operationRecords);
-  const issues = analysisIssueRows({ records: operationRecords, operation, areaHa });
-  const analysisPanel = popupAnalysisPanel({ issues, operation, hasData: Boolean(operationTotals) });
-  const indicatorPanel = popupIndicatorPanel({ records: operationRecords, operation, areaHa });
-  const datePanel = popupDateDistribution(operationRecords);
-  const sourceStatusPanel = popupSourceStatusPanel(operationRecords);
-
-  const mainMetrics = [
-    popupMetric(operation?.id === 'perdas' ? 'Nota CQO' : `Nota ${operationLabel(operation)}`, score !== null && score !== undefined ? `${formatDecimal(score, 0)}%` : 'N/D', scoreColor),
-    popupMetric('Area', areaHa ? `${formatDecimal(areaHa, 2)} ha` : 'N/D'),
-    popupMetric('Densidade', densityShape ? `${formatDecimal(densityShape, 0)} pl/ha` : 'N/D'),
-    popupMetric('Primeira coleta', collectionDates.firstDate),
-    popupMetric('Última coleta', collectionDates.lastDate),
-    popupMetric('Fonte', operationTotals ? `${excelCount} Excel / ${appCount} App` : 'N/D'),
-    popupMetric('Linhas amostradas', formatInteger(operationTotals?.linhas || 0)),
-    popupMetric('Plantas obs.', formatInteger(operationTotals?.plantasObservadas || 0)),
-    popupMetric('Cachos obs.', formatInteger(operationTotals?.cachosObservados || 0)),
-    popupMetric('Perda fruta/ha', areaHa ? `${formatDecimal(perHa(operationTotals?.lostFrutosTon || 0, areaHa), 3)} t/ha` : 'N/D', '#EF4444'),
-  ].join('');
-
-  const maturityMetrics = maturityPercentRows(corteTotals)
-    .map((row) => popupPercentRow(row.label, `${formatDecimal(row.percent, 1)}%`, row.color, row.detail))
-    .join('');
-
-  const operationalMetrics = operationMetricRows({
-    operation,
+  const summaryHtml = compactParcelSummaryHtml({
     totals,
     corteTotals,
     carreamentoTotals,
+    parcelRecords,
     areaHa,
+    densityShape,
+    collectionDates: allDates,
   });
-  const showCorteQuality = operation?.id !== 'carreamento' && Boolean(corteTotals);
-  const showLossComposition = operation?.id === 'perdas';
-  const causeTotals = operation?.id === 'carreamento' ? carreamentoTotals : corteTotals;
 
   return `
     <div class="parcel-popup-card" style="--parcel-accent:${style.color};">
@@ -1405,62 +952,46 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric, 
             <strong>${escapeHtml(props.farmName || 'Fazenda')}</strong>
             <span>Parcela <b>${escapeHtml(shapeParcel || '--')}</b> · Fonte shapefile</span>
           </div>
-          <em>${escapeHtml(operationLabel(operation))}</em>
+          <em>Resumo</em>
         </div>
         <div class="parcel-popup-head-meta">
-          <span>Coletas: <b>${escapeHtml(dateRange)}</b></span>
-          <span>${formatInteger(operationRecords.length)} coleta(s) · ${escapeHtml(statusText)}</span>
+          <span>Coletas: <b>${escapeHtml(allDates.label)}</b></span>
+          <span>${formatInteger(parcelRecords.length)} coleta(s) · ${escapeHtml(statusText)}</span>
         </div>
       </div>
-      <div class="parcel-popup-scroll">
-        <div class="parcel-popup-executive" style="color:${selectedColor};">
-          <strong style="color:${selectedColor};">${riskStatusLabel(selectedColor)}</strong>
-          <span>${escapeHtml(metricExplanation(selectedDisplayMetric, selectedValue, selectedColor))}</span>
-        </div>
-        ${selectedMetricTotals ? popupMetricChart(selectedDisplayMetric, selectedValue, selectedColor, selectedDetail) : ''}
-        ${indicatorPanel}
-        ${analysisPanel}
-        ${datePanel}
-        ${sourceStatusPanel}
-        <div class="parcel-popup-grid">${mainMetrics}</div>
-        ${showLossComposition ? `
-          <div class="parcel-popup-section">Composição das perdas</div>
-          ${popupLossComposition({ corteTotals, carreamentoTotals, areaHa })}
-        ` : `
-          <div class="parcel-popup-section">O que aconteceu</div>
-          ${popupCauseChart(causeTotals, operation)}
-        `}
-        ${showCorteQuality ? `
-          <div class="parcel-popup-section">Composição dos cachos</div>
-          ${popupBunchStack(corteTotals)}
-        ` : ''}
-        <div class="parcel-popup-section">Responsáveis da coleta</div>
-        <div class="parcel-popup-person-list">
-          ${responsibilityRows || '<div class="parcel-popup-empty">Sem responsáveis informados.</div>'}
-        </div>
-        <div class="parcel-popup-section">Coletas no período</div>
-        <div class="parcel-popup-event-list">
-          ${latestRows || '<div class="parcel-popup-empty">Sem coleta dentro dos filtros atuais.</div>'}
-        </div>
-        ${showCorteQuality ? `
-          <div class="parcel-popup-section">Maturação dos cachos</div>
-          <div class="parcel-popup-percent-list">${maturityMetrics}</div>
-        ` : ''}
-        <div class="parcel-popup-section">Indicadores operacionais</div>
-        <div class="parcel-popup-percent-list">${operationalMetrics}</div>
+      <div class="parcel-popup-scroll parcel-popup-compact-scroll">
+        ${summaryHtml}
+        ${operationTotals ? `<div class="parcel-compact-context">Visão ativa: ${escapeHtml(operationLabel(operation))} · ${escapeHtml(operationDates.label)}</div>` : ''}
       </div>
     </div>
   `;
 }
 
-export default function LeafletMap({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter = 'all', sourceFilter = 'all', dateFrom, dateTo, presentationMode = false }) {
+export default function LeafletMap({
+  theme,
+  farmFilter,
+  areaFilter,
+  periodFilter,
+  cycleFilter,
+  evaluatorFilter = 'all',
+  sourceFilter = 'all',
+  dateFrom,
+  dateTo,
+  presentationMode = false,
+  initialOperation = 'perdas',
+  initialMetricId = '',
+}) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const layerGroupRef = useRef(null);
+  const initialMode = MAP_OPERATION_MODES.find((mode) => mode.id === initialOperation) || MAP_OPERATION_MODES.find((mode) => mode.id === 'perdas');
+  const initialMetric = initialMetricId && initialMode.metrics.includes(initialMetricId)
+    ? initialMetricId
+    : initialMode.defaultMetric;
   const [mapLayer, setMapLayer] = useState('polygon');
   const [baseLayer, setBaseLayer] = useState('standard');
-  const [mapOperation, setMapOperation] = useState('perdas');
-  const [riskMetricId, setRiskMetricId] = useState('perda_t_ha');
+  const [mapOperation, setMapOperation] = useState(initialMode.id);
+  const [riskMetricId, setRiskMetricId] = useState(initialMetric);
   const [selectedParcelKey, setSelectedParcelKey] = useState(null);
   const [parcelGeoJson, setParcelGeoJson] = useState(null);
   const [parcelGeoStatus, setParcelGeoStatus] = useState('loading');
