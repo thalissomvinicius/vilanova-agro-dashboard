@@ -4870,16 +4870,16 @@ body.field-map-active {
 .poda-executive-main {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(430px, 0.9fr) minmax(430px, 1.05fr) 330px;
+  grid-template-columns: minmax(470px, 0.8fr) minmax(620px, 1.2fr);
   gap: 10px;
   overflow: hidden;
 }
 
-.poda-side-column {
+.poda-bottom-side-stack {
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) 98px;
+  grid-template-rows: minmax(0, 1fr) 86px;
   gap: 10px;
   overflow: hidden;
 }
@@ -4963,9 +4963,9 @@ body.field-map-active {
 .poda-fault-row {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(170px, 1.35fr) 64px 74px 74px minmax(160px, 1fr);
+  grid-template-columns: minmax(130px, 1.25fr) 50px 58px 58px minmax(82px, 0.95fr);
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .poda-fault-head {
@@ -5011,7 +5011,7 @@ body.field-map-active {
 .poda-fault-row span {
   min-width: 0;
   color: var(--text-primary);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   line-height: 1;
   font-weight: 900;
   overflow: hidden;
@@ -5302,12 +5302,12 @@ body.field-map-active {
   flex: 1;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   padding: 0;
-  gap: 5px;
+  gap: 4px;
 }
 
 .poda-executive-read-card .poda-section-title {
-  min-height: 26px;
-  margin-bottom: 5px;
+  min-height: 22px;
+  margin-bottom: 4px;
 }
 
 .poda-executive-read-card .poda-section-title span {
@@ -5315,22 +5315,23 @@ body.field-map-active {
 }
 
 .poda-executive-read-card .poda-bi-summary-list div {
-  padding: 6px 7px;
+  padding: 4px 6px;
   background: #F8FAF8;
 }
 
 .poda-executive-read-card .poda-bi-summary-list span {
-  font-size: 0.5rem;
+  font-size: 0.47rem;
 }
 
 .poda-executive-read-card .poda-bi-summary-list strong {
-  font-size: 0.9rem;
+  margin-top: 1px;
+  font-size: 0.78rem;
 }
 
 .poda-bottom-grid {
   min-height: 0;
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
+  grid-template-columns: 330px 330px minmax(0, 1fr);
   gap: 10px;
   overflow: hidden;
 }
@@ -5350,7 +5351,7 @@ body.field-map-active {
 
 .poda-bi-board.poda-executive-board.is-presentation {
   height: calc(100dvh - 20px);
-  grid-template-rows: 80px 34px 144px minmax(0, 1fr) 200px;
+  grid-template-rows: 78px 32px 132px minmax(0, 1fr) 214px;
   gap: 10px;
   padding: 10px;
 }
@@ -5380,7 +5381,7 @@ body.field-map-active {
 }
 
 .poda-executive-board.is-presentation .poda-diagnostic-grid {
-  grid-template-columns: minmax(280px, 0.95fr) minmax(460px, 1.3fr) minmax(320px, 1fr);
+  grid-template-columns: minmax(290px, 0.9fr) minmax(500px, 1.35fr) minmax(320px, 0.95fr);
 }
 
 .poda-executive-board.is-presentation .poda-score-exec-body {
@@ -5402,19 +5403,19 @@ body.field-map-active {
 }
 
 .poda-executive-board.is-presentation .poda-alert-metric strong {
-  font-size: 2.25rem;
+  font-size: 2rem;
 }
 
 .poda-executive-board.is-presentation .poda-executive-main {
-  grid-template-columns: minmax(460px, 0.9fr) minmax(500px, 1.08fr) 360px;
+  grid-template-columns: minmax(470px, 0.8fr) minmax(680px, 1.2fr);
 }
 
-.poda-executive-board.is-presentation .poda-side-column {
-  grid-template-rows: minmax(0, 1fr) 98px;
+.poda-executive-board.is-presentation .poda-bottom-side-stack {
+  grid-template-rows: minmax(0, 1fr) 86px;
 }
 
 .poda-executive-board.is-presentation .poda-bottom-grid {
-  grid-template-columns: 390px minmax(0, 1fr);
+  grid-template-columns: 330px 330px minmax(0, 1fr);
 }
 
 .poda-executive-board.is-presentation .poda-fault-table {
@@ -5553,6 +5554,10 @@ body.field-map-active {
   }
 
   .poda-side-column {
+    grid-template-rows: auto;
+  }
+
+  .poda-bottom-side-stack {
     grid-template-rows: auto;
   }
 

@@ -952,7 +952,10 @@ function PodaBiBoard({ loading, source, totals, records, periodText, demoActive,
           onBreakdownChange={setActiveBreakdown}
           breakdowns={drilldowns}
         />
-        <aside className="poda-side-column">
+      </div>
+
+      <div className="poda-bottom-grid">
+        <div className="poda-bottom-side-stack">
           <PodaMiniBars
             title="Fiscal responsável"
             subtitle="Maior incidência para alinhamento de campo."
@@ -974,10 +977,7 @@ function PodaBiBoard({ loading, source, totals, records, periodText, demoActive,
               <div><span>Pendentes</span><strong>{fmt(pendingCount)}</strong></div>
             </div>
           </section>
-        </aside>
-      </div>
-
-      <div className="poda-bottom-grid">
+        </div>
         <PodaMiniBars
           title="Parcelas com maior risco"
           subtitle="Onde a amostragem indica maior prioridade."
