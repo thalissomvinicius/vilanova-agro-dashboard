@@ -7696,7 +7696,7 @@ body.field-map-active {
 
 .gps-map-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(390px, 430px);
+  grid-template-columns: minmax(0, 1fr) minmax(450px, 500px);
   align-items: stretch;
   height: 100%;
   min-height: 500px;
@@ -7708,7 +7708,7 @@ body.field-map-active {
 }
 
 .gps-map-card-detail-open {
-  grid-template-columns: minmax(0, 1fr) minmax(430px, 460px);
+  grid-template-columns: minmax(0, 1fr) minmax(470px, 520px);
 }
 
 .gps-map-card-presentation {
@@ -8134,26 +8134,26 @@ body.field-map-active {
 
 .gps-home-summary .parcel-quality-bubble,
 .gps-detail-content .parcel-quality-bubble {
-  --quality-bubble-size: 48px;
-  min-height: 76px;
-  padding: 5px 4px 4px;
-  border-radius: 9px;
+  --quality-bubble-size: 58px;
+  min-height: 90px;
+  padding: 7px 5px 5px;
+  border-radius: 10px;
 }
 
 .gps-home-summary .parcel-quality-bubble strong,
 .gps-detail-content .parcel-quality-bubble strong {
-  font-size: 0.62rem;
+  font-size: 0.76rem;
 }
 
 .gps-home-summary .parcel-quality-bubble span,
 .gps-detail-content .parcel-quality-bubble span {
   margin-top: 2px;
-  font-size: 0.46rem;
+  font-size: 0.54rem;
 }
 
 .gps-home-summary .parcel-quality-bubble small,
 .gps-detail-content .parcel-quality-bubble small {
-  font-size: 0.5rem;
+  font-size: 0.56rem;
 }
 
 .gps-home-summary .parcel-compact-ops-grid,
