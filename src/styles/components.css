@@ -11783,3 +11783,53 @@ body.field-map-active {
     padding: 20px;
   }
 }
+
+/* Poda executive stability overrides: keep scrolling natural and avoid clipped content. */
+.poda-bi-page {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.poda-bi-board.poda-executive-board,
+.poda-bi-board.poda-executive-board.is-presentation {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.poda-presentation-overlay {
+  overflow: hidden;
+}
+
+.poda-presentation-overlay .presentation-scroll {
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: 12px 12px 84px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.poda-presentation-overlay .poda-bi-board,
+.poda-presentation-overlay .poda-bi-board.poda-executive-board,
+.poda-presentation-overlay .poda-bi-board.poda-executive-board.is-presentation {
+  height: auto;
+  min-height: calc(100dvh - 24px);
+  overflow: visible;
+}
+
+.poda-executive-board .poda-filter-panel,
+.poda-executive-board .poda-reference-overview,
+.poda-executive-board .poda-fault-panel,
+.poda-executive-board .poda-reference-chart-grid,
+.poda-executive-board .poda-map-panel,
+.poda-executive-board .poda-reference-bottom-grid {
+  min-height: 0;
+  overflow: visible;
+}
+
+.poda-executive-board .poda-map-frame {
+  isolation: isolate;
+}
