@@ -6568,12 +6568,16 @@ body.field-map-active {
   line-height: 1.1;
 }
 
-.parcel-quality-bubble-meta {
+.parcel-quality-bubble .parcel-quality-bubble-meta {
   grid-area: 3 / 1;
+  width: 100%;
   color: var(--green-institutional) !important;
   font-size: 0.52rem !important;
   font-weight: 950 !important;
   line-height: 1.1 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .parcel-operation-bubble-stack {
@@ -8269,11 +8273,16 @@ body.field-map-active {
 
 .gps-home-summary .parcel-quality-bubble small,
 .gps-detail-content .parcel-quality-bubble small {
+  width: 100%;
   font-size: 0.56rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.gps-home-summary .parcel-quality-bubble-meta,
-.gps-detail-content .parcel-quality-bubble-meta {
+.gps-home-summary .parcel-quality-bubble .parcel-quality-bubble-meta,
+.gps-detail-content .parcel-quality-bubble .parcel-quality-bubble-meta {
+  grid-area: 3 / 1;
   font-size: 0.5rem !important;
 }
 
