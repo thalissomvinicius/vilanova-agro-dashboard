@@ -723,6 +723,11 @@ function compactPercent(value, digits = 1) {
   return `${formatDecimal(value, digits)}%`;
 }
 
+function compactMetaText(metric) {
+  const signal = metric.goodWhen === 'high' ? '>=' : '<=';
+  return `Meta ${signal} ${formatMetricValue(metric, metric.meta)}`;
+}
+
 function compactMetricBox(label, value, detail = '', color = '#182230') {
   return `
     <div class="parcel-compact-metric">
@@ -733,39 +738,41 @@ function compactMetricBox(label, value, detail = '', color = '#182230') {
   `;
 }
 
-function compactQualityBubble({ label, value, count, total, color, detail = '' }) {
-  const numeric = Number(value);
+function compactQualityBubble({
+  label,
+  value,
+  count,
+  total,
+  color,
+  detail = '',
+  meta = '',
+  valueDisplay = '',
+  ringValue,
+}) {
+  const numeric = Number(ringValue ?? value);
   const hasValue = Number.isFinite(numeric);
   const percent = hasValue ? Math.max(0, Math.min(100, numeric)) : 0;
+  const safeDetail = detail || `${formatInteger(count || 0)} / ${formatInteger(total || 0)}`;
 
   return `
     <div class="parcel-quality-bubble" style="--bubble-color:${color}; --bubble-pct:${percent}%;">
       <div>
-        <strong>${hasValue ? compactPercent(numeric, 1) : 'N/D'}</strong>
+        <strong>${escapeHtml(valueDisplay || (hasValue ? compactPercent(Number(value), 1) : 'N/D'))}</strong>
         <span>${escapeHtml(label)}</span>
       </div>
-      <small>${escapeHtml(detail || `${formatInteger(count || 0)} / ${formatInteger(total || 0)}`)}</small>
+      <small>${escapeHtml(safeDetail)}</small>
+      ${meta ? `<small class="parcel-quality-bubble-meta">${escapeHtml(meta)}</small>` : ''}
     </div>
   `;
 }
 
-function compactOperationRow({ label, value, detail, color = '#182230' }) {
-  return `
-    <div class="parcel-compact-row">
-      <span>${escapeHtml(label)}</span>
-      <strong style="color:${color};">${escapeHtml(value)}</strong>
-      <small>${escapeHtml(detail)}</small>
-    </div>
-  `;
-}
-
-function compactOperationCard({ title, score, scoreColor, recordsCount, baseLabel, rows, emptyText }) {
-  if (!rows?.length) {
+function compactOperationBubbleCard({ title, subtitle, bubbles, emptyText, className = '', footer = '' }) {
+  if (!bubbles?.length) {
     return `
-      <section class="parcel-compact-operation">
-        <div class="parcel-compact-operation-head">
+      <section class="parcel-operation-bubble-card ${escapeHtml(className)}">
+        <div class="parcel-operation-bubble-head">
           <strong>${escapeHtml(title)}</strong>
-          <em>Sem base</em>
+          <span>Sem base</span>
         </div>
         <div class="parcel-popup-empty">${escapeHtml(emptyText)}</div>
       </section>
@@ -773,15 +780,15 @@ function compactOperationCard({ title, score, scoreColor, recordsCount, baseLabe
   }
 
   return `
-    <section class="parcel-compact-operation">
-      <div class="parcel-compact-operation-head">
+    <section class="parcel-operation-bubble-card ${escapeHtml(className)}">
+      <div class="parcel-operation-bubble-head">
         <strong>${escapeHtml(title)}</strong>
-        <em style="color:${scoreColor};">${score !== null && score !== undefined ? `${formatDecimal(score, 0)}%` : 'N/D'}</em>
+        <span>${escapeHtml(subtitle)}</span>
       </div>
-      <span class="parcel-compact-operation-meta">${formatInteger(recordsCount || 0)} coleta(s) · ${escapeHtml(baseLabel)}</span>
-      <div class="parcel-compact-row-list">
-        ${rows.map(compactOperationRow).join('')}
+      <div class="parcel-operation-bubble-grid">
+        ${bubbles.map(compactQualityBubble).join('')}
       </div>
+      ${footer ? `<div class="parcel-operation-bubble-note">${escapeHtml(footer)}</div>` : ''}
     </section>
   `;
 }
@@ -821,53 +828,105 @@ function compactParcelSummaryHtml({
   const palhaRate = corteTotals?.cortePlantasObservadas
     ? percentOf(corteTotals.cachoMalPosicionado, corteTotals.cortePlantasObservadas)
     : null;
+  const notaMetric = activeRiskMetric('nota');
+  const maduroMetric = activeRiskMetric('maduro');
+  const passadoMetric = activeRiskMetric('passado');
+  const verdeMetric = activeRiskMetric('verde');
+  const avermelhadoMetric = activeRiskMetric('avermelhado');
+  const perdaCorteMetric = activeRiskMetric('perda_corte');
+  const taloMetric = activeRiskMetric('talo');
+  const palhaMetric = activeRiskMetric('mal_posicionado');
+  const naoCarreadoMetric = activeRiskMetric('nao_carreado');
+  const malPosicionadoMetric = activeRiskMetric('mal_posicionado');
 
-  const qualityBubbles = [
-    { label: 'Maduro', value: percentOf(corteTotals?.cachoMaduro, qualityTotal), count: corteTotals?.cachoMaduro, total: qualityTotal, color: '#22C55E' },
-    { label: 'Passado', value: percentOf(corteTotals?.cachoPassado, qualityTotal), count: corteTotals?.cachoPassado, total: qualityTotal, color: '#6B4B3E' },
-    { label: 'Verde', value: percentOf(corteTotals?.cachoVerde, qualityTotal), count: corteTotals?.cachoVerde, total: qualityTotal, color: '#F59E0B' },
-    { label: 'Avermelhado', value: percentOf(corteTotals?.cachoAvermelhado, qualityTotal), count: corteTotals?.cachoAvermelhado, total: qualityTotal, color: '#EF4444' },
-  ];
-
-  const corteRows = corteTotals ? [
+  const corteBubbles = corteTotals ? [
     {
-      label: 'Perda corte',
-      value: compactPercent(Number(corteTotals.perdaCorteRate || 0), 1),
-      detail: `${formatInteger(corteTotals.cachoEsquecido || 0)} cacho(s) esquecido(s)`,
-      color: metricColor(activeRiskMetric('perda_corte'), Number(corteTotals.perdaCorteRate || 0), true),
+      label: 'Nota',
+      value: corteScore,
+      valueDisplay: corteScore !== null ? `${formatDecimal(corteScore, 0)}%` : 'N/D',
+      detail: `${formatInteger(corteTotals.total || 0)} coleta(s)`,
+      meta: compactMetaText(notaMetric),
+      color: corteScore !== null ? getScoreColor(corteScore) : '#64748B',
     },
     {
-      label: 'Talo comprido',
-      value: compactPercent(Number(corteTotals.taloCompridoRate || 0), 1),
+      label: 'Maduro',
+      value: percentOf(corteTotals.cachoMaduro, qualityTotal),
+      count: corteTotals.cachoMaduro,
+      total: qualityTotal,
+      meta: compactMetaText(maduroMetric),
+      color: metricColor(maduroMetric, percentOf(corteTotals.cachoMaduro, qualityTotal), Boolean(qualityTotal)),
+    },
+    {
+      label: 'Passado',
+      value: percentOf(corteTotals.cachoPassado, qualityTotal),
+      count: corteTotals.cachoPassado,
+      total: qualityTotal,
+      meta: compactMetaText(passadoMetric),
+      color: metricColor(passadoMetric, percentOf(corteTotals.cachoPassado, qualityTotal), Boolean(qualityTotal)),
+    },
+    {
+      label: 'Verde',
+      value: percentOf(corteTotals.cachoVerde, qualityTotal),
+      count: corteTotals.cachoVerde,
+      total: qualityTotal,
+      meta: compactMetaText(verdeMetric),
+      color: metricColor(verdeMetric, percentOf(corteTotals.cachoVerde, qualityTotal), Boolean(qualityTotal)),
+    },
+    {
+      label: 'Averm.',
+      value: percentOf(corteTotals.cachoAvermelhado, qualityTotal),
+      count: corteTotals.cachoAvermelhado,
+      total: qualityTotal,
+      meta: compactMetaText(avermelhadoMetric),
+      color: metricColor(avermelhadoMetric, percentOf(corteTotals.cachoAvermelhado, qualityTotal), Boolean(qualityTotal)),
+    },
+    {
+      label: 'Perda',
+      value: Number(corteTotals.perdaCorteRate || 0),
+      detail: `${formatInteger(corteTotals.cachoEsquecido || 0)} esquecido(s)`,
+      meta: compactMetaText(perdaCorteMetric),
+      color: metricColor(perdaCorteMetric, Number(corteTotals.perdaCorteRate || 0), true),
+    },
+    {
+      label: 'Talo',
+      value: Number(corteTotals.taloCompridoRate || 0),
       detail: `${formatInteger(corteTotals.taloComprido || 0)} ocorrência(s)`,
-      color: metricColor(activeRiskMetric('talo'), Number(corteTotals.taloCompridoRate || 0), true),
+      meta: compactMetaText(taloMetric),
+      color: metricColor(taloMetric, Number(corteTotals.taloCompridoRate || 0), true),
     },
     {
-      label: 'Palha mal empilhada',
-      value: palhaRate === null ? 'N/D' : compactPercent(palhaRate, 1),
+      label: 'Palha M.E.',
+      value: palhaRate,
+      valueDisplay: palhaRate === null ? 'N/D' : compactPercent(palhaRate, 1),
+      ringValue: palhaRate,
       detail: `${formatInteger(corteTotals.cachoMalPosicionado || 0)} ocorrência(s)`,
-      color: metricColor(activeRiskMetric('mal_posicionado'), palhaRate, palhaRate !== null),
+      meta: compactMetaText(palhaMetric),
+      color: metricColor(palhaMetric, palhaRate, palhaRate !== null),
     },
   ] : [];
 
-  const carreamentoRows = carreamentoTotals ? [
+  const carreamentoBubbles = carreamentoTotals ? [
     {
-      label: 'Não carreado',
-      value: compactPercent(Number(carreamentoTotals.cachoNaoCarreadoRate || 0), 1),
+      label: 'Nota',
+      value: carreamentoScore,
+      valueDisplay: carreamentoScore !== null ? `${formatDecimal(carreamentoScore, 0)}%` : 'N/D',
+      detail: `${formatInteger(carreamentoTotals.total || 0)} coleta(s)`,
+      meta: compactMetaText(notaMetric),
+      color: carreamentoScore !== null ? getScoreColor(carreamentoScore) : '#64748B',
+    },
+    {
+      label: 'Não carr.',
+      value: Number(carreamentoTotals.cachoNaoCarreadoRate || 0),
       detail: `${formatInteger(carreamentoTotals.cachoNaoCarreado || 0)} cacho(s)`,
-      color: metricColor(activeRiskMetric('nao_carreado'), Number(carreamentoTotals.cachoNaoCarreadoRate || 0), true),
+      meta: compactMetaText(naoCarreadoMetric),
+      color: metricColor(naoCarreadoMetric, Number(carreamentoTotals.cachoNaoCarreadoRate || 0), true),
     },
     {
-      label: 'Mal posicionado',
-      value: compactPercent(Number(carreamentoTotals.cachoMalPosicionadoRate || 0), 1),
+      label: 'Mal pos.',
+      value: Number(carreamentoTotals.cachoMalPosicionadoRate || 0),
       detail: `${formatInteger(carreamentoTotals.cachoMalPosicionado || 0)} cacho(s)`,
-      color: metricColor(activeRiskMetric('mal_posicionado'), Number(carreamentoTotals.cachoMalPosicionadoRate || 0), true),
-    },
-    {
-      label: 'Peso médio',
-      value: `${formatDecimal(carreamentoTotals.mediaPesoFrutos || 0, 1)} kg`,
-      detail: `${formatInteger(carreamentoTotals.plantasObservadas || 0)} planta(s) avaliadas`,
-      color: '#2563EB',
+      meta: compactMetaText(malPosicionadoMetric),
+      color: metricColor(malPosicionadoMetric, Number(carreamentoTotals.cachoMalPosicionadoRate || 0), true),
     },
   ] : [];
 
@@ -878,36 +937,21 @@ function compactParcelSummaryHtml({
       ${compactMetricBox('Fiscal equipe', parcelMainFiscal(parcelRecords), `${formatInteger(parcelRecords.length)} coleta(s)`)}
     </div>
 
-    <section class="parcel-compact-section">
-      <div class="parcel-compact-title">
-        <strong>Qualidade dos cachos</strong>
-        <span>${formatInteger(qualityTotal)} cacho(s) observados</span>
-      </div>
-      ${qualityTotal ? `
-        <div class="parcel-quality-bubble-grid">
-          ${qualityBubbles.map(compactQualityBubble).join('')}
-        </div>
-      ` : '<div class="parcel-popup-empty">Sem base de corte para exibir percentuais dos cachos.</div>'}
-    </section>
-
-    <div class="parcel-compact-ops-grid">
-      ${compactOperationCard({
+    <div class="parcel-operation-bubble-stack">
+      ${compactOperationBubbleCard({
         title: 'Corte',
-        score: corteScore,
-        scoreColor: corteScore !== null ? getScoreColor(corteScore) : '#64748B',
-        recordsCount: corteTotals?.total || 0,
-        baseLabel: `${formatInteger(corteTotals?.cachosObservados || 0)} cachos · ${formatInteger(corteTotals?.plantasObservadas || 0)} plantas`,
-        rows: corteRows,
+        subtitle: `${formatInteger(corteTotals?.total || 0)} coleta(s) · ${formatInteger(corteTotals?.cachosObservados || 0)} cachos · ${formatInteger(corteTotals?.plantasObservadas || 0)} plantas`,
+        bubbles: corteBubbles,
         emptyText: 'Sem coleta de corte nesta parcela no filtro atual.',
+        className: 'parcel-operation-bubble-card-corte',
       })}
-      ${compactOperationCard({
+      ${compactOperationBubbleCard({
         title: 'Carreamento',
-        score: carreamentoScore,
-        scoreColor: carreamentoScore !== null ? getScoreColor(carreamentoScore) : '#64748B',
-        recordsCount: carreamentoTotals?.total || 0,
-        baseLabel: `${formatInteger(carreamentoTotals?.plantasObservadas || 0)} plantas`,
-        rows: carreamentoRows,
+        subtitle: `${formatInteger(carreamentoTotals?.total || 0)} coleta(s) · ${formatInteger(carreamentoTotals?.plantasObservadas || 0)} plantas`,
+        bubbles: carreamentoBubbles,
         emptyText: 'Sem coleta de carreamento nesta parcela no filtro atual.',
+        className: 'parcel-operation-bubble-card-carreamento',
+        footer: carreamentoTotals ? `Peso médio: ${formatDecimal(carreamentoTotals.mediaPesoFrutos || 0, 1)} kg · ${formatInteger(carreamentoTotals.plantasObservadas || 0)} planta(s) avaliadas` : '',
       })}
     </div>
 
