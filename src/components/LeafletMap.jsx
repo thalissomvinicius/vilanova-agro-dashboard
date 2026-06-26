@@ -918,6 +918,40 @@ function compactParcelSummaryHtml({
   `;
 }
 
+function compactSummaryShellHtml({
+  title,
+  subtitle,
+  badge = 'Resumo',
+  accent = '#174D2B',
+  datesLabel,
+  statusText,
+  summaryHtml,
+  contextText = '',
+  extraClass = '',
+}) {
+  return `
+    <div class="parcel-popup-card parcel-popup-compact-card ${escapeHtml(extraClass)}" style="--parcel-accent:${accent};">
+      <div class="parcel-popup-head">
+        <div class="parcel-popup-title-row">
+          <div>
+            <strong>${escapeHtml(title || 'Fazenda')}</strong>
+            <span>${escapeHtml(subtitle || 'Resumo de qualidade')}</span>
+          </div>
+          <em>${escapeHtml(badge)}</em>
+        </div>
+        <div class="parcel-popup-head-meta">
+          <span>Coletas: <b>${escapeHtml(datesLabel || 'Sem data')}</b></span>
+          <span>${escapeHtml(statusText || 'Sem coleta aprovada')}</span>
+        </div>
+      </div>
+      <div class="parcel-popup-scroll parcel-popup-compact-scroll">
+        ${summaryHtml}
+        ${contextText ? `<div class="parcel-compact-context">${escapeHtml(contextText)}</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
 function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric: _metric, operation }) {
   const totals = parcelRecords.length ? aggregateRecords(parcelRecords) : null;
   const corteTotals = aggregateByType(parcelRecords, 'corte');
@@ -944,27 +978,16 @@ function parcelNumbersPopup({ props, shapeParcel, style, parcelRecords, metric: 
     collectionDates: allDates,
   });
 
-  return `
-    <div class="parcel-popup-card" style="--parcel-accent:${style.color};">
-      <div class="parcel-popup-head">
-        <div class="parcel-popup-title-row">
-          <div>
-            <strong>${escapeHtml(props.farmName || 'Fazenda')}</strong>
-            <span>Parcela <b>${escapeHtml(shapeParcel || '--')}</b> · Fonte shapefile</span>
-          </div>
-          <em>Resumo</em>
-        </div>
-        <div class="parcel-popup-head-meta">
-          <span>Coletas: <b>${escapeHtml(allDates.label)}</b></span>
-          <span>${formatInteger(parcelRecords.length)} coleta(s) · ${escapeHtml(statusText)}</span>
-        </div>
-      </div>
-      <div class="parcel-popup-scroll parcel-popup-compact-scroll">
-        ${summaryHtml}
-        ${operationTotals ? `<div class="parcel-compact-context">Visão ativa: ${escapeHtml(operationLabel(operation))} · ${escapeHtml(operationDates.label)}</div>` : ''}
-      </div>
-    </div>
-  `;
+  return compactSummaryShellHtml({
+    title: props.farmName || 'Fazenda',
+    subtitle: `Parcela ${shapeParcel || '--'} · Fonte shapefile`,
+    badge: 'Resumo',
+    accent: style.color,
+    datesLabel: allDates.label,
+    statusText: `${formatInteger(parcelRecords.length)} coleta(s) · ${statusText}`,
+    summaryHtml,
+    contextText: operationTotals ? `Visão ativa: ${operationLabel(operation)} · ${operationDates.label}` : '',
+  });
 }
 
 export default function LeafletMap({
@@ -1207,6 +1230,48 @@ export default function LeafletMap({
         .reduce((sum, summary) => sum + Number(summary.areaHa || 0), 0),
     };
   }, [filteredRecords, trackPoints, occurrencePoints, allGpsPoints, parcelSummaries]);
+
+  const farmHomeSummaryHtml = useMemo(() => {
+    const approvedRecords = filteredRecords.filter((record) => reviewState(record) === 'approved');
+    const totals = approvedRecords.length ? aggregateRecords(approvedRecords) : null;
+    const corteTotals = aggregateByType(approvedRecords, 'corte');
+    const carreamentoTotals = aggregateByType(approvedRecords, 'carreamento');
+    const operationRecords = recordsByType(
+      approvedRecords,
+      selectedOperation?.id === 'corte' || selectedOperation?.id === 'carreamento' ? selectedOperation.id : 'all'
+    );
+    const operationTotals = operationTotalsFor({ totals, corteTotals, carreamentoTotals, operation: selectedOperation });
+    const allDates = collectionDateSummary(approvedRecords);
+    const operationDates = collectionDateSummary(operationRecords);
+    const farm = FARMS.find((item) => item.id === farmFilter);
+    const farmName = farmFilter === 'all'
+      ? 'Todas as fazendas'
+      : farm?.name || approvedRecords[0]?.farm || 'Fazenda';
+    const statusText = totals
+      ? `${formatInteger(approvedRecords.length)} coleta(s) · ${formatInteger(totals.aprovados)} aprov. / ${formatInteger(totals.reprovados)} reprov.`
+      : '0 coleta(s) · Sem coleta aprovada';
+    const summaryHtml = compactParcelSummaryHtml({
+      totals,
+      corteTotals,
+      carreamentoTotals,
+      parcelRecords: approvedRecords,
+      areaHa: geoStats.evaluatedHa,
+      densityShape: 0,
+      collectionDates: allDates,
+    });
+
+    return compactSummaryShellHtml({
+      title: farmName,
+      subtitle: `${formatInteger(geoStats.sampledParcels)} parcela(s) avaliadas · ${operationLabel(selectedOperation)}`,
+      badge: 'Fazenda',
+      accent: farmFilter === 'all' ? FARM_STYLES.default.color : farmStyle(farmFilter).color,
+      datesLabel: allDates.label,
+      statusText,
+      summaryHtml,
+      contextText: operationTotals ? `Visão ativa: ${operationLabel(selectedOperation)} · ${operationDates.label}` : '',
+      extraClass: 'parcel-popup-home-card',
+    });
+  }, [filteredRecords, farmFilter, geoStats.evaluatedHa, geoStats.sampledParcels, selectedOperation]);
 
   useEffect(() => {
     if (!mapContainerRef.current) return undefined;
@@ -1701,6 +1766,11 @@ export default function LeafletMap({
           </div>
         ) : (
           <>
+        <div
+          className="gps-home-summary"
+          dangerouslySetInnerHTML={{ __html: farmHomeSummaryHtml }}
+        />
+
         <h4>Visualização</h4>
         <div className="gps-base-toggle" aria-label="Tipo de mapa">
           <button

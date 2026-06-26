@@ -7686,7 +7686,7 @@ body.field-map-active {
 
 .gps-map-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(286px, 306px);
+  grid-template-columns: minmax(0, 1fr) minmax(390px, 430px);
   align-items: stretch;
   height: 100%;
   min-height: 500px;
@@ -7698,7 +7698,7 @@ body.field-map-active {
 }
 
 .gps-map-card-detail-open {
-  grid-template-columns: minmax(0, 1fr) minmax(380px, 440px);
+  grid-template-columns: minmax(0, 1fr) minmax(430px, 460px);
 }
 
 .gps-map-card-presentation {
@@ -7963,13 +7963,13 @@ body.field-map-active {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px;
+  padding: 7px 8px;
   border-bottom: 1px solid var(--border-color);
   background: var(--bg-card);
 }
 
 .gps-detail-toolbar button {
-  min-height: 32px;
+  min-height: 28px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -7979,14 +7979,14 @@ body.field-map-active {
   color: var(--text-primary);
   cursor: pointer;
   font: inherit;
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   font-weight: 900;
 }
 
 .gps-detail-toolbar span {
   min-width: 0;
   color: var(--text-secondary);
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   font-weight: 850;
   overflow: hidden;
   text-align: right;
@@ -8011,6 +8011,210 @@ body.field-map-active {
 
 .gps-detail-content .parcel-popup-scroll {
   overflow: visible;
+}
+
+.gps-home-summary {
+  margin: 0 0 12px;
+}
+
+.gps-home-summary .parcel-popup-card,
+.gps-detail-content .parcel-popup-card {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.gps-home-summary .parcel-popup-head,
+.gps-detail-content .parcel-popup-head {
+  padding: 10px 12px 9px;
+}
+
+.gps-home-summary .parcel-popup-head strong,
+.gps-detail-content .parcel-popup-head strong {
+  font-size: 0.88rem;
+  line-height: 1.08;
+}
+
+.gps-home-summary .parcel-popup-title-row em,
+.gps-detail-content .parcel-popup-title-row em {
+  padding: 4px 7px;
+  font-size: 0.55rem;
+}
+
+.gps-home-summary .parcel-popup-head span,
+.gps-home-summary .parcel-popup-head small,
+.gps-detail-content .parcel-popup-head span,
+.gps-detail-content .parcel-popup-head small {
+  margin-top: 3px;
+  font-size: 0.64rem;
+  line-height: 1.16;
+}
+
+.gps-home-summary .parcel-popup-head-meta,
+.gps-detail-content .parcel-popup-head-meta {
+  margin-top: 7px;
+  padding-top: 7px;
+}
+
+.gps-home-summary .parcel-popup-head-meta span,
+.gps-detail-content .parcel-popup-head-meta span {
+  font-size: 0.6rem;
+}
+
+.gps-home-summary .parcel-popup-compact-scroll,
+.gps-detail-content .parcel-popup-compact-scroll {
+  gap: 7px;
+  padding: 8px;
+}
+
+.gps-home-summary .parcel-popup-summary-grid,
+.gps-detail-content .parcel-popup-summary-grid {
+  gap: 6px;
+}
+
+.gps-home-summary .parcel-compact-metric,
+.gps-detail-content .parcel-compact-metric {
+  min-height: 48px;
+  padding: 6px;
+  border-radius: 8px;
+}
+
+.gps-home-summary .parcel-compact-metric span,
+.gps-detail-content .parcel-compact-metric span {
+  font-size: 0.52rem;
+}
+
+.gps-home-summary .parcel-compact-metric strong,
+.gps-detail-content .parcel-compact-metric strong {
+  margin-top: 3px;
+  font-size: 0.82rem;
+}
+
+.gps-home-summary .parcel-compact-metric small,
+.gps-detail-content .parcel-compact-metric small {
+  margin-top: 2px;
+  font-size: 0.54rem;
+}
+
+.gps-home-summary .parcel-compact-section,
+.gps-detail-content .parcel-compact-section {
+  gap: 6px;
+  padding: 7px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.gps-home-summary .parcel-compact-title strong,
+.gps-detail-content .parcel-compact-title strong {
+  font-size: 0.64rem;
+}
+
+.gps-home-summary .parcel-compact-title span,
+.gps-detail-content .parcel-compact-title span {
+  font-size: 0.56rem;
+}
+
+.gps-home-summary .parcel-quality-bubble-grid,
+.gps-detail-content .parcel-quality-bubble-grid {
+  gap: 6px;
+}
+
+.gps-home-summary .parcel-quality-bubble,
+.gps-detail-content .parcel-quality-bubble {
+  min-height: 76px;
+  padding: 5px 4px;
+  border-radius: 9px;
+}
+
+.gps-home-summary .parcel-quality-bubble::before,
+.gps-detail-content .parcel-quality-bubble::before {
+  width: 48px;
+  height: 48px;
+}
+
+.gps-home-summary .parcel-quality-bubble strong,
+.gps-detail-content .parcel-quality-bubble strong {
+  font-size: 0.66rem;
+}
+
+.gps-home-summary .parcel-quality-bubble span,
+.gps-detail-content .parcel-quality-bubble span {
+  max-width: 62px;
+  margin-top: 2px;
+  font-size: 0.5rem;
+}
+
+.gps-home-summary .parcel-quality-bubble small,
+.gps-detail-content .parcel-quality-bubble small {
+  font-size: 0.5rem;
+}
+
+.gps-home-summary .parcel-compact-ops-grid,
+.gps-detail-content .parcel-compact-ops-grid {
+  gap: 7px;
+}
+
+.gps-home-summary .parcel-compact-operation,
+.gps-detail-content .parcel-compact-operation {
+  padding: 7px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.gps-home-summary .parcel-compact-operation-head strong,
+.gps-detail-content .parcel-compact-operation-head strong {
+  font-size: 0.64rem;
+}
+
+.gps-home-summary .parcel-compact-operation-head em,
+.gps-detail-content .parcel-compact-operation-head em {
+  font-size: 0.8rem;
+}
+
+.gps-home-summary .parcel-compact-operation-meta,
+.gps-detail-content .parcel-compact-operation-meta {
+  margin-top: 2px;
+  font-size: 0.53rem;
+}
+
+.gps-home-summary .parcel-compact-row-list,
+.gps-detail-content .parcel-compact-row-list {
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.gps-home-summary .parcel-compact-row,
+.gps-detail-content .parcel-compact-row {
+  gap: 1px 6px;
+  padding: 5px 6px;
+  border-radius: 7px;
+}
+
+.gps-home-summary .parcel-compact-row span,
+.gps-detail-content .parcel-compact-row span {
+  font-size: 0.57rem;
+}
+
+.gps-home-summary .parcel-compact-row strong,
+.gps-detail-content .parcel-compact-row strong {
+  font-size: 0.66rem;
+}
+
+.gps-home-summary .parcel-compact-row small,
+.gps-detail-content .parcel-compact-row small {
+  font-size: 0.5rem;
+}
+
+.gps-home-summary .parcel-compact-footer,
+.gps-home-summary .parcel-compact-context,
+.gps-detail-content .parcel-compact-footer,
+.gps-detail-content .parcel-compact-context {
+  padding: 6px 7px;
+  border-radius: 7px;
+  font-size: 0.53rem;
 }
 
 .gps-map-overlay h4 {
