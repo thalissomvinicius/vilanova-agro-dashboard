@@ -5983,6 +5983,461 @@ body.field-map-active {
   font-size: 0.76rem;
 }
 
+.poda-bi-board.poda-executive-board {
+  grid-template-rows: none;
+  grid-auto-rows: auto;
+  align-content: start;
+  gap: 18px;
+  padding: 18px;
+  background: #F5F7F6;
+  overflow: visible;
+}
+
+.poda-bi-board.poda-executive-board.is-presentation {
+  height: auto;
+  min-height: calc(100dvh - 20px);
+  grid-template-rows: none;
+  gap: 18px;
+  padding: 18px;
+  overflow: visible;
+}
+
+.poda-executive-board .poda-bi-header {
+  min-height: 86px;
+  border-radius: 12px;
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.07);
+}
+
+.poda-executive-board .poda-bi-header-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.poda-filter-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  background: #FFFFFF;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.05);
+}
+
+.poda-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(118px, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.poda-filter-control {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid #E6EAEE;
+  border-radius: 9px;
+  background: #FAFBFC;
+}
+
+.poda-filter-control span {
+  color: #7B8794;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.poda-filter-control strong {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.poda-quick-filters {
+  min-width: 270px;
+  display: grid;
+  gap: 8px;
+}
+
+.poda-quick-filters button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #E4E8EE;
+  border-radius: 9px;
+  background: #FFFFFF;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-align: left;
+}
+
+.poda-quick-filters button.active {
+  border-color: color-mix(in srgb, var(--green-institutional) 44%, #FFFFFF 56%);
+  background: color-mix(in srgb, var(--green-institutional) 9%, #FFFFFF 91%);
+  color: var(--green-institutional);
+}
+
+.poda-exec-card {
+  overflow: visible;
+}
+
+.poda-reference-overview {
+  grid-template-columns: minmax(320px, 0.42fr) minmax(0, 1fr);
+  gap: 16px;
+  overflow: visible;
+}
+
+.poda-reference-overview .poda-alert-card {
+  min-height: 185px;
+  padding: 18px;
+  border-radius: 12px;
+}
+
+.poda-reference-overview .poda-alert-metric strong {
+  font-size: 2.55rem;
+}
+
+.poda-reference-overview .poda-alert-details {
+  gap: 10px;
+}
+
+.poda-reference-overview .poda-alert-details div {
+  padding: 11px 12px;
+}
+
+.poda-reference-overview .poda-alert-card p {
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.poda-team-stats-card {
+  min-height: 185px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px;
+  padding: 18px;
+  border-radius: 12px;
+}
+
+.poda-team-stats-card .poda-section-title {
+  min-height: 0;
+}
+
+.poda-team-stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.poda-team-stat {
+  min-height: 118px;
+  align-content: stretch;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid #E6EAEE;
+  border-radius: 12px;
+  background: #FBFCFD;
+}
+
+.poda-team-stat:first-child {
+  border-left: 1px solid #E6EAEE;
+}
+
+.poda-team-stat-head {
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: start;
+}
+
+.poda-team-stat-head span {
+  width: 36px;
+  height: 36px;
+}
+
+.poda-team-stat-head strong {
+  font-size: 0.82rem;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.poda-team-stat-rate strong {
+  font-size: 1.55rem;
+}
+
+.poda-team-stat-meta strong {
+  font-size: 0.94rem;
+}
+
+.poda-fault-panel {
+  grid-template-rows: auto auto;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 12px;
+}
+
+.poda-fault-panel .poda-section-title {
+  min-height: 0;
+  align-items: center;
+}
+
+.poda-fault-strip {
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.poda-fault-strip .poda-fault-row {
+  min-height: 92px;
+  padding: 14px;
+  border: 1px solid #E6EAEE;
+  border-left: 4px solid var(--fault-color, var(--orange-institutional));
+  border-radius: 11px;
+  background: #FFFFFF;
+}
+
+.poda-fault-strip .poda-fault-row span {
+  font-size: 0.8rem;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+.poda-fault-strip .poda-fault-row strong {
+  font-size: 1.35rem;
+}
+
+.poda-fault-strip .poda-fault-row small {
+  font-size: 0.66rem;
+}
+
+.poda-fault-strip .poda-fault-track {
+  height: 7px;
+}
+
+.poda-reference-chart-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  overflow: visible;
+}
+
+.poda-reference-chart-grid .poda-bi-trend-panel {
+  min-height: 330px;
+  grid-template-rows: auto 24px minmax(230px, 1fr);
+  padding: 18px;
+  border-radius: 12px;
+}
+
+.poda-reference-chart-grid .poda-section-title {
+  min-height: 0;
+}
+
+.poda-reference-chart-grid .poda-section-title h3 {
+  font-size: 1.14rem;
+}
+
+.poda-reference-chart-grid .poda-section-title span {
+  font-size: 0.76rem;
+}
+
+.poda-map-panel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 12px;
+}
+
+.poda-map-panel-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.poda-map-panel-head h3 {
+  font-size: 1.25rem;
+}
+
+.poda-map-panel-head p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 760;
+}
+
+.poda-map-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.poda-map-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.poda-map-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.poda-map-legend .good {
+  background: #22C55E;
+}
+
+.poda-map-legend .attention {
+  background: #F59E0B;
+}
+
+.poda-map-legend .critical {
+  background: #EF4444;
+}
+
+.poda-map-frame {
+  height: clamp(440px, 54vh, 650px);
+  min-height: 440px;
+  overflow: hidden;
+  border: 1px solid #E4E8EE;
+  border-radius: 12px;
+  background: #EEF3F1;
+}
+
+.poda-map-frame .gps-map-card {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.poda-map-frame .gps-map-canvas {
+  height: 100%;
+}
+
+.poda-map-loading {
+  height: 100%;
+  min-height: 380px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.poda-map-loading strong {
+  color: var(--text-primary);
+}
+
+.poda-reference-bottom-grid {
+  grid-template-columns: minmax(340px, 0.8fr) minmax(0, 1.6fr);
+  gap: 16px;
+  overflow: visible;
+}
+
+.poda-reference-bottom-grid .poda-mini-panel,
+.poda-reference-bottom-grid .poda-drill-panel {
+  padding: 18px;
+  border-radius: 12px;
+}
+
+.poda-reference-bottom-grid .poda-mini-panel .poda-bi-bars {
+  gap: 12px;
+}
+
+.poda-reference-bottom-grid .poda-mini-panel .poda-bi-bar-row {
+  padding: 8px 0;
+}
+
+.poda-reference-bottom-grid .poda-drill-panel .poda-drill-kpis {
+  display: grid;
+}
+
+.poda-reference-bottom-grid .poda-drill-row {
+  padding: 10px 12px;
+}
+
+.poda-reference-bottom-grid .poda-drill-table {
+  overflow: visible;
+}
+
+@media (max-width: 1380px) {
+  .poda-filter-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .poda-filter-grid {
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+  }
+
+  .poda-quick-filters {
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .poda-reference-chart-grid,
+  .poda-reference-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .poda-bi-board.poda-executive-board,
+  .poda-bi-board.poda-executive-board.is-presentation {
+    padding: 12px;
+    gap: 14px;
+  }
+
+  .poda-executive-board .poda-bi-header,
+  .poda-reference-overview,
+  .poda-map-panel-head {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .poda-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .poda-quick-filters,
+  .poda-reference-chart-grid,
+  .poda-reference-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .poda-map-frame {
+    height: 520px;
+  }
+}
+
+@media (max-width: 640px) {
+  .poda-filter-grid,
+  .poda-team-stats-grid,
+  .poda-fault-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .poda-quick-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .poda-map-frame {
+    height: 460px;
+  }
+}
+
 @media (max-width: 1280px) {
   .poda-bi-board {
     grid-template-rows: 56px 28px 66px minmax(0, 1fr);
