@@ -12924,14 +12924,28 @@ body.field-map-active {
 .poda-modern-filters {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  background: var(--bg-body);
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+}
+
+.poda-filters-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-left: 12px;
+  padding-right: 4px;
 }
 
 .poda-modern-filter-btn {
-  padding: 8px 16px;
+  padding: 8px 18px;
   border-radius: 999px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background: transparent;
+  border: none;
   color: var(--text-secondary);
   font-size: 0.82rem;
   font-weight: 600;
@@ -12940,14 +12954,14 @@ body.field-map-active {
 }
 
 .poda-modern-filter-btn:hover {
-  border-color: var(--orange-institutional);
-  color: var(--orange-institutional);
+  color: var(--text-primary);
+  background: rgba(0,0,0,0.03);
 }
 
 .poda-modern-filter-btn.active {
-  background: var(--orange-light);
-  border-color: var(--orange-institutional);
-  color: var(--orange-institutional);
+  background: var(--orange-institutional);
+  color: white;
+  box-shadow: 0 4px 12px rgba(230, 92, 0, 0.25);
 }
 
 .poda-modern-header-actions {

@@ -1030,19 +1030,20 @@ function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresen
           </div>
         </div>
         <div className="poda-modern-filters">
+          <span className="poda-filters-label">Visualização rápida:</span>
           <button 
             type="button" 
             className={`poda-modern-filter-btn ${selectedKey === 'cachoExposto' ? 'active' : ''}`}
             onClick={() => setSelectedIndicatorKey('cachoExposto')}
           >
-            Apenas Cacho Exposto
+            Cacho Exposto
           </button>
           <button 
             type="button" 
             className={`poda-modern-filter-btn ${selectedKey === 'palhaMalEmpilhada' ? 'active' : ''}`}
             onClick={() => setSelectedIndicatorKey('palhaMalEmpilhada')}
           >
-            Apenas Palha Mal Empilhada
+            Palha Mal Empilhada
           </button>
           {!presentationMode && onPresent && (
             <button type="button" className="poda-bi-present-btn" onClick={onPresent} style={{ marginLeft: 8 }}>
