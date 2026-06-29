@@ -12853,3 +12853,218 @@ body.field-map-active {
     display: none;
   }
 }
+
+/* --- PODA MODERN REDESIGN --- */
+
+.poda-modern-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-areas:
+    "topbar topbar"
+    "kpis kpis"
+    "main side";
+  gap: 20px;
+  height: 100%;
+  min-height: 800px;
+  padding: 20px;
+  background: var(--bg-primary);
+  font-family: var(--font-family);
+}
+
+.poda-modern-layout.is-presentation {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Header */
+.poda-modern-header {
+  grid-area: topbar;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: var(--bg-card);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+}
+
+.poda-modern-header-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.poda-modern-header-title img {
+  height: 44px;
+}
+
+.poda-modern-header-title div {
+  display: flex;
+  flex-direction: column;
+}
+
+.poda-modern-header-title span {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--orange-highlight);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.poda-modern-header-title h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--green-institutional);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.poda-modern-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* KPIs */
+.poda-modern-kpis {
+  grid-area: kpis;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.poda-modern-kpi-card {
+  background: var(--bg-card);
+  padding: 20px;
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.poda-modern-kpi-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; bottom: 0; width: 4px;
+  background: var(--green-institutional);
+}
+.poda-modern-kpi-card.warning::before { background: var(--status-warning); }
+.poda-modern-kpi-card.danger::before { background: var(--status-danger); }
+.poda-modern-kpi-card.info::before { background: var(--status-info); }
+
+.poda-modern-kpi-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.poda-modern-kpi-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.poda-modern-kpi-desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Main Content Tabs */
+.poda-modern-main {
+  grid-area: main;
+  background: var(--bg-card);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.poda-modern-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 20px;
+  background: var(--bg-tertiary);
+}
+
+.poda-modern-tab {
+  padding: 16px 24px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.poda-modern-tab:hover {
+  color: var(--text-primary);
+}
+
+.poda-modern-tab.active {
+  color: var(--green-institutional);
+  border-bottom-color: var(--green-institutional);
+}
+
+.poda-modern-tab-content {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Side Panel */
+.poda-modern-side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+  padding-right: 4px; /* for scrollbar */
+}
+
+/* Overriding old child component styles inside modern layout */
+.poda-modern-layout .poda-fault-panel,
+.poda-modern-layout .poda-drill-panel,
+.poda-modern-layout .poda-team-stats-card,
+.poda-modern-layout .poda-map-panel {
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
+}
+
+.poda-modern-layout .poda-section-title {
+  margin-bottom: 20px;
+}
+
+.poda-modern-layout .poda-reference-chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  height: 100%;
+}
+
+.poda-modern-layout .poda-bi-trend-panel {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  padding: 20px;
+  background: white;
+}
+

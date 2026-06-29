@@ -998,6 +998,8 @@ function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresen
   const topIssue = indicators.find((row) => row.count > 0) || indicators[0];
   const [selectedIndicatorKey, setSelectedIndicatorKey] = useState(topIssue?.key || indicators[0]?.key || '');
   const [activeBreakdown, setActiveBreakdown] = useState('parcel');
+  const [activeViewTab, setActiveViewTab] = useState('ranking'); // 'ranking', 'trend', 'map'
+  
   const selectedIndicator = indicators.find((row) => row.key === selectedIndicatorKey) || topIssue || indicators[0];
   const selectedKey = selectedIndicator?.key || selectedIndicatorKey;
   const drilldowns = {
@@ -1012,83 +1014,136 @@ function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresen
   const dayRows = buildPodaSpecificDayRows(records, selectedKey);
   const mapMetricId = PODA_MAP_METRIC_BY_KEY[selectedKey] || 'poda_planta_sem_podar';
 
+  const totalLines = totals.linhas || 0;
+  const totalPlants = totals.podaPlantasObservadas || 0;
+  const overallFailureRate = totalPlants > 0 ? (totals.falhas / totalPlants) * 100 : 0;
+
   return (
-    <div className={`poda-bi-board poda-carreamento-layout ${presentationMode ? 'is-presentation' : ''}`}>
-      <div className="poda-bi-header">
-        <img src="/logo.png" alt="Vila Nova Agroindustrial" />
-        <div>
-          <span>Qualidade Agrícola</span>
-          <h2>CQO Poda</h2>
-          <p>Amostragem, projeção da parcela, falhas críticas e fiscal responsável.</p>
+    <div className={`poda-modern-layout ${presentationMode ? 'is-presentation' : ''}`}>
+      {/* Header / Filter Bar */}
+      <header className="poda-modern-header">
+        <div className="poda-modern-header-title">
+          <img src="/logo.png" alt="Vila Nova Agroindustrial" />
+          <div>
+            <span>Qualidade Agrícola</span>
+            <h1>CQO Poda</h1>
+          </div>
         </div>
-        <div className="poda-bi-header-actions">
-          <strong className="poda-bi-premium-pill">Premium</strong>
-          {demoActive && <strong className="poda-bi-demo-pill">Dados manuais temporários</strong>}
+        <div className="poda-modern-filters">
+          <button 
+            type="button" 
+            className={`poda-modern-filter-btn ${selectedKey === 'cachoExposto' ? 'active' : ''}`}
+            onClick={() => setSelectedIndicatorKey('cachoExposto')}
+          >
+            Apenas Cacho Exposto
+          </button>
+          <button 
+            type="button" 
+            className={`poda-modern-filter-btn ${selectedKey === 'palhaMalEmpilhada' ? 'active' : ''}`}
+            onClick={() => setSelectedIndicatorKey('palhaMalEmpilhada')}
+          >
+            Apenas Palha Mal Empilhada
+          </button>
           {!presentationMode && onPresent && (
-            <button type="button" className="poda-bi-present-btn" onClick={onPresent}>
+            <button type="button" className="poda-bi-present-btn" onClick={onPresent} style={{ marginLeft: 8 }}>
               <MonitorPlay size={18} />
               Apresentar
               <Maximize2 size={15} />
             </button>
           )}
         </div>
-      </div>
+      </header>
 
-      <PodaFilterBar
-        filters={filters}
-        periodText={periodText}
-        selectedIndicator={selectedIndicator}
-        selectedKey={selectedKey}
-        onQuickFilter={setSelectedIndicatorKey}
-        source={source}
-        recordsCount={records.length}
-        totals={totals}
-        demoActive={demoActive}
-      />
+      {/* KPI Cards */}
+      <section className="poda-modern-kpis">
+        <div className="poda-modern-kpi-card info">
+          <span className="poda-modern-kpi-title">Amostragem Atual</span>
+          <strong className="poda-modern-kpi-value">{fmt(records.length)}</strong>
+          <span className="poda-modern-kpi-desc">coletas · {fmt(totalLines)} linhas</span>
+        </div>
+        <div className={`poda-modern-kpi-card ${topIssue?.status === 'Crítico' ? 'danger' : 'warning'}`}>
+          <span className="poda-modern-kpi-title">Alerta Principal</span>
+          <strong className="poda-modern-kpi-value">{topIssue?.label || 'Sem falha'}</strong>
+          <span className="poda-modern-kpi-desc">Parcela crítica: {parcelRows[0]?.label || '-'}</span>
+        </div>
+        <div className="poda-modern-kpi-card">
+          <span className="poda-modern-kpi-title">Índice da Falha Selecionada</span>
+          <strong className="poda-modern-kpi-value">{formatPercentValue(selectedIndicator?.rate || 0)}</strong>
+          <span className="poda-modern-kpi-desc">{fmt(selectedIndicator?.count || 0)} ocorrências totais</span>
+        </div>
+        <div className={`poda-modern-kpi-card ${selectedIndicator?.status === 'Crítico' ? 'danger' : selectedIndicator?.status === 'Atenção' ? 'warning' : 'success'}`}>
+          <span className="poda-modern-kpi-title">Status da Meta</span>
+          <strong className="poda-modern-kpi-value">{selectedIndicator?.status || 'Dentro da meta'}</strong>
+          <span className="poda-modern-kpi-desc">Foco: {selectedIndicator?.label || 'Geral'}</span>
+        </div>
+      </section>
 
-      <div className="poda-reference-overview">
-        <PodaPrimaryAlertCard topIssue={topIssue} topParcel={parcelRows[0]} />
-        <PodaTeamStatsPanel rows={drilldowns.fiscal} indicator={selectedIndicator} />
-      </div>
+      {/* Main Content Area (Tabs) */}
+      <main className="poda-modern-main">
+        <div className="poda-modern-tabs">
+          <button 
+            className={`poda-modern-tab ${activeViewTab === 'ranking' ? 'active' : ''}`} 
+            onClick={() => setActiveViewTab('ranking')}
+          >
+            Ranking de Falhas
+          </button>
+          <button 
+            className={`poda-modern-tab ${activeViewTab === 'trend' ? 'active' : ''}`} 
+            onClick={() => setActiveViewTab('trend')}
+          >
+            Evolução Temporal
+          </button>
+          <button 
+            className={`poda-modern-tab ${activeViewTab === 'map' ? 'active' : ''}`} 
+            onClick={() => setActiveViewTab('map')}
+          >
+            Mapa Espacial
+          </button>
+        </div>
+        
+        <div className="poda-modern-tab-content">
+          {activeViewTab === 'ranking' && (
+            <PodaFaultRankingPanel indicators={indicators} selectedKey={selectedKey} onSelect={setSelectedIndicatorKey} />
+          )}
+          
+          {activeViewTab === 'trend' && (
+            <div className="poda-reference-chart-grid">
+              <PodaTrendPanel
+                rows={weekChartRows.length ? weekChartRows : dayRows}
+                issueLabel={selectedIndicator?.label || 'Falhas'}
+                title={`Gráfico por semana - ${selectedIndicator?.label || 'Falhas'}`}
+                subtitle="Evolução semanal do percentual da amostra e volume de ocorrências."
+              />
+              <PodaTrendPanel
+                rows={monthChartRows.length ? monthChartRows : dayRows}
+                issueLabel={selectedIndicator?.label || 'Falhas'}
+                title={`Gráfico por mês - ${selectedIndicator?.label || 'Falhas'}`}
+                subtitle="Leitura mensal para comparação executiva."
+              />
+            </div>
+          )}
+          
+          {activeViewTab === 'map' && (
+            <PodaMapPanel mapProps={mapProps} selectedIndicator={selectedIndicator} mapMetricId={mapMetricId} />
+          )}
+        </div>
+      </main>
 
-      <PodaFaultRankingPanel indicators={indicators} selectedKey={selectedKey} onSelect={setSelectedIndicatorKey} />
-
-      <div className="poda-reference-chart-grid">
-        <PodaTrendPanel
-          rows={weekChartRows.length ? weekChartRows : dayRows}
-          issueLabel={selectedIndicator?.label || 'Falhas'}
-          title={`Gráfico por semana - ${selectedIndicator?.label || 'Falhas'}`}
-          subtitle="Evolução semanal do percentual da amostra e volume de ocorrências."
-        />
-        <PodaTrendPanel
-          rows={monthChartRows.length ? monthChartRows : dayRows}
-          issueLabel={selectedIndicator?.label || 'Falhas'}
-          title={`Gráfico por mês - ${selectedIndicator?.label || 'Falhas'}`}
-          subtitle="Leitura mensal para comparação executiva do indicador selecionado."
-        />
-      </div>
-
-      <PodaMapPanel
-        mapProps={mapProps}
-        selectedIndicator={selectedIndicator}
-        mapMetricId={mapMetricId}
-      />
-
-      <div className="poda-reference-bottom-grid">
-        <PodaMiniBars
-          title="Parcelas que precisam de atenção"
-          subtitle={`${selectedIndicator?.label || 'Falha'} com maior índice no período.`}
-          rows={parcelRows}
-          maxRows={2}
-          className="poda-risk-panel"
-        />
-        <PodaDrilldownPanel
-          indicator={selectedIndicator}
-          activeBreakdown={activeBreakdown}
-          onBreakdownChange={setActiveBreakdown}
-          breakdowns={drilldowns}
-        />
-      </div>
+      {/* Side Panel */}
+      <aside className="poda-modern-side">
+        <div className="poda-modern-side-card">
+          <PodaDrilldownPanel
+            indicator={selectedIndicator}
+            activeBreakdown={activeBreakdown}
+            onBreakdownChange={setActiveBreakdown}
+            breakdowns={drilldowns}
+          />
+        </div>
+        
+        <div className="poda-modern-side-card">
+          <PodaTeamStatsPanel rows={drilldowns.fiscal} indicator={selectedIndicator} />
+        </div>
+      </aside>
     </div>
   );
 }
