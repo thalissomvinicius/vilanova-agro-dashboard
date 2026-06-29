@@ -3,12 +3,14 @@ import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   BarChart3,
+  CalendarDays,
   CheckCircle2,
   ClipboardCheck,
   Gauge,
   Leaf,
   Maximize2,
   MonitorPlay,
+  RefreshCw,
   Rows3,
   Scissors,
   Sprout,
@@ -224,6 +226,45 @@ function EmptyState({ areaFilter }) {
 function formatPercentValue(value, digits = 1) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return 'N/D';
   return `${Number(value || 0).toFixed(digits).replace('.', ',')}%`;
+}
+
+function resolveRecordDate(record) {
+  const candidates = [
+    record?.raw?.data_avaliacao,
+    record?.raw?.data,
+    record?.raw?.Data,
+    record?.sentAt,
+    record?.createdAt,
+    record?.date,
+  ];
+
+  for (const candidate of candidates) {
+    const text = String(candidate || '').trim();
+    if (!text) continue;
+    const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) {
+      const parsed = new Date(`${iso[1]}-${iso[2]}-${iso[3]}T00:00:00`);
+      if (!Number.isNaN(parsed.getTime())) return parsed;
+    }
+    const br = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (br) {
+      const parsed = new Date(`${br[3]}-${br[2].padStart(2, '0')}-${br[1].padStart(2, '0')}T00:00:00`);
+      if (!Number.isNaN(parsed.getTime())) return parsed;
+    }
+    const parsed = new Date(text);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return null;
+}
+
+function latestCollectionLabel(records) {
+  const latest = (records || []).reduce((latestDate, record) => {
+    const date = resolveRecordDate(record);
+    if (!date) return latestDate;
+    return !latestDate || date > latestDate ? date : latestDate;
+  }, null);
+
+  return latest ? new Intl.DateTimeFormat('pt-BR').format(latest) : '--';
 }
 
 function formatMonthYear(dateFrom, dateTo) {
@@ -1289,7 +1330,7 @@ function PodaMultiFarmTrendPanel({ records, selectedKey }) {
 }
 
 
-function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresent, presentationMode = false, filters = {}, mapProps = {} }) {
+function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresent, presentationMode = false, filters = {}, mapProps = {}, lastSyncTime, loading }) {
   const indicators = buildPodaIndicatorRows(totals);
   const parcelRows = buildPodaGroupedRows(records, (record) => `${record.farm || 'Sem fazenda'} · ${record.parcel || 'Sem parcela'}`);
   const topIssue = indicators.find((row) => row.count > 0) || indicators[0];
@@ -1317,42 +1358,57 @@ function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresen
   const totalPlants = totals.podaPlantasObservadas || 0;
   const overallFailureRate = totalPlants > 0 ? (totals.falhas / totalPlants) * 100 : 0;
 
+  const updateText = lastSyncTime ? `${new Intl.DateTimeFormat('pt-BR').format(new Date())} ${lastSyncTime}` : new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date());
+
+  const latestCollectionText = loading ? 'Carregando...' : latestCollectionLabel(records);
+
   return (
     <div className={`poda-modern-layout ${presentationMode ? 'is-presentation' : ''}`}>
       {/* Header / Filter Bar */}
-      <header className="poda-modern-header">
-        <div className="poda-modern-header-title">
-          <img src="/logo.png" alt="Vila Nova Agroindustrial" />
-          <div>
-            <span>Qualidade Agrícola</span>
-            <h1>CQO Poda</h1>
+      <header className="field-bi-header">
+        <img src="/logo.png" alt="Vila Nova Agroindustrial" className="field-bi-logo" />
+        <div className="field-bi-title-block">
+          <h2>CQO Poda</h2>
+          <div className="field-bi-meta-line">
+            <span><CalendarDays size={14} />{periodText || 'Todos os tempos'}</span>
+            <span><RefreshCw size={14} />Atualizado: {updateText}</span>
+            <span><CalendarDays size={14} />Última coleta: {latestCollectionText}</span>
           </div>
         </div>
-        <div className="poda-modern-filters">
-          <span className="poda-filters-label">Visualização rápida:</span>
-          <button 
-            type="button" 
-            className={`poda-modern-filter-btn ${selectedKey === 'cachoExposto' ? 'active' : ''}`}
-            onClick={() => setSelectedIndicatorKey('cachoExposto')}
-          >
-            Cacho Exposto
-          </button>
-          <button 
-            type="button" 
-            className={`poda-modern-filter-btn ${selectedKey === 'palhaMalEmpilhada' ? 'active' : ''}`}
-            onClick={() => setSelectedIndicatorKey('palhaMalEmpilhada')}
-          >
-            Palha Mal Empilhada
-          </button>
-          {!presentationMode && onPresent && (
-            <button type="button" className="poda-bi-present-btn" onClick={onPresent} style={{ marginLeft: 8 }}>
+        {!presentationMode && onPresent && (
+          <div className="field-bi-header-actions">
+            <button type="button" className="field-bi-present-btn" onClick={onPresent}>
               <MonitorPlay size={18} />
               Apresentar
               <Maximize2 size={15} />
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </header>
+
+      {!presentationMode && (
+        <div className="field-bi-control-bar" style={{ marginTop: 12 }}>
+          <div className="field-bi-mode-switch" role="group" aria-label="Visualização rápida">
+            <button 
+              type="button" 
+              className={selectedKey === 'cachoExposto' ? 'active' : ''}
+              onClick={() => setSelectedIndicatorKey('cachoExposto')}
+            >
+              Cacho Exposto
+            </button>
+            <button 
+              type="button" 
+              className={selectedKey === 'palhaMalEmpilhada' ? 'active' : ''}
+              onClick={() => setSelectedIndicatorKey('palhaMalEmpilhada')}
+            >
+              Palha Mal Empilhada
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Top Indicators - Replacing KPIs and Ranking Strip */}
       <section className="poda-top-indicators-section">
@@ -1637,6 +1693,7 @@ function CarreamentoBiBoard({
   periodText,
   onPresent,
   presentationMode = false,
+  lastSyncTime,
 }) {
   const taxaMalPos = totals.plantasObservadas ? (totals.cachoMalPosicionado / totals.plantasObservadas) * 100 : 0;
   const taxaNaoCarreado = totals.plantasObservadas ? (totals.cachoNaoCarreado / totals.plantasObservadas) * 100 : 0;
@@ -1655,23 +1712,36 @@ function CarreamentoBiBoard({
       ? 'Carreamento dentro das tolerâncias principais.'
       : 'Sem coletas de carreamento no período.';
 
+  const updateText = lastSyncTime ? `${new Intl.DateTimeFormat('pt-BR').format(new Date())} ${lastSyncTime}` : new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date());
+
+  const latestCollectionText = loading ? 'Carregando...' : latestCollectionLabel(records);
+
   return (
     <div className={`carreamento-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
-      <div className="carreamento-bi-header">
-        <img src="/logo.png" alt="Vila Nova Agroindustrial" />
-        <div>
-          <span>Qualidade Agrícola</span>
+      {/* Header / Filter Bar */}
+      <header className="field-bi-header" style={{ marginBottom: 16 }}>
+        <img src="/logo.png" alt="Vila Nova Agroindustrial" className="field-bi-logo" />
+        <div className="field-bi-title-block">
           <h2>CQO Carreamento</h2>
-          <p>Apresentação operacional de transporte, rastreio e perdas logísticas.</p>
+          <div className="field-bi-meta-line">
+            <span><CalendarDays size={14} />{periodText || 'Todos os tempos'}</span>
+            <span><RefreshCw size={14} />Atualizado: {updateText}</span>
+            <span><CalendarDays size={14} />Última coleta: {latestCollectionText}</span>
+          </div>
         </div>
-        {!presentationMode && (
-          <button type="button" className="carreamento-bi-present-btn" onClick={onPresent}>
-            <MonitorPlay size={18} />
-            Apresentar
-            <Maximize2 size={15} />
-          </button>
+        {!presentationMode && onPresent && (
+          <div className="field-bi-header-actions">
+            <button type="button" className="field-bi-present-btn" onClick={onPresent}>
+              <MonitorPlay size={18} />
+              Apresentar
+              <Maximize2 size={15} />
+            </button>
+          </div>
         )}
-      </div>
+      </header>
 
       <div className="carreamento-bi-filter-strip">
         <span>{periodText}</span>
@@ -1752,7 +1822,7 @@ function CarreamentoPresentationOverlay(props) {
 }
 
 // ─── Analytics Page ────────────────────────────────────────────────────────────
-export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo }) {
+export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, lastSyncTime }) {
   const { loading, error, records: allRecords, source } = useCqoData();
   const [activeTab, setActiveTab] = useState('geral');
   const [carreamentoPresentationOpen, setCarreamentoPresentationOpen] = useState(false);
@@ -1931,6 +2001,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
             records={carreamentoRecords}
             periodText={periodText}
             onClose={closeCarreamentoPresentation}
+            lastSyncTime={lastSyncTime}
           />
         )}
 
@@ -1947,6 +2018,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
           records={carreamentoRecords}
           periodText={periodText}
           onPresent={openCarreamentoPresentation}
+          lastSyncTime={lastSyncTime}
         />
       </div>
     );
@@ -1966,6 +2038,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
             filters={podaFilterContext}
             mapProps={podaMapProps}
             onClose={closePodaPresentation}
+            lastSyncTime={lastSyncTime}
           />
         )}
 
@@ -1985,6 +2058,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
           filters={podaFilterContext}
           mapProps={podaMapProps}
           onPresent={openPodaPresentation}
+          lastSyncTime={lastSyncTime}
         />
       </div>
     );

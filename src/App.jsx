@@ -692,6 +692,7 @@ export default function App() {
             sourceFilter={fieldSourceFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
+            lastSyncTime={lastSyncTime}
           />
         );
       case 'cqo-poda':
@@ -705,6 +706,7 @@ export default function App() {
             sourceFilter={fieldSourceFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
+            lastSyncTime={lastSyncTime}
           />
         );
       case 'perdas-agricola':
