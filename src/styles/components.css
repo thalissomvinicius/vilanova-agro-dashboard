@@ -1906,6 +1906,109 @@ body.presentation-active {
   min-height: 220px;
 }
 
+.field-line-chart-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.field-line-chart-head h3 {
+  margin: 0;
+}
+
+.field-line-chart-head span {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.field-line-chart-target {
+  min-width: 74px;
+  padding: 7px 9px;
+  border: 1px solid rgba(242, 140, 0, 0.3);
+  border-radius: 8px;
+  background: rgba(242, 140, 0, 0.08);
+  text-align: right;
+}
+
+.field-line-chart-target strong,
+.field-line-chart-target span {
+  display: block;
+  color: var(--orange-institutional);
+  line-height: 1.05;
+}
+
+.field-line-chart-target strong {
+  font-size: 1.05rem;
+}
+
+.field-line-chart-target span {
+  margin-top: 2px;
+  font-size: 0.66rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.field-target-line {
+  stroke: var(--orange-institutional);
+  stroke-width: 2.2;
+  stroke-dasharray: 8 7;
+  opacity: 0.95;
+}
+
+.field-target-label {
+  fill: var(--orange-institutional);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.field-target-dot {
+  background: transparent !important;
+  border: 2px dashed var(--orange-institutional);
+}
+
+.field-line-area {
+  opacity: 0.08;
+}
+
+.field-line-path {
+  fill: none;
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.field-line-point {
+  stroke: var(--white);
+  stroke-width: 2.5;
+  fill: var(--status-success);
+  filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.18));
+}
+
+.field-line-point.is-over-target {
+  fill: var(--status-danger);
+}
+
+.field-line-value {
+  fill: var(--text-primary);
+  font-size: 0.72rem;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: var(--white);
+  stroke-width: 3px;
+}
+
+.field-line-value.is-over-target,
+.field-cross-label {
+  fill: var(--status-danger);
+}
+
+.field-cross-label {
+  font-size: 0.67rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .field-bi-bar-label {
   fill: var(--white);
   font-size: 0.72rem;

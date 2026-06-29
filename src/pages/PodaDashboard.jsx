@@ -282,6 +282,7 @@ function buildDailyBunchRows(records) {
         buckets.set(sortKey, {
           sortKey,
           label,
+          samples: 0,
           maduro: 0,
           passado: 0,
           verde: 0,
@@ -292,6 +293,7 @@ function buildDailyBunchRows(records) {
       }
 
       const bucket = buckets.get(sortKey);
+      bucket.samples += record.totals?.plantasObservadas || record.totals?.plantasLinha || 0;
       bucket.maduro += record.totals?.plantaSemPodar || 0;
       bucket.passado += record.totals?.cachoExposto || 0;
       bucket.verde += record.totals?.podaMeiaCoroa || 0;
@@ -346,13 +348,25 @@ const TOTAL_SECTION_OPTIONS = [
 ];
 
 const BI_SERIES = [
-  { key: 'maduro', sourceKey: 'cachoMaduroPct', label: 'PSP %', fullLabel: 'Planta sem podar %', color: 'var(--orange-institutional)' },
-  { key: 'passado', sourceKey: 'cachoPassadoPct', label: 'CE %', fullLabel: 'Cacho exposto %', color: 'var(--text-primary)' },
-  { key: 'verde', sourceKey: 'cachoVerdePct', label: 'PMC %', fullLabel: 'Poda meia coroa %', color: 'var(--green-institutional)' },
-  { key: 'avermelhado', sourceKey: 'cachoAvermelhadoPct', label: 'CP %', fullLabel: 'Cacho podre %', color: 'var(--status-danger)' },
+  { key: 'maduro', sourceKey: 'cachoMaduroPct', label: 'PSP %', fullLabel: 'Planta sem podar %', color: 'var(--orange-institutional)', target: 1 },
+  { key: 'passado', sourceKey: 'cachoPassadoPct', label: 'CE %', fullLabel: 'Cacho exposto %', color: 'var(--text-primary)', target: 2 },
+  { key: 'verde', sourceKey: 'cachoVerdePct', label: 'PMC %', fullLabel: 'Poda meia coroa %', color: 'var(--green-institutional)', target: 2 },
+  { key: 'avermelhado', sourceKey: 'cachoAvermelhadoPct', label: 'CP %', fullLabel: 'Cacho podre %', color: 'var(--status-danger)', target: 1 },
 ];
 
 function qualityValuesFromRow(row) {
+  const directValues = {
+    maduro: Number(row.cachoMaduroPct || 0),
+    passado: Number(row.cachoPassadoPct || 0),
+    verde: Number(row.cachoVerdePct || 0),
+    avermelhado: Number(row.cachoAvermelhadoPct || 0),
+    samples: row.recordsCount || 0,
+  };
+
+  if (Object.values(directValues).some((value) => Number(value || 0) > 0)) {
+    return directValues;
+  }
+
   if (row.qualidade) {
     const base = Math.max(row.qualidade.cachosObservados || 0, 0);
     return {
@@ -365,12 +379,32 @@ function qualityValuesFromRow(row) {
   }
 
   return {
-    maduro: Number(row.cachoMaduroPct || 0),
-    passado: Number(row.cachoPassadoPct || 0),
-    verde: Number(row.cachoVerdePct || 0),
-    avermelhado: Number(row.cachoAvermelhadoPct || 0),
-    samples: row.recordsCount || 0,
+    ...directValues,
   };
+}
+
+function dailyQualityValuesFromRow(row) {
+  const base = Math.max(Number(row.samples || 0), 0);
+  return {
+    maduro: safePct(row.maduro, base),
+    passado: safePct(row.passado, base),
+    verde: safePct(row.verde, base),
+    avermelhado: safePct(row.avermelhado, base),
+    samples: base,
+  };
+}
+
+function primaryPodaSeries(quality) {
+  return BI_SERIES
+    .map((series) => {
+      const value = Number(quality?.[series.sourceKey] || 0);
+      return {
+        ...series,
+        value,
+        pressure: series.target > 0 ? value / series.target : value,
+      };
+    })
+    .sort((a, b) => b.pressure - a.pressure || b.value - a.value)[0] || BI_SERIES[1];
 }
 
 function riskFromValues(values) {
@@ -428,83 +462,146 @@ function FieldBiFarmChart({ rows, loading = false }) {
   );
 }
 
-function FieldBiWeekChart({ rows, loading = false }) {
-  const visibleRows = rows.slice(-8);
-  const chartHeight = 232;
-  const padding = { top: 22, right: 18, bottom: 36, left: 42 };
-  const weekWidth = 86;
-  const width = Math.max(420, padding.left + padding.right + visibleRows.length * weekWidth);
+function PodaTargetLineChart({
+  rows,
+  loading = false,
+  series = BI_SERIES[1],
+  title,
+  subtitle,
+  emptyTitle,
+  emptyMessage,
+  getValues = qualityValuesFromRow,
+  labelForRow = (row) => row.label,
+  rowKey = (row) => row.label,
+  maxRows = 10,
+  minWidth = 560,
+  className = '',
+}) {
+  const visibleRows = rows.slice(-maxRows);
+  const chartHeight = 244;
+  const padding = { top: 30, right: 34, bottom: 42, left: 48 };
+  const columnWidth = 88;
+  const width = Math.max(minWidth, padding.left + padding.right + Math.max(visibleRows.length - 1, 1) * columnWidth + 54);
   const graphHeight = chartHeight - padding.top - padding.bottom;
-  const barWidth = 42;
+  const graphWidth = width - padding.left - padding.right;
+  const target = Number(series.target || 0);
+  const values = visibleRows.map((row, index) => ({
+    row,
+    key: rowKey(row, index),
+    label: labelForRow(row),
+    value: Number(getValues(row)?.[series.key] || 0),
+  }));
+  const maxValue = Math.max(target * 1.45, ...values.map((item) => item.value * 1.18), target + 0.2, 1);
+  const yFor = (value) => padding.top + graphHeight - (Math.min(Math.max(value, 0), maxValue) / maxValue) * graphHeight;
+  const xFor = (index) => {
+    if (values.length <= 1) return padding.left + graphWidth / 2;
+    return padding.left + (index / (values.length - 1)) * graphWidth;
+  };
+  const points = values.map((item, index) => ({ ...item, x: xFor(index), y: yFor(item.value) }));
+  const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+  const areaPath = points.length > 1
+    ? `${linePath} L ${points[points.length - 1].x} ${padding.top + graphHeight} L ${points[0].x} ${padding.top + graphHeight} Z`
+    : '';
+  const targetY = yFor(target);
+  const gridValues = Array.from(new Set([0, target, Math.ceil(maxValue * 10) / 10]))
+    .sort((a, b) => a - b);
 
   return (
-    <section className="field-bi-panel">
-      <h3>Qualidade por semana</h3>
-      <FieldBiLegend />
+    <section className={`field-bi-panel field-poda-line-panel ${className}`.trim()}>
+      <div className="field-line-chart-head">
+        <div>
+          <h3>{title}</h3>
+          {subtitle ? <span>{subtitle}</span> : null}
+        </div>
+        <div className="field-line-chart-target">
+          <strong>{formatPercent(target)}</strong>
+          <span>Meta</span>
+        </div>
+      </div>
+      <div className="field-daily-legend">
+        <span><i style={{ background: series.color }} />{series.fullLabel}</span>
+        <span><i className="field-target-dot" />Linha da meta</span>
+      </div>
       {loading ? (
         <div className="skeleton-chart" style={{ height: chartHeight }} />
       ) : (
         <div className="field-bi-week-scroll">
-          {visibleRows.length ? (
+          {points.length ? (
             <svg className="field-bi-week-chart" viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight}>
-              {[0, 0.5, 1].map((ratio) => {
-                const y = padding.top + graphHeight * (1 - ratio);
+              {gridValues.map((gridValue) => {
+                const y = yFor(gridValue);
                 return (
-                  <g key={ratio}>
+                  <g key={gridValue}>
                     <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} className="chart-grid-line" />
-                    <text x={padding.left - 8} y={y + 4} textAnchor="end" className="chart-axis-text">{Math.round(ratio * 100)}%</text>
-                  </g>
-                );
-              })}
-              {visibleRows.map((row, rowIndex) => {
-                const values = qualityValuesFromRow(row);
-                const groupX = padding.left + rowIndex * weekWidth + (weekWidth - barWidth) / 2;
-                let stackedHeight = 0;
-                return (
-                  <g key={row.label}>
-                    {BI_SERIES.map((item) => {
-                      const pct = Math.max(0, Math.min(values[item.key], 100));
-                      const segmentHeight = (pct / 100) * graphHeight;
-                      const y = padding.top + graphHeight - stackedHeight - segmentHeight;
-                      stackedHeight += segmentHeight;
-                      return (
-                        <rect
-                          key={item.key}
-                          x={groupX}
-                          y={y}
-                          width={barWidth}
-                          height={Math.max(segmentHeight, pct > 0 ? 1.5 : 0)}
-                          fill={item.color}
-                          className="chart-bar"
-                        >
-                          <title>{`${row.label} - ${item.fullLabel}: ${formatPercent(pct)}`}</title>
-                        </rect>
-                      );
-                    })}
-                    {values.maduro > 12 && (
-                      <text
-                        x={groupX + barWidth / 2}
-                        y={padding.top + graphHeight - ((Math.min(values.maduro, 100) / 100) * graphHeight / 2)}
-                        textAnchor="middle"
-                        className="field-bi-bar-label"
-                        transform={`rotate(-90 ${groupX + barWidth / 2} ${padding.top + graphHeight - ((Math.min(values.maduro, 100) / 100) * graphHeight / 2)})`}
-                      >
-                        {formatPercent(values.maduro, 0)}
-                      </text>
-                    )}
-                    <text x={groupX + barWidth / 2} y={chartHeight - 12} textAnchor="middle" className="chart-axis-text">
-                      {weekNumberLabel(row.label)}
+                    <text x={padding.left - 8} y={y + 4} textAnchor="end" className="chart-axis-text">
+                      {formatPercent(gridValue, gridValue >= 10 ? 0 : 1)}
                     </text>
                   </g>
                 );
               })}
+              <line
+                x1={padding.left}
+                x2={width - padding.right}
+                y1={targetY}
+                y2={targetY}
+                className="field-target-line"
+              />
+              <text x={width - padding.right - 4} y={targetY - 7} textAnchor="end" className="field-target-label">
+                Meta {formatPercent(target)}
+              </text>
+              {areaPath ? <path d={areaPath} fill={series.color} className="field-line-area" /> : null}
+              {linePath ? <path d={linePath} stroke={series.color} className="field-line-path" /> : null}
+              {points.map((point, index) => (
+                <g key={point.key}>
+                  <line x1={point.x} x2={point.x} y1={padding.top + graphHeight} y2={padding.top + graphHeight + 5} className="chart-grid-line" />
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r={5.5}
+                    className={`field-line-point ${point.value > target ? 'is-over-target' : 'is-under-target'}`}
+                  >
+                    <title>{`${point.label} - ${series.fullLabel}: ${formatPercent(point.value)} | Meta: ${formatPercent(target)}`}</title>
+                  </circle>
+                  <text
+                    x={point.x}
+                    y={point.y - 11}
+                    textAnchor="middle"
+                    className={`field-line-value ${point.value > target ? 'is-over-target' : ''}`}
+                  >
+                    {formatPercent(point.value, 1)}
+                  </text>
+                  <text x={point.x} y={chartHeight - 12} textAnchor="middle" className="chart-axis-text">
+                    {point.label}
+                  </text>
+                  {index > 0 && point.value > target && points[index - 1].value <= target ? (
+                    <text x={point.x + 8} y={targetY - 12} className="field-cross-label">acima</text>
+                  ) : null}
+                </g>
+              ))}
             </svg>
           ) : (
-            <div className="empty-panel smart-empty-panel"><strong>Sem semanas no filtro</strong><span>A visão semanal aparece quando houver coletas dentro do período selecionado.</span></div>
+            <div className="empty-panel smart-empty-panel"><strong>{emptyTitle}</strong><span>{emptyMessage}</span></div>
           )}
         </div>
       )}
     </section>
+  );
+}
+
+function FieldBiWeekChart({ rows, loading = false, series = BI_SERIES[1] }) {
+  return (
+    <PodaTargetLineChart
+      rows={rows}
+      loading={loading}
+      series={series}
+      title={`Evolução semanal - ${series.fullLabel}`}
+      subtitle="Linha do indicador contra a meta operacional."
+      emptyTitle="Sem semanas no filtro"
+      emptyMessage="A visão semanal aparece quando houver coletas dentro do período selecionado."
+      labelForRow={(row) => weekNumberLabel(row.label)}
+      maxRows={10}
+      minWidth={620}
+    />
   );
 }
 
@@ -556,88 +653,23 @@ function FiscalQualityCards({ rows, loading = false }) {
   );
 }
 
-function DailyBunchBarChart({ rows, loading = false }) {
-  const series = [
-    { key: 'maduro', label: 'Planta sem podar %', color: 'var(--orange-institutional)' },
-    { key: 'passado', label: 'Cacho exposto %', color: 'var(--text-primary)' },
-    { key: 'verde', label: 'Poda meia coroa %', color: 'var(--green-institutional)' },
-    { key: 'avermelhado', label: 'Cacho podre %', color: 'var(--status-danger)' },
-  ];
-
-  const visibleRows = rows.slice(-12);
-  const chartHeight = 236;
-  const padding = { top: 18, right: 18, bottom: 32, left: 46 };
-  const dayWidth = 96;
-  const width = Math.max(880, padding.left + padding.right + visibleRows.length * dayWidth);
-  const graphHeight = chartHeight - padding.top - padding.bottom;
-  const barWidth = 62;
-
+function DailyBunchBarChart({ rows, loading = false, series = BI_SERIES[1] }) {
   return (
-    <section className="field-bi-panel field-bi-daily-panel">
-      <h3>Qualidade por Dia/Fazenda/Parcela</h3>
-      <div className="field-daily-legend">
-        {series.map((item) => (
-          <span key={item.key}><i style={{ background: item.color }} />{item.label}</span>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="skeleton-chart" style={{ height: chartHeight }} />
-      ) : (
-        <div className="field-daily-chart-scroll">
-          {visibleRows.length ? (
-            <svg className="field-daily-chart-svg" viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight}>
-              {[0, 0.5, 1].map((ratio) => {
-                const y = padding.top + graphHeight * (1 - ratio);
-                return (
-                  <g key={ratio}>
-                    <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} className="chart-grid-line" />
-                    <text x={padding.left - 10} y={y + 4} textAnchor="end" className="chart-axis-text">
-                      {Math.round(ratio * 100)}%
-                    </text>
-                  </g>
-                );
-              })}
-
-              {visibleRows.map((row, rowIndex) => {
-                const groupX = padding.left + rowIndex * dayWidth + (dayWidth - barWidth) / 2;
-                const total = series.reduce((sum, item) => sum + Number(row[item.key] || 0), 0);
-                let stackedHeight = 0;
-                return (
-                  <g key={row.sortKey}>
-                    {series.map((item) => {
-                      const value = Number(row[item.key] || 0);
-                      const pct = total > 0 ? (value / total) * 100 : 0;
-                      const segmentHeight = total > 0 ? (pct / 100) * graphHeight : 0;
-                      const y = padding.top + graphHeight - stackedHeight - segmentHeight;
-                      stackedHeight += segmentHeight;
-                      return (
-                        <rect
-                          key={item.key}
-                          x={groupX}
-                          y={y}
-                          width={barWidth}
-                          height={Math.max(segmentHeight, value > 0 ? 1.5 : 0)}
-                          fill={item.color}
-                          className="chart-bar"
-                        >
-                          <title>{`${row.label} - ${item.label}: ${formatNumber(value)} cachos (${formatPercent(pct)})`}</title>
-                        </rect>
-                      );
-                    })}
-                    <text x={groupX + barWidth / 2} y={chartHeight - 12} textAnchor="middle" className="chart-axis-text">
-                      {row.label}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
-          ) : (
-            <div className="empty-panel smart-empty-panel"><strong>Sem barras diárias</strong><span>O gráfico por dia será montado quando houver cachos avaliados no mês selecionado.</span></div>
-          )}
-        </div>
-      )}
-    </section>
+    <PodaTargetLineChart
+      rows={rows}
+      loading={loading}
+      series={series}
+      title={`Evolução diária - ${series.fullLabel}`}
+      subtitle="Percentual diário sobre plantas avaliadas, comparado com a meta."
+      emptyTitle="Sem dados diários"
+      emptyMessage="O gráfico por dia será montado quando houver coletas no período selecionado."
+      getValues={dailyQualityValuesFromRow}
+      labelForRow={(row) => row.label}
+      rowKey={(row) => row.sortKey}
+      maxRows={12}
+      minWidth={760}
+      className="field-bi-daily-panel"
+    />
   );
 }
 
@@ -783,6 +815,7 @@ function FieldBiBoard({
   presentationMode = false,
 }) {
   const isTotalMode = !presentationMode && boardMode === 'total';
+  const mainLineSeries = primaryPodaSeries(quality);
 
   return (
     <div className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
@@ -866,11 +899,11 @@ function FieldBiBoard({
 
           <div className="field-bi-main-grid">
             <FieldBiFarmChart rows={model.farmRows} loading={loading} />
-            <FieldBiWeekChart rows={model.weekRows} loading={loading} />
+            <FieldBiWeekChart rows={model.weekRows} loading={loading} series={mainLineSeries} />
             <FiscalQualityCards rows={model.evaluatorRows} loading={loading} />
           </div>
 
-          <DailyBunchBarChart rows={dailyBunchRows} loading={loading} />
+          <DailyBunchBarChart rows={dailyBunchRows} loading={loading} series={mainLineSeries} />
         </>
       ) : (
         <FieldTotalDataPanel model={model} selectedSection={totalSection} loading={loading} />
