@@ -928,69 +928,118 @@ function PodaMapPanel({ mapProps, selectedIndicator, mapMetricId }) {
 }
 
 function PodaTrendPanel({ rows, issueLabel = 'Falhas', title = 'Evolução no período', subtitle }) {
-  const chartHeight = 185;
-  const padding = { top: 22, right: 28, bottom: 32, left: 54 };
-  const width = 980;
+  const visibleRows = rows.slice(-10);
+  const chartHeight = 280;
+  const padding = { top: 30, right: 24, bottom: 48, left: 52 };
+  const colWidth = 80;
+  const barWidth = 44;
+  const width = Math.max(480, padding.left + padding.right + visibleRows.length * colWidth);
   const graphWidth = width - padding.left - padding.right;
   const graphHeight = chartHeight - padding.top - padding.bottom;
-  const maxFailure = Math.max(...rows.map((row) => row.falhas), 1);
-  const maxRate = Math.max(...rows.map((row) => Number(row.rate || 0)), 1);
-  const ratePoints = rows.map((row, index) => {
-    const x = padding.left + (rows.length <= 1 ? graphWidth / 2 : (index / (rows.length - 1)) * graphWidth);
+
+  const maxFailure = Math.max(...visibleRows.map((row) => Number(row.falhas || 0)), 1);
+  const maxRate = Math.max(...visibleRows.map((row) => Number(row.rate || 0)), 0.1);
+
+  const ratePoints = visibleRows.map((row, index) => {
+    const colCenter = padding.left + index * colWidth + colWidth / 2;
     const y = padding.top + graphHeight - (Number(row.rate || 0) / maxRate) * graphHeight;
-    return { x, y, row };
+    return { x: colCenter, y: Math.max(padding.top + 4, y), row };
   });
-  const ratePath = ratePoints.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+  const ratePath = ratePoints.length > 1
+    ? ratePoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+    : null;
+
+  // gradient area under line
+  const areaPath = ratePoints.length > 1
+    ? `${ratePath} L ${ratePoints[ratePoints.length - 1].x} ${padding.top + graphHeight} L ${ratePoints[0].x} ${padding.top + graphHeight} Z`
+    : null;
 
   return (
-    <section className="poda-exec-card poda-bi-trend-panel">
-      <div className="poda-section-title compact">
+    <section className="poda-trend-panel-v2">
+      <div className="poda-trend-panel-header">
         <div>
-        <h3>{title}</h3>
-        <span>{subtitle || `% da amostra e volume de ${issueLabel.toLowerCase()} por período.`}</span>
+          <h3>{title}</h3>
+          <span>{subtitle || `% da amostra de ${issueLabel.toLowerCase()} por período`}</span>
+        </div>
+        <div className="poda-bi-legend">
+          <span><i style={{ background: 'var(--green-institutional)' }} />% Falha</span>
+          <span><i style={{ background: 'var(--orange-institutional)' }} />Ocorrências</span>
         </div>
       </div>
-      <div className="poda-bi-legend">
-        <span><i style={{ background: 'var(--green-institutional)' }} />% da amostra</span>
-        <span><i style={{ background: 'var(--orange-institutional)' }} />Ocorrências</span>
+      <div className="poda-trend-chart-scroll">
+        {visibleRows.length === 0 ? (
+          <div className="poda-trend-empty">Sem dados no período</div>
+        ) : (
+          <svg viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight} className="poda-trend-svg">
+            <defs>
+              <linearGradient id="poda-rate-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--green-institutional)" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="var(--green-institutional)" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+
+            {/* Grid lines */}
+            {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+              const y = padding.top + graphHeight * (1 - ratio);
+              return (
+                <g key={ratio}>
+                  <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="#E5E7EB" strokeWidth="1" strokeDasharray={ratio === 0 ? 'none' : '4 3'} />
+                  <text x={padding.left - 8} y={y + 4} textAnchor="end" className="chart-axis-text" fontSize="10">
+                    {formatPercentValue(maxRate * ratio, 1)}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* Bars (occurrences) */}
+            {visibleRows.map((row, index) => {
+              const colCenter = padding.left + index * colWidth + colWidth / 2;
+              const bx = colCenter - barWidth / 2;
+              const barH = Math.max((Number(row.falhas || 0) / maxFailure) * graphHeight, Number(row.falhas || 0) > 0 ? 3 : 0);
+              const by = padding.top + graphHeight - barH;
+              return (
+                <g key={row.label}>
+                  <rect x={bx} y={by} width={barWidth} height={barH} rx="5" fill="var(--orange-institutional)" opacity="0.75">
+                    <title>{`${row.label}: ${fmt(row.falhas)} ocorrências`}</title>
+                  </rect>
+                  {Number(row.falhas || 0) > 0 && barH > 18 && (
+                    <text x={colCenter} y={by + barH / 2 + 4} textAnchor="middle" fontSize="11" fontWeight="700" fill="white">
+                      {fmt(row.falhas)}
+                    </text>
+                  )}
+                  <text x={colCenter} y={chartHeight - 12} textAnchor="middle" className="chart-axis-text" fontSize="11" fontWeight="600">
+                    {formatPodaChartLabel(row.label)}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* Area under line */}
+            {areaPath && <path d={areaPath} fill="url(#poda-rate-grad)" />}
+
+            {/* Rate line */}
+            {ratePath && (
+              <path d={ratePath} fill="none" stroke="var(--green-institutional)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            )}
+
+            {/* Rate dots + labels */}
+            {ratePoints.map((point) => (
+              <g key={`dot-${point.row.label}`}>
+                <circle cx={point.x} cy={point.y} r="5" fill="var(--green-institutional)" stroke="white" strokeWidth="2.5">
+                  <title>{`${point.row.label}: ${formatPercentValue(point.row.rate)}`}</title>
+                </circle>
+                <text x={point.x} y={Math.max(padding.top + 12, point.y - 9)} textAnchor="middle" fontSize="10" fontWeight="800" fill="var(--green-institutional)">
+                  {formatPercentValue(point.row.rate)}
+                </text>
+              </g>
+            ))}
+          </svg>
+        )}
       </div>
-      <svg className="poda-bi-trend-svg" viewBox={`0 0 ${width} ${chartHeight}`} width="100%">
-        {[0, 0.5, 1].map((ratio) => {
-          const y = padding.top + graphHeight * (1 - ratio);
-          return (
-            <g key={ratio}>
-              <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} className="chart-grid-line" />
-              <text x={padding.left - 8} y={y + 4} textAnchor="end" className="chart-axis-text">{formatPercentValue(maxRate * ratio)}</text>
-            </g>
-          );
-        })}
-        {rows.map((row, index) => {
-          const barWidth = rows.length <= 2 ? 46 : rows.length <= 6 ? 32 : 24;
-          const x = padding.left + (rows.length <= 1 ? graphWidth / 2 : (index / (rows.length - 1)) * graphWidth) - barWidth / 2;
-          const barHeight = Math.max((row.falhas / maxFailure) * graphHeight, row.falhas > 0 ? 2 : 0);
-          return (
-            <g key={row.label}>
-              <rect x={x} y={padding.top + graphHeight - barHeight} width={barWidth} height={barHeight} rx="3" fill="var(--orange-institutional)" opacity="0.78" />
-              {row.falhas > 0 && (
-                <text x={x + barWidth / 2} y={Math.max(padding.top + 12, padding.top + graphHeight - barHeight - 6)} textAnchor="middle" className="chart-value-text">{fmt(row.falhas)}</text>
-              )}
-              <text x={x + barWidth / 2} y={chartHeight - 8} textAnchor="middle" className="chart-axis-text">{formatPodaChartLabel(row.label)}</text>
-            </g>
-          );
-        })}
-        {ratePath && <path d={ratePath} fill="none" stroke="var(--green-institutional)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />}
-        {ratePoints.map((point) => (
-          <g key={`${point.row.label}-${point.row.rate}`}>
-            <circle cx={point.x} cy={point.y} r="6" fill="var(--green-institutional)" stroke="var(--bg-card)" strokeWidth="3">
-              <title>{`${point.row.label}: ${formatPercentValue(point.row.rate)} / ${fmt(point.row.falhas)} ocorrências`}</title>
-            </circle>
-            <text x={point.x} y={Math.max(padding.top + 10, point.y - 10)} textAnchor="middle" className="chart-score-text">{formatPercentValue(point.row.rate)}</text>
-          </g>
-        ))}
-      </svg>
     </section>
   );
 }
+
 
 function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresent, presentationMode = false, filters = {}, mapProps = {} }) {
   const indicators = buildPodaIndicatorRows(totals);
