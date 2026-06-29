@@ -392,20 +392,38 @@ function qualityValuesFromRow(row) {
     samples: row.recordsCount || 0,
   };
 
-  if (Object.values(directValues).some((value) => Number(value || 0) > 0)) {
+  if (['maduro', 'passado', 'verde', 'avermelhado', 'estrela', 'talo'].some((key) => Number(directValues[key] || 0) > 0)) {
     return directValues;
   }
 
   if (row.qualidade) {
+    const hasPodaRates = row.qualidade.podaPlantasObservadas
+      || row.qualidade.plantaSemPodarRate
+      || row.qualidade.cachoExpostoRate
+      || row.qualidade.podaMeiaCoroaRate
+      || row.qualidade.cachoPodrePlantaRate
+      || row.qualidade.podaMaiorUmParaUmRate
+      || row.qualidade.bicoGaitaRate;
+    if (hasPodaRates) {
+      return {
+        maduro: Number(row.qualidade.plantaSemPodarRate || 0),
+        passado: Number(row.qualidade.cachoExpostoRate || 0),
+        verde: Number(row.qualidade.podaMeiaCoroaRate || 0),
+        avermelhado: Number(row.qualidade.cachoPodrePlantaRate || 0),
+        estrela: Number(row.qualidade.podaMaiorUmParaUmRate || 0),
+        talo: Number(row.qualidade.bicoGaitaRate || 0),
+        samples: row.qualidade.podaPlantasObservadas || row.qualidade.plantasObservadas || 0,
+      };
+    }
+
     const base = Math.max(row.qualidade.cachosObservados || 0, 0);
-    const plantBase = row.qualidade.podaPlantasObservadas || row.qualidade.plantasObservadas || base;
     return {
       maduro: base ? (row.qualidade.cachoMaduro / base) * 100 : 0,
       passado: base ? (row.qualidade.cachoPassado / base) * 100 : 0,
       verde: base ? (row.qualidade.cachoVerde / base) * 100 : 0,
       avermelhado: base ? (row.qualidade.cachoAvermelhado / base) * 100 : 0,
-      estrela: safePct(row.qualidade.podaMaiorUmParaUm, plantBase),
-      talo: safePct(row.qualidade.bicoGaita, plantBase),
+      estrela: 0,
+      talo: 0,
       samples: base,
     };
   }
