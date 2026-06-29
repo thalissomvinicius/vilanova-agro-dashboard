@@ -403,15 +403,16 @@ function podaIndicatorDefinitions(totals) {
     { key: 'folhaMamando', label: 'Folha mamando', count: totals.folhaMamando, projected: totals.folhaMamandoProjetada, rate: totals.folhaMamandoPodaRate, danger: 2 },
     { key: 'palhaMalEmpilhada', label: 'Palha mal empilhada', count: totals.palhaMalEmpilhada, projected: totals.palhaMalEmpilhadaProjetada, rate: totals.palhaMalEmpilhadaRate, danger: 2 },
   ].map((row) => {
-    const rate = Number(row.rate || 0);
+    const rawRate = Number(row.rate || 0);
+    const displayRate = Number(rawRate.toFixed(1));
     const dangerLimit = row.danger;
     const warningLimit = row.danger * 0.8;
     return {
       ...row,
       count: Number(row.count || 0),
       projected: Number(row.projected || 0),
-      rate,
-      status: rate >= dangerLimit ? 'Crítico' : rate >= warningLimit ? 'Atenção' : 'Dentro da meta',
+      rate: rawRate,
+      status: displayRate >= dangerLimit ? 'Crítico' : displayRate >= warningLimit ? 'Atenção' : 'Dentro da meta',
     };
   });
 }
