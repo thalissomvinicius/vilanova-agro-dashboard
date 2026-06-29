@@ -2126,6 +2126,120 @@ button.field-bi-farm-row.is-active strong {
   text-transform: uppercase;
 }
 
+.field-bi-evolution-panel {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 7px;
+  padding: 10px 12px;
+}
+
+.field-bi-evolution-panel .field-line-chart-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+}
+
+.field-bi-evolution-panel .field-line-chart-head h3 {
+  max-width: 100%;
+  margin: 0 0 3px;
+  overflow: hidden;
+  color: var(--text-primary);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(1rem, 1.08vw, 1.16rem);
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.field-bi-evolution-panel .field-line-chart-head span {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.field-bi-evolution-panel .field-line-chart-actions {
+  align-items: start;
+  gap: 5px;
+}
+
+.field-bi-evolution-panel .field-evolution-switch {
+  padding: 2px;
+  border-radius: 8px;
+}
+
+.field-bi-evolution-panel .field-evolution-switch button {
+  min-height: 24px;
+  padding: 4px 7px;
+  border-radius: 6px;
+  font-size: 0.6rem;
+  line-height: 1;
+}
+
+.field-bi-evolution-panel .field-line-chart-target {
+  min-width: 52px;
+  padding: 5px 6px;
+  text-align: center;
+}
+
+.field-bi-evolution-panel .field-line-chart-target strong {
+  font-size: 0.84rem;
+}
+
+.field-bi-evolution-panel .field-line-chart-target span {
+  margin-top: 1px;
+  color: var(--orange-institutional);
+  font-size: 0.52rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.field-bi-evolution-panel .field-daily-legend {
+  justify-content: flex-start;
+  align-content: start;
+  gap: 4px 6px;
+  min-height: 0;
+  max-height: 42px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 0.6rem;
+  line-height: 1;
+}
+
+.field-bi-evolution-panel .field-daily-legend span {
+  max-width: 104px;
+  padding: 3px 6px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.84);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-bi-evolution-panel .field-daily-legend i {
+  width: 7px;
+  height: 7px;
+}
+
+.field-bi-evolution-panel .field-bi-week-scroll {
+  min-height: 0;
+  padding-top: 2px;
+}
+
+.field-bi-evolution-panel .field-bi-week-chart {
+  min-height: 192px;
+}
+
+.field-bi-evolution-panel .chart-axis-text,
+.field-bi-evolution-panel .field-target-label {
+  font-size: 9px;
+}
+
 .field-target-line {
   stroke: var(--orange-institutional);
   stroke-width: 2.2;

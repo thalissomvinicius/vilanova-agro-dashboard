@@ -627,15 +627,18 @@ function PodaTargetLineChart({
   rowKey = (row) => row.label,
   maxRows = 10,
   minWidth = 560,
+  compact = false,
   className = '',
 }) {
   const visibleRows = rows.slice(-maxRows);
   const normalizedSeries = (Array.isArray(series) ? series : [series]).filter(Boolean);
   const selectedSeries = normalizedSeries.length ? normalizedSeries : [BI_SERIES[1]];
   const isMultiSeries = selectedSeries.length > 1;
-  const chartHeight = 244;
-  const padding = { top: 30, right: 34, bottom: 42, left: 48 };
-  const columnWidth = 88;
+  const chartHeight = compact ? 216 : 244;
+  const padding = compact
+    ? { top: 24, right: 28, bottom: 34, left: 42 }
+    : { top: 30, right: 34, bottom: 42, left: 48 };
+  const columnWidth = compact ? 76 : 88;
   const width = Math.max(minWidth, padding.left + padding.right + Math.max(visibleRows.length - 1, 1) * columnWidth + 54);
   const graphHeight = chartHeight - padding.top - padding.bottom;
   const graphWidth = width - padding.left - padding.right;
@@ -688,7 +691,7 @@ function PodaTargetLineChart({
       </div>
       <div className="field-daily-legend">
         {selectedSeries.map((item) => (
-          <span key={item.key}><i style={{ background: item.color }} />{item.fullLabel}</span>
+          <span key={item.key} title={item.fullLabel}><i style={{ background: item.color }} />{compact ? item.label : item.fullLabel}</span>
         ))}
         <span><i className="field-target-dot" />{isMultiSeries ? 'Linhas de meta' : 'Linha da meta'}</span>
       </div>
@@ -785,13 +788,14 @@ function FieldBiEvolutionChart({
   const selectedSeries = Array.isArray(series) ? series : [series];
   const chartLabel = selectedSeries.length > 1 ? 'todos os indicadores' : selectedSeries[0]?.fullLabel;
   const isMonth = mode === 'month';
+  const periodLabel = isMonth ? 'mensal' : 'semanal';
   return (
     <PodaTargetLineChart
       rows={isMonth ? monthRows : weekRows}
       loading={loading}
       series={series}
-      title={`Evolução ${isMonth ? 'mensal' : 'semanal'} - ${chartLabel}`}
-      subtitle={isMonth ? 'Comparação por mês para enxergar tendência contra períodos anteriores.' : 'Linha do indicador contra a meta operacional.'}
+      title={`Evolução ${periodLabel}`}
+      subtitle={selectedSeries.length > 1 ? 'Todos os indicadores contra a meta operacional.' : `${chartLabel} contra a meta operacional.`}
       headerAction={(
         <div className="field-evolution-switch" role="group" aria-label="Granularidade da evolução">
           <button type="button" className={!isMonth ? 'active' : ''} onClick={() => onModeChange?.('week')}>Semanal</button>
@@ -803,7 +807,9 @@ function FieldBiEvolutionChart({
       labelForRow={(row) => (isMonth ? row.label : weekNumberLabel(row.label))}
       rowKey={(row) => row.sortKey || row.label}
       maxRows={isMonth ? 12 : 10}
-      minWidth={620}
+      minWidth={560}
+      compact
+      className="field-bi-evolution-panel"
     />
   );
 }
