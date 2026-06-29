@@ -10395,6 +10395,163 @@ body.field-map-active {
   font-size: 0.53rem;
 }
 
+.gps-home-summary .parcel-collection-card,
+.gps-detail-content .parcel-collection-card {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 9px;
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.gps-home-summary .parcel-collection-head,
+.gps-detail-content .parcel-collection-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gps-home-summary .parcel-collection-head strong,
+.gps-detail-content .parcel-collection-head strong {
+  color: var(--text-primary);
+  font-size: 0.68rem;
+  font-weight: 950;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.gps-home-summary .parcel-collection-head span,
+.gps-detail-content .parcel-collection-head span {
+  color: var(--text-muted);
+  font-size: 0.56rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.gps-home-summary .parcel-collection-list,
+.gps-detail-content .parcel-collection-list {
+  display: grid;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.gps-home-summary .parcel-collection-row,
+.gps-detail-content .parcel-collection-row {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  padding: 7px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-left: 3px solid var(--green-institutional);
+  border-radius: 8px;
+  background: var(--white);
+}
+
+.gps-home-summary .parcel-collection-row-top,
+.gps-detail-content .parcel-collection-row-top,
+.gps-home-summary .parcel-collection-row-meta,
+.gps-detail-content .parcel-collection-row-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+}
+
+.gps-home-summary .parcel-collection-row-top strong,
+.gps-detail-content .parcel-collection-row-top strong {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 0.66rem;
+  font-weight: 950;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gps-home-summary .parcel-collection-row-top em,
+.gps-detail-content .parcel-collection-row-top em {
+  flex-shrink: 0;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #B45309;
+  font-size: 0.5rem;
+  font-style: normal;
+  font-weight: 950;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.gps-home-summary .parcel-collection-row-top em.is-success,
+.gps-detail-content .parcel-collection-row-top em.is-success {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803D;
+}
+
+.gps-home-summary .parcel-collection-row-top em.is-danger,
+.gps-detail-content .parcel-collection-row-top em.is-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #DC2626;
+}
+
+.gps-home-summary .parcel-collection-row-meta span,
+.gps-detail-content .parcel-collection-row-meta span {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.54rem;
+  font-weight: 850;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gps-home-summary .parcel-collection-responsibles,
+.gps-detail-content .parcel-collection-responsibles {
+  display: grid;
+  gap: 3px;
+}
+
+.gps-home-summary .parcel-collection-responsibles span,
+.gps-detail-content .parcel-collection-responsibles span,
+.gps-home-summary .parcel-collection-row small,
+.gps-detail-content .parcel-collection-row small {
+  color: var(--text-secondary);
+  font-size: 0.56rem;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.gps-home-summary .parcel-collection-responsibles b,
+.gps-detail-content .parcel-collection-responsibles b {
+  color: var(--text-primary);
+  font-weight: 950;
+}
+
+.gps-home-summary .parcel-collection-row small,
+.gps-detail-content .parcel-collection-row small {
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: rgba(13, 91, 52, 0.06);
+}
+
+.gps-home-summary .parcel-collection-more,
+.gps-detail-content .parcel-collection-more {
+  padding: 5px 7px;
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.05);
+  color: var(--text-secondary);
+  text-align: center;
+  font-size: 0.55rem;
+  font-weight: 900;
+}
+
 .gps-map-overlay h4 {
   margin-bottom: 10px;
   color: inherit;

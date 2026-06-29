@@ -912,6 +912,141 @@ function compactOperationBubbleCard({ title, subtitle, bubbles, emptyText, class
   `;
 }
 
+function firstReadableText(...values) {
+  for (const value of values) {
+    const text = String(value ?? '').trim();
+    if (text && text !== '--' && text.toLowerCase() !== 'null' && text.toLowerCase() !== 'undefined') return text;
+  }
+  return '';
+}
+
+function recordFiscalEquipeLabel(record) {
+  const raw = record?.raw || {};
+  return firstReadableText(
+    record?.fiscal,
+    raw.fiscal_resp_equipe,
+    raw.fiscal_responsavel_equipe,
+    raw.fiscalResponsavelEquipe,
+    raw.FiscalRespEquipe,
+    raw['Fiscal Resp Equipe'],
+    raw['Fiscal Responsavel Equipe'],
+    raw.FiscalResponsavelEquipe,
+    raw.fiscal_resp,
+    raw.FiscalResp,
+    raw['Fiscal Resp'],
+    raw.Fiscal
+  );
+}
+
+function recordEvaluatorLabel(record) {
+  const raw = record?.raw || {};
+  const evaluator = firstReadableText(
+    record?.evaluator,
+    raw.nome_avaliador,
+    raw.avaliador,
+    raw.Avaliador,
+    raw.NomeAvaliador
+  );
+  const matricula = firstReadableText(
+    record?.evaluatorMatricula,
+    raw.matricula_avaliador,
+    raw.matricula_digitador,
+    raw.MatriculaAvaliadores,
+    raw.MatriculaDigitador
+  );
+
+  if (evaluator && matricula && !evaluator.includes(matricula)) return `${evaluator} · Mat. ${matricula}`;
+  return evaluator || (matricula ? `Mat. ${matricula}` : 'Sem avaliador');
+}
+
+function recordCollectionDateLabel(record) {
+  const date = firstReadableText(record?.date);
+  const time = firstReadableText(record?.time);
+  if (date && time && time !== '--') return `${date} ${time}`;
+  return date || firstReadableText(record?.sentAt, record?.receivedAt, record?.createdAt) || 'Sem data';
+}
+
+function recordOperationDataSummary(record) {
+  const totals = record?.totals || {};
+  if (record?.type === 'poda') {
+    return [
+      `${formatInteger(totals.linhas || 0)} linhas`,
+      `${formatInteger(totals.plantasObservadas || totals.plantasLinha || 0)} plantas`,
+      `Sem podar ${formatInteger(totals.plantaSemPodar || 0)}`,
+      `Cacho exp. ${formatInteger(totals.cachoExposto || 0)}`,
+    ].join(' · ');
+  }
+
+  if (record?.type === 'carreamento') {
+    return [
+      `${formatInteger(totals.linhas || 0)} linhas`,
+      `${formatInteger(totals.plantasObservadas || totals.plantasLinha || 0)} plantas`,
+      `Não carr. ${formatInteger(totals.cachoNaoCarreado || 0)}`,
+      `Mal pos. ${formatInteger(totals.cachoMalPosicionado || 0)}`,
+    ].join(' · ');
+  }
+
+  return [
+    `${formatInteger(totals.linhas || 0)} linhas`,
+    `${formatInteger(totals.cachosObservados || 0)} cachos`,
+    `Perda ${formatInteger(totals.cachoEsquecido || 0)}`,
+    `Maduro ${formatInteger(totals.cachoMaduro || 0)}`,
+  ].join(' · ');
+}
+
+function recordStatusClass(status) {
+  const text = String(status || '').toLowerCase();
+  if (text.includes('aprov') || text.includes('sincron')) return 'is-success';
+  if (text.includes('reprov') || text.includes('falha') || text.includes('erro')) return 'is-danger';
+  return 'is-warning';
+}
+
+function parcelCollectionHistoryHtml({ parcelRecords, summaryOperation = 'all' }) {
+  const summaryMode = activeSummaryOperation(summaryOperation);
+  const operationRecords = recordsByType(parcelRecords, summaryMode.id === 'all' ? 'all' : summaryMode.id);
+  const sortedRecords = [...operationRecords].sort((a, b) => (
+    dateOrderValue(recordCollectionDateLabel(b)) - dateOrderValue(recordCollectionDateLabel(a))
+  ));
+  const visibleRecords = sortedRecords.slice(0, 8);
+  const hiddenCount = Math.max(sortedRecords.length - visibleRecords.length, 0);
+  const title = summaryMode.id === 'all' ? 'Coletas da parcela' : `Coletas de ${operationLabel(summaryMode)}`;
+
+  return `
+    <section class="parcel-collection-card">
+      <div class="parcel-collection-head">
+        <strong>${escapeHtml(title)}</strong>
+        <span>${formatInteger(sortedRecords.length)} registro(s)</span>
+      </div>
+      ${visibleRecords.length ? `
+        <div class="parcel-collection-list">
+          ${visibleRecords.map((record) => {
+            const fiscal = recordFiscalEquipeLabel(record);
+            const evaluator = recordEvaluatorLabel(record);
+            return `
+              <article class="parcel-collection-row">
+                <div class="parcel-collection-row-top">
+                  <strong>${escapeHtml(recordCollectionDateLabel(record))}</strong>
+                  <em class="${recordStatusClass(record.status)}">${escapeHtml(record.status || 'Pendente')}</em>
+                </div>
+                <div class="parcel-collection-row-meta">
+                  <span>${escapeHtml(record.form || operationLabel(activeOperationMode(record.type || 'perdas')))}</span>
+                  <span>${escapeHtml(record.sourceLabel || record.source || 'Fonte N/D')}</span>
+                </div>
+                <div class="parcel-collection-responsibles">
+                  <span><b>Fiscal equipe:</b> ${escapeHtml(fiscal || 'Não informado neste registro')}</span>
+                  <span><b>Avaliador:</b> ${escapeHtml(evaluator)}</span>
+                </div>
+                <small>${escapeHtml(recordOperationDataSummary(record))}</small>
+              </article>
+            `;
+          }).join('')}
+        </div>
+        ${hiddenCount ? `<div class="parcel-collection-more">+ ${formatInteger(hiddenCount)} coleta(s) neste filtro</div>` : ''}
+      ` : `<div class="parcel-popup-empty">Sem coleta desta operação para a parcela no filtro atual.</div>`}
+    </section>
+  `;
+}
+
 function compactParcelSummaryHtml({
   totals,
   corteTotals,
@@ -1173,6 +1308,8 @@ function compactParcelSummaryHtml({
     <div class="parcel-operation-bubble-stack">
       ${visibleOperationCards}
     </div>
+
+    ${parcelCollectionHistoryHtml({ parcelRecords, summaryOperation: summaryMode.id })}
 
     <div class="parcel-compact-footer">
       <span>Primeira coleta: <b>${escapeHtml(collectionDates.firstDate)}</b></span>
