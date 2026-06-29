@@ -1,4 +1,5 @@
-export const PODA_PRESENTATION_DEMO_ENABLED = true;
+export const PODA_PRESENTATION_DEMO_ENABLED = import.meta.env.DEV
+  && String(import.meta.env.VITE_ENABLE_PODA_DEMO || '').toLowerCase() === 'true';
 
 export const PODA_DEMO_SPECS = [
   // === SEMANA 1 (dia 1-7) ===

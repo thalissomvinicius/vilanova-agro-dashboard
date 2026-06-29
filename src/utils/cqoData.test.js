@@ -8,6 +8,7 @@ import {
   parseRecordDateValue,
 } from './cqoData';
 import { buildQualidadeOperacional } from './qualidadeOperacionalData';
+import { buildPodaDemoRecords } from './podaDemoData';
 
 function record(overrides = {}) {
   return {
@@ -222,6 +223,12 @@ describe('aggregateRecords', () => {
     expect(totals.gps).toBe(1);
     expect(totals.gpsRate).toBe(50);
     expect(totals.lostCachosQty).toBe(3);
+  });
+});
+
+describe('buildPodaDemoRecords', () => {
+  it('nao injeta dados demonstrativos por padrao', () => {
+    expect(buildPodaDemoRecords()).toEqual([]);
   });
 });
 

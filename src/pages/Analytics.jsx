@@ -286,7 +286,8 @@ function formatMonthYear(dateFrom, dateTo) {
   return `${month.charAt(0).toUpperCase()}${month.slice(1)}/${from.getFullYear()}`;
 }
 
-const PODA_PRESENTATION_DEMO_ENABLED = true;
+const PODA_PRESENTATION_DEMO_ENABLED = import.meta.env.DEV
+  && String(import.meta.env.VITE_ENABLE_PODA_DEMO || '').toLowerCase() === 'true';
 
 const PODA_DEMO_SPECS = [
   // === SEMANA 1 (dia 1-7) ===
