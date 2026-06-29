@@ -954,7 +954,7 @@ function PodaTrendPanel({ rows, issueLabel = 'Falhas', title = 'Evolução no pe
         <span><i style={{ background: 'var(--green-institutional)' }} />% da amostra</span>
         <span><i style={{ background: 'var(--orange-institutional)' }} />Ocorrências</span>
       </div>
-      <svg className="poda-bi-trend-svg" viewBox={`0 0 ${width} ${chartHeight}`} width="100%" height="100%">
+      <svg className="poda-bi-trend-svg" viewBox={`0 0 ${width} ${chartHeight}`} width="100%">
         {[0, 0.5, 1].map((ratio) => {
           const y = padding.top + graphHeight * (1 - ratio);
           return (

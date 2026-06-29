@@ -13058,13 +13058,38 @@ body.field-map-active {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
-  height: 100%;
 }
 
 .poda-modern-layout .poda-bi-trend-panel {
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-md);
-  padding: 20px;
+  padding: 24px;
   background: white;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: max-content;
+}
+
+.poda-modern-layout .poda-bi-trend-svg {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 980 / 185;
+}
+
+.poda-modern-layout .poda-map-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 16px;
+  min-height: 500px;
+}
+
+.poda-modern-layout .poda-map-frame {
+  flex: 1;
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  min-height: 400px;
 }
 
