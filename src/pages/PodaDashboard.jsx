@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars -- a tela de poda mantém variantes de apresentação antigas para alternância rápida durante a reunião. */
 import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
