@@ -1004,7 +1004,7 @@ function PodaTrendPanel({ rows, issueLabel = 'Falhas', title = 'Evolução no pe
             {visibleRows.map((row, index) => {
               const colCenter = padding.left + index * colWidth + colWidth / 2;
               const bx = colCenter - barWidth / 2;
-              const barH = Math.max((Number(row.falhas || 0) / maxFailure) * graphHeight, Number(row.falhas || 0) > 0 ? 3 : 0);
+              const barH = Math.max((Number(row.falhas || 0) / maxFailure) * (graphHeight * 0.65), Number(row.falhas || 0) > 0 ? 3 : 0);
               const by = padding.top + graphHeight - barH;
               return (
                 <g key={row.label}>
@@ -1096,6 +1096,7 @@ function PodaFarmsComparisonChart({ records, selectedKey, selectedFarm, onSelect
         {data.map((row) => {
           const statusClass = row.status === 'Crítico' ? 'danger' : row.status === 'Atenção' ? 'warning' : 'ok';
           const isSelected = selectedFarm === row.farm;
+          const statusColor = statusClass === 'danger' ? 'var(--danger-color)' : statusClass === 'warning' ? 'var(--warning-color)' : 'var(--green-institutional)';
           return (
             <div 
               key={row.farm}
@@ -1103,8 +1104,8 @@ function PodaFarmsComparisonChart({ records, selectedKey, selectedFarm, onSelect
               className={`poda-breakdown-row status-${statusClass} ${isSelected ? 'active' : ''}`}
               style={{ 
                 cursor: 'pointer',
-                border: isSelected ? '2px solid var(--orange-institutional)' : '1px solid var(--border-color)',
-                boxShadow: isSelected ? 'var(--shadow-md)' : 'none',
+                border: isSelected ? `2px solid ${statusColor}` : '1px solid var(--border-color)',
+                boxShadow: isSelected ? `0 0 0 1px ${statusColor}, var(--shadow-md)` : 'none',
                 transform: isSelected ? 'translateY(-1px)' : 'none',
                 transition: 'all 0.15s ease',
                 display: 'flex',
