@@ -411,7 +411,7 @@ function podaIndicatorDefinitions(totals) {
       count: Number(row.count || 0),
       projected: Number(row.projected || 0),
       rate,
-      status: rate > dangerLimit ? 'Crítico' : rate >= warningLimit ? 'Atenção' : 'Dentro da meta',
+      status: rate >= dangerLimit ? 'Crítico' : rate >= warningLimit ? 'Atenção' : 'Dentro da meta',
     };
   });
 }

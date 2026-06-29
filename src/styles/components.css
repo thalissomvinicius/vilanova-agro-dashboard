@@ -13212,7 +13212,7 @@ body.field-map-active {
   background: white;
   border-radius: var(--border-radius-lg);
   border: 1px solid var(--border-color);
-  border-top: 3px solid var(--green-institutional);
+  border-top: 3px solid var(--border-color);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -13229,17 +13229,39 @@ body.field-map-active {
 }
 
 .poda-top-kpi-card.danger {
-  border-top-color: var(--danger-color);
-  background: #FFF5F5;
+  border-color: #FCA5A5;
+  border-top-color: #EF4444;
+  background: #FEF2F2;
+}
+.poda-top-kpi-card.danger h4 {
+  color: #991B1B !important;
+}
+.poda-top-kpi-card.danger small {
+  color: #B91C1C !important;
 }
 
 .poda-top-kpi-card.warning {
-  border-top-color: #D97706;
-  background: #FFFBF0;
+  border-color: #FDE68A;
+  border-top-color: #F59E0B;
+  background: #FFFBEB;
+}
+.poda-top-kpi-card.warning h4 {
+  color: #92400E !important;
+}
+.poda-top-kpi-card.warning small {
+  color: #B45309 !important;
 }
 
 .poda-top-kpi-card.ok {
-  border-top-color: var(--green-institutional);
+  border-color: #BBF7D0;
+  border-top-color: #10B981;
+  background: #F0FDF4;
+}
+.poda-top-kpi-card.ok h4 {
+  color: #166534 !important;
+}
+.poda-top-kpi-card.ok small {
+  color: #15803D !important;
 }
 
 .poda-top-kpi-card.active {
