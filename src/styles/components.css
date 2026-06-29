@@ -13140,10 +13140,11 @@ body.field-map-active {
 
 .poda-top-kpi-card {
   flex: 1;
-  min-width: 180px;
+  min-width: 160px;
   background: white;
   border-radius: var(--border-radius-lg);
   border: 1px solid var(--border-color);
+  border-top: 3px solid var(--green-institutional);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -13159,9 +13160,23 @@ body.field-map-active {
   box-shadow: var(--shadow-md);
 }
 
+.poda-top-kpi-card.danger {
+  border-top-color: var(--danger-color);
+  background: #FFF5F5;
+}
+
+.poda-top-kpi-card.warning {
+  border-top-color: #D97706;
+  background: #FFFBF0;
+}
+
+.poda-top-kpi-card.ok {
+  border-top-color: var(--green-institutional);
+}
+
 .poda-top-kpi-card.active {
-  border-color: var(--orange-institutional);
-  box-shadow: 0 0 0 1px var(--orange-institutional), var(--shadow-sm);
+  box-shadow: 0 0 0 2px var(--orange-institutional), var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .poda-top-kpi-header {
@@ -13172,33 +13187,33 @@ body.field-map-active {
 
 .poda-top-kpi-header h4 {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 800;
   color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.poda-kpi-badge {
+  font-size: 0.9rem;
 }
 
 .poda-top-kpi-body {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 8px;
 }
 
-.poda-top-kpi-body strong {
-  font-size: 2rem;
+.poda-kpi-rate {
+  font-size: 2.2rem;
   font-weight: 900;
-  color: var(--text-primary);
   line-height: 1;
+  display: block;
 }
 
-.poda-top-kpi-meta span {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  font-weight: 600;
-}
-
-.poda-top-kpi-card.danger .poda-top-kpi-body strong {
-  color: var(--danger-color);
-}
+.poda-kpi-rate.ok { color: var(--green-institutional); }
+.poda-kpi-rate.warning { color: #D97706; }
+.poda-kpi-rate.danger { color: var(--danger-color); }
 
 .poda-top-kpi-footer {
   display: flex;
@@ -13208,20 +13223,16 @@ body.field-map-active {
 }
 
 .poda-kpi-track {
-  height: 4px;
-  background: #EEF2EF;
-  border-radius: 2px;
+  height: 5px;
+  background: #E5E7EB;
+  border-radius: 3px;
   overflow: hidden;
 }
 
 .poda-kpi-track i {
   display: block;
   height: 100%;
-  background: var(--orange-institutional);
-}
-
-.poda-top-kpi-card.danger .poda-kpi-track i {
-  background: var(--danger-color);
+  transition: width 0.4s ease;
 }
 
 .poda-top-kpi-footer small {
