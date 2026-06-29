@@ -1031,16 +1031,33 @@ function PodaTrendPanel({ rows, issueLabel = 'Falhas', title = 'Evolução no pe
             )}
 
             {/* Rate dots + labels */}
-            {ratePoints.map((point) => (
-              <g key={`dot-${point.row.label}`}>
-                <circle cx={point.x} cy={point.y} r="5" fill="var(--green-institutional)" stroke="white" strokeWidth="2.5">
-                  <title>{`${point.row.label}: ${formatPercentValue(point.row.rate)}`}</title>
-                </circle>
-                <text x={point.x} y={Math.max(padding.top + 12, point.y - 9)} textAnchor="middle" fontSize="10" fontWeight="800" fill="var(--green-institutional)">
-                  {formatPercentValue(point.row.rate)}
-                </text>
-              </g>
-            ))}
+            {ratePoints.map((point, idx) => {
+              const labelText = formatPercentValue(point.row.rate);
+              const labelAbove = idx % 2 === 0;
+              const labelY = labelAbove
+                ? Math.max(padding.top + 6, point.y - 14)
+                : Math.min(padding.top + graphHeight - 4, point.y + 18);
+              const textWidth = labelText.length * 6.5 + 8;
+              return (
+                <g key={`dot-${point.row.label}`}>
+                  <circle cx={point.x} cy={point.y} r="5" fill="var(--green-institutional)" stroke="white" strokeWidth="2.5">
+                    <title>{`${point.row.label}: ${labelText}`}</title>
+                  </circle>
+                  <rect
+                    x={point.x - textWidth / 2}
+                    y={labelY - 9}
+                    width={textWidth}
+                    height={14}
+                    rx="3"
+                    fill="white"
+                    fillOpacity="0.9"
+                  />
+                  <text x={point.x} y={labelY} textAnchor="middle" fontSize="10" fontWeight="800" fill="var(--green-institutional)">
+                    {labelText}
+                  </text>
+                </g>
+              );
+            })}
           </svg>
         )}
       </div>
