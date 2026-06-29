@@ -773,6 +773,7 @@ function buildParcelSummary({ feature, records, heatSummary, metric, operation }
 
   return {
     key: parcelHeatKey(props.farmId, shapeParcel),
+    feature,
     props,
     shapeParcel,
     records: parcelRecords,
@@ -790,6 +791,31 @@ function buildParcelSummary({ feature, records, heatSummary, metric, operation }
     firstDate,
     lastDate,
   };
+}
+
+function featureBounds(feature) {
+  if (!feature) return null;
+  try {
+    const bounds = L.geoJSON(feature).getBounds();
+    return bounds.isValid() ? bounds : null;
+  } catch {
+    return null;
+  }
+}
+
+function fitMapToBounds(map, bounds, {
+  pad = 0.16,
+  maxZoom = 16,
+  minZoom = 0,
+  animate = false,
+} = {}) {
+  if (!map || !bounds?.isValid?.()) return false;
+  map.invalidateSize({ pan: false, debounceMoveend: false });
+  map.fitBounds(bounds.pad(pad), { maxZoom, animate });
+  if (minZoom && map.getZoom() < minZoom) {
+    map.setZoom(minZoom, { animate });
+  }
+  return true;
 }
 
 function collectionDateSummary(records) {
@@ -1909,17 +1935,23 @@ export default function LeafletMap({
         .filter(Boolean)
         .map((point) => L.latLng(point.lat, point.lng));
 
-      if (mapLayer !== 'route' && evaluatedLayerBounds.length > 0) {
+      const selectedBounds = selectedParcelSummary ? featureBounds(selectedParcelSummary.feature) : null;
+      if (mapLayer !== 'route' && selectedBounds) {
+        fitMapToBounds(map, selectedBounds, { pad: 0.38, maxZoom: 17, minZoom: 15, animate: false });
+      } else if (mapLayer !== 'route' && farmFilter !== 'all' && farmLayerBounds.length > 0) {
+        const bounds = farmLayerBounds.reduce((acc, item) => acc.extend(item), L.latLngBounds([]));
+        fitMapToBounds(map, bounds, { pad: 0.16, maxZoom: 16, minZoom: 13, animate: false });
+      } else if (mapLayer !== 'route' && evaluatedLayerBounds.length > 0) {
         const bounds = evaluatedLayerBounds.reduce((acc, item) => acc.extend(item), L.latLngBounds([]));
-        map.fitBounds(bounds.pad(0.24), { maxZoom: 16, animate: false });
+        fitMapToBounds(map, bounds, { pad: 0.18, maxZoom: 16, minZoom: presentationMode ? 12 : 11, animate: false });
       } else if (mapLayer === 'route' && gpsLatLngs.length === 1) {
         map.setView(gpsLatLngs[0], 17, { animate: false });
       } else if (mapLayer === 'route' && gpsLatLngs.length > 1) {
         const bounds = L.latLngBounds(gpsLatLngs);
-        map.fitBounds(bounds.pad(0.18), { maxZoom: 17, animate: false });
+        fitMapToBounds(map, bounds, { pad: 0.18, maxZoom: 17, minZoom: 13, animate: false });
       } else if (farmLayerBounds.length > 0) {
         const bounds = farmLayerBounds.reduce((acc, item) => acc.extend(item), L.latLngBounds([]));
-        map.fitBounds(bounds.pad(0.12), { maxZoom: mapLayer === 'route' ? 14 : 15, animate: false });
+        fitMapToBounds(map, bounds, { pad: 0.12, maxZoom: mapLayer === 'route' ? 14 : 15, minZoom: farmFilter === 'all' ? 11 : 13, animate: false });
       } else if (farmFilter !== 'all') {
         const selectedFarm = FARMS.find((farm) => farm.id === farmFilter);
         if (selectedFarm) {
@@ -1955,7 +1987,7 @@ export default function LeafletMap({
       window.clearTimeout(viewportTimer);
       window.clearTimeout(finishTimer);
     };
-  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, selectedRiskMetric, selectedOperation, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, parcelGeoStatus, filteredParcelFeatures, parcelSummaryByKey]);
+  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, selectedRiskMetric, selectedOperation, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, parcelGeoStatus, filteredParcelFeatures, parcelSummaryByKey, selectedParcelSummary, presentationMode]);
 
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -1967,6 +1999,20 @@ export default function LeafletMap({
 
     return () => window.clearTimeout(resizeTimer);
   }, [isParcelDetailOpen, presentationMode]);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !selectedParcelSummary || mapLayer === 'route') return undefined;
+
+    const timer = window.setTimeout(() => {
+      const bounds = featureBounds(selectedParcelSummary.feature);
+      if (bounds) {
+        fitMapToBounds(map, bounds, { pad: 0.38, maxZoom: 17, minZoom: 15, animate: true });
+      }
+    }, 80);
+
+    return () => window.clearTimeout(timer);
+  }, [selectedParcelSummary, mapLayer]);
 
   const mapIsLoading = recordsLoading || parcelGeoStatus === 'loading' || mapRenderState.loading;
   const mapProgress = recordsLoading
@@ -1997,7 +2043,13 @@ export default function LeafletMap({
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    const visibleFeatures = filteredParcelFeatures.filter(Boolean);
+    const visibleFeatures = filteredParcelFeatures.filter((feature) => {
+      if (!feature) return false;
+      if (selectedParcelSummary?.props?.farmId) {
+        return feature.properties?.farmId === selectedParcelSummary.props.farmId;
+      }
+      return true;
+    });
     if (visibleFeatures.length) {
       const overviewBounds = L.geoJSON({
         type: 'FeatureCollection',
@@ -2005,8 +2057,12 @@ export default function LeafletMap({
       }).getBounds();
 
       if (overviewBounds.isValid()) {
-        map.invalidateSize({ pan: false, debounceMoveend: false });
-        map.fitBounds(overviewBounds.pad(0.14), { maxZoom: 15, animate });
+        fitMapToBounds(map, overviewBounds, {
+          pad: selectedParcelSummary?.props?.farmId ? 0.16 : 0.14,
+          maxZoom: 16,
+          minZoom: selectedParcelSummary?.props?.farmId || farmFilter !== 'all' ? 13 : 11,
+          animate,
+        });
         return;
       }
     }

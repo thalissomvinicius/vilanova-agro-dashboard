@@ -356,6 +356,7 @@ function FieldTotalMetricCard({ label, value, detail, tone = 'neutral', loading 
 }
 
 const TOTAL_SECTION_OPTIONS = [
+  { id: 'fazendas', label: 'Fazendas' },
   { id: 'qualidade', label: 'Qualidade' },
   { id: 'falhas', label: 'Falhas' },
   { id: 'amostragem', label: 'Amostragem' },
@@ -1168,6 +1169,10 @@ function FieldBiBoard({
     setSelectedFiscalLabel('');
     setSelectedFarmLabel('');
   };
+  const openFarmStats = () => {
+    setBoardMode('total');
+    setTotalSection('fazendas');
+  };
 
   return (
     <div className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
@@ -1186,6 +1191,10 @@ function FieldBiBoard({
             <button type="button" className="field-bi-map-btn" onClick={onOpenGeoQuality}>
               <MapPinned size={17} />
               Qualidade por parcela
+            </button>
+            <button type="button" className="field-bi-map-btn" onClick={openFarmStats}>
+              <SlidersHorizontal size={17} />
+              Estatísticas por fazenda
             </button>
             <button type="button" className="field-bi-present-btn" onClick={onPresent}>
               <MonitorPlay size={18} />
