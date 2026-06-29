@@ -377,8 +377,8 @@ function qualityValuesFromRow(row) {
     passado: Number(row.cachoPassadoPct || 0),
     verde: Number(row.cachoVerdePct || 0),
     avermelhado: Number(row.cachoAvermelhadoPct || 0),
-    estrela: Number(row.cachoEstrelaPct || 0),
-    talo: Number(row.taloCompridoPct || 0),
+    estrela: Number(row.taloCompridoPct || 0),
+    talo: Number(row.cachoEstrelaPct || 0),
     samples: row.recordsCount || 0,
   };
 
@@ -683,7 +683,7 @@ function FieldBiWeekChart({ rows, loading = false, series = BI_SERIES[1] }) {
   );
 }
 
-function FiscalQualityCards({ rows, loading = false }) {
+function FiscalQualityCards({ rows, loading = false, selectedLabel = '', onSelect }) {
   const visibleRows = rows
     .map((row) => {
       const risk = riskFromValues({
@@ -708,22 +708,31 @@ function FiscalQualityCards({ rows, loading = false }) {
         <>
           <div className="field-bi-evaluator-head">
             <h3>Fiscal responsável</h3>
-            <span>ranking por risco de qualidade</span>
+            <span>{selectedLabel ? 'fiscal em análise' : 'clique para analisar'}</span>
           </div>
-          {visibleRows.map((row) => (
-            <div className={`field-bi-evaluator-card field-bi-evaluator-${row.tone}`} key={row.label}>
-              <strong>
-                <span>{row.label}</span>
-                <em>{formatPercent(row.risk)} risco</em>
-              </strong>
-              <div>
-                <span><b>{formatPercent(row.cachoPassadoPct)}</b>Cacho exposto %</span>
-                <span><b>{formatPercent(row.cachoVerdePct)}</b>Poda meia coroa %</span>
-                <span><b>{formatPercent(row.cachoMaduroPct)}</b>Planta sem podar %</span>
-              </div>
-              <small>{formatNumber(row.recordsCount)} coleta(s) · {row.tone === 'danger' ? 'prioridade alta' : row.tone === 'warning' ? 'acompanhar' : 'controlado'}</small>
-            </div>
-          ))}
+          {visibleRows.map((row) => {
+            const active = selectedLabel === row.label;
+            return (
+              <button
+                type="button"
+                className={`field-bi-evaluator-card field-bi-evaluator-${row.tone} ${active ? 'is-active' : ''}`.trim()}
+                key={row.label}
+                onClick={() => onSelect?.(row)}
+                aria-pressed={active}
+              >
+                <strong>
+                  <span>{row.label}</span>
+                  <em>{formatPercent(row.risk)} risco</em>
+                </strong>
+                <div>
+                  <span><b>{formatPercent(row.cachoPassadoPct)}</b>Cacho exposto %</span>
+                  <span><b>{formatPercent(row.cachoVerdePct)}</b>Poda meia coroa %</span>
+                  <span><b>{formatPercent(row.cachoMaduroPct)}</b>Planta sem podar %</span>
+                </div>
+                <small>{formatNumber(row.recordsCount)} coleta(s) · {active ? 'em análise' : row.tone === 'danger' ? 'prioridade alta' : row.tone === 'warning' ? 'acompanhar' : 'controlado'}</small>
+              </button>
+            );
+          })}
           {!visibleRows.length && <div className="empty-panel smart-empty-panel"><strong>Sem fiscais</strong><span>Nenhuma coleta do período trouxe fiscal responsável válido.</span></div>}
         </>
       )}
@@ -896,9 +905,27 @@ function FieldBiBoard({
 }) {
   const isTotalMode = !presentationMode && boardMode === 'total';
   const [selectedLineKey, setSelectedLineKey] = useState('all');
+  const [selectedFiscalLabel, setSelectedFiscalLabel] = useState('');
+  const selectedFiscalRow = useMemo(
+    () => model.evaluatorRows.find((row) => row.label === selectedFiscalLabel) || null,
+    [model.evaluatorRows, selectedFiscalLabel]
+  );
+  const focusedModel = useMemo(() => {
+    if (!selectedFiscalRow?.records?.length) return model;
+    return buildPodaOperacional(selectedFiscalRow.records);
+  }, [model, selectedFiscalRow]);
+  const focusedDailyRows = useMemo(() => {
+    if (!selectedFiscalRow?.records?.length) return dailyBunchRows;
+    return buildDailyBunchRows(selectedFiscalRow.records);
+  }, [dailyBunchRows, selectedFiscalRow]);
+  const focusedQuality = focusedModel.quality || quality;
   const selectedSeries = selectedLineKey === 'all'
     ? BI_SERIES
-    : [BI_SERIES.find((series) => series.key === selectedLineKey) || primaryPodaSeries(quality)];
+    : [BI_SERIES.find((series) => series.key === selectedLineKey) || primaryPodaSeries(focusedQuality)];
+
+  const handleSelectFiscal = (row) => {
+    setSelectedFiscalLabel((current) => (current === row.label ? '' : row.label));
+  };
 
   return (
     <div className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
@@ -972,12 +999,12 @@ function FieldBiBoard({
       ) : !isTotalMode ? (
         <>
           <div className="field-bi-kpi-grid">
-            <FieldBiKpiCard loading={loading} label="Planta sem podar %" value={quality.cachoMaduroPct} meta={1} active={selectedLineKey === 'maduro'} onClick={() => setSelectedLineKey('maduro')} />
-            <FieldBiKpiCard loading={loading} label="Cacho exposto %" value={quality.cachoPassadoPct} meta={2} active={selectedLineKey === 'passado'} onClick={() => setSelectedLineKey('passado')} />
-            <FieldBiKpiCard loading={loading} label="Poda meia coroa %" value={quality.cachoVerdePct} meta={2} active={selectedLineKey === 'verde'} onClick={() => setSelectedLineKey('verde')} />
-            <FieldBiKpiCard loading={loading} label="Cacho podre %" value={quality.cachoAvermelhadoPct} meta={1} active={selectedLineKey === 'avermelhado'} onClick={() => setSelectedLineKey('avermelhado')} />
-            <FieldBiKpiCard loading={loading} label="Poda maior 1:1 %" value={quality.taloCompridoPct} meta={2} active={selectedLineKey === 'estrela'} onClick={() => setSelectedLineKey('estrela')} />
-            <FieldBiKpiCard loading={loading} label="Bico de gaita %" value={quality.cachoEstrelaPct} meta={2} active={selectedLineKey === 'talo'} onClick={() => setSelectedLineKey('talo')} />
+            <FieldBiKpiCard loading={loading} label="Planta sem podar %" value={focusedQuality.cachoMaduroPct} meta={1} active={selectedLineKey === 'maduro'} onClick={() => setSelectedLineKey('maduro')} />
+            <FieldBiKpiCard loading={loading} label="Cacho exposto %" value={focusedQuality.cachoPassadoPct} meta={2} active={selectedLineKey === 'passado'} onClick={() => setSelectedLineKey('passado')} />
+            <FieldBiKpiCard loading={loading} label="Poda meia coroa %" value={focusedQuality.cachoVerdePct} meta={2} active={selectedLineKey === 'verde'} onClick={() => setSelectedLineKey('verde')} />
+            <FieldBiKpiCard loading={loading} label="Cacho podre %" value={focusedQuality.cachoAvermelhadoPct} meta={1} active={selectedLineKey === 'avermelhado'} onClick={() => setSelectedLineKey('avermelhado')} />
+            <FieldBiKpiCard loading={loading} label="Poda maior 1:1 %" value={focusedQuality.taloCompridoPct} meta={2} active={selectedLineKey === 'estrela'} onClick={() => setSelectedLineKey('estrela')} />
+            <FieldBiKpiCard loading={loading} label="Bico de gaita %" value={focusedQuality.cachoEstrelaPct} meta={2} active={selectedLineKey === 'talo'} onClick={() => setSelectedLineKey('talo')} />
           </div>
 
           <PodaLineMetricSelector
@@ -986,13 +1013,27 @@ function FieldBiBoard({
             onSelect={setSelectedLineKey}
           />
 
+          {selectedFiscalRow ? (
+            <div className="field-bi-focus-chip">
+              <span>Fiscal em análise</span>
+              <strong>{selectedFiscalRow.label}</strong>
+              <em>{formatNumber(selectedFiscalRow.recordsCount)} coleta(s)</em>
+              <button type="button" onClick={() => setSelectedFiscalLabel('')}>Ver todos</button>
+            </div>
+          ) : null}
+
           <div className="field-bi-main-grid">
-            <FieldBiFarmChart rows={model.farmRows} loading={loading} />
-            <FieldBiWeekChart rows={model.weekRows} loading={loading} series={selectedSeries} />
-            <FiscalQualityCards rows={model.evaluatorRows} loading={loading} />
+            <FieldBiFarmChart rows={focusedModel.farmRows} loading={loading} />
+            <FieldBiWeekChart rows={focusedModel.weekRows} loading={loading} series={selectedSeries} />
+            <FiscalQualityCards
+              rows={model.evaluatorRows}
+              loading={loading}
+              selectedLabel={selectedFiscalLabel}
+              onSelect={handleSelectFiscal}
+            />
           </div>
 
-          <DailyBunchBarChart rows={dailyBunchRows} loading={loading} series={selectedSeries} />
+          <DailyBunchBarChart rows={focusedDailyRows} loading={loading} series={selectedSeries} />
         </>
       ) : (
         <FieldTotalDataPanel model={model} selectedSection={totalSection} loading={loading} />

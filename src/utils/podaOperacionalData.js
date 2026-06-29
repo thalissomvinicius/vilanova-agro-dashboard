@@ -51,13 +51,14 @@ function formatPodaQualityRow(bucket) {
   const agg = aggregateRecords(bucket.records);
   return {
     label: bucket.label,
+    records: bucket.records,
     recordsCount: bucket.records.length,
     cachoMaduroPct: agg.plantaSemPodarRate,
     cachoPassadoPct: agg.cachoExpostoRate,
     cachoVerdePct: agg.podaMeiaCoroaRate,
     cachoAvermelhadoPct: agg.cachoPodrePlantaRate,
-    cachoEstrelaPct: agg.podaMaiorUmParaUmRate,
-    taloCompridoPct: agg.bicoGaitaRate,
+    taloCompridoPct: agg.podaMaiorUmParaUmRate,
+    cachoEstrelaPct: agg.bicoGaitaRate,
     cachoInfermoPct: agg.folhaMamandoPodaRate,
     buchaPct: agg.palhaMalEmpilhadaRate,
     qualidade: agg,
