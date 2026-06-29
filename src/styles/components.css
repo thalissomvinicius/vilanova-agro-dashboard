@@ -12260,17 +12260,18 @@ body.field-map-active {
 .poda-carreamento-page {
   height: calc(100dvh - 128px);
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .poda-bi-board.poda-carreamento-layout,
 .poda-bi-board.poda-carreamento-layout.is-presentation {
   width: 100%;
   height: 100%;
-  min-height: 0;
+  min-height: 960px;
   display: grid;
   grid-template-columns: minmax(280px, 0.78fr) minmax(420px, 1.08fr) minmax(420px, 1.1fr);
-  grid-template-rows: 72px 36px 108px 88px minmax(0, 1fr) 136px;
+  grid-template-rows: 72px 36px auto auto minmax(0, 1fr) auto;
   grid-template-areas:
     "header header header"
     "filters filters filters"
@@ -12290,13 +12291,13 @@ body.field-map-active {
   height: 100dvh;
   max-height: 100dvh;
   padding: 10px;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .poda-presentation-overlay .poda-bi-board.poda-carreamento-layout,
 .poda-presentation-overlay .poda-bi-board.poda-carreamento-layout.is-presentation {
-  height: calc(100dvh - 20px);
-  min-height: 660px;
+  min-height: 960px;
 }
 
 .poda-carreamento-layout .poda-bi-header {
