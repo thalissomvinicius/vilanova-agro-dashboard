@@ -24,6 +24,7 @@ import {
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Analytics = lazy(() => import('./pages/Analytics'));
+const PodaDashboard = lazy(() => import('./pages/PodaDashboard'));
 const CqoRampa = lazy(() => import('./pages/CqoRampa'));
 const LossesAgricola = lazy(() => import('./pages/LossesAgricola'));
 const Collections = lazy(() => import('./pages/Collections'));
@@ -697,7 +698,7 @@ export default function App() {
         );
       case 'cqo-poda':
         return (
-          <Analytics
+          <PodaDashboard
             theme={theme}
             farmFilter={farmFilter}
             areaFilter="poda"
@@ -709,6 +710,7 @@ export default function App() {
             dateTo={dateTo}
             setDateFrom={applyDateFrom}
             setDateTo={applyDateTo}
+            searchTerm={searchTerm}
             lastSyncTime={lastSyncTime}
             onResetFilters={resetFieldFilters}
           />

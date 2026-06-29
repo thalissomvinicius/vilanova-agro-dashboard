@@ -1270,6 +1270,27 @@ body.presentation-active {
 
 .field-bi-page {
   gap: 12px;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.field-bi-page .field-bi-board {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.field-bi-page .field-bi-panel {
+  overflow: visible;
+  min-height: 240px;
+}
+
+.field-bi-page .field-bi-week-scroll,
+.field-bi-page .field-daily-chart-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 6px;
 }
 
 .field-bi-board {
