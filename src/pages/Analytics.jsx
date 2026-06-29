@@ -751,7 +751,7 @@ function PodaFaultRankingPanel({ indicators, selectedKey, onSelect }) {
 }
 
 function PodaTeamStatsPanel({ rows, indicator }) {
-  const visibleRows = rows.slice(0, 5);
+  const visibleRows = rows.slice(0, 4);
   const colors = ['#0B6B3A', '#F28C00', '#7C3AED', '#2563EB', '#DC2626'];
 
   return (
@@ -795,7 +795,7 @@ function PodaDrilldownPanel({ indicator, activeBreakdown, onBreakdownChange, bre
     { id: 'month', label: 'Meses' },
   ];
   const rows = breakdowns[activeBreakdown] || [];
-  const visibleRows = rows.slice(0, 8);
+  const visibleRows = rows.slice(0, 4);
   const max = Math.max(...visibleRows.map((row) => Number(row.rate || 0)), 1);
 
   return (
@@ -922,8 +922,8 @@ function PodaMapPanel({ mapProps, selectedIndicator, mapMetricId }) {
 }
 
 function PodaTrendPanel({ rows, issueLabel = 'Falhas', title = 'Evolução no período', subtitle }) {
-  const chartHeight = 250;
-  const padding = { top: 28, right: 34, bottom: 40, left: 62 };
+  const chartHeight = 185;
+  const padding = { top: 22, right: 28, bottom: 32, left: 54 };
   const width = 980;
   const graphWidth = width - padding.left - padding.right;
   const graphHeight = chartHeight - padding.top - padding.bottom;
@@ -1069,7 +1069,7 @@ function PodaBiBoard({ totals, records, periodText, demoActive, onPresent, prese
           title="Parcelas que precisam de atenção"
           subtitle={`${selectedIndicator?.label || 'Falha'} com maior índice no período.`}
           rows={parcelRows}
-          maxRows={6}
+          maxRows={3}
           className="poda-risk-panel"
         />
         <PodaDrilldownPanel

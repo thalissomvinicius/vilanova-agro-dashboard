@@ -11833,3 +11833,425 @@ body.field-map-active {
 .poda-executive-board .poda-map-frame {
   isolation: isolate;
 }
+
+/* Poda one-screen executive board. Keep every priority block visible without scrolling. */
+.poda-bi-page {
+  height: calc(100dvh - 112px);
+  min-height: 680px;
+  overflow: hidden;
+}
+
+.poda-bi-board.poda-executive-board,
+.poda-bi-board.poda-executive-board.is-presentation {
+  height: 100%;
+  min-height: 680px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.38fr) minmax(390px, 0.86fr);
+  grid-template-rows: 66px 52px 118px 92px minmax(184px, 1fr) 132px;
+  grid-template-areas:
+    "header header"
+    "filters filters"
+    "overview overview"
+    "ranking ranking"
+    "charts map"
+    "bottom map";
+  gap: 10px;
+  padding: 10px;
+  overflow: hidden;
+  background: #F5F7F6;
+}
+
+.poda-presentation-overlay .presentation-scroll {
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: 10px 10px 12px;
+  overflow: hidden;
+}
+
+.poda-presentation-overlay .poda-bi-board.poda-executive-board,
+.poda-presentation-overlay .poda-bi-board.poda-executive-board.is-presentation {
+  height: calc(100dvh - 22px);
+  min-height: 680px;
+}
+
+.poda-executive-board .poda-bi-header {
+  grid-area: header;
+  min-height: 0;
+  grid-template-columns: 148px minmax(0, 1fr) auto;
+  padding: 8px 12px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.poda-executive-board .poda-bi-header img {
+  width: 126px;
+  height: 44px;
+}
+
+.poda-executive-board .poda-bi-header h2 {
+  font-size: 1.5rem;
+}
+
+.poda-executive-board .poda-bi-header p {
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.poda-executive-board .poda-bi-premium-pill,
+.poda-executive-board .poda-bi-demo-pill,
+.poda-executive-board .poda-bi-present-btn {
+  min-height: 32px;
+  padding-inline: 12px;
+  font-size: 0.68rem;
+}
+
+.poda-executive-board .poda-bi-present-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.poda-executive-board .poda-filter-panel {
+  grid-area: filters;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 8px;
+  padding: 8px;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.poda-executive-board .poda-filter-grid {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.poda-executive-board .poda-filter-control {
+  gap: 3px;
+  padding: 6px 8px;
+  border-radius: 7px;
+}
+
+.poda-executive-board .poda-filter-control span {
+  font-size: 0.52rem;
+}
+
+.poda-executive-board .poda-filter-control strong {
+  font-size: 0.66rem;
+}
+
+.poda-executive-board .poda-quick-filters {
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.poda-executive-board .poda-quick-filters button {
+  min-height: 34px;
+  padding-inline: 10px;
+  font-size: 0.62rem;
+  line-height: 1.1;
+}
+
+.poda-executive-board .poda-reference-overview {
+  grid-area: overview;
+  min-height: 0;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 10px;
+  overflow: hidden;
+}
+
+.poda-executive-board .poda-reference-overview .poda-alert-card {
+  min-height: 0;
+  padding: 12px;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.poda-executive-board .poda-alert-metric strong {
+  font-size: 2rem;
+}
+
+.poda-executive-board .poda-alert-details div {
+  padding: 6px 8px;
+}
+
+.poda-executive-board .poda-alert-details strong {
+  font-size: 1.05rem;
+}
+
+.poda-executive-board .poda-alert-card p {
+  margin-top: 2px;
+  font-size: 0.65rem;
+  line-height: 1.2;
+}
+
+.poda-executive-board .poda-team-stats-card {
+  min-height: 0;
+  padding: 12px;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.poda-executive-board .poda-team-stats-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.poda-executive-board .poda-team-stat {
+  min-height: 0;
+  gap: 5px;
+  padding: 8px;
+  border-radius: 9px;
+}
+
+.poda-executive-board .poda-team-stat-head {
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 6px;
+}
+
+.poda-executive-board .poda-team-stat-head span {
+  width: 28px;
+  height: 28px;
+  font-size: 0.62rem;
+}
+
+.poda-executive-board .poda-team-stat-head strong {
+  font-size: 0.68rem;
+  line-height: 1.12;
+}
+
+.poda-executive-board .poda-team-stat-rate strong {
+  font-size: 1.18rem;
+}
+
+.poda-executive-board .poda-team-stat-meta span {
+  font-size: 0.48rem;
+}
+
+.poda-executive-board .poda-team-stat-meta strong {
+  font-size: 0.72rem;
+}
+
+.poda-executive-board .poda-fault-panel {
+  grid-area: ranking;
+  min-height: 0;
+  grid-template-rows: 22px minmax(0, 1fr);
+  gap: 6px;
+  padding: 10px;
+  overflow: hidden;
+}
+
+.poda-executive-board .poda-fault-panel .poda-section-title {
+  min-height: 0;
+  margin: 0;
+}
+
+.poda-executive-board .poda-fault-tabs {
+  display: none;
+}
+
+.poda-executive-board .poda-fault-strip {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.poda-executive-board .poda-fault-strip .poda-fault-row {
+  min-height: 0;
+  padding: 7px;
+  border-radius: 8px;
+  grid-template-areas:
+    "label arrow"
+    "value value"
+    "track track";
+}
+
+.poda-executive-board .poda-fault-strip .poda-fault-row span {
+  font-size: 0.61rem;
+  line-height: 1.08;
+}
+
+.poda-executive-board .poda-fault-strip .poda-fault-row strong {
+  font-size: 0.92rem;
+}
+
+.poda-executive-board .poda-fault-strip .poda-fault-row small {
+  display: none;
+}
+
+.poda-executive-board .poda-reference-chart-grid {
+  grid-area: charts;
+  min-height: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  overflow: hidden;
+}
+
+.poda-executive-board .poda-reference-chart-grid .poda-bi-trend-panel {
+  min-height: 0;
+  grid-template-rows: 34px 18px minmax(0, 1fr);
+  padding: 10px;
+  overflow: hidden;
+}
+
+.poda-executive-board .poda-reference-chart-grid .poda-section-title h3 {
+  font-size: 0.95rem;
+}
+
+.poda-executive-board .poda-reference-chart-grid .poda-section-title span {
+  font-size: 0.62rem;
+}
+
+.poda-executive-board .poda-bi-legend {
+  min-height: 0;
+  font-size: 0.65rem;
+}
+
+.poda-executive-board .poda-reference-chart-grid .chart-axis-text {
+  font-size: 10px;
+}
+
+.poda-executive-board .poda-reference-chart-grid .chart-value-text,
+.poda-executive-board .poda-reference-chart-grid .chart-score-text {
+  font-size: 10px;
+}
+
+.poda-executive-board .poda-map-panel {
+  grid-area: map;
+  min-height: 0;
+  gap: 8px;
+  padding: 10px;
+  overflow: hidden;
+}
+
+.poda-executive-board .poda-map-panel-head {
+  align-items: start;
+  gap: 8px;
+}
+
+.poda-executive-board .poda-map-panel-head h3 {
+  font-size: 0.98rem;
+}
+
+.poda-executive-board .poda-map-panel-head p {
+  display: none;
+}
+
+.poda-executive-board .poda-map-legend {
+  justify-content: flex-end;
+  gap: 7px;
+  font-size: 0.58rem;
+}
+
+.poda-executive-board .poda-map-frame {
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+}
+
+.poda-executive-board .poda-map-frame .gps-map-overlay {
+  display: none;
+}
+
+.poda-executive-board .poda-map-frame .gps-map-card {
+  min-height: 0;
+}
+
+.poda-executive-board .poda-map-frame .leaflet-control-container .leaflet-top,
+.poda-executive-board .poda-map-frame .leaflet-control-container .leaflet-bottom {
+  display: none;
+}
+
+.poda-executive-board .poda-reference-bottom-grid {
+  grid-area: bottom;
+  min-height: 0;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 10px;
+  overflow: hidden;
+}
+
+.poda-executive-board .poda-reference-bottom-grid .poda-mini-panel,
+.poda-executive-board .poda-reference-bottom-grid .poda-drill-panel {
+  min-height: 0;
+  padding: 10px;
+  overflow: hidden;
+}
+
+.poda-executive-board .poda-reference-bottom-grid .poda-section-title {
+  min-height: 0;
+  margin-bottom: 5px;
+}
+
+.poda-executive-board .poda-reference-bottom-grid .poda-section-title h3 {
+  font-size: 0.88rem;
+}
+
+.poda-executive-board .poda-reference-bottom-grid .poda-section-title span {
+  font-size: 0.58rem;
+}
+
+.poda-executive-board .poda-reference-bottom-grid .poda-bi-bars {
+  gap: 3px;
+}
+
+.poda-executive-board .poda-reference-bottom-grid .poda-bi-bar-row {
+  padding: 2px 0;
+}
+
+.poda-executive-board .poda-reference-bottom-grid .poda-bi-bar-row strong {
+  font-size: 0.66rem;
+}
+
+.poda-executive-board .poda-reference-bottom-grid .poda-bi-bar-row span,
+.poda-executive-board .poda-reference-bottom-grid .poda-bi-bar-row small {
+  font-size: 0.55rem;
+}
+
+.poda-executive-board .poda-reference-bottom-grid .poda-drill-kpis {
+  display: none;
+}
+
+.poda-executive-board .poda-reference-bottom-grid .poda-drill-tabs {
+  min-height: 26px;
+}
+
+.poda-executive-board .poda-reference-bottom-grid .poda-drill-tabs button {
+  min-height: 22px;
+  font-size: 0.56rem;
+}
+
+.poda-executive-board .poda-reference-bottom-grid .poda-drill-table {
+  gap: 3px;
+  overflow: hidden;
+}
+
+.poda-executive-board .poda-reference-bottom-grid .poda-drill-row {
+  padding: 4px 7px;
+  gap: 2px 6px;
+}
+
+.poda-executive-board .poda-reference-bottom-grid .poda-drill-row strong {
+  font-size: 0.62rem;
+}
+
+.poda-executive-board .poda-reference-bottom-grid .poda-drill-row span,
+.poda-executive-board .poda-reference-bottom-grid .poda-drill-row small {
+  font-size: 0.52rem;
+}
+
+@media (max-width: 1180px) {
+  .poda-bi-board.poda-executive-board,
+  .poda-bi-board.poda-executive-board.is-presentation {
+    min-height: 760px;
+    grid-template-columns: 1fr;
+    grid-template-rows: 62px 92px 150px 140px 220px 220px 130px;
+    grid-template-areas:
+      "header"
+      "filters"
+      "overview"
+      "ranking"
+      "charts"
+      "map"
+      "bottom";
+    overflow: auto;
+  }
+}
