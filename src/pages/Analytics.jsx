@@ -939,7 +939,7 @@ function PodaMapPanel({ mapProps, selectedIndicator, mapMetricId }) {
 function PodaTrendPanel({ rows, issueLabel = 'Falhas', title = 'Evolução no período', subtitle }) {
   const visibleRows = rows.slice(-10);
   const chartHeight = 280;
-  const padding = { top: 30, right: 24, bottom: 48, left: 52 };
+  const padding = { top: 50, right: 24, bottom: 48, left: 52 };
   const colWidth = 80;
   const barWidth = 44;
   const width = Math.max(480, padding.left + padding.right + visibleRows.length * colWidth);
@@ -1084,56 +1084,43 @@ function PodaFarmsComparisonChart({ records, selectedKey, selectedFarm, onSelect
     };
   });
 
-  const maxRate = Math.max(...data.map(d => d.rate), 0.1);
+  const chartData = data.map(d => ({
+    label: d.farm,
+    value: Number(d.rate.toFixed(1)),
+    fill: d.farm === selectedFarm ? 'var(--orange-highlight)' : 'var(--green-institutional)',
+    originalFarm: d.farm
+  }));
 
   return (
-    <section className="poda-breakdown-card" style={{ height: '100%' }}>
+    <section className="poda-breakdown-card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="poda-breakdown-header">
-        <h3>Comparação de Fazendas</h3>
-        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Clique para filtrar as parcelas</span>
+        <div>
+          <h3>Gráfico por Fazenda</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>% de falha do indicador selecionado</span>
+        </div>
       </div>
-      <div className="poda-breakdown-list" style={{ gap: 10, padding: 12 }}>
-        {data.map((row) => {
-          const statusClass = row.status === 'Crítico' ? 'danger' : row.status === 'Atenção' ? 'warning' : 'ok';
-          const isSelected = selectedFarm === row.farm;
-          const statusColor = statusClass === 'danger' ? 'var(--danger-color)' : statusClass === 'warning' ? 'var(--warning-color)' : 'var(--green-institutional)';
-          return (
-            <div 
-              key={row.farm}
-              onClick={() => onSelectFarm(row.farm)}
-              className={`poda-breakdown-row status-${statusClass} ${isSelected ? 'active' : ''}`}
-              style={{ 
-                cursor: 'pointer',
-                border: isSelected ? `2px solid ${statusColor}` : '1px solid var(--border-color)',
-                boxShadow: isSelected ? `0 0 0 1px ${statusColor}, var(--shadow-md)` : 'none',
-                transform: isSelected ? 'translateY(-1px)' : 'none',
-                transition: 'all 0.15s ease',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'stretch',
-                gap: 6,
-                padding: '10px 14px'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <strong style={{ fontSize: '0.82rem' }}>{row.farm}</strong>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <strong className="rate" style={{ fontSize: '0.95rem' }}>{formatPercentValue(row.rate)}</strong>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({row.count} ocorr.)</span>
-                </div>
-              </div>
-              <div style={{ height: 6, background: '#E5E7EB', borderRadius: 3, overflow: 'hidden', width: '100%' }}>
-                <i style={{ 
-                  display: 'block', 
-                  height: '100%', 
-                  width: `${(row.rate / maxRate) * 100}%`,
-                  background: statusClass === 'danger' ? 'var(--danger-color)' : statusClass === 'warning' ? 'var(--warning-color)' : 'var(--green-institutional)',
-                  borderRadius: 3
-                }} />
-              </div>
-            </div>
-          );
-        })}
+      <div style={{ padding: '0 16px', flex: 1, display: 'flex', alignItems: 'center' }}>
+        <CustomChart type="bar" data={chartData} height={240} title="Comparação de Fazendas" />
+      </div>
+      <div style={{ padding: '0 16px 12px', display: 'flex', gap: 8, justifyContent: 'center' }}>
+        {data.map(d => (
+          <button 
+            key={d.farm}
+            onClick={() => onSelectFarm(d.farm)}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '20px',
+              border: `1px solid ${selectedFarm === d.farm ? 'var(--orange-institutional)' : 'var(--border-color)'}`,
+              background: selectedFarm === d.farm ? 'var(--orange-light)' : 'transparent',
+              color: selectedFarm === d.farm ? 'var(--orange-institutional)' : 'var(--text-secondary)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            {d.farm}
+          </button>
+        ))}
       </div>
     </section>
   );
@@ -1155,76 +1142,146 @@ function PodaFarmParcelsChart({ records, selectedKey, selectedFarm, onSelectFarm
       parcel,
       rate: ind.rate,
       count: ind.count,
-      total: recs.length,
-      status: ind.status
     };
   }).sort((a, b) => b.rate - a.rate);
 
-  const visibleData = data.slice(0, 6);
-  const maxRate = Math.max(...visibleData.map(d => d.rate), 0.1);
+  const chartData = data.slice(0, 8).map(d => ({
+    label: d.parcel,
+    value: Number(d.rate.toFixed(1)),
+    fill: 'var(--green-institutional)'
+  }));
 
   return (
-    <section className="poda-breakdown-card" style={{ height: '100%' }}>
-      <div className="poda-breakdown-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
+    <section className="poda-breakdown-card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div className="poda-breakdown-header">
         <div>
-          <h3 style={{ margin: 0 }}>Parcelas por Fazenda</h3>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Top ofensores</span>
+          <h3>Gráfico por Parcelas</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Top parcelas da fazenda selecionada</span>
         </div>
         <select 
           value={selectedFarm} 
           onChange={(e) => onSelectFarm(e.target.value)}
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            padding: '4px 10px',
-            fontSize: '0.72rem',
-            fontWeight: '700',
-            borderRadius: '6px',
-            border: '1px solid var(--border-color)',
-            background: 'white',
-            color: 'var(--text-primary)',
-            cursor: 'pointer'
-          }}
+          className="poda-period-select"
         >
           <option value="FÉ EM DEUS">Fé em Deus</option>
           <option value="VILA NOVA">Vila Nova</option>
           <option value="SANTA MARIA">Santa Maria</option>
         </select>
       </div>
-      <div className="poda-breakdown-list" style={{ gap: 8, padding: 12 }}>
-        {visibleData.length ? visibleData.map((row) => {
-          const statusClass = row.status === 'Crítico' ? 'danger' : row.status === 'Atenção' ? 'warning' : 'ok';
-          return (
-            <div 
-              key={row.parcel}
-              className={`poda-breakdown-row status-${statusClass}`}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'stretch',
-                gap: 6,
-                padding: '10px 14px'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <strong style={{ fontSize: '0.8rem' }}>Parcela {row.parcel}</strong>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <strong className="rate" style={{ fontSize: '0.9rem' }}>{formatPercentValue(row.rate)}</strong>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({row.count} ocorr. / {row.total} col.)</span>
-                </div>
-              </div>
-              <div style={{ height: 4, background: '#E5E7EB', borderRadius: 2, overflow: 'hidden', width: '100%' }}>
-                <i style={{ 
-                  display: 'block', 
-                  height: '100%', 
-                  width: `${(row.rate / maxRate) * 100}%`,
-                  background: statusClass === 'danger' ? 'var(--danger-color)' : statusClass === 'warning' ? 'var(--warning-color)' : 'var(--green-institutional)',
-                  borderRadius: 2
-                }} />
-              </div>
-            </div>
-          );
-        }) : (
-          <div className="poda-breakdown-empty">Nenhum dado para a fazenda selecionada</div>
+      <div style={{ padding: '0 16px', flex: 1, display: 'flex', alignItems: 'center' }}>
+        {chartData.length > 0 ? (
+          <CustomChart type="bar" data={chartData} height={240} title="Parcelas Ofensoras" />
+        ) : (
+          <div className="empty-panel smart-empty-panel" style={{ width: '100%', height: 240, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <strong>Sem parcelas</strong>
+            <span>Nenhuma parcela registrada para esta fazenda no período.</span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function PodaMultiFarmTrendPanel({ records, selectedKey }) {
+  const farmNames = ['FÉ EM DEUS', 'VILA NOVA', 'SANTA MARIA'];
+  const colors = ['#3B82F6', '#10B981', '#F59E0B'];
+  
+  const buckets = new Map();
+  records.forEach((r) => {
+    const k = podaWeekLabel(r);
+    if (!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k).push(r);
+  });
+  
+  const sortedWeeks = Array.from(buckets.keys()).sort((a, b) => a.localeCompare(b)).slice(-8);
+  
+  const series = farmNames.map((farm, idx) => {
+    const points = sortedWeeks.map(week => {
+      const recs = (buckets.get(week) || []).filter(r => r.farm === farm);
+      const totals = aggregateRecords(recs);
+      const indicators = podaIndicatorDefinitions(totals);
+      const ind = indicators.find(i => i.key === selectedKey) || { rate: 0 };
+      return { week, rate: Number(ind.rate || 0) };
+    });
+    return { farm, color: colors[idx], points };
+  });
+
+  const maxRate = Math.max(0.1, ...series.flatMap(s => s.points.map(p => p.rate)));
+
+  const chartHeight = 280;
+  const padding = { top: 30, right: 24, bottom: 48, left: 52 };
+  const width = Math.max(480, padding.left + padding.right + sortedWeeks.length * 80);
+  const graphWidth = width - padding.left - padding.right;
+  const graphHeight = chartHeight - padding.top - padding.bottom;
+  const stepX = sortedWeeks.length > 1 ? graphWidth / (sortedWeeks.length - 1) : graphWidth;
+
+  return (
+    <section className="poda-trend-panel-v2" style={{ marginTop: 16 }}>
+      <div className="poda-trend-panel-header">
+        <div>
+          <h3>Comparação das 3 Fazendas</h3>
+          <span>Evolução da taxa de falha por semana</span>
+        </div>
+        <div className="poda-bi-legend">
+          {series.map(s => (
+            <span key={s.farm}><i style={{ background: s.color }} />{s.farm}</span>
+          ))}
+        </div>
+      </div>
+      <div className="poda-trend-chart-scroll">
+        {sortedWeeks.length === 0 ? (
+          <div className="poda-trend-empty">Sem dados no período</div>
+        ) : (
+          <svg viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight} className="poda-trend-svg">
+            {/* Grid lines */}
+            {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+              const y = padding.top + graphHeight * (1 - ratio);
+              return (
+                <g key={ratio}>
+                  <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="#E5E7EB" strokeWidth="1" strokeDasharray={ratio === 0 ? 'none' : '4 3'} />
+                  <text x={padding.left - 8} y={y + 4} textAnchor="end" className="chart-axis-text" fontSize="10">
+                    {formatPercentValue(maxRate * ratio, 1)}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* X Axis Labels */}
+            {sortedWeeks.map((week, index) => {
+              const x = padding.left + index * stepX;
+              return (
+                <text key={week} x={x} y={chartHeight - 16} textAnchor="middle" className="chart-axis-text" fontSize="11" fontWeight="600">
+                  {formatPodaChartLabel(week)}
+                </text>
+              );
+            })}
+
+            {/* Lines and Points */}
+            {series.map(s => {
+              const pts = s.points.map((p, index) => {
+                const x = padding.left + index * stepX;
+                const y = padding.top + graphHeight - (p.rate / maxRate) * graphHeight;
+                return { x, y, rate: p.rate };
+              });
+              const pathData = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+              return (
+                <g key={s.farm}>
+                  <path d={pathData} fill="none" stroke={s.color} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+                  {pts.map((p, i) => (
+                    <g key={i}>
+                      <circle cx={p.x} cy={p.y} r="4" fill="white" stroke={s.color} strokeWidth="2" />
+                      {p.rate > 0 && (
+                        <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize="10" fontWeight="700" fill={s.color}>
+                          {formatPercentValue(p.rate, 1)}
+                        </text>
+                      )}
+                    </g>
+                  ))}
+                </g>
+              );
+            })}
+          </svg>
         )}
       </div>
     </section>
@@ -1372,6 +1429,15 @@ function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresen
           <div className="poda-presentation-col poda-col-lists" style={{ flex: 1 }}>
             <div className="poda-modern-side-card" style={{ flex: 1, overflow: 'hidden', padding: 0 }}>
               <PodaBreakdownList title="Top Fiscais" rows={drilldowns.fiscal} limit={6} />
+            </div>
+          </div>
+        </div>
+
+        {/* Linha 3: Comparação Multi-Fazenda Trend */}
+        <div className="poda-modern-presentation-grid">
+          <div className="poda-presentation-col poda-col-trend" style={{ flex: 1 }}>
+            <div className="poda-modern-side-card" style={{ flex: 1, minHeight: 0, padding: 0 }}>
+              <PodaMultiFarmTrendPanel records={records} selectedKey={selectedKey} />
             </div>
           </div>
         </div>
