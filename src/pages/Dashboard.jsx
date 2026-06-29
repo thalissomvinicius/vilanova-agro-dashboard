@@ -150,12 +150,21 @@ function buildDataDiagnostics({
   cqoImport = {},
   filters = {},
 }) {
-  const rawExcelRows = Number(cqoImport?.corteRows || 0) + Number(cqoImport?.carreamentoRows || 0);
+  const rawExcelRows = Number(cqoImport?.corteRows || 0)
+    + Number(cqoImport?.carreamentoRows || 0)
+    + Number(cqoImport?.podaRows || 0);
   const transformedRecords = allRecords.length;
   const visibleCount = visibleRecords.length;
   const hiddenByFilters = Math.max(transformedRecords - visibleCount, 0);
   const snapshot = cqoImport?.snapshot || null;
-  const updatedAt = snapshot?.updated_at || snapshot?.imported_at || snapshot?.file_last_write_time || '';
+  const latestPodaSnapshot = (cqoImport?.podaSnapshots || [])[0] || null;
+  const updatedAt = snapshot?.updated_at
+    || latestPodaSnapshot?.updated_at
+    || snapshot?.imported_at
+    || latestPodaSnapshot?.imported_at
+    || snapshot?.file_last_write_time
+    || latestPodaSnapshot?.file_last_write_time
+    || '';
 
   let tone = 'success';
   let status = 'Dados disponíveis';
@@ -185,7 +194,7 @@ function buildDataDiagnostics({
     hiddenByFilters,
     mobileCount: mobileRecords.length,
     excelCount: excelRecords.length,
-    snapshotLabel: snapshot?.source_file || snapshot?.import_key || 'Sem snapshot',
+    snapshotLabel: snapshot?.source_file || latestPodaSnapshot?.source_file || snapshot?.import_key || latestPodaSnapshot?.import_key || 'Sem snapshot',
     updatedAtLabel: dateTimeLabel(updatedAt),
     filterLabel: [
       farmFilterLabel(filters.farmFilter),

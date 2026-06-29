@@ -26,8 +26,31 @@ function firstNumber(sources, keys) {
   return 0;
 }
 
+function firstDefinedNumber(sources, keys) {
+  for (const source of sources) {
+    if (!source || typeof source !== 'object') continue;
+    for (const key of keys) {
+      if (source[key] !== undefined && source[key] !== null && source[key] !== '') {
+        return numberValue(source[key]);
+      }
+    }
+  }
+  return null;
+}
+
 function sumLineKeys(lines, keys) {
   return (lines || []).reduce((total, line) => total + firstNumber([line], keys), 0);
+}
+
+function sumLineKeysWhenPresent(lines, keys) {
+  let found = false;
+  const total = (lines || []).reduce((sum, line) => {
+    const value = firstDefinedNumber([line], keys);
+    if (value === null) return sum;
+    found = true;
+    return sum + value;
+  }, 0);
+  return found ? total : null;
 }
 
 function safePct(num, den) {
@@ -83,8 +106,12 @@ function resolvePlantsAtual(record) {
   const raw = record.raw || {};
   const lines = record.lines || [];
   return firstNumber([raw], [
+    'total_plantas_parcela',
+    'TotalPlantasParcela',
     'n_plantas_atual',
+    'Nº de plantas Atual',
     'N de plantas Atual',
+    'NumeroPlantasAtual',
     'numero_plantas_atual',
     'numPlantasPlantio',
     'plantas_atual',
@@ -110,6 +137,65 @@ function resolveWeightKg(record, type) {
   return 20;
 }
 
+function resolveDirectLossTon(record, type) {
+  const raw = record.raw || {};
+  const lines = record.lines || [];
+  const keys = type === 'carreamento'
+    ? [
+      'perdas_t_carreamento_bi',
+      'perdas_t_bi',
+      'perdas_t',
+      'perdas t',
+      'Perdas t',
+      'perda_t',
+      'Perda t',
+      'perdasT',
+    ]
+    : [
+      'perdas_t_corte_bi',
+      'perdas_t_bi',
+      'perdas_t',
+      'perdas t',
+      'Perdas t',
+      'perda_t',
+      'Perda t',
+      'perdasT',
+    ];
+
+  const direct = firstDefinedNumber([raw, raw.bi, raw.fonte_excel], keys);
+  if (direct !== null) return Math.max(0, direct);
+
+  const lineTotal = sumLineKeysWhenPresent(lines, keys);
+  return lineTotal === null ? null : Math.max(0, lineTotal);
+}
+
+function resolveEstimatedCachos(record, type) {
+  const raw = record.raw || {};
+  const lines = record.lines || [];
+  const keys = type === 'carreamento'
+    ? [
+      'estimativa_cachos_nao_carreados_bi',
+      'estimativa_cachos_perdidos_bi',
+      'estimativa_perdas_cnc_pla',
+      'estimativa de perdas cnc/pla',
+      'estimativa_perdas',
+    ]
+    : [
+      'estimativa_cachos_esquecidos_bi',
+      'estimativa_cachos_perdidos_bi',
+      'estimativa_cachos_perdidos',
+      'estimativa_cacho_perdido_pla',
+      'estimativa de cacho perdido/pla',
+      'estimativa_perdas',
+    ];
+
+  const direct = firstDefinedNumber([raw, raw.bi, raw.fonte_excel], keys);
+  if (direct !== null) return Math.max(0, direct);
+
+  const lineTotal = sumLineKeysWhenPresent(lines, keys);
+  return lineTotal === null ? null : Math.max(0, lineTotal);
+}
+
 function resolveProducedTon(record) {
   const raw = record.raw || {};
   return firstNumber([raw, raw.balanca, raw.facBalanca, raw.producao], [
@@ -128,6 +214,10 @@ function resolveProducedTon(record) {
 }
 
 function computeRecordLoss(record) {
+  if (record.type !== 'corte' && record.type !== 'carreamento') {
+    return { corteT: 0, carreamentoT: 0, totalT: 0, producedTon: 0, estimatedCachos: 0 };
+  }
+
   const totals = record.totals || {};
   const plantasObservadas = totals.plantasObservadas || 0;
   const plantasAtual = resolvePlantsAtual(record);
@@ -136,15 +226,17 @@ function computeRecordLoss(record) {
   if (record.type === 'carreamento') {
     const cachoNaoCarreado = totals.cachoNaoCarreado || 0;
     const pesoKg = resolveWeightKg(record, 'carreamento');
-    const estimatedCachos = plantasObservadas > 0 ? (cachoNaoCarreado / plantasObservadas) * plantasAtual : 0;
-    const perdasT = (estimatedCachos * pesoKg) / 1000;
+    const fallbackEstimatedCachos = plantasObservadas > 0 ? (cachoNaoCarreado / plantasObservadas) * plantasAtual : 0;
+    const estimatedCachos = resolveEstimatedCachos(record, 'carreamento') ?? fallbackEstimatedCachos;
+    const perdasT = resolveDirectLossTon(record, 'carreamento') ?? ((estimatedCachos * pesoKg) / 1000);
     return { corteT: 0, carreamentoT: perdasT, totalT: perdasT, producedTon, estimatedCachos };
   }
 
   const cachoEsquecido = totals.cachoEsquecido || 0;
   const pesoKg = resolveWeightKg(record, 'corte');
-  const estimatedCachos = plantasObservadas > 0 ? (cachoEsquecido / plantasObservadas) * plantasAtual : 0;
-  const perdasT = (estimatedCachos * pesoKg) / 1000;
+  const fallbackEstimatedCachos = plantasObservadas > 0 ? (cachoEsquecido / plantasObservadas) * plantasAtual : 0;
+  const estimatedCachos = resolveEstimatedCachos(record, 'corte') ?? fallbackEstimatedCachos;
+  const perdasT = resolveDirectLossTon(record, 'corte') ?? ((estimatedCachos * pesoKg) / 1000);
   return { corteT: perdasT, carreamentoT: 0, totalT: perdasT, producedTon, estimatedCachos };
 }
 

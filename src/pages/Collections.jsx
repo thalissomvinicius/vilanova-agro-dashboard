@@ -192,6 +192,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     const approved = filteredRecords.filter((record) => record.status === 'Aprovado' || record.status === 'Sincronizado').length;
     const corte = filteredRecords.filter((record) => record.type === 'corte').length;
     const carreamento = filteredRecords.filter((record) => record.type === 'carreamento').length;
+    const poda = filteredRecords.filter((record) => record.type === 'poda').length;
 
     return {
       total: filteredRecords.length,
@@ -200,12 +201,13 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
       gpsEligible,
       corte,
       carreamento,
+      poda,
     };
   }, [filteredRecords]);
 
   const sourceLabel = useMemo(() => {
     if (loading) return 'Carregando...';
-    if (sourceFilter === 'excel') return 'Excel / cqo_import_snapshots';
+    if (sourceFilter === 'excel') return 'Excel / snapshots CQO';
     if (sourceFilter === 'app') return 'App Android / serviço online';
     return source || 'App + Excel';
   }, [loading, source, sourceFilter]);
@@ -314,7 +316,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
             <div><span>Registros</span><strong>{formatNumber(collectionStats.total)}</strong></div>
             <div><span>GPS app</span><strong>{formatNumber(collectionStats.withGps)}</strong></div>
             <div><span>Corte</span><strong>{formatNumber(collectionStats.corte)}</strong></div>
-            <div><span>Carream.</span><strong>{formatNumber(collectionStats.carreamento)}</strong></div>
+            <div><span>Poda</span><strong>{formatNumber(collectionStats.poda)}</strong></div>
           </div>
         </PageHeader>
 

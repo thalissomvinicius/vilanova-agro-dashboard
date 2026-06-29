@@ -7,6 +7,7 @@ import {
   normalizeText,
   parseRecordDateValue,
 } from './cqoData';
+import { buildQualidadeOperacional } from './qualidadeOperacionalData';
 
 function record(overrides = {}) {
   return {
@@ -221,5 +222,92 @@ describe('aggregateRecords', () => {
     expect(totals.gps).toBe(1);
     expect(totals.gpsRate).toBe(50);
     expect(totals.lostCachosQty).toBe(3);
+  });
+});
+
+describe('buildQualidadeOperacional', () => {
+  it('usa perdas em toneladas vindas do BI antes da estimativa local', () => {
+    const corte = record({
+      id: 'excel-corte-bi',
+      source: 'excel',
+      raw: {
+        data_avaliacao: '2026-06-15',
+        perdas_t_corte_bi: 0.76,
+        estimativa_cachos_esquecidos_bi: 38,
+        total_plantas_parcela: 5067,
+      },
+      totals: {
+        ...record().totals,
+        plantasObservadas: 228,
+        cachosObservados: 73,
+        cachoEsquecido: 3,
+      },
+    });
+    const carreamento = record({
+      id: 'excel-carreamento-bi',
+      type: 'carreamento',
+      form: 'CQO Carreamento',
+      source: 'excel',
+      raw: {
+        data_avaliacao: '2026-06-15',
+        perdas_t_carreamento_bi: 0.12,
+        estimativa_cachos_nao_carreados_bi: 12,
+        total_plantas_parcela: 3325,
+      },
+      totals: {
+        ...record().totals,
+        plantasObservadas: 304,
+        cachosObservados: 0,
+        cachoEsquecido: 0,
+        cachoNaoCarreado: 1,
+      },
+    });
+
+    const model = buildQualidadeOperacional([corte, carreamento]);
+
+    expect(model.totals.corteT).toBeCloseTo(0.76);
+    expect(model.totals.carreamentoT).toBeCloseTo(0.12);
+    expect(model.totals.perdasT).toBeCloseTo(0.88);
+    expect(model.totals.estimatedCachos).toBeCloseTo(50);
+  });
+
+  it('nao trata poda como perda de corte e respeita perda zerada vinda do BI', () => {
+    const corteZerado = record({
+      id: 'excel-corte-zero-bi',
+      source: 'excel',
+      raw: {
+        data_avaliacao: '2026-06-15',
+        perdas_t_corte_bi: 0,
+        total_plantas_parcela: 1000,
+      },
+      totals: {
+        ...record().totals,
+        plantasObservadas: 10,
+        cachosObservados: 10,
+        cachoEsquecido: 5,
+      },
+    });
+    const poda = record({
+      id: 'excel-poda-bi',
+      type: 'poda',
+      form: 'CQO Poda',
+      source: 'excel',
+      raw: {
+        data_avaliacao: '2026-06-15',
+        perdas_t_bi: 99,
+      },
+      totals: {
+        ...record().totals,
+        plantasObservadas: 60,
+        cachosObservados: 0,
+        cachoEsquecido: 0,
+      },
+    });
+
+    const model = buildQualidadeOperacional([corteZerado, poda]);
+
+    expect(model.totals.corteT).toBe(0);
+    expect(model.totals.carreamentoT).toBe(0);
+    expect(model.totals.perdasT).toBe(0);
   });
 });

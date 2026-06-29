@@ -772,6 +772,7 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
     : { teve: 'nao', matricula: '', nome: '' };
   const isExcelSource = Boolean(data.fonte_excel)
     || row.source === 'cqo_import_snapshots'
+    || row.source === 'cqo_poda_import_snapshots'
     || String(row.formulario_id || '').startsWith('excel_');
   const effectiveGps = isExcelSource ? null : (gpsOccurrences[0] || gpsTrack[0] || gps || null);
   const effectiveGpsTrack = isExcelSource ? [] : gpsTrack;
@@ -1148,7 +1149,15 @@ function cqoSnapshotParcel(row) {
 }
 
 function cqoSnapshotEvaluator(row) {
-  return rowText(row, ['MatriculaAvaliadores', 'Matricula Avaliadores', 'MatriculaDigitador', 'Matrícula', 'Matricula']);
+  return rowText(row, [
+    'MatriculaAvaliadores',
+    'Matricula Avaliadores',
+    'MatriculaDigitador',
+    'matricula_avaliador',
+    'Matrícula',
+    'Matricula',
+    'Avaliador',
+  ]);
 }
 
 function cqoSnapshotFiscal(row) {
@@ -1175,6 +1184,8 @@ function buildCorteSnapshotLine(row, index) {
     lado_linha: rowText(row, ['lado_linha', 'LadoLinha', 'Lado']),
     linha: rowText(row, ['linha', 'Linha']) || String(index + 1),
     matricula_colaborador: rowText(row, ['matricula_colaborador', 'MatriculaColaborador', 'MatriculaCortador']),
+    numero_plantas_atual: rowNumber(row, ['Nº de plantas Atual', 'N de plantas Atual', 'NumeroPlantasAtual', 'numero_plantas_atual']),
+    area_plantada: rowNumber(row, ['Área Plantada', 'Area Plantada', 'area_plantada']),
     numero_plantas_linha: rowNumber(row, ['NumeroPlantasLinha', 'numero_plantas_linha', 'NumeroPlantas']),
     numero_plantas_observadas: rowNumber(row, ['NumeroPlantasObservadas', 'numero_plantas_observadas', 'numero_na_linha']),
     numero_cachos_observados_papel: rowNumber(row, ['NumeroCahosObservados', 'NumeroCachosObservados', 'NumeroCachosAvaliados', 'numero_cachos_observados_papel']),
@@ -1191,6 +1202,8 @@ function buildCorteSnapshotLine(row, index) {
     cacho_estrela: rowNumber(row, ['CachoEstrela', 'cacho_estrela', 'cachos_estrela']),
     cacho_brocado: rowNumber(row, ['CachoBrocado', 'cacho_brocado', 'cachos_brocados']),
     cacho_avermelhado: rowNumber(row, ['CachoAvermelhado', 'cacho_avermelhado', 'cachos_avermelhados']),
+    estimativa_cachos_perdidos: rowNumber(row, ['estimativa de cacho perdido/pla', 'estimativa_cacho_perdido_pla']),
+    perdas_t: rowNumber(row, ['perdas t', 'Perdas t', 'perdas_t', 'perda_t']),
     linha_json: row,
   };
 }
@@ -1200,13 +1213,99 @@ function buildCarreamentoSnapshotLine(row, index) {
     rua_index: rowText(row, ['rua_index', 'Rua', 'RuaIndex']) || String(index + 1),
     lado_linha: rowText(row, ['lado_linha', 'LadoLinha', 'Lado']),
     linha: rowText(row, ['linha', 'Linha']) || String(index + 1),
+    numero_plantas_atual: rowNumber(row, ['Nº de plantas Atual', 'N de plantas Atual', 'NumeroPlantasAtual', 'numero_plantas_atual']),
+    area_plantada: rowNumber(row, ['Área Plantada', 'Area Plantada', 'area_plantada']),
     numero_plantas_linha: rowNumber(row, ['NumeroPlantasLinha', 'numero_plantas_linha', 'NumeroPlantas']),
     numero_plantas_observadas: rowNumber(row, ['NumeroPlantasObservadas', 'numero_plantas_observadas', 'numero_na_linha']),
     cacho_mal_posicionado: rowNumber(row, ['cachoMalOosicionado', 'CachoMalPosicionado', 'cacho_mal_posicionado']),
     cacho_nao_carreado: rowNumber(row, ['CachoNaoCarreado', 'Cachonaocarreado', 'cacho_nao_carreado', 'CachoNaoCarriado']),
+    estimativa_perdas_cnc_pla: rowNumber(row, ['estimativa de perdas cnc/pla', 'estimativa_perdas_cnc_pla']),
+    perdas_t: rowNumber(row, ['perdas t', 'Perdas t', 'perdas_t', 'perda_t']),
     peso_medio: rowNumber(row, ['PesoMedio', 'peso_medio']),
     linha_json: row,
   };
+}
+
+function buildPodaSnapshotLine(row, index) {
+  return {
+    rua_index: rowText(row, ['rua_index', 'Rua', 'RuaIndex']) || String(index + 1),
+    lado_linha: rowText(row, ['lado_linha', 'LadoLinha', 'Lado']),
+    linha: rowText(row, ['linha', 'Linha', 'Linha Avaliada']) || String(index + 1),
+    numero_plantas_linha: rowNumber(row, [
+      'NumeroPlantasLinha',
+      'numero_plantas_linha',
+      'NumeroPlantas',
+      'N de plantas',
+      'Nº de plantas',
+      'Plantas linha',
+      'Plantas avaliadas',
+    ]),
+    planta_sem_podar: rowNumber(row, ['PlantaSemPodar', 'Planta sem podar', 'planta_sem_podar']),
+    cacho_exposto: rowNumber(row, ['CachoExposto', 'Cacho exposto', 'cacho_exposto']),
+    poda_meia_coroa: rowNumber(row, ['PodaMeiaCoroa', 'Poda meia coroa', 'Meia coroa', 'poda_meia_coroa']),
+    folha_mamando: rowNumber(row, ['FolhaMamando', 'Folha mamando', 'folha_mamando']),
+    poda_maior_1_1: rowNumber(row, [
+      'PodaMaiorUmParaUm',
+      'PodaMaior11',
+      'Poda maior que 1:1',
+      'Poda maior 1:1',
+      'poda_maior_1_1',
+    ]),
+    bico_gaita: rowNumber(row, ['BicoGaita', 'Bico de gaita', 'bico_gaita']),
+    cacho_podre_planta: rowNumber(row, [
+      'CachoPodrePlanta',
+      'Cacho podre na planta',
+      'Cacho podre',
+      'cacho_podre_planta',
+    ]),
+    palha_mal_empilhada: rowNumber(row, [
+      'PalhaMalEmpilhada',
+      'Palha mal empilhada',
+      'palha_mal_empilhada',
+      'CachoMalPosicionado',
+      'cacho_mal_posicionado',
+    ]),
+    linha_json: row,
+  };
+}
+
+function buildSnapshotLine(row, index, type) {
+  if (type === 'poda') return buildPodaSnapshotLine(row, index);
+  if (type === 'carreamento') return buildCarreamentoSnapshotLine(row, index);
+  return buildCorteSnapshotLine(row, index);
+}
+
+function cqoSnapshotSourceTable(type, snapshot) {
+  return snapshot?.source_table || (type === 'poda' ? 'cqo_poda_import_snapshots' : 'cqo_import_snapshots');
+}
+
+function cqoSnapshotFormId(type) {
+  if (type === 'poda') return 'excel_cqo_poda';
+  if (type === 'carreamento') return 'excel_cqo_carreamento';
+  return 'excel_cqo_corte';
+}
+
+const SNAPSHOT_TOTAL_PLANTS_KEYS = ['total_plantas_parcela', 'TotalPlantasParcela', 'Nº de plantas Atual', 'N de plantas Atual', 'NumeroPlantasAtual', 'numero_plantas_atual'];
+const SNAPSHOT_AREA_KEYS = ['Área Plantada', 'Area Plantada', 'area_plantada'];
+const SNAPSHOT_LOSS_T_KEYS = ['perdas_t_bi', 'perdas_t', 'perdas t', 'Perdas t', 'perda_t', 'Perda t', 'perdasT'];
+const SNAPSHOT_ESTIMATED_LOSS_KEYS = [
+  'estimativa_cachos_perdidos_bi',
+  'estimativa_cachos_perdidos',
+  'estimativa de cacho perdido/pla',
+  'estimativa_cacho_perdido_pla',
+  'estimativa de perdas cnc/pla',
+  'estimativa_perdas_cnc_pla',
+];
+
+function sumSnapshotRows(groupRows, keys) {
+  return groupRows.reduce((total, item) => total + rowNumber(item.row, keys), 0);
+}
+
+function hasSnapshotValue(groupRows, keys) {
+  return groupRows.some((item) => keys.some((key) => {
+    const value = item.row?.[key];
+    return value !== undefined && value !== null && value !== '';
+  }));
 }
 
 function cqoSnapshotGroupKey(row, type) {
@@ -1240,9 +1339,8 @@ function groupCqoSnapshotRows(rows, type, snapshot) {
     const date = normalizeSnapshotDateValue(cqoSnapshotDate(first) || cqoSnapshotMonth(first))
       || normalizeSnapshotDateValue(snapshot?.imported_at || snapshot?.updated_at)
       || new Date().toISOString();
-    const lines = group.rows.map(({ row, index }) => (
-      type === 'carreamento' ? buildCarreamentoSnapshotLine(row, index) : buildCorteSnapshotLine(row, index)
-    ));
+    const lines = group.rows.map(({ row, index }) => buildSnapshotLine(row, index, type));
+    const sourceTable = cqoSnapshotSourceTable(type, snapshot);
     const data = {
       nome_polo: rowText(first, ['NomePolo', 'Nome Polo', 'Polo']),
       nome_fazenda: cqoSnapshotFarm(first),
@@ -1256,28 +1354,62 @@ function groupCqoSnapshotRows(rows, type, snapshot) {
       observacao: rowText(first, ['Observacao', 'Observação', 'observacao']),
       mapeamento_legado: false,
       fonte_excel: {
-        tabela: 'cqo_import_snapshots',
+        tabela: sourceTable,
         import_key: snapshot?.import_key || '',
         source_file: snapshot?.source_file || '',
         source_path: snapshot?.source_path || '',
         file_last_write_time: snapshot?.file_last_write_time || '',
       },
     };
+    const totalPlants = rowText(first, SNAPSHOT_TOTAL_PLANTS_KEYS);
+    const areaPlantada = rowText(first, SNAPSHOT_AREA_KEYS);
+    const perdasT = sumSnapshotRows(group.rows, SNAPSHOT_LOSS_T_KEYS);
+    const estimatedLoss = sumSnapshotRows(group.rows, SNAPSHOT_ESTIMATED_LOSS_KEYS);
+
+    if (totalPlants) data.total_plantas_parcela = totalPlants;
+    if (areaPlantada) data.area_plantada = areaPlantada;
+    if (hasSnapshotValue(group.rows, SNAPSHOT_LOSS_T_KEYS)) {
+      data.perdas_t_bi = perdasT;
+      if (type === 'carreamento') {
+        data.perdas_t_carreamento_bi = perdasT;
+      } else if (type === 'corte') {
+        data.perdas_t_corte_bi = perdasT;
+      }
+    }
+    if (hasSnapshotValue(group.rows, SNAPSHOT_ESTIMATED_LOSS_KEYS)) {
+      data.estimativa_cachos_perdidos_bi = estimatedLoss;
+      if (type === 'carreamento') {
+        data.estimativa_cachos_nao_carreados_bi = estimatedLoss;
+      } else if (type === 'corte') {
+        data.estimativa_cachos_esquecidos_bi = estimatedLoss;
+      }
+    }
 
     if (type === 'carreamento') {
       data.ano_plantio = rowText(first, ['ano_plantio', 'AnoPlantio', 'Ano']);
       data.densidade = rowText(first, ['densidade', 'Densidade']);
-      data.total_plantas_parcela = rowText(first, ['total_plantas_parcela', 'TotalPlantasParcela']);
+      data.total_plantas_parcela = data.total_plantas_parcela || rowText(first, ['total_plantas_parcela', 'TotalPlantasParcela']);
       data.total_cachos_carreados = rowText(first, ['total_cachos_carreados', 'TotalCachosCarreados']);
       data.variedade = rowText(first, ['variedade', 'Variedade']);
       data.linhas_carreamento = lines;
+    } else if (type === 'poda') {
+      data.atividade = rowText(first, ['Atividade', 'atividade']) || 'Poda';
+      data.empresa = rowText(first, ['Empresa', 'empresa']) || 'Vila Nova';
+      data.ano_plantio = rowText(first, ['ano_plantio', 'AnoPlantio', 'Ano plantio', 'Ano']);
+      data.total_plantas_parcela = data.total_plantas_parcela || rowText(first, [
+        'total_plantas_parcela',
+        'TotalPlantasParcela',
+        'Total de plantas da parcela',
+        'Plantas projetadas',
+      ]);
+      data.linhas_poda = lines;
     } else {
       data.linhas_corte = lines;
     }
 
     return {
-      id: `excel-${type}-${group.index}`,
-      formulario_id: type === 'carreamento' ? 'excel_cqo_carreamento' : 'excel_cqo_corte',
+      id: `excel-${type}-${snapshot?.import_key || 'snapshot'}-${group.index}`,
+      formulario_id: cqoSnapshotFormId(type),
       formulario_versao: 'excel-snapshot',
       usuario_id: data.matricula_avaliador,
       status: 'aprovado',
@@ -1286,21 +1418,35 @@ function groupCqoSnapshotRows(rows, type, snapshot) {
       recebido_em: snapshot?.imported_at || snapshot?.updated_at || date,
       dados_json: data,
       excel_rows: group.rows.map(({ row }) => row),
-      source: 'cqo_import_snapshots',
+      source: sourceTable,
     };
   });
 }
 
-function normalizeCqoImportSnapshotData(snapshot) {
-  if (!snapshot) return { rows: [], snapshot: null };
-  const corteRows = Array.isArray(snapshot.corte_rows_json) ? snapshot.corte_rows_json : [];
-  const carreamentoRows = Array.isArray(snapshot.carreamento_rows_json) ? snapshot.carreamento_rows_json : [];
+function normalizeCqoImportSnapshotData(snapshot, podaSnapshots = []) {
+  const safePodaSnapshots = Array.isArray(podaSnapshots) ? podaSnapshots : [];
+  const corteRows = Array.isArray(snapshot?.corte_rows_json) ? snapshot.corte_rows_json : [];
+  const carreamentoRows = Array.isArray(snapshot?.carreamento_rows_json) ? snapshot.carreamento_rows_json : [];
+  const podaRows = safePodaSnapshots.flatMap((podaSnapshot) => {
+    const rows = Array.isArray(podaSnapshot?.rows_json) ? podaSnapshot.rows_json : [];
+    return groupCqoSnapshotRows(rows, 'poda', {
+      ...podaSnapshot,
+      source_table: 'cqo_poda_import_snapshots',
+    });
+  });
+  const podaTotalRows = safePodaSnapshots.reduce((total, podaSnapshot) => {
+    const rows = Array.isArray(podaSnapshot?.rows_json) ? podaSnapshot.rows_json.length : 0;
+    return total + Number(podaSnapshot?.total_rows || rows || 0);
+  }, 0);
 
   return {
-    snapshot,
+    snapshot: snapshot || null,
+    podaSnapshots: safePodaSnapshots,
+    podaRows: podaTotalRows,
     rows: [
       ...groupCqoSnapshotRows(corteRows, 'corte', snapshot),
       ...groupCqoSnapshotRows(carreamentoRows, 'carreamento', snapshot),
+      ...podaRows,
     ],
   };
 }
@@ -1403,9 +1549,11 @@ function buildSupabaseData({
     gpsRows: safeGpsRows,
     cqoImport: {
       snapshot: cqoImport.snapshot,
+      podaSnapshots: cqoImport.podaSnapshots || [],
       records: excelRecords.length,
       corteRows: Number(cqoImport.snapshot?.corte_total_rows || 0),
       carreamentoRows: Number(cqoImport.snapshot?.carreamento_total_rows || 0),
+      podaRows: Number(cqoImport.podaRows || 0),
     },
     source: source || 'Banco online',
     error: '',
@@ -1420,7 +1568,10 @@ async function loadSupabaseDataFromRpc(sessionToken) {
   );
   const dataset = rpcScalarPayload(payload, 'dashboard_cqo_dataset');
   const headcount = normalizeHeadcountSnapshotData(datasetRows(dataset, 'headcount_import_snapshots')[0]).rows;
-  const cqoImport = normalizeCqoImportSnapshotData(datasetRows(dataset, 'cqo_import_snapshots')[0]);
+  const cqoImport = normalizeCqoImportSnapshotData(
+    datasetRows(dataset, 'cqo_import_snapshots')[0],
+    datasetRows(dataset, 'cqo_poda_import_snapshots')
+  );
   const attachmentRows = await attachSignedStorageUrls(datasetRows(dataset, 'mobile_anexos'));
 
   return buildSupabaseData({
@@ -1455,7 +1606,7 @@ function sampleData(error = '') {
     formularios: [],
     anexos: [],
     gpsRows: [],
-    cqoImport: { snapshot: null, records: 0, corteRows: 0, carreamentoRows: 0 },
+    cqoImport: { snapshot: null, podaSnapshots: [], records: 0, corteRows: 0, carreamentoRows: 0, podaRows: 0 },
     source: 'Serviço online indisponível',
     error: dashboardErrorMessage(error, 'Não foi possível carregar os dados do dashboard.'),
   };
@@ -1496,7 +1647,7 @@ export function refreshCqoData() {
       formularios: [],
       anexos: [],
       gpsRows: [],
-      cqoImport: { snapshot: null, records: 0, corteRows: 0, carreamentoRows: 0 },
+      cqoImport: { snapshot: null, podaSnapshots: [], records: 0, corteRows: 0, carreamentoRows: 0, podaRows: 0 },
       source: 'Atualizando...',
       error: '',
     })

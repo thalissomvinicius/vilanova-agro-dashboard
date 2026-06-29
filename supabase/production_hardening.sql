@@ -446,6 +446,7 @@ declare
   v_form_rows jsonb := '[]'::jsonb;
   v_headcount_snapshots jsonb := '[]'::jsonb;
   v_cqo_snapshots jsonb := '[]'::jsonb;
+  v_cqo_poda_snapshots jsonb := '[]'::jsonb;
 begin
   select
     actor.matricula,
@@ -577,6 +578,28 @@ begin
     limit 1
   ) row_data;
 
+  select coalesce(jsonb_agg(to_jsonb(row_data) order by row_data.updated_at desc nulls last, row_data.imported_at desc nulls last), '[]'::jsonb)
+    into v_cqo_poda_snapshots
+  from (
+    select
+      import_key,
+      fonte,
+      source_file,
+      source_path,
+      source_sheet,
+      file_last_write_time,
+      total_rows,
+      columns_json,
+      rows_json,
+      imported_at,
+      updated_at
+    from public.cqo_poda_import_snapshots
+    order by
+      updated_at desc nulls last,
+      imported_at desc nulls last
+    limit 20
+  ) row_data;
+
   return jsonb_build_object(
     'response_table', 'mobile_respostas',
     'mobile_respostas', v_mobile_rows,
@@ -584,7 +607,8 @@ begin
     'mobile_anexos', v_attachment_rows,
     'mobile_formularios', v_form_rows,
     'headcount_import_snapshots', v_headcount_snapshots,
-    'cqo_import_snapshots', v_cqo_snapshots
+    'cqo_import_snapshots', v_cqo_snapshots,
+    'cqo_poda_import_snapshots', v_cqo_poda_snapshots
   );
 end;
 $$;

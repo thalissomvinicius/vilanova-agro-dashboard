@@ -140,7 +140,7 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
         />
       </div>
 
-      <div className="grid-container grid-cols-3">
+      <div className="grid-container grid-cols-4">
         <MetricCard
           title="Corte Excel"
           value={cqoImport.corteRows || 0}
@@ -158,8 +158,21 @@ export default function SyncCenter({ isSyncing, triggerManualSync }) {
           loading={loading}
         />
         <MetricCard
+          title="Poda Excel"
+          value={cqoImport.podaRows || 0}
+          subtitle="Linhas importadas"
+          icon={FileText}
+          tone="green"
+          loading={loading}
+        />
+        <MetricCard
           title="Snapshot CQO"
-          value={formatDateTime(cqoSnapshot?.updated_at || cqoSnapshot?.imported_at)}
+          value={formatDateTime(
+            cqoSnapshot?.updated_at
+            || cqoImport.podaSnapshots?.[0]?.updated_at
+            || cqoSnapshot?.imported_at
+            || cqoImport.podaSnapshots?.[0]?.imported_at
+          )}
           subtitle="Última importação"
           icon={Clock}
           tone="info"

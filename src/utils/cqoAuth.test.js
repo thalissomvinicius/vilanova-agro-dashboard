@@ -169,6 +169,7 @@ describe('dashboard response mutations', () => {
       mobile_formularios: [],
       headcount_import_snapshots: [],
       cqo_import_snapshots: [],
+      cqo_poda_import_snapshots: [],
     }));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -253,6 +254,48 @@ describe('dashboard response mutations', () => {
           cachoMalPosicionado: 1,
         }],
       }],
+      cqo_poda_import_snapshots: [{
+        import_key: 'cqo_poda_2026_06',
+        fonte: 'excel',
+        source_file: 'CQO Poda.xlsx',
+        source_path: 'C:/imports/CQO Poda.xlsx',
+        source_sheet: 'poda',
+        total_rows: 2,
+        imported_at: '2026-06-26T12:00:00Z',
+        updated_at: '2026-06-26T12:00:00Z',
+        rows_json: [
+          {
+            NomePolo: 'TOMÉ-AÇU',
+            NomeFazenda: 'FÉ EM DEUS',
+            Parcela: 'F-16',
+            'DataAvaliação': '25/06/2026',
+            ciclo_mes: 2,
+            MatriculaAvaliadores: '2005',
+            'Fiscal Resp Equipe': 'Maria Silva',
+            Linha: 101,
+            NumeroPlantasLinha: 32,
+            PlantaSemPodar: 2,
+            CachoExposto: 1,
+            PodaMeiaCoroa: 1,
+            PalhaMalEmpilhada: 1,
+          },
+          {
+            NomePolo: 'TOMÉ-AÇU',
+            NomeFazenda: 'FÉ EM DEUS',
+            Parcela: 'F-16',
+            'DataAvaliação': '25/06/2026',
+            ciclo_mes: 2,
+            MatriculaAvaliadores: '2005',
+            'Fiscal Resp Equipe': 'Maria Silva',
+            Linha: 102,
+            NumeroPlantasLinha: 28,
+            PlantaSemPodar: 1,
+            CachoExposto: 2,
+            BicoGaita: 1,
+            CachoPodrePlanta: 1,
+          },
+        ],
+      }],
     }));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -261,11 +304,12 @@ describe('dashboard response mutations', () => {
     const data = await refreshCqoData();
 
     expect(data.cqoImport).toMatchObject({
-      records: 2,
+      records: 3,
       corteRows: 2,
       carreamentoRows: 1,
+      podaRows: 2,
     });
-    expect(data.excelRecords).toHaveLength(2);
+    expect(data.excelRecords).toHaveLength(3);
 
     const corte = data.excelRecords.find((record) => record.type === 'corte');
     expect(corte).toMatchObject({
@@ -293,6 +337,34 @@ describe('dashboard response mutations', () => {
     });
 
     expect(visible.map((record) => record.id)).toEqual([corte.id]);
+
+    const poda = data.excelRecords.find((record) => record.type === 'poda');
+    expect(poda).toMatchObject({
+      source: 'excel',
+      form: 'CQO Poda',
+      farmId: 'fe-em-deus',
+      farm: 'FÉ EM DEUS',
+      parcel: 'F-16',
+      fiscal: 'Maria Silva',
+      gpsApplicable: false,
+    });
+    expect(poda.lines).toHaveLength(2);
+    expect(poda.totals).toMatchObject({
+      plantasObservadas: 60,
+      plantaSemPodar: 3,
+      cachoExposto: 3,
+      palhaMalEmpilhada: 1,
+    });
+
+    const visiblePoda = filterRecords(data.records, {
+      areaFilter: 'poda',
+      sourceFilter: 'excel',
+      periodFilter: 'custom',
+      dateFrom: '2026-06-01',
+      dateTo: '2026-06-30',
+    });
+
+    expect(visiblePoda.map((record) => record.id)).toEqual([poda.id]);
   });
 
   it('carrega headcount por RPC quando ha sessao ativa', async () => {
