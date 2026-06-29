@@ -10,7 +10,7 @@ function getSkipLabel(idx, total) {
   return !indices.includes(idx);
 }
 
-export default function CustomChart({ type = 'line', data = [], height = 280, title, loading = false, targetValue = null, targetLabel = 'Meta' }) {
+export default function CustomChart({ type = 'line', data = [], height = 280, title, loading = false, targetValue = null, targetLabel = 'Meta', hideCard = false }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
@@ -52,7 +52,7 @@ export default function CustomChart({ type = 'line', data = [], height = 280, ti
 
   // Chart type 1: BAR CHART
   const renderBarChart = () => {
-    const maxVal = Math.max(...data.map(d => d.value), 10) * 1.2;
+    const maxVal = Math.max(...data.map(d => Number(d.value || 0)), 1) * 1.2;
     const barWidth = Math.max(15, (graphWidth / data.length) - 20);
     const stepX = graphWidth / data.length;
     const shouldRotate = data.length > 4;
@@ -569,19 +569,31 @@ export default function CustomChart({ type = 'line', data = [], height = 280, ti
     );
   };
 
-  return (
-    <div className="card" style={{ height: 'auto' }}>
-      <div className="card-header" style={{ marginBottom: '10px' }}>
-        <h3 className="card-title" style={{ fontSize: '0.925rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-secondary)' }}>
-          {title}
-        </h3>
-      </div>
-      <div style={{ position: 'relative' }}>
+  const chartContent = (
+    <>
+      {!hideCard && title && (
+        <div className="card-header" style={{ marginBottom: '10px' }}>
+          <h3 className="card-title" style={{ fontSize: '0.925rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-secondary)' }}>
+            {title}
+          </h3>
+        </div>
+      )}
+      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
         {type === 'bar' && renderBarChart()}
         {type === 'line' && renderLineChart()}
         {type === 'donut' && renderDonutChart()}
         {type === 'gauge' && renderGauge()}
       </div>
+    </>
+  );
+
+  if (hideCard) {
+    return <div style={{ width: '100%', height: '100%' }}>{chartContent}</div>;
+  }
+
+  return (
+    <div className="card" style={{ height: 'auto', flex: 1 }}>
+      {chartContent}
     </div>
   );
 }

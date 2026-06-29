@@ -1099,10 +1099,10 @@ function PodaFarmsComparisonChart({ records, selectedKey, selectedFarm, onSelect
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>% de falha do indicador selecionado</span>
         </div>
       </div>
-      <div style={{ padding: '0 16px', flex: 1, display: 'flex', alignItems: 'center' }}>
-        <CustomChart type="bar" data={chartData} height={240} title="Comparação de Fazendas" />
+      <div style={{ padding: '0 16px', flex: 1, display: 'flex', alignItems: 'stretch', minHeight: 240 }}>
+        <CustomChart type="bar" data={chartData} height={240} hideCard title="Comparação de Fazendas" />
       </div>
-      <div style={{ padding: '0 16px 12px', display: 'flex', gap: 8, justifyContent: 'center' }}>
+      <div style={{ padding: '12px 16px', display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
         {data.map(d => (
           <button 
             key={d.farm}
@@ -1168,9 +1168,9 @@ function PodaFarmParcelsChart({ records, selectedKey, selectedFarm, onSelectFarm
           <option value="SANTA MARIA">Santa Maria</option>
         </select>
       </div>
-      <div style={{ padding: '0 16px', flex: 1, display: 'flex', alignItems: 'center' }}>
+      <div style={{ padding: '0 16px', flex: 1, display: 'flex', alignItems: 'stretch', minHeight: 240, overflowX: 'auto', overflowY: 'hidden' }}>
         {chartData.length > 0 ? (
-          <CustomChart type="bar" data={chartData} height={240} title="Parcelas Ofensoras" />
+          <CustomChart type="bar" data={chartData} height={240} hideCard title="Parcelas Ofensoras" />
         ) : (
           <div className="empty-panel smart-empty-panel" style={{ width: '100%', height: 240, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <strong>Sem parcelas</strong>
