@@ -313,11 +313,17 @@ function projectPodaOccurrence(value, plantas, projetadas) {
   return Math.round((Number(value || 0) / plantas) * projetadas);
 }
 
-function buildPodaDemoRecords(dateFrom, dateTo) {
+function buildPodaDemoRecords() {
   if (!PODA_PRESENTATION_DEMO_ENABLED) return [];
 
+  // Use absolute dates anchored to today-56 days so chart always shows 8 full weeks
+  const anchor = new Date();
+  anchor.setDate(anchor.getDate() - 56);
+  anchor.setHours(0, 0, 0, 0);
+
   return PODA_DEMO_SPECS.map((spec, index) => {
-    const date = demoDateFromRange(spec.dayOffset, dateFrom, dateTo);
+    const date = new Date(anchor);
+    date.setDate(anchor.getDate() + spec.dayOffset);
     const inputDate = inputDateFromDate(date);
     const displayDate = displayDateFromDate(date);
     const gpsLat = -2.84 - index * 0.006;
@@ -383,6 +389,8 @@ function buildPodaDemoRecords(dateFrom, dateTo) {
     };
   });
 }
+
+
 
 function podaIndicatorDefinitions(totals) {
   return [
@@ -1486,7 +1494,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
   const corteRecords = filtered.filter((r) => r.type === 'corte');
   const carreamentoRecords = filtered.filter((r) => r.type === 'carreamento');
   const podaRealRecords = filtered.filter((r) => r.type === 'poda');
-  const podaDemoRecords = areaFilter === 'poda' ? buildPodaDemoRecords(dateFrom, dateTo) : [];
+  const podaDemoRecords = areaFilter === 'poda' ? buildPodaDemoRecords() : [];
   const podaRecords = areaFilter === 'poda' ? [...podaDemoRecords, ...podaRealRecords] : podaRealRecords;
   const podaDemoActive = podaDemoRecords.length > 0;
 
