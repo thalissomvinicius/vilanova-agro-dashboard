@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import StatusBanner from '../components/ui/StatusBanner';
 import { parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
+import { buildActiveFilterSummary } from '../utils/filterSummary';
 import { buildQualidadeOperacional } from '../utils/qualidadeOperacionalData';
 
 const LeafletMap = lazy(() => import('../components/LeafletMap'));
@@ -783,6 +784,7 @@ function FieldBiBoard({
   quality,
   dailyBunchRows,
   periodText,
+  filterSummary,
   updateText,
   latestCollectionText,
   dateFrom,
@@ -809,7 +811,8 @@ function FieldBiBoard({
         <div className="field-bi-title-block">
           <h2>Qualidade Agrícola</h2>
           <div className="field-bi-meta-line">
-            <span><CalendarDays size={14} />{periodText}</span>
+            <span title={`Período filtrado: ${periodText}`}><CalendarDays size={14} />Período: {periodText}</span>
+            <span title={`Filtros ativos: ${filterSummary}`}><Filter size={14} />Filtros: {filterSummary}</span>
             <span><RefreshCw size={14} />Atualizado: {updateText}</span>
             <span><CalendarDays size={14} />Última coleta: {latestCollectionText}</span>
           </div>
@@ -985,6 +988,13 @@ export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter,
   const dailyBunchRows = useMemo(() => buildDailyBunchRows(records), [records]);
   const quality = model.quality;
   const periodText = periodLabel(dateFrom, dateTo);
+  const filterSummary = useMemo(() => buildActiveFilterSummary({
+    farmFilter,
+    cycleFilter,
+    evaluatorFilter,
+    sourceFilter,
+    searchTerm,
+  }), [farmFilter, cycleFilter, evaluatorFilter, sourceFilter, searchTerm]);
   const updateText = updateLabel(lastSyncTime);
   const latestCollectionText = loading ? 'Carregando...' : latestCollectionLabel(records);
   const diagnostics = useMemo(() => buildDataDiagnostics({
@@ -1007,6 +1017,7 @@ export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter,
     quality,
     dailyBunchRows,
     periodText,
+    filterSummary,
     updateText,
     latestCollectionText,
     dateFrom,

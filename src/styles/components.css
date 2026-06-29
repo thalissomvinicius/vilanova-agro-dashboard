@@ -1391,7 +1391,15 @@ body.presentation-active {
   align-items: center;
   gap: 5px;
   min-width: 0;
+  max-width: min(100%, 520px);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.field-bi-meta-line span svg,
+.losses-bi-meta span svg {
+  flex-shrink: 0;
 }
 
 .field-bi-present-btn {
@@ -3133,6 +3141,9 @@ body.field-map-active {
   align-items: center;
   gap: 5px;
   min-width: 0;
+  max-width: min(100%, 520px);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
