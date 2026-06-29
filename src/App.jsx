@@ -698,6 +698,7 @@ export default function App() {
       case 'cqo-poda':
         return (
           <Analytics
+            theme={theme}
             farmFilter={farmFilter}
             areaFilter="poda"
             periodFilter={periodFilter}
@@ -706,7 +707,10 @@ export default function App() {
             sourceFilter={fieldSourceFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
+            setDateFrom={applyDateFrom}
+            setDateTo={applyDateTo}
             lastSyncTime={lastSyncTime}
+            onResetFilters={resetFieldFilters}
           />
         );
       case 'perdas-agricola':

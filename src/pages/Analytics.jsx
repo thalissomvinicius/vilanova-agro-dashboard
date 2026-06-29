@@ -6,13 +6,19 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
+  Database,
+  FileSpreadsheet,
+  Filter,
   Gauge,
   Leaf,
+  MapPinned,
   Maximize2,
   MonitorPlay,
   RefreshCw,
+  RotateCcw,
   Rows3,
   Scissors,
+  SlidersHorizontal,
   Sprout,
   ThumbsDown,
   ThumbsUp,
@@ -268,6 +274,7 @@ function latestCollectionLabel(records) {
 }
 
 function formatMonthYear(dateFrom, dateTo) {
+  if (!dateFrom && !dateTo) return 'Todos os tempos';
   if (!dateFrom || !dateTo) return 'Período filtrado';
   const from = new Date(`${dateFrom}T00:00:00`);
   const to = new Date(`${dateTo}T00:00:00`);
@@ -1330,186 +1337,808 @@ function PodaMultiFarmTrendPanel({ records, selectedKey }) {
 }
 
 
-function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresent, presentationMode = false, filters = {}, mapProps = {}, lastSyncTime, loading }) {
-  const indicators = buildPodaIndicatorRows(totals);
-  const parcelRows = buildPodaGroupedRows(records, (record) => `${record.farm || 'Sem fazenda'} · ${record.parcel || 'Sem parcela'}`);
-  const topIssue = indicators.find((row) => row.count > 0) || indicators[0];
-  const [selectedIndicatorKey, setSelectedIndicatorKey] = useState(topIssue?.key || indicators[0]?.key || '');
-  const [activeBreakdown, setActiveBreakdown] = useState('parcel');
-  const [activeViewTab, setActiveViewTab] = useState('ranking'); // 'ranking', 'trend', 'map'
-  const [activeTrendPeriod, setActiveTrendPeriod] = useState('week'); // 'week', 'month'
-  const [selectedFarm, setSelectedFarm] = useState('FÉ EM DEUS');
-  
-  const selectedIndicator = indicators.find((row) => row.key === selectedIndicatorKey) || topIssue || indicators[0];
-  const selectedKey = selectedIndicator?.key || selectedIndicatorKey;
-  const drilldowns = {
-    parcel: buildPodaSpecificBreakdown(records, selectedKey, (record) => `${record.farm || 'Sem fazenda'} · ${record.parcel || 'Sem parcela'}`),
-    farm: buildPodaSpecificBreakdown(records, selectedKey, (record) => record.farm || 'Sem fazenda'),
-    fiscal: buildPodaSpecificBreakdown(records, selectedKey, (record) => record.evaluator || record.fiscal || 'Sem fiscal'),
-    week: buildPodaSpecificBreakdown(records, selectedKey, podaWeekLabel),
-    month: buildPodaSpecificBreakdown(records, selectedKey, podaMonthLabel),
+const PODA_BI_SERIES = [
+  { key: 'plantaSemPodar', sourceKey: 'plantaSemPodarRate', label: 'PSP %', fullLabel: 'Planta sem podar %', color: 'var(--status-danger)', meta: 1 },
+  { key: 'cachoExposto', sourceKey: 'cachoExpostoRate', label: 'CE %', fullLabel: 'Cacho exposto %', color: 'var(--orange-institutional)', meta: 2 },
+  { key: 'podaMeiaCoroa', sourceKey: 'podaMeiaCoroaRate', label: 'PMC %', fullLabel: 'Poda meia coroa %', color: 'var(--text-primary)', meta: 2 },
+  { key: 'cachoPodrePlanta', sourceKey: 'cachoPodrePlantaRate', label: 'CP %', fullLabel: 'Cacho podre %', color: 'var(--status-danger)', meta: 1 },
+];
+
+const PODA_TOTAL_SECTION_OPTIONS = [
+  { id: 'qualidade', label: 'Qualidade' },
+  { id: 'falhas', label: 'Falhas' },
+  { id: 'amostragem', label: 'Amostragem' },
+  { id: 'todos', label: 'Tudo' },
+];
+
+function formatPercent(value, digits = 2) {
+  return `${fmt(value, digits)}%`;
+}
+
+function podaRatesFromTotals(totals) {
+  return {
+    plantaSemPodar: Number(totals.plantaSemPodarRate || 0),
+    cachoExposto: Number(totals.cachoExpostoRate || 0),
+    podaMeiaCoroa: Number(totals.podaMeiaCoroaRate || 0),
+    cachoPodrePlanta: Number(totals.cachoPodrePlantaRate || 0),
+    podaMaiorUmParaUm: Number(totals.podaMaiorUmParaUmRate || 0),
+    bicoGaita: Number(totals.bicoGaitaRate || 0),
+    folhaMamando: Number(totals.folhaMamandoPodaRate || 0),
+    palhaMalEmpilhada: Number(totals.palhaMalEmpilhadaRate || 0),
+    samples: Number(totals.podaPlantasObservadas || 0),
   };
-  const weekChartRows = buildPodaSpecificChartRows(records, selectedKey, podaWeekLabel, 7);
-  const monthChartRows = buildPodaSpecificChartRows(records, selectedKey, podaMonthLabel, 6);
-  const dayRows = buildPodaSpecificDayRows(records, selectedKey);
-  const mapMetricId = PODA_MAP_METRIC_BY_KEY[selectedKey] || 'poda_planta_sem_podar';
+}
 
-  const totalLines = totals.linhas || 0;
-  const totalPlants = totals.podaPlantasObservadas || 0;
-  const overallFailureRate = totalPlants > 0 ? (totals.falhas / totalPlants) * 100 : 0;
+function buildPodaFarmRows(records) {
+  const buckets = new Map();
+  records.forEach((record) => {
+    const key = record.farm || 'Sem fazenda';
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(record);
+  });
 
-  const updateText = lastSyncTime ? `${new Intl.DateTimeFormat('pt-BR').format(new Date())} ${lastSyncTime}` : new Intl.DateTimeFormat('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(new Date());
+  return Array.from(buckets.entries())
+    .map(([label, recs]) => ({
+      label,
+      recordsCount: recs.length,
+      ...podaRatesFromTotals(aggregateRecords(recs)),
+    }))
+    .sort((a, b) => (b.cachoExposto + b.plantaSemPodar) - (a.cachoExposto + a.plantaSemPodar));
+}
 
-  const latestCollectionText = loading ? 'Carregando...' : latestCollectionLabel(records);
+function buildPodaWeekRows(records) {
+  const buckets = new Map();
+  records.forEach((record) => {
+    const label = podaWeekLabel(record);
+    if (!buckets.has(label)) buckets.set(label, []);
+    buckets.get(label).push(record);
+  });
+
+  return Array.from(buckets.entries())
+    .map(([label, recs]) => ({
+      label,
+      recordsCount: recs.length,
+      ...podaRatesFromTotals(aggregateRecords(recs)),
+    }))
+    .sort((a, b) => String(a.label).localeCompare(String(b.label)));
+}
+
+function buildPodaEvaluatorRows(records) {
+  const buckets = new Map();
+  records.forEach((record) => {
+    const key = record.evaluator || record.fiscal || 'Sem fiscal';
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(record);
+  });
+
+  return Array.from(buckets.entries())
+    .map(([label, recs]) => {
+      const rates = podaRatesFromTotals(aggregateRecords(recs));
+      const risk = rates.plantaSemPodar + rates.cachoExposto + rates.cachoPodrePlanta + rates.podaMeiaCoroa;
+      return {
+        label,
+        recordsCount: recs.length,
+        risk,
+        ...rates,
+      };
+    });
+}
+
+function buildPodaDailyRows(records) {
+  const buckets = new Map();
+
+  records.forEach((record) => {
+    const date = parsePodaRecordDate(record);
+    const sortKey = date
+      ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      : `sem-data-${record.id}`;
+    const label = date
+      ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`
+      : 'Sem data';
+
+    if (!buckets.has(sortKey)) {
+      buckets.set(sortKey, { sortKey, label, records: [] });
+    }
+    buckets.get(sortKey).records.push(record);
+  });
+
+  return Array.from(buckets.values())
+    .map((bucket) => ({
+      sortKey: bucket.sortKey,
+      label: bucket.label,
+      ...podaRatesFromTotals(aggregateRecords(bucket.records)),
+    }))
+    .sort((a, b) => String(a.sortKey).localeCompare(String(b.sortKey)));
+}
+
+function podaQualityTone(value, meta, goodWhen = 'low') {
+  const numeric = Number(value || 0);
+  if (goodWhen === 'high') {
+    if (numeric >= meta) return { tone: 'green', status: 'Dentro da meta' };
+    return { tone: 'danger', status: 'Fora da meta' };
+  }
+  if (numeric <= meta) return { tone: 'green', status: 'Dentro da meta' };
+  return { tone: 'danger', status: 'Fora da meta' };
+}
+
+function PodaBiKpiCard({ label, value, meta, goodWhen = 'low', loading = false }) {
+  const tone = podaQualityTone(value, meta, goodWhen);
+  const signal = tone.tone === 'green' ? '✓' : '!';
+  return (
+    <div className={`field-bi-kpi field-bi-kpi-${tone.tone}`}>
+      <span>{label}</span>
+      <strong className={loading ? 'skeleton-text' : ''}>
+        {loading ? '\u00A0' : `${formatPercent(value)}${signal}`}
+      </strong>
+      <small>Meta: {formatPercent(meta)} · {tone.status}</small>
+    </div>
+  );
+}
+
+function PodaBiLegend() {
+  return (
+    <div className="field-bi-legend">
+      {PODA_BI_SERIES.map((item) => (
+        <span key={item.key}><i style={{ background: item.color }} />{item.fullLabel}</span>
+      ))}
+    </div>
+  );
+}
+
+function PodaBiFarmChart({ rows, loading = false }) {
+  const visibleRows = rows.slice(0, 5);
 
   return (
-    <div className={`poda-modern-layout ${presentationMode ? 'is-presentation' : ''}`}>
-      {/* Header / Filter Bar */}
-      <header className="field-bi-header">
+    <section className="field-bi-panel">
+      <h3>Qualidade por Fazenda</h3>
+      <PodaBiLegend />
+      {loading ? (
+        <div className="skeleton-chart" style={{ height: 180 }} />
+      ) : (
+        <div className="field-bi-farm-chart">
+          {visibleRows.map((row) => (
+            <div className="field-bi-farm-row" key={row.label}>
+              <strong>{row.label}</strong>
+              <div className="field-bi-farm-bars">
+                {PODA_BI_SERIES.map((item, index) => {
+                  const value = row[item.key];
+                  return (
+                    <div className="field-bi-farm-bar-line" key={item.key}>
+                      <span
+                        style={{ width: `${Math.min(value, 100)}%`, background: item.color }}
+                        title={`${row.label} - ${item.fullLabel}: ${formatPercent(value)}`}
+                      />
+                      {index === 0 && <small>{formatPercent(value)}</small>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          {!visibleRows.length && (
+            <div className="empty-panel smart-empty-panel">
+              <strong>Sem dados de fazenda</strong>
+              <span>Troque o mês, ano ou fazenda para localizar coletas já sincronizadas.</span>
+            </div>
+          )}
+        </div>
+      )}
+      <div className="field-bi-axis"><span>0%</span><span>50%</span><span>100%</span></div>
+    </section>
+  );
+}
+
+function PodaBiWeekChart({ rows, loading = false }) {
+  const visibleRows = rows.slice(-8);
+  const chartHeight = 232;
+  const padding = { top: 22, right: 18, bottom: 36, left: 42 };
+  const weekWidth = 86;
+  const width = Math.max(420, padding.left + padding.right + visibleRows.length * weekWidth);
+  const graphHeight = chartHeight - padding.top - padding.bottom;
+  const barWidth = 42;
+
+  return (
+    <section className="field-bi-panel">
+      <h3>Qualidade por semana</h3>
+      <PodaBiLegend />
+      {loading ? (
+        <div className="skeleton-chart" style={{ height: chartHeight }} />
+      ) : (
+        <div className="field-bi-week-scroll">
+          {visibleRows.length ? (
+            <svg className="field-bi-week-chart" viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight}>
+              {[0, 0.5, 1].map((ratio) => {
+                const y = padding.top + graphHeight * (1 - ratio);
+                return (
+                  <g key={ratio}>
+                    <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} className="chart-grid-line" />
+                    <text x={padding.left - 8} y={y + 4} textAnchor="end" className="chart-axis-text">{Math.round(ratio * 100)}%</text>
+                  </g>
+                );
+              })}
+              {visibleRows.map((row, rowIndex) => {
+                const groupX = padding.left + rowIndex * weekWidth + (weekWidth - barWidth) / 2;
+                let stackedHeight = 0;
+                return (
+                  <g key={row.label}>
+                    {PODA_BI_SERIES.map((item) => {
+                      const pct = Math.max(0, Math.min(row[item.key], 100));
+                      const segmentHeight = (pct / 100) * graphHeight;
+                      const y = padding.top + graphHeight - stackedHeight - segmentHeight;
+                      stackedHeight += segmentHeight;
+                      return (
+                        <rect
+                          key={item.key}
+                          x={groupX}
+                          y={y}
+                          width={barWidth}
+                          height={Math.max(segmentHeight, pct > 0 ? 1.5 : 0)}
+                          fill={item.color}
+                          className="chart-bar"
+                        >
+                          <title>{`${row.label} - ${item.fullLabel}: ${formatPercent(pct)}`}</title>
+                        </rect>
+                      );
+                    })}
+                    <text x={groupX + barWidth / 2} y={chartHeight - 12} textAnchor="middle" className="chart-axis-text">
+                      {formatPodaChartLabel(row.label)}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          ) : (
+            <div className="empty-panel smart-empty-panel">
+              <strong>Sem semanas no filtro</strong>
+              <span>A visão semanal aparece quando houver coletas dentro do período selecionado.</span>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PodaFiscalCards({ rows, loading = false }) {
+  const visibleRows = rows
+    .map((row) => ({
+      ...row,
+      tone: row.risk > 8 ? 'danger' : row.risk > 4 ? 'warning' : 'success',
+    }))
+    .sort((a, b) => b.risk - a.risk || b.recordsCount - a.recordsCount)
+    .slice(0, 4);
+
+  return (
+    <section className="field-bi-panel field-bi-evaluators">
+      {loading ? (
+        <div className="skeleton-chart" style={{ height: 196 }} />
+      ) : (
+        <>
+          <div className="field-bi-evaluator-head">
+            <h3>Fiscal responsável</h3>
+            <span>ranking por risco de qualidade da poda</span>
+          </div>
+          {visibleRows.map((row) => (
+            <div className={`field-bi-evaluator-card field-bi-evaluator-${row.tone}`} key={row.label}>
+              <strong>
+                <span>{row.label}</span>
+                <em>{formatPercent(row.risk)} risco</em>
+              </strong>
+              <div>
+                <span><b>{formatPercent(row.plantaSemPodar)}</b>Planta sem podar %</span>
+                <span><b>{formatPercent(row.cachoExposto)}</b>Cacho exposto %</span>
+                <span><b>{formatPercent(row.podaMeiaCoroa)}</b>Poda meia coroa %</span>
+              </div>
+              <small>
+                {fmt(row.recordsCount)} coleta(s) · {row.tone === 'danger' ? 'prioridade alta' : row.tone === 'warning' ? 'acompanhar' : 'controlado'}
+              </small>
+            </div>
+          ))}
+          {!visibleRows.length && (
+            <div className="empty-panel smart-empty-panel">
+              <strong>Sem fiscais</strong>
+              <span>Nenhuma coleta do período trouxe fiscal responsável válido.</span>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function PodaDailyBarChart({ rows, loading = false }) {
+  const series = [
+    { key: 'plantaSemPodar', label: 'Planta sem podar %', color: 'var(--status-danger)' },
+    { key: 'cachoExposto', label: 'Cacho exposto %', color: 'var(--orange-institutional)' },
+    { key: 'podaMeiaCoroa', label: 'Poda meia coroa %', color: 'var(--text-primary)' },
+    { key: 'cachoPodrePlanta', label: 'Cacho podre %', color: 'var(--status-danger)' },
+  ];
+
+  const visibleRows = rows.slice(-12);
+  const chartHeight = 236;
+  const padding = { top: 18, right: 18, bottom: 32, left: 46 };
+  const dayWidth = 96;
+  const width = Math.max(880, padding.left + padding.right + visibleRows.length * dayWidth);
+  const graphHeight = chartHeight - padding.top - padding.bottom;
+  const barWidth = 62;
+
+  return (
+    <section className="field-bi-panel field-bi-daily-panel">
+      <h3>Qualidade por Dia/Fazenda/Parcela</h3>
+      <div className="field-daily-legend">
+        {series.map((item) => (
+          <span key={item.key}><i style={{ background: item.color }} />{item.label}</span>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="skeleton-chart" style={{ height: chartHeight }} />
+      ) : (
+        <div className="field-daily-chart-scroll">
+          {visibleRows.length ? (
+            <svg className="field-daily-chart-svg" viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight}>
+              {[0, 0.5, 1].map((ratio) => {
+                const y = padding.top + graphHeight * (1 - ratio);
+                return (
+                  <g key={ratio}>
+                    <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} className="chart-grid-line" />
+                    <text x={padding.left - 10} y={y + 4} textAnchor="end" className="chart-axis-text">
+                      {Math.round(ratio * 100)}%
+                    </text>
+                  </g>
+                );
+              })}
+
+              {visibleRows.map((row, rowIndex) => {
+                const groupX = padding.left + rowIndex * dayWidth + (dayWidth - barWidth) / 2;
+                const total = series.reduce((sum, item) => sum + Number(row[item.key] || 0), 0);
+                let stackedHeight = 0;
+                return (
+                  <g key={row.sortKey}>
+                    {series.map((item) => {
+                      const value = Number(row[item.key] || 0);
+                      const pct = total > 0 ? (value / total) * 100 : 0;
+                      const segmentHeight = total > 0 ? (pct / 100) * graphHeight : 0;
+                      const y = padding.top + graphHeight - stackedHeight - segmentHeight;
+                      stackedHeight += segmentHeight;
+                      return (
+                        <rect
+                          key={item.key}
+                          x={groupX}
+                          y={y}
+                          width={barWidth}
+                          height={Math.max(segmentHeight, value > 0 ? 1.5 : 0)}
+                          fill={item.color}
+                          className="chart-bar"
+                        >
+                          <title>{`${row.label} - ${item.label}: ${formatPercent(value)}`}</title>
+                        </rect>
+                      );
+                    })}
+                    <text x={groupX + barWidth / 2} y={chartHeight - 12} textAnchor="middle" className="chart-axis-text">
+                      {row.label}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          ) : (
+            <div className="empty-panel smart-empty-panel">
+              <strong>Sem barras diárias</strong>
+              <span>O gráfico por dia será montado quando houver plantas avaliadas no mês selecionado.</span>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PodaTotalMetricCard({ label, value, detail, tone = 'neutral', loading = false }) {
+  return (
+    <div className={`field-total-metric field-total-metric-${tone}`}>
+      <span>{label}</span>
+      <strong className={loading ? 'skeleton-text' : ''}>{loading ? '\u00A0' : value}</strong>
+      {detail ? <small>{detail}</small> : null}
+    </div>
+  );
+}
+
+function buildPodaTotalMetricGroups(totals, records) {
+  return [
+    {
+      id: 'qualidade',
+      title: 'Indicadores de qualidade da poda',
+      cards: [
+        { label: 'Planta sem podar', value: formatPercent(totals.plantaSemPodarRate), detail: `${fmt(totals.plantaSemPodar)} plantas`, tone: totals.plantaSemPodarRate > 1 ? 'danger' : 'success' },
+        { label: 'Cacho exposto', value: formatPercent(totals.cachoExpostoRate), detail: `${fmt(totals.cachoExposto)} ocorrências`, tone: totals.cachoExpostoRate > 2 ? 'danger' : 'neutral' },
+        { label: 'Poda meia coroa', value: formatPercent(totals.podaMeiaCoroaRate), detail: `${fmt(totals.podaMeiaCoroa)} ocorrências`, tone: totals.podaMeiaCoroaRate > 2 ? 'warning' : 'neutral' },
+        { label: 'Poda maior que 1:1', value: formatPercent(totals.podaMaiorUmParaUmRate), detail: `${fmt(totals.podaMaiorUmParaUm)} ocorrências`, tone: totals.podaMaiorUmParaUmRate > 2 ? 'warning' : 'neutral' },
+        { label: 'Bico de gaita', value: formatPercent(totals.bicoGaitaRate), detail: `${fmt(totals.bicoGaita)} ocorrências`, tone: totals.bicoGaitaRate > 2 ? 'warning' : 'neutral' },
+        { label: 'Cacho podre na planta', value: formatPercent(totals.cachoPodrePlantaRate), detail: `${fmt(totals.cachoPodrePlanta)} ocorrências`, tone: totals.cachoPodrePlantaRate > 1 ? 'danger' : 'neutral' },
+        { label: 'Folha mamando', value: formatPercent(totals.folhaMamandoPodaRate), detail: `${fmt(totals.folhaMamando)} ocorrências`, tone: 'warning' },
+        { label: 'Palha mal empilhada', value: formatPercent(totals.palhaMalEmpilhadaRate), detail: `${fmt(totals.palhaMalEmpilhada)} ocorrências`, tone: 'warning' },
+      ],
+    },
+    {
+      id: 'falhas',
+      title: 'Projeções e ocorrências',
+      cards: [
+        { label: 'Planta sem podar (proj.)', value: fmt(totals.plantaSemPodarProjetada), detail: `${formatPercent(totals.plantaSemPodarRate)} da amostra`, tone: 'danger' },
+        { label: 'Cacho exposto (proj.)', value: fmt(totals.cachoExpostoProjetado), detail: `${formatPercent(totals.cachoExpostoRate)} da amostra`, tone: 'warning' },
+        { label: 'Poda meia coroa (proj.)', value: fmt(totals.podaMeiaCoroaProjetada), detail: `${formatPercent(totals.podaMeiaCoroaRate)} da amostra`, tone: 'warning' },
+        { label: 'Total projetado', value: fmt(totals.ocorrenciasPodaProjetadas), detail: 'soma das projeções', tone: 'neutral' },
+        { label: 'Plantas projetadas', value: fmt(totals.plantasProjetadas), detail: 'base da projeção', tone: 'neutral' },
+        { label: 'Fichas com projeção', value: fmt(totals.podaComProjecao), detail: 'coletas com total de plantas', tone: 'neutral' },
+      ],
+    },
+    {
+      id: 'amostragem',
+      title: 'Amostragem e auditoria',
+      cards: [
+        { label: 'Fichas de poda', value: fmt(records.length), detail: 'coletas no filtro', tone: 'success' },
+        { label: 'Linhas avaliadas', value: fmt(totals.linhas), detail: 'linhas/ruas amostradas', tone: 'neutral' },
+        { label: 'Plantas observadas', value: fmt(totals.podaPlantasObservadas), detail: 'base da auditoria', tone: 'neutral' },
+        {
+          label: 'Registros com GPS',
+          value: `${fmt(totals.gps)} / ${fmt(totals.gpsEligible)}`,
+          detail: totals.gpsEligible === totals.total ? `${formatPercent(totals.gpsRate)}% das fichas` : `${formatPercent(totals.gpsRate)}% das coletas do app`,
+          tone: 'success',
+        },
+        { label: 'Pontos GPS', value: fmt(totals.gpsPoints), detail: `${fmt(totals.gpsOccurrences)} ocorrências`, tone: 'neutral' },
+        { label: 'Score poda', value: fmt(totals.podaScore), detail: 'nota técnica da poda', tone: totals.podaScore >= 85 ? 'success' : 'warning' },
+      ],
+    },
+  ];
+}
+
+function PodaTotalDataPanel({ totals, records, selectedSection, loading = false }) {
+  const groups = buildPodaTotalMetricGroups(totals, records)
+    .filter((group) => selectedSection === 'todos' || group.id === selectedSection);
+  const farmRows = buildPodaFarmRows(records).slice(0, 8);
+
+  return (
+    <div className={`field-total-panel ${groups.length === 1 ? 'is-single-section' : ''}`}>
+      {groups.map((group) => (
+        <section className="field-total-section" key={group.id}>
+          <h3>{group.title}</h3>
+          <div className="field-total-metric-grid">
+            {group.cards.map((card) => (
+              <PodaTotalMetricCard
+                key={`${group.id}-${card.label}`}
+                loading={loading}
+                {...card}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+
+      <section className="field-total-section field-total-table-section">
+        <h3>Resumo por fazenda</h3>
+        <div className="field-total-table-wrap">
+          <table className="field-total-table">
+            <thead>
+              <tr>
+                <th>Fazenda</th>
+                <th>Coletas</th>
+                <th>Sem podar</th>
+                <th>Cacho exposto</th>
+                <th>Meia coroa</th>
+                <th>Cacho podre</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {farmRows.map((row) => {
+                const farmTotals = aggregateRecords(records.filter((record) => (record.farm || 'Sem fazenda') === row.label));
+                return (
+                  <tr key={row.label}>
+                    <td>{row.label}</td>
+                    <td>{fmt(row.recordsCount)}</td>
+                    <td>{formatPercent(row.plantaSemPodar)}</td>
+                    <td>{formatPercent(row.cachoExposto)}</td>
+                    <td>{formatPercent(row.podaMeiaCoroa)}</td>
+                    <td>{formatPercent(row.cachoPodrePlanta)}</td>
+                    <td>{fmt(farmTotals.podaScore)}</td>
+                  </tr>
+                );
+              })}
+              {!farmRows.length ? (
+                <tr>
+                  <td colSpan="7">Sem fazendas no filtro atual.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function PodaDataHealthPanel({ records, allRecords, loading, source, periodText }) {
+  const podaAll = allRecords.filter((record) => record.type === 'poda');
+  const visibleCount = records.length;
+  const transformedRecords = podaAll.length;
+  const hiddenByFilters = Math.max(transformedRecords - visibleCount, 0);
+
+  let tone = 'success';
+  let status = 'Dados disponíveis';
+  let message = 'O pipeline carregou os dados e há registros visíveis nos filtros atuais.';
+
+  if (transformedRecords > 0 && visibleCount === 0) {
+    tone = 'warning';
+    status = 'Filtros sem resultado';
+    message = `${fmt(transformedRecords)} registro(s) de poda existem na base, mas nenhum passou pelos filtros atuais.`;
+  } else if (transformedRecords === 0) {
+    tone = 'warning';
+    status = 'Sem carga de poda';
+    message = 'Nenhuma coleta CQO Poda foi encontrada para montar o dashboard.';
+  }
+
+  const cards = [
+    { label: 'Base poda', value: transformedRecords, icon: Database },
+    { label: 'No filtro', value: visibleCount, icon: Filter },
+    { label: 'Ocultos', value: hiddenByFilters, icon: FileSpreadsheet },
+  ];
+
+  return (
+    <section className={`field-data-health field-data-health-${tone}`}>
+      <div className="field-data-health-status">
+        <Database size={18} />
+        <div>
+          <span>Integridade dos dados</span>
+          <strong className={loading ? 'skeleton-text skeleton-sm' : ''}>{loading ? '\u00A0' : status}</strong>
+          {!loading ? <p>{message}</p> : null}
+        </div>
+      </div>
+
+      <div className="field-data-health-metrics">
+        {cards.map(({ label, value, icon: Icon }) => (
+          <div key={label}>
+            <Icon size={16} />
+            <span>{label}</span>
+            <strong className={loading ? 'skeleton-text skeleton-sm' : ''}>{loading ? '\u00A0' : fmt(value)}</strong>
+          </div>
+        ))}
+      </div>
+
+      {!loading ? (
+        <div className="field-data-health-meta">
+          <span>{source || 'Fonte não informada'}</span>
+          <strong>{periodText || 'Todos os tempos'}</strong>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function PodaBiEmptyState({ recordCount, allPodaCount, onResetFilters }) {
+  const hasDataOutsideFilters = allPodaCount > 0;
+
+  return (
+    <div className={`field-bi-empty-state field-bi-empty-${hasDataOutsideFilters ? 'warning' : 'danger'}`}>
+      <div className="field-bi-empty-icon">
+        <AlertTriangle size={30} />
+      </div>
+      <div>
+        <span>{hasDataOutsideFilters ? 'Filtros sem resultado' : 'Sem carga de poda'}</span>
+        <h3>{hasDataOutsideFilters ? 'Há dados na base, mas não neste recorte' : 'Nenhum dado CQO Poda disponível'}</h3>
+        <p>
+          {hasDataOutsideFilters
+            ? 'Amplie o período ou limpe os filtros para visualizar as coletas já sincronizadas.'
+            : 'Aguarde novas coletas de poda sincronizadas pelo aplicativo.'}
+        </p>
+        {hasDataOutsideFilters && onResetFilters ? (
+          <button type="button" className="btn btn-primary field-bi-empty-action" onClick={onResetFilters}>
+            <RotateCcw size={15} />
+            Limpar filtros
+          </button>
+        ) : null}
+      </div>
+      <div className="field-bi-empty-grid">
+        <div><span>Registros na base</span><strong>{fmt(allPodaCount)}</strong></div>
+        <div><span>Visíveis no filtro</span><strong>{fmt(recordCount)}</strong></div>
+        <div><span>Formulário</span><strong>CQO Poda</strong></div>
+      </div>
+    </div>
+  );
+}
+
+function PodaGeoQualityOverlay({ mapProps, periodText, updateText, latestCollectionText, onClose }) {
+  return createPortal(
+    <div className="field-map-overlay" role="dialog" aria-modal="true" aria-label="Qualidade por parcela no mapa">
+      <button type="button" className="presentation-close-btn field-bi-close-btn" onClick={onClose} title="Fechar mapa" aria-label="Fechar mapa">
+        <X size={22} />
+      </button>
+      <section className="field-map-dialog">
+        <header className="field-map-header">
+          <img src="/logo.png" alt="Vila Nova Agroindustrial" />
+          <div>
+            <span>Georreferenciamento CQO Poda</span>
+            <h2>Qualidade por parcela</h2>
+            <p>Shapes das parcelas com semáforo de qualidade da poda, filtros atuais e detalhe por fazenda, parcela, fiscal e período.</p>
+          </div>
+          <div className="field-map-context">
+            <span>{periodText}</span>
+            <span>Atualizado: {updateText}</span>
+            <span>Última coleta: {latestCollectionText}</span>
+          </div>
+        </header>
+        <div className="field-map-frame">
+          <Suspense
+            fallback={(
+              <div className="field-map-suspense">
+                <div className="gps-map-loading-spinner" />
+                <strong>Carregando mapa das parcelas</strong>
+                <span>Preparando shapefiles e indicadores de poda.</span>
+              </div>
+            )}
+          >
+            <LeafletMap
+              {...mapProps}
+              areaFilter="poda"
+              initialOperation="poda"
+              initialMetricId="poda_planta_sem_podar"
+            />
+          </Suspense>
+        </div>
+      </section>
+    </div>,
+    document.body
+  );
+}
+
+function PodaBiBoard({
+  totals,
+  records,
+  allRecords = [],
+  periodText,
+  demoActive,
+  source,
+  onPresent,
+  onOpenGeoQuality,
+  presentationMode = false,
+  mapProps = {},
+  lastSyncTime,
+  loading,
+  dateFrom,
+  dateTo,
+  setDateFrom,
+  setDateTo,
+  boardMode,
+  setBoardMode,
+  totalSection,
+  setTotalSection,
+  onResetFilters,
+}) {
+  const farmRows = useMemo(() => buildPodaFarmRows(records), [records]);
+  const weekRows = useMemo(() => buildPodaWeekRows(records), [records]);
+  const evaluatorRows = useMemo(() => buildPodaEvaluatorRows(records), [records]);
+  const dailyRows = useMemo(() => buildPodaDailyRows(records), [records]);
+  const allPodaCount = useMemo(() => allRecords.filter((record) => record.type === 'poda').length, [allRecords]);
+
+  const updateText = lastSyncTime
+    ? `${new Intl.DateTimeFormat('pt-BR').format(new Date())} ${lastSyncTime}`
+    : new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date());
+  const latestCollectionText = loading ? 'Carregando...' : latestCollectionLabel(records);
+  const isTotalMode = !presentationMode && boardMode === 'total';
+
+  return (
+    <div className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
+      <div className="field-bi-header">
         <img src="/logo.png" alt="Vila Nova Agroindustrial" className="field-bi-logo" />
         <div className="field-bi-title-block">
-          <h2>CQO Poda</h2>
+          <h2>Qualidade Agrícola — Poda</h2>
           <div className="field-bi-meta-line">
             <span><CalendarDays size={14} />{periodText || 'Todos os tempos'}</span>
             <span><RefreshCw size={14} />Atualizado: {updateText}</span>
             <span><CalendarDays size={14} />Última coleta: {latestCollectionText}</span>
           </div>
         </div>
-        {!presentationMode && onPresent && (
+        {!presentationMode && (
           <div className="field-bi-header-actions">
-            <button type="button" className="field-bi-present-btn" onClick={onPresent}>
-              <MonitorPlay size={18} />
-              Apresentar
-              <Maximize2 size={15} />
-            </button>
+            {onOpenGeoQuality ? (
+              <button type="button" className="field-bi-map-btn" onClick={onOpenGeoQuality}>
+                <MapPinned size={17} />
+                Qualidade por parcela
+              </button>
+            ) : null}
+            {onPresent ? (
+              <button type="button" className="field-bi-present-btn" onClick={onPresent}>
+                <MonitorPlay size={18} />
+                Apresentar
+                <Maximize2 size={15} />
+              </button>
+            ) : null}
           </div>
         )}
-      </header>
+      </div>
 
-      {!presentationMode && (
-        <div className="field-bi-control-bar" style={{ marginTop: 12 }}>
-          <div className="field-bi-mode-switch" role="group" aria-label="Visualização rápida">
-            <button 
-              type="button" 
-              className={selectedKey === 'cachoExposto' ? 'active' : ''}
-              onClick={() => setSelectedIndicatorKey('cachoExposto')}
-            >
-              Cacho Exposto
+      {!presentationMode ? (
+        <div className="field-bi-control-bar">
+          <div className="field-bi-mode-switch" role="group" aria-label="Modo de visualização CQO Poda">
+            <button type="button" className={!isTotalMode ? 'active' : ''} onClick={() => setBoardMode('meeting')}>
+              <MonitorPlay size={15} />
+              Dados de apresentação
             </button>
-            <button 
-              type="button" 
-              className={selectedKey === 'palhaMalEmpilhada' ? 'active' : ''}
-              onClick={() => setSelectedIndicatorKey('palhaMalEmpilhada')}
-            >
-              Palha Mal Empilhada
+            <button type="button" className={isTotalMode ? 'active' : ''} onClick={() => setBoardMode('total')}>
+              <SlidersHorizontal size={15} />
+              Dados totais
             </button>
           </div>
+
+          {isTotalMode ? (
+            <div className="field-total-filters">
+              <label>
+                <span>Exibir</span>
+                <select value={totalSection} onChange={(event) => setTotalSection(event.target.value)}>
+                  {PODA_TOTAL_SECTION_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+              {setDateFrom && setDateTo ? (
+                <>
+                  <label>
+                    <span>De</span>
+                    <input type="date" value={dateFrom || ''} onChange={(event) => setDateFrom(event.target.value)} />
+                  </label>
+                  <label>
+                    <span>Até</span>
+                    <input type="date" value={dateTo || ''} onChange={(event) => setDateTo(event.target.value)} />
+                  </label>
+                </>
+              ) : null}
+            </div>
+          ) : null}
         </div>
+      ) : null}
+
+      {demoActive ? (
+        <div className="field-bi-filter-strip">
+          <span>Demonstração ativa</span>
+          <span>Dados simulados para apresentação</span>
+        </div>
+      ) : null}
+
+      {!loading && records.length === 0 ? (
+        <PodaBiEmptyState recordCount={records.length} allPodaCount={allPodaCount} onResetFilters={onResetFilters} />
+      ) : !isTotalMode ? (
+        <>
+          <div className="field-bi-kpi-grid">
+            <PodaBiKpiCard loading={loading} label="Planta sem podar %" value={totals.plantaSemPodarRate} meta={1} />
+            <PodaBiKpiCard loading={loading} label="Cacho exposto %" value={totals.cachoExpostoRate} meta={2} />
+            <PodaBiKpiCard loading={loading} label="Poda meia coroa %" value={totals.podaMeiaCoroaRate} meta={2} />
+            <PodaBiKpiCard loading={loading} label="Poda maior 1:1 %" value={totals.podaMaiorUmParaUmRate} meta={2} />
+            <PodaBiKpiCard loading={loading} label="Bico de gaita %" value={totals.bicoGaitaRate} meta={2} />
+            <PodaBiKpiCard loading={loading} label="Cacho podre %" value={totals.cachoPodrePlantaRate} meta={1} />
+          </div>
+
+          <div className="field-bi-main-grid">
+            <PodaBiFarmChart rows={farmRows} loading={loading} />
+            <PodaBiWeekChart rows={weekRows} loading={loading} />
+            <PodaFiscalCards rows={evaluatorRows} loading={loading} />
+          </div>
+
+          <PodaDailyBarChart rows={dailyRows} loading={loading} />
+        </>
+      ) : (
+        <PodaTotalDataPanel totals={totals} records={records} selectedSection={totalSection} loading={loading} />
       )}
-
-      {/* Top Indicators - Replacing KPIs and Ranking Strip */}
-      <section className="poda-top-indicators-section">
-        <PodaTopIndicators indicators={indicators} selectedKey={selectedKey} onSelect={setSelectedIndicatorKey} />
-      </section>
-
-      {/* Unified Presentation Grid */}
-      <main style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: 1, minHeight: 0 }}>
-        {/* Linha 1: Evolução Semanal/Mensal e Comparação das Fazendas */}
-        <div className="poda-modern-presentation-grid">
-          {/* Coluna 1: Evolução */}
-          <div className="poda-presentation-col poda-col-trend" style={{ flex: 1.5 }}>
-            <div className="poda-modern-side-card" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-              <div className="poda-trend-toggle">
-                <button
-                  type="button"
-                  className={activeTrendPeriod === 'week' ? 'active' : ''}
-                  onClick={() => setActiveTrendPeriod('week')}
-                >
-                  Semanas
-                </button>
-                <button
-                  type="button"
-                  className={activeTrendPeriod === 'month' ? 'active' : ''}
-                  onClick={() => setActiveTrendPeriod('month')}
-                >
-                  Meses
-                </button>
-              </div>
-              {activeTrendPeriod === 'week' ? (
-                <PodaTrendPanel
-                  rows={weekChartRows.length ? weekChartRows : dayRows}
-                  issueLabel={selectedIndicator?.label || 'Falhas'}
-                  title={`Semanal - ${selectedIndicator?.label || 'Geral'}`}
-                />
-              ) : (
-                <PodaTrendPanel
-                  rows={monthChartRows.length ? monthChartRows : dayRows}
-                  issueLabel={selectedIndicator?.label || 'Falhas'}
-                  title={`Mensal - ${selectedIndicator?.label || 'Geral'}`}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Coluna 2: Comparação de Fazendas */}
-          <div className="poda-presentation-col poda-col-lists" style={{ flex: 1 }}>
-            <div className="poda-modern-side-card" style={{ flex: 1, overflow: 'hidden', padding: 0 }}>
-              <PodaFarmsComparisonChart
-                records={records}
-                selectedKey={selectedKey}
-                selectedFarm={selectedFarm}
-                onSelectFarm={setSelectedFarm}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Linha 2: Parcelas por Fazenda (selecionada) e Fiscais */}
-        <div className="poda-modern-presentation-grid">
-          {/* Coluna 1: Parcelas da Fazenda Selecionada */}
-          <div className="poda-presentation-col poda-col-trend" style={{ flex: 1.5 }}>
-            <div className="poda-modern-side-card" style={{ flex: 1, overflow: 'hidden', padding: 0 }}>
-              <PodaFarmParcelsChart
-                records={records}
-                selectedKey={selectedKey}
-                selectedFarm={selectedFarm}
-                onSelectFarm={setSelectedFarm}
-              />
-            </div>
-          </div>
-
-          {/* Coluna 2: Top Fiscais */}
-          <div className="poda-presentation-col poda-col-lists" style={{ flex: 1 }}>
-            <div className="poda-modern-side-card" style={{ flex: 1, overflow: 'hidden', padding: 0 }}>
-              <PodaBreakdownList title="Top Fiscais" rows={drilldowns.fiscal} limit={6} />
-            </div>
-          </div>
-        </div>
-
-        {/* Linha 3: Comparação Multi-Fazenda Trend */}
-        <div className="poda-modern-presentation-grid">
-          <div className="poda-presentation-col poda-col-trend" style={{ flex: 1 }}>
-            <div className="poda-modern-side-card" style={{ flex: 1, minHeight: 0, padding: 0 }}>
-              <PodaMultiFarmTrendPanel records={records} selectedKey={selectedKey} />
-            </div>
-          </div>
-        </div>
-      </main>
     </div>
   );
 }
 
-function PodaPresentationOverlay(props) {
+function PodaPresentationOverlay({ onClose, ...boardProps }) {
   return createPortal(
-    <div className="presentation-overlay poda-presentation-overlay" role="dialog" aria-modal="true" aria-label="Apresentação CQO Poda">
-      <button type="button" className="presentation-close-btn field-bi-close-btn" onClick={props.onClose} title="Fechar apresentação" aria-label="Fechar apresentação">
+    <div className="presentation-overlay" role="dialog" aria-modal="true" aria-label="Apresentação CQO Poda">
+      <button type="button" className="presentation-close-btn field-bi-close-btn" onClick={onClose} title="Fechar apresentação" aria-label="Fechar apresentação">
         <X size={22} />
       </button>
       <div className="presentation-scroll">
-        <PodaBiBoard {...props} presentationMode />
+        <PodaBiBoard {...boardProps} presentationMode />
       </div>
     </div>,
     document.body
@@ -1822,11 +2451,28 @@ function CarreamentoPresentationOverlay(props) {
 }
 
 // ─── Analytics Page ────────────────────────────────────────────────────────────
-export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, lastSyncTime }) {
+export default function Analytics({
+  theme,
+  farmFilter,
+  areaFilter,
+  periodFilter,
+  cycleFilter,
+  evaluatorFilter,
+  sourceFilter = 'all',
+  dateFrom,
+  dateTo,
+  setDateFrom,
+  setDateTo,
+  lastSyncTime,
+  onResetFilters,
+}) {
   const { loading, error, records: allRecords, source } = useCqoData();
   const [activeTab, setActiveTab] = useState('geral');
   const [carreamentoPresentationOpen, setCarreamentoPresentationOpen] = useState(false);
   const [podaPresentationOpen, setPodaPresentationOpen] = useState(false);
+  const [podaBoardMode, setPodaBoardMode] = useState('meeting');
+  const [podaTotalSection, setPodaTotalSection] = useState('qualidade');
+  const [podaGeoQualityOpen, setPodaGeoQualityOpen] = useState(false);
 
   const filtered = filterRecords(allRecords, { farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo });
   const corteRecords = filtered.filter((r) => r.type === 'corte');
@@ -1950,6 +2596,15 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
     };
   }, [podaPresentationOpen]);
 
+  useEffect(() => {
+    if (!podaGeoQualityOpen) return undefined;
+
+    document.body.classList.add('field-map-active');
+    return () => {
+      document.body.classList.remove('field-map-active');
+    };
+  }, [podaGeoQualityOpen]);
+
   const openCarreamentoPresentation = useCallback(() => {
     setCarreamentoPresentationOpen(true);
     if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
@@ -2025,20 +2680,48 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
   }
 
   if (areaFilter === 'poda') {
+    const podaUpdateText = lastSyncTime
+      ? `${new Intl.DateTimeFormat('pt-BR').format(new Date())} ${lastSyncTime}`
+      : new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date());
+    const podaLatestCollectionText = loading ? 'Carregando...' : latestCollectionLabel(podaRecords);
+    const podaBoardProps = {
+      loading,
+      source,
+      totals: totalsPoda,
+      records: podaRecords,
+      allRecords,
+      periodText,
+      demoActive: podaDemoActive,
+      mapProps: { theme, ...podaMapProps },
+      lastSyncTime,
+      dateFrom,
+      dateTo,
+      setDateFrom,
+      setDateTo,
+      boardMode: podaBoardMode,
+      setBoardMode: setPodaBoardMode,
+      totalSection: podaTotalSection,
+      setTotalSection: setPodaTotalSection,
+      onResetFilters,
+      onOpenGeoQuality: () => setPodaGeoQualityOpen(true),
+    };
+
     return (
-      <div className="fade-in page-shell poda-bi-page poda-carreamento-page">
+      <div className="fade-in page-shell field-bi-page">
         {podaPresentationOpen && (
           <PodaPresentationOverlay
-            loading={loading}
-            source={source}
-            totals={totalsPoda}
-            records={podaRecords}
-            periodText={periodText}
-            demoActive={podaDemoActive}
-            filters={podaFilterContext}
-            mapProps={podaMapProps}
+            {...podaBoardProps}
             onClose={closePodaPresentation}
-            lastSyncTime={lastSyncTime}
+          />
+        )}
+
+        {podaGeoQualityOpen && (
+          <PodaGeoQualityOverlay
+            mapProps={podaBoardProps.mapProps}
+            periodText={periodText}
+            updateText={podaUpdateText}
+            latestCollectionText={podaLatestCollectionText}
+            onClose={() => setPodaGeoQualityOpen(false)}
           />
         )}
 
@@ -2048,17 +2731,17 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
           </StatusBanner>
         )}
 
-        <PodaBiBoard
+        <PodaDataHealthPanel
+          records={podaRecords}
+          allRecords={allRecords}
           loading={loading}
           source={source}
-          totals={totalsPoda}
-          records={podaRecords}
           periodText={periodText}
-          demoActive={podaDemoActive}
-          filters={podaFilterContext}
-          mapProps={podaMapProps}
+        />
+
+        <PodaBiBoard
+          {...podaBoardProps}
           onPresent={openPodaPresentation}
-          lastSyncTime={lastSyncTime}
         />
       </div>
     );
