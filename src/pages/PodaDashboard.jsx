@@ -435,6 +435,10 @@ function riskFromValues(values) {
   return Number(values.passado || 0) + Number(values.verde || 0) + Number(values.avermelhado || 0);
 }
 
+function recordFarmLabel(record) {
+  return record.farm || 'Sem fazenda';
+}
+
 function FieldBiLegend() {
   return (
     <div className="field-bi-legend">
@@ -445,7 +449,7 @@ function FieldBiLegend() {
   );
 }
 
-function FieldBiFarmChart({ rows, loading = false }) {
+function FieldBiFarmChart({ rows, loading = false, selectedLabel = '', onSelect }) {
   const visibleRows = rows.slice(0, 5);
 
   return (
@@ -458,8 +462,15 @@ function FieldBiFarmChart({ rows, loading = false }) {
         <div className="field-bi-farm-chart">
           {visibleRows.map((row) => {
             const values = qualityValuesFromRow(row);
+            const active = selectedLabel === row.label;
             return (
-              <div className="field-bi-farm-row" key={row.label}>
+              <button
+                type="button"
+                className={`field-bi-farm-row ${active ? 'is-active' : ''}`.trim()}
+                key={row.label}
+                onClick={() => onSelect?.(row)}
+                aria-pressed={active}
+              >
                 <strong>{row.label}</strong>
                 <div className="field-bi-farm-bars">
                   {BI_SERIES.map((item, index) => {
@@ -475,7 +486,7 @@ function FieldBiFarmChart({ rows, loading = false }) {
                     );
                   })}
                 </div>
-              </div>
+              </button>
             );
           })}
           {!visibleRows.length && <div className="empty-panel smart-empty-panel"><strong>Sem dados de fazenda</strong><span>Troque o mês, ano ou fazenda para localizar coletas já sincronizadas.</span></div>}
@@ -513,6 +524,7 @@ function PodaTargetLineChart({
   series = BI_SERIES[1],
   title,
   subtitle,
+  headerAction = null,
   emptyTitle,
   emptyMessage,
   getValues = qualityValuesFromRow,
@@ -571,9 +583,12 @@ function PodaTargetLineChart({
           <h3>{title}</h3>
           {subtitle ? <span>{subtitle}</span> : null}
         </div>
-        <div className="field-line-chart-target">
-          <strong>{isMultiSeries ? 'Todas' : formatPercent(selectedSeries[0]?.target || 0)}</strong>
-          <span>{isMultiSeries ? 'Metas' : 'Meta'}</span>
+        <div className="field-line-chart-actions">
+          {headerAction}
+          <div className="field-line-chart-target">
+            <strong>{isMultiSeries ? 'Todas' : formatPercent(selectedSeries[0]?.target || 0)}</strong>
+            <span>{isMultiSeries ? 'Metas' : 'Meta'}</span>
+          </div>
         </div>
       </div>
       <div className="field-daily-legend">
@@ -664,20 +679,35 @@ function PodaTargetLineChart({
   );
 }
 
-function FieldBiWeekChart({ rows, loading = false, series = BI_SERIES[1] }) {
+function FieldBiEvolutionChart({
+  weekRows,
+  monthRows,
+  loading = false,
+  series = BI_SERIES[1],
+  mode = 'week',
+  onModeChange,
+}) {
   const selectedSeries = Array.isArray(series) ? series : [series];
   const chartLabel = selectedSeries.length > 1 ? 'todos os indicadores' : selectedSeries[0]?.fullLabel;
+  const isMonth = mode === 'month';
   return (
     <PodaTargetLineChart
-      rows={rows}
+      rows={isMonth ? monthRows : weekRows}
       loading={loading}
       series={series}
-      title={`Evolução semanal - ${chartLabel}`}
-      subtitle="Linha do indicador contra a meta operacional."
-      emptyTitle="Sem semanas no filtro"
-      emptyMessage="A visão semanal aparece quando houver coletas dentro do período selecionado."
-      labelForRow={(row) => weekNumberLabel(row.label)}
-      maxRows={10}
+      title={`Evolução ${isMonth ? 'mensal' : 'semanal'} - ${chartLabel}`}
+      subtitle={isMonth ? 'Comparação por mês para enxergar tendência contra períodos anteriores.' : 'Linha do indicador contra a meta operacional.'}
+      headerAction={(
+        <div className="field-evolution-switch" role="group" aria-label="Granularidade da evolução">
+          <button type="button" className={!isMonth ? 'active' : ''} onClick={() => onModeChange?.('week')}>Semanal</button>
+          <button type="button" className={isMonth ? 'active' : ''} onClick={() => onModeChange?.('month')}>Mensal</button>
+        </div>
+      )}
+      emptyTitle={isMonth ? 'Sem meses no filtro' : 'Sem semanas no filtro'}
+      emptyMessage={isMonth ? 'Libere o filtro de mês ou amplie o período para comparar meses anteriores.' : 'A visão semanal aparece quando houver coletas dentro do período selecionado.'}
+      labelForRow={(row) => (isMonth ? row.label : weekNumberLabel(row.label))}
+      rowKey={(row) => row.sortKey || row.label}
+      maxRows={isMonth ? 12 : 10}
       minWidth={620}
     />
   );
@@ -906,18 +936,38 @@ function FieldBiBoard({
   const isTotalMode = !presentationMode && boardMode === 'total';
   const [selectedLineKey, setSelectedLineKey] = useState('all');
   const [selectedFiscalLabel, setSelectedFiscalLabel] = useState('');
+  const [selectedFarmLabel, setSelectedFarmLabel] = useState('');
+  const [evolutionMode, setEvolutionMode] = useState('week');
+  const farmFilteredModel = useMemo(() => {
+    if (!selectedFarmLabel) return model;
+    return buildPodaOperacional(model.records.filter((record) => recordFarmLabel(record) === selectedFarmLabel));
+  }, [model, selectedFarmLabel]);
   const selectedFiscalRow = useMemo(
-    () => model.evaluatorRows.find((row) => row.label === selectedFiscalLabel) || null,
-    [model.evaluatorRows, selectedFiscalLabel]
+    () => farmFilteredModel.evaluatorRows.find((row) => row.label === selectedFiscalLabel) || null,
+    [farmFilteredModel.evaluatorRows, selectedFiscalLabel]
   );
-  const focusedModel = useMemo(() => {
+  const farmChartModel = useMemo(() => {
     if (!selectedFiscalRow?.records?.length) return model;
     return buildPodaOperacional(selectedFiscalRow.records);
   }, [model, selectedFiscalRow]);
-  const focusedDailyRows = useMemo(() => {
-    if (!selectedFiscalRow?.records?.length) return dailyBunchRows;
-    return buildDailyBunchRows(selectedFiscalRow.records);
-  }, [dailyBunchRows, selectedFiscalRow]);
+  const selectedFarmRow = useMemo(
+    () => farmChartModel.farmRows.find((row) => row.label === selectedFarmLabel) || null,
+    [farmChartModel.farmRows, selectedFarmLabel]
+  );
+  const focusedRecords = useMemo(() => {
+    const sourceRecords = selectedFiscalRow?.records?.length ? selectedFiscalRow.records : model.records;
+    if (!selectedFarmLabel) return sourceRecords;
+    return sourceRecords.filter((record) => recordFarmLabel(record) === selectedFarmLabel);
+  }, [model.records, selectedFarmLabel, selectedFiscalRow]);
+  const hasFocus = Boolean(selectedFiscalRow || selectedFarmLabel);
+  const focusedModel = useMemo(
+    () => (hasFocus ? buildPodaOperacional(focusedRecords) : model),
+    [focusedRecords, hasFocus, model]
+  );
+  const focusedDailyRows = useMemo(
+    () => (hasFocus ? buildDailyBunchRows(focusedRecords) : dailyBunchRows),
+    [dailyBunchRows, focusedRecords, hasFocus]
+  );
   const focusedQuality = focusedModel.quality || quality;
   const selectedSeries = selectedLineKey === 'all'
     ? BI_SERIES
@@ -925,6 +975,15 @@ function FieldBiBoard({
 
   const handleSelectFiscal = (row) => {
     setSelectedFiscalLabel((current) => (current === row.label ? '' : row.label));
+  };
+
+  const handleSelectFarm = (row) => {
+    setSelectedFarmLabel((current) => (current === row.label ? '' : row.label));
+  };
+
+  const clearFocus = () => {
+    setSelectedFiscalLabel('');
+    setSelectedFarmLabel('');
   };
 
   return (
@@ -1013,20 +1072,33 @@ function FieldBiBoard({
             onSelect={setSelectedLineKey}
           />
 
-          {selectedFiscalRow ? (
+          {selectedFiscalRow || selectedFarmRow ? (
             <div className="field-bi-focus-chip">
-              <span>Fiscal em análise</span>
-              <strong>{selectedFiscalRow.label}</strong>
-              <em>{formatNumber(selectedFiscalRow.recordsCount)} coleta(s)</em>
-              <button type="button" onClick={() => setSelectedFiscalLabel('')}>Ver todos</button>
+              <span>Filtro da análise</span>
+              {selectedFarmRow ? <strong>Fazenda: {selectedFarmRow.label}</strong> : null}
+              {selectedFiscalRow ? <strong>Fiscal: {selectedFiscalRow.label}</strong> : null}
+              <em>{formatNumber(focusedModel.records.length)} coleta(s)</em>
+              <button type="button" onClick={clearFocus}>Ver todos</button>
             </div>
           ) : null}
 
           <div className="field-bi-main-grid">
-            <FieldBiFarmChart rows={focusedModel.farmRows} loading={loading} />
-            <FieldBiWeekChart rows={focusedModel.weekRows} loading={loading} series={selectedSeries} />
+            <FieldBiFarmChart
+              rows={farmChartModel.farmRows}
+              loading={loading}
+              selectedLabel={selectedFarmLabel}
+              onSelect={handleSelectFarm}
+            />
+            <FieldBiEvolutionChart
+              weekRows={focusedModel.weekRows}
+              monthRows={focusedModel.monthRows}
+              loading={loading}
+              series={selectedSeries}
+              mode={evolutionMode}
+              onModeChange={setEvolutionMode}
+            />
             <FiscalQualityCards
-              rows={model.evaluatorRows}
+              rows={farmFilteredModel.evaluatorRows}
               loading={loading}
               selectedLabel={selectedFiscalLabel}
               onSelect={handleSelectFiscal}

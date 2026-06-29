@@ -24,6 +24,20 @@ function weekKey(record) {
   return 'Sem semana';
 }
 
+function monthBucket(record) {
+  const date = recordDate(record);
+  if (date && !Number.isNaN(date.getTime())) {
+    const monthNames = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    return {
+      key: `${year}-${String(month + 1).padStart(2, '0')}`,
+      label: `${monthNames[month]}/${String(year).slice(-2)}`,
+    };
+  }
+  return { key: 'sem-mes', label: 'Sem mês' };
+}
+
 function dayKey(record) {
   const date = recordDate(record);
   if (date && !Number.isNaN(date.getTime())) {
@@ -37,12 +51,12 @@ function shortLabel(value, size = 18) {
   return text.length > size ? `${text.slice(0, size)}...` : text;
 }
 
-function createBucket(label) {
-  return { label, records: [] };
+function createBucket(label, sortKey = label) {
+  return { label, sortKey, records: [] };
 }
 
-function pushBucket(map, key, record) {
-  if (!map.has(key)) map.set(key, createBucket(key));
+function pushBucket(map, key, record, label = key) {
+  if (!map.has(key)) map.set(key, createBucket(label, key));
   map.get(key).records.push(record);
 }
 
@@ -51,6 +65,7 @@ function formatPodaQualityRow(bucket) {
   const agg = aggregateRecords(bucket.records);
   return {
     label: bucket.label,
+    sortKey: bucket.sortKey,
     records: bucket.records,
     recordsCount: bucket.records.length,
     cachoMaduroPct: agg.plantaSemPodarRate,
@@ -84,6 +99,7 @@ export function buildPodaOperacional(records) {
   const byFarm = new Map();
   const byFiscal = new Map();
   const byWeek = new Map();
+  const byMonth = new Map();
   const byDay = new Map();
 
   podaRecords.forEach((record) => {
@@ -91,6 +107,8 @@ export function buildPodaOperacional(records) {
     const fiscalLabel = record.fiscal && record.fiscal !== '--' ? record.fiscal : 'Sem fiscal';
     pushBucket(byFiscal, shortLabel(fiscalLabel), record);
     pushBucket(byWeek, weekKey(record), record);
+    const month = monthBucket(record);
+    pushBucket(byMonth, month.key, record, month.label);
     pushBucket(byDay, dayKey(record), record);
   });
 
@@ -104,11 +122,15 @@ export function buildPodaOperacional(records) {
 
   const weekRows = Array.from(byWeek.values())
     .map(formatPodaQualityRow)
-    .sort((a, b) => String(a.label).localeCompare(String(b.label)));
+    .sort((a, b) => String(a.sortKey).localeCompare(String(b.sortKey)));
+
+  const monthRows = Array.from(byMonth.values())
+    .map(formatPodaQualityRow)
+    .sort((a, b) => String(a.sortKey).localeCompare(String(b.sortKey)));
 
   const dayRows = Array.from(byDay.values())
     .map(formatPodaQualityRow)
-    .sort((a, b) => String(a.label).localeCompare(String(b.label)));
+    .sort((a, b) => String(a.sortKey).localeCompare(String(b.sortKey)));
 
   return {
     records: podaRecords,
@@ -118,6 +140,7 @@ export function buildPodaOperacional(records) {
     farmRows,
     evaluatorRows,
     weekRows,
+    monthRows,
     dayRows,
   };
 }

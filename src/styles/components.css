@@ -1961,6 +1961,30 @@ button.field-bi-kpi:disabled {
   gap: 7px;
 }
 
+button.field-bi-farm-row {
+  width: 100%;
+  padding: 4px 5px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+button.field-bi-farm-row:hover,
+button.field-bi-farm-row.is-active {
+  border-color: rgba(13, 91, 52, 0.22);
+  background: rgba(13, 91, 52, 0.06);
+  box-shadow: 0 0 0 3px rgba(13, 91, 52, 0.06);
+  transform: translateY(-1px);
+}
+
+button.field-bi-farm-row.is-active strong {
+  color: var(--green-institutional);
+}
+
 .field-bi-farm-row strong {
   color: var(--text-secondary);
   font-size: 0.66rem;
@@ -2028,6 +2052,10 @@ button.field-bi-kpi:disabled {
   gap: 12px;
 }
 
+.field-line-chart-head > div:first-child {
+  min-width: 0;
+}
+
 .field-line-chart-head h3 {
   margin: 0;
 }
@@ -2035,6 +2063,40 @@ button.field-bi-kpi:disabled {
 .field-line-chart-head span {
   color: var(--text-secondary);
   font-size: 0.78rem;
+}
+
+.field-line-chart-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.field-evolution-switch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.field-evolution-switch button {
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.field-evolution-switch button.active {
+  background: var(--green-institutional);
+  color: var(--white);
+  box-shadow: 0 2px 8px rgba(13, 91, 52, 0.18);
 }
 
 .field-line-chart-target {
