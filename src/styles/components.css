@@ -1402,6 +1402,66 @@ body.presentation-active {
   flex-shrink: 0;
 }
 
+.field-bi-meta-line .active-filter-summary,
+.losses-bi-meta .active-filter-summary {
+  max-width: min(100%, 640px);
+  gap: 6px;
+}
+
+.active-filter-summary b,
+.active-filter-summary em {
+  flex-shrink: 0;
+  color: inherit;
+  font: inherit;
+}
+
+.active-filter-chip-list {
+  min-width: 0;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.active-filter-chip {
+  min-width: 0;
+  max-width: 210px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--white);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.active-filter-chip:hover,
+.active-filter-chip:focus-visible {
+  border-color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.26);
+  outline: none;
+}
+
+.active-filter-chip span {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.active-filter-chip svg {
+  flex: 0 0 auto;
+}
+
 .field-bi-present-btn {
   height: 42px;
   border: 1px solid rgba(255, 255, 255, 0.45);

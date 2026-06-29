@@ -366,6 +366,14 @@ export default function App() {
     setSearchTerm('');
   };
 
+  const clearFieldFilter = useCallback((filterId) => {
+    if (filterId === 'farm') setFarmFilter('all');
+    if (filterId === 'cycle') setCycleFilter('all');
+    if (filterId === 'evaluator') setEvaluatorFilter('all');
+    if (filterId === 'source') setSourceFilter('all');
+    if (filterId === 'search') setSearchTerm('');
+  }, []);
+
   const activeFilters = useMemo(() => compactFilters({
     farmFilter,
     yearFilter,
@@ -390,6 +398,7 @@ export default function App() {
     dateTo: activeFilters.dateTo,
     searchTerm,
     onResetFilters: resetFieldFilters,
+    onClearFilter: clearFieldFilter,
     lastSyncTime,
   };
 
@@ -713,6 +722,7 @@ export default function App() {
             searchTerm={searchTerm}
             lastSyncTime={lastSyncTime}
             onResetFilters={resetFieldFilters}
+            onClearFilter={clearFieldFilter}
           />
         );
       case 'perdas-agricola':

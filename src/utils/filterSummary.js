@@ -34,6 +34,24 @@ export function buildActiveFilterSummary({
   sourceFilter = 'all',
   searchTerm = '',
 } = {}) {
+  const filters = buildActiveFilterItems({
+    farmFilter,
+    cycleFilter,
+    evaluatorFilter,
+    sourceFilter,
+    searchTerm,
+  });
+
+  return filters.length ? filters.map((item) => `${item.label}: ${item.value}`).join(' · ') : 'Todos';
+}
+
+export function buildActiveFilterItems({
+  farmFilter = 'all',
+  cycleFilter = 'all',
+  evaluatorFilter = 'all',
+  sourceFilter = 'all',
+  searchTerm = '',
+} = {}) {
   const filters = [];
   const farm = readableFarmFilter(farmFilter);
   const source = readableSourceFilter(sourceFilter);
@@ -41,11 +59,11 @@ export function buildActiveFilterSummary({
   const evaluator = cleanText(evaluatorFilter);
   const search = cleanText(searchTerm);
 
-  if (farm) filters.push(`Fazenda: ${farm}`);
-  if (cycle && cycle !== 'all') filters.push(`Ciclo: ${cycle}`);
-  if (evaluator && evaluator !== 'all') filters.push(`Fiscal equipe: ${evaluator}`);
-  if (source) filters.push(`Fonte: ${source}`);
-  if (search) filters.push(`Busca: ${search}`);
+  if (farm) filters.push({ id: 'farm', label: 'Fazenda', value: farm });
+  if (cycle && cycle !== 'all') filters.push({ id: 'cycle', label: 'Ciclo', value: cycle });
+  if (evaluator && evaluator !== 'all') filters.push({ id: 'evaluator', label: 'Fiscal equipe', value: evaluator });
+  if (source) filters.push({ id: 'source', label: 'Fonte', value: source });
+  if (search) filters.push({ id: 'search', label: 'Busca', value: search });
 
-  return filters.length ? filters.join(' · ') : 'Todos';
+  return filters;
 }

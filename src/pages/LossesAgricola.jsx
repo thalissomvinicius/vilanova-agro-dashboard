@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, CalendarDays, Filter, Maximize2, MonitorPlay, RefreshCw, X } from 'lucide-react';
+import { AlertTriangle, CalendarDays, Maximize2, MonitorPlay, RefreshCw, X } from 'lucide-react';
+import ActiveFilterSummary from '../components/ui/ActiveFilterSummary';
 import StatusBanner from '../components/ui/StatusBanner';
 import { filterRecords, useCqoData } from '../utils/cqoData';
 import { useBonificacaoData } from '../utils/bonificacaoData';
-import { buildActiveFilterSummary } from '../utils/filterSummary';
 import { buildQualidadeOperacional, QUALITY_LOSS_LIMITS } from '../utils/qualidadeOperacionalData';
 
 function fmt(value, digits = 0) {
@@ -258,7 +258,7 @@ function WeeklyLossChart({ rows, fiscalRows, loading }) {
   );
 }
 
-function LossesBoard({ loading, model, periodText, filterSummary, updateText, onPresent, presentationMode = false }) {
+function LossesBoard({ loading, model, periodText, filterState, updateText, onPresent, onClearFilter, presentationMode = false }) {
   return (
     <div className={`losses-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
       <div className="losses-bi-header">
@@ -268,7 +268,7 @@ function LossesBoard({ loading, model, periodText, filterSummary, updateText, on
             <h2>Perdas Agrícola</h2>
             <div className="losses-bi-meta">
               <span title={`Período filtrado: ${periodText}`}><CalendarDays size={14} />Período: {periodText}</span>
-              <span title={`Filtros ativos: ${filterSummary}`}><Filter size={14} />Filtros: {filterSummary}</span>
+              <ActiveFilterSummary filters={filterState} onClearFilter={onClearFilter} />
               <span><RefreshCw size={14} />Atualizado: {updateText}</span>
             </div>
           </div>
@@ -321,6 +321,7 @@ export default function LossesAgricola({
   dateTo,
   searchTerm,
   lastSyncTime,
+  onClearFilter,
 }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
   const { loading, error, records: allRecords } = useCqoData();
@@ -338,7 +339,7 @@ export default function LossesAgricola({
   }), [allRecords, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo, searchTerm]);
   const model = useMemo(() => buildQualidadeOperacional(filtered, balanceData), [filtered, balanceData]);
   const periodText = periodLabel(dateFrom, dateTo);
-  const filterSummary = useMemo(() => buildActiveFilterSummary({
+  const filterState = useMemo(() => ({
     farmFilter,
     cycleFilter,
     evaluatorFilter,
@@ -383,8 +384,9 @@ export default function LossesAgricola({
           loading={loading}
           model={model}
           periodText={periodText}
-          filterSummary={filterSummary}
+          filterState={filterState}
           updateText={updateText}
+          onClearFilter={onClearFilter}
           onClose={closePresentation}
         />
       ) : null}
@@ -411,8 +413,9 @@ export default function LossesAgricola({
         loading={loading}
         model={model}
         periodText={periodText}
-        filterSummary={filterSummary}
+        filterState={filterState}
         updateText={updateText}
+        onClearFilter={onClearFilter}
         onPresent={openPresentation}
       />
     </div>

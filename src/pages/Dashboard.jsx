@@ -14,9 +14,9 @@ import {
   SlidersHorizontal,
   X,
 } from 'lucide-react';
+import ActiveFilterSummary from '../components/ui/ActiveFilterSummary';
 import StatusBanner from '../components/ui/StatusBanner';
 import { parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
-import { buildActiveFilterSummary } from '../utils/filterSummary';
 import { buildQualidadeOperacional } from '../utils/qualidadeOperacionalData';
 
 const LeafletMap = lazy(() => import('../components/LeafletMap'));
@@ -784,7 +784,7 @@ function FieldBiBoard({
   quality,
   dailyBunchRows,
   periodText,
-  filterSummary,
+  filterState,
   updateText,
   latestCollectionText,
   dateFrom,
@@ -798,6 +798,7 @@ function FieldBiBoard({
   diagnostics,
   recordCount,
   onResetFilters,
+  onClearFilter,
   onPresent,
   onOpenGeoQuality,
   presentationMode = false,
@@ -812,7 +813,7 @@ function FieldBiBoard({
           <h2>Qualidade Agrícola</h2>
           <div className="field-bi-meta-line">
             <span title={`Período filtrado: ${periodText}`}><CalendarDays size={14} />Período: {periodText}</span>
-            <span title={`Filtros ativos: ${filterSummary}`}><Filter size={14} />Filtros: {filterSummary}</span>
+            <ActiveFilterSummary filters={filterState} onClearFilter={onClearFilter} />
             <span><RefreshCw size={14} />Atualizado: {updateText}</span>
             <span><CalendarDays size={14} />Última coleta: {latestCollectionText}</span>
           </div>
@@ -959,7 +960,7 @@ function FieldGeoQualityOverlay({ mapProps, periodText, updateText, latestCollec
   );
 }
 
-export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, setDateFrom, setDateTo, searchTerm, lastSyncTime, onResetFilters }) {
+export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, setDateFrom, setDateTo, searchTerm, lastSyncTime, onResetFilters, onClearFilter }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
   const [geoQualityOpen, setGeoQualityOpen] = useState(false);
   const [boardMode, setBoardMode] = useState('meeting');
@@ -988,7 +989,7 @@ export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter,
   const dailyBunchRows = useMemo(() => buildDailyBunchRows(records), [records]);
   const quality = model.quality;
   const periodText = periodLabel(dateFrom, dateTo);
-  const filterSummary = useMemo(() => buildActiveFilterSummary({
+  const filterState = useMemo(() => ({
     farmFilter,
     cycleFilter,
     evaluatorFilter,
@@ -1017,7 +1018,7 @@ export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter,
     quality,
     dailyBunchRows,
     periodText,
-    filterSummary,
+    filterState,
     updateText,
     latestCollectionText,
     dateFrom,
@@ -1031,6 +1032,7 @@ export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter,
     diagnostics,
     recordCount: records.length,
     onResetFilters,
+    onClearFilter,
   };
 
   const mapProps = {

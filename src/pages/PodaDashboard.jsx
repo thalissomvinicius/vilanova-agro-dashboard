@@ -15,9 +15,9 @@ import {
   SlidersHorizontal,
   X,
 } from 'lucide-react';
+import ActiveFilterSummary from '../components/ui/ActiveFilterSummary';
 import StatusBanner from '../components/ui/StatusBanner';
 import { aggregateRecords, LOCAL_DEMO_MODE, parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
-import { buildActiveFilterSummary } from '../utils/filterSummary';
 import { buildPodaOperacional } from '../utils/podaOperacionalData';
 import { buildPodaDemoRecords } from '../utils/podaDemoData';
 
@@ -1121,7 +1121,7 @@ function FieldBiBoard({
   quality,
   dailyBunchRows,
   periodText,
-  filterSummary,
+  filterState,
   updateText,
   latestCollectionText,
   dateFrom,
@@ -1135,6 +1135,7 @@ function FieldBiBoard({
   diagnostics,
   recordCount,
   onResetFilters,
+  onClearFilter,
   onPresent,
   onOpenGeoQuality,
   mapProps,
@@ -1208,7 +1209,7 @@ function FieldBiBoard({
           <h2>Qualidade Agrícola</h2>
           <div className="field-bi-meta-line">
             <span title={`Período filtrado: ${periodText}`}><CalendarDays size={14} />Período: {periodText}</span>
-            <span title={`Filtros ativos: ${filterSummary}`}><Filter size={14} />Filtros: {filterSummary}</span>
+            <ActiveFilterSummary filters={filterState} onClearFilter={onClearFilter} />
             <span><RefreshCw size={14} />Atualizado: {updateText}</span>
             <span><CalendarDays size={14} />Última coleta: {latestCollectionText}</span>
           </div>
@@ -1393,7 +1394,7 @@ function FieldGeoQualityOverlay({ mapProps, periodText, updateText, latestCollec
   );
 }
 
-export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, setDateFrom, setDateTo, searchTerm, lastSyncTime, onResetFilters }) {
+export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, setDateFrom, setDateTo, searchTerm, lastSyncTime, onResetFilters, onClearFilter }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
   const [geoQualityOpen, setGeoQualityOpen] = useState(false);
   const [boardMode, setBoardMode] = useState('meeting');
@@ -1428,7 +1429,7 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
   const dailyBunchRows = useMemo(() => buildDailyBunchRows(mergedRecords), [mergedRecords]);
   const quality = model.quality;
   const periodText = periodLabel(dateFrom, dateTo);
-  const filterSummary = useMemo(() => buildActiveFilterSummary({
+  const filterState = useMemo(() => ({
     farmFilter,
     cycleFilter,
     evaluatorFilter,
@@ -1495,7 +1496,7 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
     quality,
     dailyBunchRows,
     periodText,
-    filterSummary,
+    filterState,
     updateText,
     latestCollectionText,
     dateFrom,
@@ -1509,6 +1510,7 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
     diagnostics,
     recordCount: mergedRecords.length,
     onResetFilters,
+    onClearFilter,
     mapProps,
   };
 
