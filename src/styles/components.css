@@ -13258,22 +13258,47 @@ body.field-map-active {
   padding: 8px;
   gap: 4px;
 }
-
 .poda-breakdown-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: 12px 16px;
   border-radius: var(--border-radius-md);
   background: var(--bg-body);
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.poda-breakdown-row:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  background: white;
+}
+
+.poda-breakdown-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--green-institutional);
 }
 
 .poda-breakdown-row.status-danger {
-  border-left: 3px solid var(--danger-color);
+  border-color: rgba(220, 38, 38, 0.2);
+}
+.poda-breakdown-row.status-danger::before {
+  background: var(--danger-color);
 }
 
 .poda-breakdown-row.status-warning {
-  border-left: 3px solid var(--warning-color);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+.poda-breakdown-row.status-warning::before {
+  background: var(--warning-color);
 }
 
 .poda-breakdown-info {
@@ -13283,13 +13308,13 @@ body.field-map-active {
 }
 
 .poda-breakdown-info strong {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 800;
   color: var(--text-primary);
 }
 
 .poda-breakdown-info span {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
   font-weight: 600;
 }
@@ -13302,17 +13327,21 @@ body.field-map-active {
 }
 
 .poda-breakdown-metrics .rate {
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 900;
-  color: var(--orange-institutional);
+  color: var(--green-institutional);
 }
 
 .poda-breakdown-row.status-danger .rate {
   color: var(--danger-color);
 }
 
+.poda-breakdown-row.status-warning .rate {
+  color: var(--warning-color);
+}
+
 .poda-breakdown-metrics small {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
   font-weight: 600;
 }
@@ -13323,4 +13352,37 @@ body.field-map-active {
   color: var(--text-muted);
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+/* Trend Toggle */
+.poda-trend-toggle {
+  display: flex;
+  background: var(--bg-body);
+  border-radius: var(--border-radius-full);
+  padding: 4px;
+  width: fit-content;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.poda-trend-toggle button {
+  padding: 6px 16px;
+  border-radius: var(--border-radius-full);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.poda-trend-toggle button:hover {
+  color: var(--text-primary);
+}
+
+.poda-trend-toggle button.active {
+  background: white;
+  color: var(--orange-institutional);
+  box-shadow: var(--shadow-sm);
 }

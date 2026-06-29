@@ -459,21 +459,26 @@ function buildPodaDemoRecords(dateFrom, dateTo) {
 
 function podaIndicatorDefinitions(totals) {
   return [
-    { key: 'plantaSemPodar', label: 'Planta sem podar', count: totals.plantaSemPodar, projected: totals.plantaSemPodarProjetada, rate: totals.plantaSemPodarRate, danger: 1, warning: 0.5, color: 'var(--status-danger)' },
-    { key: 'cachoExposto', label: 'Cacho exposto', count: totals.cachoExposto, projected: totals.cachoExpostoProjetado, rate: totals.cachoExpostoRate, danger: 2, warning: 1, color: 'var(--orange-institutional)' },
-    { key: 'podaMeiaCoroa', label: 'Poda meia coroa', count: totals.podaMeiaCoroa, projected: totals.podaMeiaCoroaProjetada, rate: totals.podaMeiaCoroaRate, danger: 2, warning: 1, color: '#B45309' },
-    { key: 'podaMaiorUmParaUm', label: 'Poda maior que 1:1', count: totals.podaMaiorUmParaUm, projected: totals.podaMaiorUmParaUmProjetada, rate: totals.podaMaiorUmParaUmRate, danger: 2, warning: 1, color: '#7C3AED' },
-    { key: 'bicoGaita', label: 'Bico de gaita', count: totals.bicoGaita, projected: totals.bicoGaitaProjetado, rate: totals.bicoGaitaRate, danger: 2, warning: 1, color: 'var(--status-info)' },
-    { key: 'cachoPodrePlanta', label: 'Cacho podre na planta', count: totals.cachoPodrePlanta, projected: totals.cachoPodrePlantaProjetado, rate: totals.cachoPodrePlantaRate, danger: 1, warning: 0.5, color: '#BE123C' },
-    { key: 'folhaMamando', label: 'Folha mamando', count: totals.folhaMamando, projected: totals.folhaMamandoProjetada, rate: totals.folhaMamandoPodaRate, danger: 2, warning: 1, color: '#64748B' },
-    { key: 'palhaMalEmpilhada', label: 'Palha mal empilhada', count: totals.palhaMalEmpilhada, projected: totals.palhaMalEmpilhadaProjetada, rate: totals.palhaMalEmpilhadaRate, danger: 2, warning: 1, color: 'var(--status-warning)' },
-  ].map((row) => ({
-    ...row,
-    count: Number(row.count || 0),
-    projected: Number(row.projected || 0),
-    rate: Number(row.rate || 0),
-    status: Number(row.rate || 0) > row.danger ? 'Crítico' : Number(row.rate || 0) > row.warning ? 'Atenção' : 'Dentro da meta',
-  }));
+    { key: 'plantaSemPodar', label: 'Planta sem podar', count: totals.plantaSemPodar, projected: totals.plantaSemPodarProjetada, rate: totals.plantaSemPodarRate, danger: 1 },
+    { key: 'cachoExposto', label: 'Cacho exposto', count: totals.cachoExposto, projected: totals.cachoExpostoProjetado, rate: totals.cachoExpostoRate, danger: 2 },
+    { key: 'podaMeiaCoroa', label: 'Poda meia coroa', count: totals.podaMeiaCoroa, projected: totals.podaMeiaCoroaProjetada, rate: totals.podaMeiaCoroaRate, danger: 2 },
+    { key: 'podaMaiorUmParaUm', label: 'Poda maior que 1:1', count: totals.podaMaiorUmParaUm, projected: totals.podaMaiorUmParaUmProjetada, rate: totals.podaMaiorUmParaUmRate, danger: 2 },
+    { key: 'bicoGaita', label: 'Bico de gaita', count: totals.bicoGaita, projected: totals.bicoGaitaProjetado, rate: totals.bicoGaitaRate, danger: 2 },
+    { key: 'cachoPodrePlanta', label: 'Cacho podre na planta', count: totals.cachoPodrePlanta, projected: totals.cachoPodrePlantaProjetado, rate: totals.cachoPodrePlantaRate, danger: 1 },
+    { key: 'folhaMamando', label: 'Folha mamando', count: totals.folhaMamando, projected: totals.folhaMamandoProjetada, rate: totals.folhaMamandoPodaRate, danger: 2 },
+    { key: 'palhaMalEmpilhada', label: 'Palha mal empilhada', count: totals.palhaMalEmpilhada, projected: totals.palhaMalEmpilhadaProjetada, rate: totals.palhaMalEmpilhadaRate, danger: 2 },
+  ].map((row) => {
+    const rate = Number(row.rate || 0);
+    const dangerLimit = row.danger;
+    const warningLimit = row.danger * 0.8;
+    return {
+      ...row,
+      count: Number(row.count || 0),
+      projected: Number(row.projected || 0),
+      rate,
+      status: rate > dangerLimit ? 'Crítico' : rate >= warningLimit ? 'Atenção' : 'Dentro da meta',
+    };
+  });
 }
 
 function buildPodaIndicatorRows(totals) {
@@ -1058,6 +1063,7 @@ function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresen
   const [selectedIndicatorKey, setSelectedIndicatorKey] = useState(topIssue?.key || indicators[0]?.key || '');
   const [activeBreakdown, setActiveBreakdown] = useState('parcel');
   const [activeViewTab, setActiveViewTab] = useState('ranking'); // 'ranking', 'trend', 'map'
+  const [activeTrendPeriod, setActiveTrendPeriod] = useState('week'); // 'week', 'month'
   
   const selectedIndicator = indicators.find((row) => row.key === selectedIndicatorKey) || topIssue || indicators[0];
   const selectedKey = selectedIndicator?.key || selectedIndicatorKey;
@@ -1123,19 +1129,36 @@ function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresen
       <main className="poda-modern-presentation-grid">
         {/* Coluna 1: Evolução */}
         <div className="poda-presentation-col poda-col-trend" style={{ flex: 1.5 }}>
-          <div className="poda-modern-side-card" style={{ flex: 1, minHeight: 0 }}>
-            <PodaTrendPanel
-              rows={weekChartRows.length ? weekChartRows : dayRows}
-              issueLabel={selectedIndicator?.label || 'Falhas'}
-              title={`Semanal - ${selectedIndicator?.label || 'Geral'}`}
-            />
-          </div>
-          <div className="poda-modern-side-card" style={{ flex: 1, minHeight: 0 }}>
-            <PodaTrendPanel
-              rows={monthChartRows.length ? monthChartRows : dayRows}
-              issueLabel={selectedIndicator?.label || 'Falhas'}
-              title={`Mensal - ${selectedIndicator?.label || 'Geral'}`}
-            />
+          <div className="poda-modern-side-card" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <div className="poda-trend-toggle">
+              <button
+                type="button"
+                className={activeTrendPeriod === 'week' ? 'active' : ''}
+                onClick={() => setActiveTrendPeriod('week')}
+              >
+                Semanas
+              </button>
+              <button
+                type="button"
+                className={activeTrendPeriod === 'month' ? 'active' : ''}
+                onClick={() => setActiveTrendPeriod('month')}
+              >
+                Meses
+              </button>
+            </div>
+            {activeTrendPeriod === 'week' ? (
+              <PodaTrendPanel
+                rows={weekChartRows.length ? weekChartRows : dayRows}
+                issueLabel={selectedIndicator?.label || 'Falhas'}
+                title={`Semanal - ${selectedIndicator?.label || 'Geral'}`}
+              />
+            ) : (
+              <PodaTrendPanel
+                rows={monthChartRows.length ? monthChartRows : dayRows}
+                issueLabel={selectedIndicator?.label || 'Falhas'}
+                title={`Mensal - ${selectedIndicator?.label || 'Geral'}`}
+              />
+            )}
           </div>
         </div>
         
