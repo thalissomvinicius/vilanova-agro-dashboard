@@ -794,6 +794,63 @@ function PodaTeamStatsPanel({ rows, indicator }) {
   );
 }
 
+function PodaTopIndicators({ indicators, selectedKey, onSelect }) {
+  const sorted = [...indicators].sort((a, b) => {
+    const statusVal = (s) => (s === 'Crítico' ? 3 : s === 'Atenção' ? 2 : 1);
+    return statusVal(b.status) - statusVal(a.status);
+  });
+  const visible = sorted.slice(0, 6);
+  return (
+    <div className="poda-top-indicators">
+      {visible.map((ind) => (
+        <button
+          key={ind.key}
+          type="button"
+          className={`poda-top-kpi-card ${ind.status === 'Crítico' ? 'danger' : ind.status === 'Atenção' ? 'warning' : 'ok'} ${selectedKey === ind.key ? 'active' : ''}`}
+          onClick={() => onSelect?.(ind.key)}
+        >
+          <div className="poda-top-kpi-header">
+            <h4>{ind.label}</h4>
+          </div>
+          <div className="poda-top-kpi-body">
+            <strong>{formatPercentValue(ind.rate)}</strong>
+            <div className="poda-top-kpi-meta">
+              <span>Meta: &lt; {formatPercentValue(ind.danger || ind.attention || 0.02)}</span>
+            </div>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PodaBreakdownList({ title, rows, limit = 5 }) {
+  const visibleRows = rows.slice(0, limit);
+  return (
+    <section className="poda-breakdown-card">
+      <div className="poda-breakdown-header">
+        <h3>{title}</h3>
+      </div>
+      <div className="poda-breakdown-list">
+        {visibleRows.length ? visibleRows.map((row) => (
+          <div className={`poda-breakdown-row status-${row.status === 'Crítico' ? 'danger' : row.status === 'Atenção' ? 'warning' : 'ok'}`} key={row.label}>
+            <div className="poda-breakdown-info">
+              <strong>{row.label}</strong>
+              <span>{fmt(row.total)} coletas</span>
+            </div>
+            <div className="poda-breakdown-metrics">
+              <strong className="rate">{formatPercentValue(row.rate)}</strong>
+              <small>{fmt(row.count)} ocorr.</small>
+            </div>
+          </div>
+        )) : (
+          <div className="poda-breakdown-empty">Nenhum dado</div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function PodaDrilldownPanel({ indicator, activeBreakdown, onBreakdownChange, breakdowns }) {
   const tabs = [
     { id: 'parcel', label: 'Parcelas' },
@@ -1057,65 +1114,47 @@ function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresen
         </div>
       </header>
 
-      {/* KPI Cards */}
-      <section className="poda-modern-kpis">
-        <div className="poda-modern-kpi-card info">
-          <span className="poda-modern-kpi-title">Amostragem Atual</span>
-          <strong className="poda-modern-kpi-value">{fmt(records.length)}</strong>
-          <span className="poda-modern-kpi-desc">coletas · {fmt(totalLines)} linhas</span>
-        </div>
-        <div className={`poda-modern-kpi-card ${topIssue?.status === 'Crítico' ? 'danger' : 'warning'}`}>
-          <span className="poda-modern-kpi-title">Alerta Principal</span>
-          <strong className="poda-modern-kpi-value">{topIssue?.label || 'Sem falha'}</strong>
-          <span className="poda-modern-kpi-desc">Parcela crítica: {parcelRows[0]?.label || '-'}</span>
-        </div>
-        <div className="poda-modern-kpi-card">
-          <span className="poda-modern-kpi-title">Índice da Falha Selecionada</span>
-          <strong className="poda-modern-kpi-value">{formatPercentValue(selectedIndicator?.rate || 0)}</strong>
-          <span className="poda-modern-kpi-desc">{fmt(selectedIndicator?.count || 0)} ocorrências totais</span>
-        </div>
-        <div className={`poda-modern-kpi-card ${selectedIndicator?.status === 'Crítico' ? 'danger' : selectedIndicator?.status === 'Atenção' ? 'warning' : 'success'}`}>
-          <span className="poda-modern-kpi-title">Status da Meta</span>
-          <strong className="poda-modern-kpi-value">{selectedIndicator?.status || 'Dentro da meta'}</strong>
-          <span className="poda-modern-kpi-desc">Foco: {selectedIndicator?.label || 'Geral'}</span>
-        </div>
-      </section>
-
-      {/* Ranking Strip - Made compact and put at the top */}
-      <section className="poda-modern-ranking-strip">
-        <PodaFaultRankingPanel indicators={indicators} selectedKey={selectedKey} onSelect={setSelectedIndicatorKey} />
+      {/* Top Indicators - Replacing KPIs and Ranking Strip */}
+      <section className="poda-top-indicators-section">
+        <PodaTopIndicators indicators={indicators} selectedKey={selectedKey} onSelect={setSelectedIndicatorKey} />
       </section>
 
       {/* Unified Presentation Grid */}
       <main className="poda-modern-presentation-grid">
-        <div className="poda-presentation-col poda-col-trend">
-          <div className="poda-modern-side-card" style={{ height: '100%' }}>
+        {/* Coluna 1: Evolução */}
+        <div className="poda-presentation-col poda-col-trend" style={{ flex: 1.5 }}>
+          <div className="poda-modern-side-card" style={{ flex: 1, minHeight: 0 }}>
+            <PodaTrendPanel
+              rows={weekChartRows.length ? weekChartRows : dayRows}
+              issueLabel={selectedIndicator?.label || 'Falhas'}
+              title={`Semanal - ${selectedIndicator?.label || 'Geral'}`}
+            />
+          </div>
+          <div className="poda-modern-side-card" style={{ flex: 1, minHeight: 0 }}>
             <PodaTrendPanel
               rows={monthChartRows.length ? monthChartRows : dayRows}
               issueLabel={selectedIndicator?.label || 'Falhas'}
-              title={`Evolução Temporal - ${selectedIndicator?.label || 'Geral'}`}
-              subtitle="Leitura consolidada do percentual da amostra e volume de ocorrências."
+              title={`Mensal - ${selectedIndicator?.label || 'Geral'}`}
             />
           </div>
         </div>
         
-        <div className="poda-presentation-col poda-col-map">
-          <div className="poda-modern-side-card" style={{ height: '100%', padding: 0, overflow: 'hidden' }}>
-            <PodaMapPanel mapProps={mapProps} selectedIndicator={selectedIndicator} mapMetricId={mapMetricId} />
+        {/* Colunas de Top Ofensores */}
+        <div className="poda-presentation-col poda-col-lists" style={{ flex: 1 }}>
+          <div className="poda-modern-side-card" style={{ flex: 1, overflow: 'hidden', padding: 0 }}>
+            <PodaBreakdownList title="Top Parcelas" rows={drilldowns.parcel} limit={6} />
           </div>
         </div>
 
-        <div className="poda-presentation-col poda-col-stats">
-          <div className="poda-modern-side-card">
-            <PodaDrilldownPanel
-              indicator={selectedIndicator}
-              activeBreakdown={activeBreakdown}
-              onBreakdownChange={setActiveBreakdown}
-              breakdowns={drilldowns}
-            />
+        <div className="poda-presentation-col poda-col-lists" style={{ flex: 1 }}>
+          <div className="poda-modern-side-card" style={{ flex: 1, overflow: 'hidden', padding: 0 }}>
+            <PodaBreakdownList title="Top Fazendas" rows={drilldowns.farm} limit={6} />
           </div>
-          <div className="poda-modern-side-card" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <PodaTeamStatsPanel rows={drilldowns.fiscal} indicator={selectedIndicator} />
+        </div>
+
+        <div className="poda-presentation-col poda-col-lists" style={{ flex: 1 }}>
+          <div className="poda-modern-side-card" style={{ flex: 1, overflow: 'hidden', padding: 0 }}>
+            <PodaBreakdownList title="Top Fiscais" rows={drilldowns.fiscal} limit={6} />
           </div>
         </div>
       </main>

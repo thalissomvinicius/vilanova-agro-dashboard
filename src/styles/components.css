@@ -12905,8 +12905,7 @@ body.field-map-active {
 .poda-modern-presentation-grid {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  display: flex;
   gap: 16px;
 }
 
