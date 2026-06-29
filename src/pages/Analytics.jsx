@@ -946,8 +946,8 @@ function PodaTrendPanel({ rows, issueLabel = 'Falhas', title = 'Evolução no pe
   const graphWidth = width - padding.left - padding.right;
   const graphHeight = chartHeight - padding.top - padding.bottom;
 
-  const maxFailure = Math.max(...visibleRows.map((row) => Number(row.falhas || 0)), 1);
-  const maxRate = Math.max(...visibleRows.map((row) => Number(row.rate || 0)), 0.1);
+  const maxFailure = Math.max(...visibleRows.map((row) => Number(row.falhas || 0)), 1) * 1.2;
+  const maxRate = Math.max(...visibleRows.map((row) => Number(row.rate || 0)), 0.1) * 1.2;
 
   const ratePoints = visibleRows.map((row, index) => {
     const colCenter = padding.left + index * colWidth + colWidth / 2;
@@ -1206,7 +1206,7 @@ function PodaMultiFarmTrendPanel({ records, selectedKey }) {
     return { farm, color: colors[idx], points };
   });
 
-  const maxRate = Math.max(0.1, ...series.flatMap(s => s.points.map(p => p.rate)));
+  const maxRate = Math.max(0.1, ...series.flatMap(s => s.points.map(p => p.rate))) * 1.2;
 
   const chartHeight = 280;
   const padding = { top: 30, right: 24, bottom: 48, left: 52 };

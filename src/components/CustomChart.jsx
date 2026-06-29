@@ -52,7 +52,7 @@ export default function CustomChart({ type = 'line', data = [], height = 280, ti
 
   // Chart type 1: BAR CHART
   const renderBarChart = () => {
-    const maxVal = Math.max(...data.map(d => d.value), 10);
+    const maxVal = Math.max(...data.map(d => d.value), 10) * 1.2;
     const barWidth = Math.max(15, (graphWidth / data.length) - 20);
     const stepX = graphWidth / data.length;
     const shouldRotate = data.length > 4;
@@ -206,7 +206,7 @@ export default function CustomChart({ type = 'line', data = [], height = 280, ti
       );
     }
 
-    const maxVal = Math.max(...data.map(d => d.value), 10);
+    const maxVal = Math.max(...data.map(d => d.value), 10) * 1.2;
     const stepX = graphWidth / (data.length - 1);
 
     // Build path points
