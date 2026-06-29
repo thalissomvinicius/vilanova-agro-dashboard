@@ -11,7 +11,7 @@ import {
   UserRound,
   Wifi,
 } from 'lucide-react';
-import { authenticateDashboardUser, dashboardErrorMessage } from '../utils/cqoData';
+import { authenticateDashboardUser, dashboardErrorMessage, LOCAL_DEMO_MODE, SUPABASE_CONFIG } from '../utils/cqoData';
 
 export default function Login({ onLogin }) {
   const [matricula, setMatricula] = useState('');
@@ -148,6 +148,14 @@ export default function Login({ onLogin }) {
               </button>
             </div>
           </label>
+
+          {!SUPABASE_CONFIG.isConfigured ? (
+            <div className="auth-error" role="status" style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', borderColor: 'var(--border-color)' }}>
+              {LOCAL_DEMO_MODE
+                ? 'Supabase não configurado. Modo demonstração ativo: use qualquer matrícula e senha. Crie o arquivo .env.local com VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para dados reais.'
+                : 'Serviço de dados não configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no ambiente de deploy.'}
+            </div>
+          ) : null}
 
           {error ? <div className="auth-error" role="alert" aria-live="polite">{error}</div> : null}
 

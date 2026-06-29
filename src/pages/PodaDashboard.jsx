@@ -15,7 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import StatusBanner from '../components/ui/StatusBanner';
-import { parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
+import { LOCAL_DEMO_MODE, parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
 import { buildPodaOperacional } from '../utils/podaOperacionalData';
 import { buildPodaDemoRecords } from '../utils/podaDemoData';
 
@@ -1121,11 +1121,17 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
         />
       )}
 
-      {error && (
+      {LOCAL_DEMO_MODE && demoRecords.length > 0 ? (
+        <StatusBanner tone="warning" icon={AlertTriangle}>
+          Modo demonstração local ativo — exibindo dados simulados de poda. Configure `.env.local` com as chaves do Supabase para carregar coletas reais.
+        </StatusBanner>
+      ) : null}
+
+      {error && !(LOCAL_DEMO_MODE && demoRecords.length > 0) ? (
         <StatusBanner tone="danger" icon={AlertTriangle}>
           Falha ao carregar dados: {error}
         </StatusBanner>
-      )}
+      ) : null}
 
       <DataHealthPanel diagnostics={diagnostics} loading={loading} />
 

@@ -11,7 +11,34 @@ export const SUPABASE_CONFIG = {
   isConfigured: Boolean(SUPABASE_URL && SUPABASE_ANON_KEY),
 };
 
+export const LOCAL_DEMO_SESSION_TOKEN = 'local-demo-session';
+export const LOCAL_DEMO_MODE = !SUPABASE_CONFIG.isConfigured && import.meta.env.DEV;
+
 export const DASHBOARD_SESSION_EXPIRED_EVENT = 'vilanova-dashboard-session-expired';
+
+function buildLocalDemoProfile(matricula = 'demo') {
+  return {
+    nome: 'Demonstração Local',
+    matricula: String(matricula || 'demo'),
+    role: 'admin',
+    permissions: ['manage_collaborators'],
+    sessionToken: LOCAL_DEMO_SESSION_TOKEN,
+    cargo: 'CQO',
+    departamento: 'Campo',
+  };
+}
+
+function buildLocalDemoData() {
+  return buildSupabaseData({
+    responseRows: [],
+    headcount: [],
+    gpsRows: [],
+    attachmentRows: [],
+    formRows: [],
+    cqoImport: { snapshot: null, records: 0, corteRows: 0, carreamentoRows: 0 },
+    source: 'Modo demonstração local',
+  });
+}
 
 function requireSupabaseConfig() {
   if (!SUPABASE_CONFIG.isConfigured) {
@@ -974,6 +1001,11 @@ async function authenticateDashboardUserRpc(normalizedMatricula, normalizedSenha
 
 export async function authenticateDashboardUser(matricula, senha) {
   const { normalizedMatricula, normalizedSenha } = validateLoginInput(matricula, senha);
+
+  if (LOCAL_DEMO_MODE) {
+    return buildLocalDemoProfile(normalizedMatricula);
+  }
+
   let profile;
 
   try {
@@ -993,6 +1025,9 @@ export async function authenticateDashboardUser(matricula, senha) {
 
 export async function refreshDashboardSession(sessionToken) {
   if (!sessionToken) return null;
+  if (LOCAL_DEMO_MODE && sessionToken === LOCAL_DEMO_SESSION_TOKEN) {
+    return buildLocalDemoProfile('demo');
+  }
   const payload = await postSupabaseRpc(
     'dashboard_session_profile',
     { p_session_token: String(sessionToken).trim() },
@@ -1402,6 +1437,10 @@ async function loadSupabaseDataFromRpc(sessionToken) {
 async function loadSupabaseData() {
   if (!activeDashboardSessionToken) {
     throw new Error('Sessao do dashboard nao configurada para leitura dos dados.');
+  }
+
+  if (LOCAL_DEMO_MODE) {
+    return buildLocalDemoData();
   }
 
   return loadSupabaseDataFromRpc(activeDashboardSessionToken);
