@@ -16,7 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import StatusBanner from '../components/ui/StatusBanner';
-import { LOCAL_DEMO_MODE, parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
+import { aggregateRecords, LOCAL_DEMO_MODE, parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
 import { buildPodaOperacional } from '../utils/podaOperacionalData';
 import { buildPodaDemoRecords } from '../utils/podaDemoData';
 
@@ -371,6 +371,15 @@ const BI_SERIES = [
   { key: 'talo', sourceKey: 'cachoEstrelaPct', label: 'BG %', fullLabel: 'Bico de gaita %', color: '#2563EB', target: 2 },
 ];
 
+const MAP_METRIC_BY_SERIES = {
+  maduro: 'poda_planta_sem_podar',
+  passado: 'poda_cacho_exposto',
+  verde: 'poda_meia_coroa',
+  avermelhado: 'poda_cacho_podre',
+  estrela: 'poda_maior_1_1',
+  talo: 'poda_bico_gaita',
+};
+
 function qualityValuesFromRow(row) {
   const directValues = {
     maduro: Number(row.cachoMaduroPct || 0),
@@ -437,6 +446,73 @@ function riskFromValues(values) {
 
 function recordFarmLabel(record) {
   return record.farm || 'Sem fazenda';
+}
+
+function parcelKey(record) {
+  return `${record.farmId || record.farm || 'sem-fazenda'}|${record.parcel || 'sem-parcela'}`;
+}
+
+function parcelLabel(record) {
+  const farm = record.farm || 'Sem fazenda';
+  const parcel = record.parcel || 'Sem parcela';
+  return `${farm} / ${parcel}`;
+}
+
+function signalToneFor(value, target) {
+  const numeric = Number(value || 0);
+  const meta = Math.max(Number(target || 0), 0.01);
+  if (numeric <= meta) return 'ok';
+  if (numeric <= meta * 1.5) return 'warning';
+  return 'critical';
+}
+
+function buildParcelSignalSummary(records, series) {
+  const selectedSeries = series || BI_SERIES[1];
+  const buckets = new Map();
+
+  records
+    .filter((record) => record.type === 'poda')
+    .forEach((record) => {
+      const key = parcelKey(record);
+      if (!buckets.has(key)) {
+        buckets.set(key, {
+          key,
+          label: parcelLabel(record),
+          records: [],
+        });
+      }
+      buckets.get(key).records.push(record);
+    });
+
+  const rows = Array.from(buckets.values()).map((bucket) => {
+    const aggregated = aggregateRecords(bucket.records);
+    const values = qualityValuesFromRow({ qualidade: aggregated });
+    const value = Number(values[selectedSeries.key] || 0);
+    const tone = signalToneFor(value, selectedSeries.target);
+    return {
+      ...bucket,
+      value,
+      tone,
+      coletas: bucket.records.length,
+    };
+  });
+
+  return rows.reduce((acc, row) => {
+    acc.total += 1;
+    acc[row.tone] += 1;
+    if (!acc.worst || row.value > acc.worst.value) acc.worst = row;
+    return acc;
+  }, {
+    total: 0,
+    ok: 0,
+    warning: 0,
+    critical: 0,
+    worst: null,
+  });
+}
+
+function mapMetricIdForSeries(series) {
+  return MAP_METRIC_BY_SERIES[series?.key] || 'poda_cacho_exposto';
 }
 
 function FieldBiLegend() {
@@ -770,6 +846,109 @@ function FiscalQualityCards({ rows, loading = false, selectedLabel = '', onSelec
   );
 }
 
+function FieldBiMapPanel({
+  mapProps,
+  records,
+  loading = false,
+  mapSeries,
+  onOpenGeoQuality,
+}) {
+  const activeSeries = mapSeries || BI_SERIES[1];
+  const mapMetricId = mapMetricIdForSeries(activeSeries);
+  const signalSummary = useMemo(
+    () => buildParcelSignalSummary(records, activeSeries),
+    [records, activeSeries]
+  );
+  const mapKey = [
+    'poda-inline-map',
+    mapMetricId,
+    mapProps?.farmFilter || 'all',
+    mapProps?.sourceFilter || 'all',
+    mapProps?.dateFrom || 'start',
+    mapProps?.dateTo || 'end',
+  ].join('-');
+
+  return (
+    <section className="field-bi-panel field-bi-map-panel">
+      <div className="field-bi-map-head">
+        <div>
+          <h3>Mapa das parcelas</h3>
+          <span>Semáforo por {activeSeries.fullLabel.toLowerCase()}</span>
+        </div>
+        {onOpenGeoQuality ? (
+          <button type="button" onClick={onOpenGeoQuality}>
+            <MapPinned size={15} />
+            Abrir maior
+          </button>
+        ) : null}
+      </div>
+
+      <div className="field-bi-map-signals" aria-label="Resumo do semáforo das parcelas">
+        <div className="signal-ok">
+          <i />
+          <span>Dentro</span>
+          <strong>{formatNumber(signalSummary.ok)}</strong>
+        </div>
+        <div className="signal-warning">
+          <i />
+          <span>Atenção</span>
+          <strong>{formatNumber(signalSummary.warning)}</strong>
+        </div>
+        <div className="signal-critical">
+          <i />
+          <span>Crítico</span>
+          <strong>{formatNumber(signalSummary.critical)}</strong>
+        </div>
+        <div className="signal-total">
+          <span>Parcelas</span>
+          <strong>{formatNumber(signalSummary.total)}</strong>
+        </div>
+      </div>
+
+      {signalSummary.worst ? (
+        <div className={`field-bi-map-worst is-${signalSummary.worst.tone}`}>
+          <span>Maior atenção</span>
+          <strong>{signalSummary.worst.label}</strong>
+          <em>{formatPercent(signalSummary.worst.value)} · meta {formatPercent(activeSeries.target)}</em>
+        </div>
+      ) : (
+        <div className="field-bi-map-worst is-empty">
+          <span>Sem parcelas avaliadas</span>
+          <strong>Amplie o período ou confirme a carga de poda.</strong>
+        </div>
+      )}
+
+      <div className="field-bi-inline-map-frame">
+        {loading ? (
+          <div className="field-map-suspense">
+            <div className="gps-map-loading-spinner" />
+            <strong>Carregando mapa das parcelas</strong>
+            <span>Aplicando semáforo de qualidade.</span>
+          </div>
+        ) : (
+          <Suspense
+            fallback={(
+              <div className="field-map-suspense">
+                <div className="gps-map-loading-spinner" />
+                <strong>Carregando mapa das parcelas</strong>
+                <span>Preparando shapefiles e indicadores.</span>
+              </div>
+            )}
+          >
+            <LeafletMap
+              key={mapKey}
+              {...mapProps}
+              areaFilter="poda"
+              initialOperation="poda"
+              initialMetricId={mapMetricId}
+            />
+          </Suspense>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function DailyBunchBarChart({ rows, loading = false, series = BI_SERIES[1] }) {
   const selectedSeries = Array.isArray(series) ? series : [series];
   const chartLabel = selectedSeries.length > 1 ? 'todos os indicadores' : selectedSeries[0]?.fullLabel;
@@ -931,6 +1110,7 @@ function FieldBiBoard({
   onResetFilters,
   onPresent,
   onOpenGeoQuality,
+  mapProps,
   presentationMode = false,
 }) {
   const isTotalMode = !presentationMode && boardMode === 'total';
@@ -972,6 +1152,9 @@ function FieldBiBoard({
   const selectedSeries = selectedLineKey === 'all'
     ? BI_SERIES
     : [BI_SERIES.find((series) => series.key === selectedLineKey) || primaryPodaSeries(focusedQuality)];
+  const mapSeries = selectedLineKey === 'all'
+    ? primaryPodaSeries(focusedQuality)
+    : selectedSeries[0];
 
   const handleSelectFiscal = (row) => {
     setSelectedFiscalLabel((current) => (current === row.label ? '' : row.label));
@@ -1097,11 +1280,12 @@ function FieldBiBoard({
               mode={evolutionMode}
               onModeChange={setEvolutionMode}
             />
-            <FiscalQualityCards
-              rows={farmFilteredModel.evaluatorRows}
+            <FieldBiMapPanel
+              mapProps={mapProps}
+              records={focusedRecords}
               loading={loading}
-              selectedLabel={selectedFiscalLabel}
-              onSelect={handleSelectFiscal}
+              mapSeries={mapSeries}
+              onOpenGeoQuality={onOpenGeoQuality}
             />
           </div>
 
@@ -1250,6 +1434,18 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
     };
   }, [allRecords, mobileRecords, excelRecords, mergedRecords, records, demoRecords.length, farmFilter, sourceFilter, dateFrom, dateTo, lastSyncTime]);
 
+  const mapProps = {
+    theme,
+    farmFilter,
+    areaFilter: 'poda',
+    periodFilter,
+    cycleFilter,
+    evaluatorFilter,
+    sourceFilter,
+    dateFrom,
+    dateTo,
+  };
+
   const boardProps = {
     loading,
     model,
@@ -1269,18 +1465,7 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
     diagnostics,
     recordCount: mergedRecords.length,
     onResetFilters,
-  };
-
-  const mapProps = {
-    theme,
-    farmFilter,
-    areaFilter: 'poda',
-    periodFilter,
-    cycleFilter,
-    evaluatorFilter,
-    sourceFilter,
-    dateFrom,
-    dateTo,
+    mapProps,
   };
 
   useEffect(() => {
