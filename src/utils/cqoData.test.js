@@ -317,4 +317,44 @@ describe('buildQualidadeOperacional', () => {
     expect(model.totals.carreamentoT).toBe(0);
     expect(model.totals.perdasT).toBe(0);
   });
+
+  it('estima perdas com peso medio do mes anterior da balanca', () => {
+    const corte = record({
+      id: 'corte-junho-balanca',
+      raw: {
+        data_avaliacao: '2026-06-15',
+        total_plantas_parcela: 1000,
+      },
+      totals: {
+        ...record().totals,
+        plantasObservadas: 100,
+        cachosObservados: 100,
+        cachoEsquecido: 3,
+      },
+    });
+    const balanceData = {
+      entradaDeCff: {
+        byMonth: [
+          {
+            monthKey: '2026-05',
+            pesoLiquidoKg: 10000,
+            cachos: 1000,
+          },
+          {
+            monthKey: '2026-06',
+            pesoLiquidoKg: 500000,
+            cachos: 10000,
+          },
+        ],
+      },
+    };
+
+    const model = buildQualidadeOperacional([corte], balanceData);
+
+    expect(model.totals.corteT).toBeCloseTo(0.3);
+    expect(model.totals.producedTon).toBeCloseTo(500);
+    expect(model.lossRates.cortePct).toBeCloseTo(0.06);
+    expect(model.balance.usesPreviousMonthWeight).toBe(true);
+    expect(model.balance.weightMonthKeys).toEqual(['2026-05']);
+  });
 });

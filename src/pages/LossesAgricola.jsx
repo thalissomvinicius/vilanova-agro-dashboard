@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { AlertTriangle, CalendarDays, Maximize2, MonitorPlay, RefreshCw, X } from 'lucide-react';
 import StatusBanner from '../components/ui/StatusBanner';
 import { filterRecords, useCqoData } from '../utils/cqoData';
+import { useBonificacaoData } from '../utils/bonificacaoData';
 import { buildQualidadeOperacional, QUALITY_LOSS_LIMITS } from '../utils/qualidadeOperacionalData';
 
 function fmt(value, digits = 0) {
@@ -63,10 +64,25 @@ function LossesMetricRail({ model, loading }) {
   const pesoYtd = model.charts.perdasPctMensal.at(-1)?.pesoYtd || model.totals.producedTon;
   const perdasPctYtd = pesoYtd > 0 ? (perdasYtd / pesoYtd) * 100 : null;
   const hasBase = model.hasProductionBase;
+  const weightMonths = model.balance?.weightMonthKeys?.length
+    ? model.balance.weightMonthKeys.join(', ')
+    : '';
 
   return (
     <aside className="losses-bi-rail">
-      <LossMetric loading={loading} label="Peso t YTD" value={fmt(pesoYtd, 1)} />
+      <LossMetric
+        loading={loading}
+        label="Peso t YTD"
+        value={fmt(pesoYtd, 1)}
+        meta={model.balance?.hasProductionBase ? 'base de balança' : ''}
+      />
+      <LossMetric
+        loading={loading}
+        label="Peso médio cacho"
+        value={model.balance?.averageWeightKg ? `${fmt(model.balance.averageWeightKg, 1)} kg` : 'N/D'}
+        meta={weightMonths ? `mês ant.: ${weightMonths}` : 'aguardando balança'}
+        tone={model.balance?.usesPreviousMonthWeight ? 'success' : 'neutral'}
+      />
       <LossMetric loading={loading} label="Perdas % YTD" value={pesoYtd ? pct(perdasPctYtd, 2) : 'N/D'} />
       <LossMetric loading={loading} label="Perdas t YTD" value={fmt(perdasYtd, 2)} />
       <LossMetric
@@ -306,6 +322,7 @@ export default function LossesAgricola({
 }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
   const { loading, error, records: allRecords } = useCqoData();
+  const balanceData = useBonificacaoData();
   const filtered = useMemo(() => filterRecords(allRecords, {
     farmFilter,
     areaFilter,
@@ -317,7 +334,7 @@ export default function LossesAgricola({
     dateTo,
     searchTerm,
   }), [allRecords, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo, searchTerm]);
-  const model = useMemo(() => buildQualidadeOperacional(filtered), [filtered]);
+  const model = useMemo(() => buildQualidadeOperacional(filtered, balanceData), [filtered, balanceData]);
   const periodText = periodLabel(dateFrom, dateTo);
   const updateText = updateLabel(lastSyncTime);
 
@@ -370,7 +387,13 @@ export default function LossesAgricola({
 
       {!model.hasProductionBase && !loading && filtered.length > 0 ? (
         <StatusBanner icon={AlertTriangle}>
-          Percentuais dependem da base de produção/balança. As toneladas seguem estimadas pelas amostras CQO.
+          Percentuais dependem da base de produção/balança do período. As toneladas usam perdas do BI quando existirem; senão, cachos estimados x peso médio do mês anterior.
+        </StatusBanner>
+      ) : null}
+
+      {model.hasProductionBase && !model.balance?.usesPreviousMonthWeight && !loading && filtered.length > 0 ? (
+        <StatusBanner icon={AlertTriangle}>
+          Base de produção carregada, mas o peso médio do mês anterior ainda não foi encontrado para as coletas filtradas. A estimativa usa peso informado no registro ou padrão técnico.
         </StatusBanner>
       ) : null}
 
