@@ -6438,7 +6438,7 @@ body.field-map-active {
   }
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1080px) {
   .poda-bi-board {
     grid-template-rows: 56px 28px 66px minmax(0, 1fr);
   }
@@ -12253,5 +12253,602 @@ body.field-map-active {
       "map"
       "bottom";
     overflow: auto;
+  }
+}
+
+/* CQO Poda: presentation rebuilt on the stable Carreamento dashboard pattern. */
+.poda-carreamento-page {
+  height: calc(100dvh - 128px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.poda-bi-board.poda-carreamento-layout,
+.poda-bi-board.poda-carreamento-layout.is-presentation {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.78fr) minmax(420px, 1.08fr) minmax(420px, 1.1fr);
+  grid-template-rows: 72px 36px 108px 88px minmax(0, 1fr) 136px;
+  grid-template-areas:
+    "header header header"
+    "filters filters filters"
+    "overview overview overview"
+    "ranking ranking ranking"
+    "charts charts map"
+    "bottom bottom map";
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.poda-presentation-overlay .presentation-scroll {
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: 10px;
+  overflow: hidden;
+}
+
+.poda-presentation-overlay .poda-bi-board.poda-carreamento-layout,
+.poda-presentation-overlay .poda-bi-board.poda-carreamento-layout.is-presentation {
+  height: calc(100dvh - 20px);
+  min-height: 660px;
+}
+
+.poda-carreamento-layout .poda-bi-header {
+  grid-area: header;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--green-institutional);
+  color: var(--white);
+  overflow: hidden;
+}
+
+.poda-carreamento-layout .poda-bi-header img {
+  width: 128px;
+  height: 44px;
+  object-fit: contain;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: var(--white);
+}
+
+.poda-carreamento-layout .poda-bi-header span {
+  color: var(--orange-highlight);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.poda-carreamento-layout .poda-bi-header h2 {
+  margin: 2px 0 3px;
+  color: var(--white);
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.poda-carreamento-layout .poda-bi-header p {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.poda-carreamento-layout .poda-bi-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.poda-carreamento-layout .poda-bi-premium-pill,
+.poda-carreamento-layout .poda-bi-demo-pill,
+.poda-carreamento-layout .poda-bi-present-btn {
+  min-height: 38px;
+  border-radius: 8px;
+  padding: 0 14px;
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+
+.poda-carreamento-layout .poda-bi-premium-pill {
+  display: none;
+}
+
+.poda-carreamento-layout .poda-bi-demo-pill,
+.poda-carreamento-layout .poda-bi-present-btn {
+  background: var(--orange-institutional);
+  color: var(--white);
+}
+
+.poda-carreamento-layout .poda-context-strip {
+  grid-area: filters;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.poda-carreamento-layout .poda-context-chips {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.poda-carreamento-layout .poda-context-chips span,
+.poda-carreamento-layout .poda-context-actions button {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.poda-carreamento-layout .poda-context-chips span {
+  flex: 0 1 auto;
+  max-width: 210px;
+  padding: 4px 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.poda-carreamento-layout .poda-context-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.poda-carreamento-layout .poda-context-actions button {
+  padding: 0 11px;
+  cursor: pointer;
+}
+
+.poda-carreamento-layout .poda-context-actions button.active {
+  border-color: var(--green-institutional);
+  background: var(--green-institutional);
+  color: var(--white);
+}
+
+.poda-carreamento-layout .poda-reference-overview {
+  grid-area: overview;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.68fr);
+  gap: 10px;
+  overflow: hidden;
+}
+
+.poda-carreamento-layout .poda-alert-card,
+.poda-carreamento-layout .poda-team-stats-card,
+.poda-carreamento-layout .poda-fault-panel,
+.poda-carreamento-layout .poda-bi-trend-panel,
+.poda-carreamento-layout .poda-map-panel,
+.poda-carreamento-layout .poda-mini-panel,
+.poda-carreamento-layout .poda-drill-panel {
+  min-height: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.poda-carreamento-layout .poda-alert-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 4px;
+  padding: 12px;
+  border-left: 4px solid var(--status-danger);
+}
+
+.poda-carreamento-layout .poda-card-eyebrow {
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.poda-carreamento-layout .poda-alert-card h3 {
+  margin: 1px 0 0;
+  color: var(--status-danger);
+  font-size: 1rem;
+  line-height: 1.12;
+}
+
+.poda-carreamento-layout .poda-alert-metric {
+  align-items: end;
+  gap: 8px;
+}
+
+.poda-carreamento-layout .poda-alert-metric strong {
+  font-size: 2.15rem;
+  line-height: 0.95;
+}
+
+.poda-carreamento-layout .poda-alert-details,
+.poda-carreamento-layout .poda-alert-card p {
+  display: none;
+}
+
+.poda-carreamento-layout .poda-team-stats-card {
+  display: grid;
+  grid-template-rows: 32px minmax(0, 1fr);
+  gap: 8px;
+  padding: 12px;
+}
+
+.poda-carreamento-layout .poda-team-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 0;
+}
+
+.poda-carreamento-layout .poda-team-stat {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.poda-carreamento-layout .poda-team-stat-head {
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 6px;
+}
+
+.poda-carreamento-layout .poda-team-stat-head span {
+  width: 28px;
+  height: 28px;
+  font-size: 0.62rem;
+}
+
+.poda-carreamento-layout .poda-team-stat-head strong {
+  font-size: 0.68rem;
+  line-height: 1.1;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.poda-carreamento-layout .poda-team-stat-rate strong {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.poda-carreamento-layout .poda-team-stat-rate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.poda-carreamento-layout .poda-team-stat-meta {
+  display: none;
+}
+
+.poda-carreamento-layout .poda-section-title {
+  min-height: 0;
+  margin: 0;
+  align-items: start;
+}
+
+.poda-carreamento-layout .poda-section-title h3 {
+  font-size: 0.98rem;
+  line-height: 1.1;
+}
+
+.poda-carreamento-layout .poda-section-title span:not(.poda-card-eyebrow) {
+  font-size: 0.66rem;
+  line-height: 1.15;
+}
+
+.poda-carreamento-layout .poda-fault-panel {
+  grid-area: ranking;
+  display: grid;
+  grid-template-rows: 24px minmax(0, 1fr);
+  gap: 6px;
+  padding: 10px;
+}
+
+.poda-carreamento-layout .poda-fault-tabs {
+  display: none;
+}
+
+.poda-carreamento-layout .poda-fault-strip {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 7px;
+  min-height: 0;
+}
+
+.poda-carreamento-layout .poda-fault-row {
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label arrow"
+    "value value"
+    "track track";
+  gap: 3px 6px;
+  padding: 7px;
+  border-radius: 8px;
+}
+
+.poda-carreamento-layout .poda-fault-row span {
+  font-size: 0.6rem;
+  line-height: 1.08;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.poda-carreamento-layout .poda-fault-row strong {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.poda-carreamento-layout .poda-fault-row small {
+  display: none;
+}
+
+.poda-carreamento-layout .poda-fault-track {
+  height: 7px;
+}
+
+.poda-carreamento-layout .poda-reference-chart-grid {
+  grid-area: charts;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  overflow: hidden;
+}
+
+.poda-carreamento-layout .poda-bi-trend-panel {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 34px 20px minmax(0, 1fr);
+  gap: 5px;
+  padding: 10px;
+}
+
+.poda-carreamento-layout .poda-bi-legend {
+  min-height: 0;
+  padding: 0;
+  gap: 12px;
+  font-size: 0.66rem;
+}
+
+.poda-carreamento-layout .poda-bi-trend-svg {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.poda-carreamento-layout .chart-axis-text,
+.poda-carreamento-layout .chart-value-text,
+.poda-carreamento-layout .chart-score-text {
+  font-size: 10px;
+}
+
+.poda-carreamento-layout .poda-map-panel {
+  grid-area: map;
+  display: grid;
+  grid-template-rows: 50px minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px;
+}
+
+.poda-carreamento-layout .poda-map-panel-head {
+  align-items: start;
+  gap: 8px;
+}
+
+.poda-carreamento-layout .poda-map-panel-head h3 {
+  font-size: 1.02rem;
+}
+
+.poda-carreamento-layout .poda-map-panel-head p {
+  display: none;
+}
+
+.poda-carreamento-layout .poda-map-legend {
+  justify-content: flex-end;
+  gap: 7px;
+  font-size: 0.6rem;
+}
+
+.poda-carreamento-layout .poda-map-frame {
+  height: 100%;
+  min-height: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.poda-carreamento-layout .poda-map-frame .gps-map-card {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) !important;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.poda-carreamento-layout .poda-map-frame .gps-map-canvas,
+.poda-carreamento-layout .poda-map-frame .leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+.poda-carreamento-layout .poda-map-frame .gps-map-overlay,
+.poda-carreamento-layout .poda-map-frame .leaflet-control-container .leaflet-top,
+.poda-carreamento-layout .poda-map-frame .leaflet-control-container .leaflet-bottom {
+  display: none !important;
+}
+
+.poda-carreamento-layout .poda-reference-bottom-grid {
+  grid-area: bottom;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.7fr) minmax(0, 1.3fr);
+  gap: 10px;
+  overflow: hidden;
+}
+
+.poda-carreamento-layout .poda-mini-panel,
+.poda-carreamento-layout .poda-drill-panel {
+  min-height: 0;
+  padding: 10px;
+}
+
+.poda-carreamento-layout .poda-mini-panel {
+  display: grid;
+  grid-template-rows: 34px minmax(0, 1fr);
+  gap: 6px;
+}
+
+.poda-carreamento-layout .poda-bi-bars {
+  gap: 5px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.poda-carreamento-layout .poda-bi-bar-row {
+  min-height: 0;
+  padding: 3px 0;
+  gap: 5px;
+}
+
+.poda-carreamento-layout .poda-mini-panel .poda-bi-bar-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 58px;
+  grid-template-areas:
+    "copy value"
+    "track track";
+  align-items: center;
+}
+
+.poda-carreamento-layout .poda-mini-panel .poda-bi-bar-row > div:first-child {
+  grid-area: copy;
+  min-width: 0;
+}
+
+.poda-carreamento-layout .poda-mini-panel .poda-bi-bar-track {
+  grid-area: track;
+  height: 6px;
+}
+
+.poda-carreamento-layout .poda-mini-panel .poda-bi-bar-row small {
+  grid-area: value;
+  align-self: center;
+}
+
+.poda-carreamento-layout .poda-bi-bar-row strong {
+  font-size: 0.68rem;
+}
+
+.poda-carreamento-layout .poda-bi-bar-row span,
+.poda-carreamento-layout .poda-bi-bar-row small {
+  font-size: 0.56rem;
+}
+
+.poda-carreamento-layout .poda-drill-panel {
+  display: grid;
+  grid-template-rows: 34px 28px minmax(0, 1fr);
+  gap: 6px;
+}
+
+.poda-carreamento-layout .poda-drill-kpis {
+  display: none;
+}
+
+.poda-carreamento-layout .poda-drill-tabs {
+  min-height: 0;
+}
+
+.poda-carreamento-layout .poda-drill-tabs button {
+  min-height: 26px;
+  font-size: 0.62rem;
+}
+
+.poda-carreamento-layout .poda-drill-table {
+  min-height: 0;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.poda-carreamento-layout .poda-drill-row {
+  padding: 5px 8px;
+  gap: 2px 6px;
+}
+
+.poda-carreamento-layout .poda-drill-row strong {
+  font-size: 0.66rem;
+}
+
+.poda-carreamento-layout .poda-drill-row span,
+.poda-carreamento-layout .poda-drill-row small {
+  font-size: 0.54rem;
+}
+
+@media (max-width: 1280px) {
+  .poda-bi-board.poda-carreamento-layout,
+  .poda-bi-board.poda-carreamento-layout.is-presentation {
+    min-height: 760px;
+    grid-template-columns: 1fr;
+    grid-template-rows: 70px 66px 172px 126px 280px 320px 170px;
+    grid-template-areas:
+      "header"
+      "filters"
+      "overview"
+      "ranking"
+      "charts"
+      "map"
+      "bottom";
+    overflow: auto;
+  }
+
+  .poda-carreamento-layout .poda-context-strip,
+  .poda-carreamento-layout .poda-reference-overview,
+  .poda-carreamento-layout .poda-reference-chart-grid,
+  .poda-carreamento-layout .poda-reference-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .poda-carreamento-layout .poda-context-actions {
+    display: none;
   }
 }

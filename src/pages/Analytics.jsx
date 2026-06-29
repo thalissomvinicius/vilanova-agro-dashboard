@@ -643,30 +643,36 @@ function periodParts(periodText) {
   return { month: text, year };
 }
 
-function PodaFilterBar({ filters = {}, periodText, selectedIndicator, selectedKey, onQuickFilter }) {
-  const { month, year } = periodParts(periodText);
-  const fields = [
-    { label: 'Empresa', value: 'Vila Nova' },
-    { label: 'Fazenda', value: readableFilter(filters.farmFilter, 'Todas as fazendas') },
-    { label: 'Equipe', value: 'Todas as equipes' },
-    { label: 'Fiscal', value: readableFilter(filters.evaluatorFilter, 'Todos os fiscais') },
-    { label: 'Semana', value: 'Todas as semanas' },
-    { label: 'Mês', value: month },
-    { label: 'Ano', value: year },
-    { label: 'Tipo de falha', value: selectedIndicator?.label || 'Todas as falhas' },
+function PodaFilterBar({
+  filters = {},
+  periodText,
+  selectedIndicator,
+  selectedKey,
+  onQuickFilter,
+  source,
+  recordsCount = 0,
+  totals = {},
+  demoActive = false,
+}) {
+  const { year } = periodParts(periodText);
+  const chips = [
+    periodText || 'Todos os períodos',
+    demoActive ? 'Dados manuais temporários' : source || 'Base atual',
+    `${fmt(recordsCount)} coletas`,
+    `${fmt(totals.linhas)} linhas`,
+    `${fmt(totals.podaPlantasObservadas)} plantas`,
+    `Fazenda: ${readableFilter(filters.farmFilter, 'Todas')}`,
+    `Fiscal: ${readableFilter(filters.evaluatorFilter, 'Todos')}`,
+    `Ano: ${year}`,
+    `Foco: ${selectedIndicator?.label || 'Todas as falhas'}`,
   ];
 
   return (
-    <section className="poda-filter-panel" aria-label="Filtros do painel CQO Poda">
-      <div className="poda-filter-grid">
-        {fields.map((field) => (
-          <label className="poda-filter-control" key={field.label}>
-            <span>{field.label}</span>
-            <strong>{field.value}</strong>
-          </label>
-        ))}
+    <section className="carreamento-bi-filter-strip poda-context-strip" aria-label="Contexto do painel CQO Poda">
+      <div className="poda-context-chips">
+        {chips.map((chip) => <span key={chip}>{chip}</span>)}
       </div>
-      <div className="poda-quick-filters" aria-label="Filtros rápidos">
+      <div className="poda-context-actions" aria-label="Filtros rápidos">
         <button
           type="button"
           className={selectedKey === 'cachoExposto' ? 'active' : ''}
@@ -986,7 +992,7 @@ function PodaTrendPanel({ rows, issueLabel = 'Falhas', title = 'Evolução no pe
   );
 }
 
-function PodaBiBoard({ totals, records, periodText, demoActive, onPresent, presentationMode = false, filters = {}, mapProps = {} }) {
+function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresent, presentationMode = false, filters = {}, mapProps = {} }) {
   const indicators = buildPodaIndicatorRows(totals);
   const parcelRows = buildPodaGroupedRows(records, (record) => `${record.farm || 'Sem fazenda'} · ${record.parcel || 'Sem parcela'}`);
   const topIssue = indicators.find((row) => row.count > 0) || indicators[0];
@@ -1007,7 +1013,7 @@ function PodaBiBoard({ totals, records, periodText, demoActive, onPresent, prese
   const mapMetricId = PODA_MAP_METRIC_BY_KEY[selectedKey] || 'poda_planta_sem_podar';
 
   return (
-    <div className={`poda-bi-board poda-executive-board ${presentationMode ? 'is-presentation' : ''}`}>
+    <div className={`poda-bi-board poda-executive-board poda-carreamento-layout ${presentationMode ? 'is-presentation' : ''}`}>
       <div className="poda-bi-header">
         <img src="/logo.png" alt="Vila Nova Agroindustrial" />
         <div>
@@ -1034,6 +1040,10 @@ function PodaBiBoard({ totals, records, periodText, demoActive, onPresent, prese
         selectedIndicator={selectedIndicator}
         selectedKey={selectedKey}
         onQuickFilter={setSelectedIndicatorKey}
+        source={source}
+        recordsCount={records.length}
+        totals={totals}
+        demoActive={demoActive}
       />
 
       <div className="poda-reference-overview">
@@ -1069,7 +1079,7 @@ function PodaBiBoard({ totals, records, periodText, demoActive, onPresent, prese
           title="Parcelas que precisam de atenção"
           subtitle={`${selectedIndicator?.label || 'Falha'} com maior índice no período.`}
           rows={parcelRows}
-          maxRows={3}
+          maxRows={2}
           className="poda-risk-panel"
         />
         <PodaDrilldownPanel
@@ -1591,7 +1601,7 @@ export default function Analytics({ farmFilter, areaFilter, periodFilter, cycleF
 
   if (areaFilter === 'poda') {
     return (
-      <div className="fade-in page-shell poda-bi-page">
+      <div className="fade-in page-shell poda-bi-page poda-carreamento-page">
         {podaPresentationOpen && (
           <PodaPresentationOverlay
             loading={loading}
