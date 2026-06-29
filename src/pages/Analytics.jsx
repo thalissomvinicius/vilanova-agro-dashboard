@@ -1067,6 +1067,170 @@ function PodaTrendPanel({ rows, issueLabel = 'Falhas', title = 'Evolução no pe
 }
 
 
+
+function PodaFarmsComparisonChart({ records, selectedKey, selectedFarm, onSelectFarm }) {
+  const farmNames = ['FÉ EM DEUS', 'VILA NOVA', 'SANTA MARIA'];
+  const data = farmNames.map(farm => {
+    const farmRecords = records.filter(r => r.farm === farm);
+    const totals = aggregateRecords(farmRecords);
+    const indicators = podaIndicatorDefinitions(totals);
+    const ind = indicators.find(i => i.key === selectedKey) || { rate: 0, count: 0, status: 'Dentro da meta' };
+    return {
+      farm,
+      rate: ind.rate,
+      count: ind.count,
+      total: farmRecords.length,
+      status: ind.status
+    };
+  });
+
+  const maxRate = Math.max(...data.map(d => d.rate), 0.1);
+
+  return (
+    <section className="poda-breakdown-card" style={{ height: '100%' }}>
+      <div className="poda-breakdown-header">
+        <h3>Comparação de Fazendas</h3>
+        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Clique para filtrar as parcelas</span>
+      </div>
+      <div className="poda-breakdown-list" style={{ gap: 10, padding: 12 }}>
+        {data.map((row) => {
+          const statusClass = row.status === 'Crítico' ? 'danger' : row.status === 'Atenção' ? 'warning' : 'ok';
+          const isSelected = selectedFarm === row.farm;
+          return (
+            <div 
+              key={row.farm}
+              onClick={() => onSelectFarm(row.farm)}
+              className={`poda-breakdown-row status-${statusClass} ${isSelected ? 'active' : ''}`}
+              style={{ 
+                cursor: 'pointer',
+                border: isSelected ? '2px solid var(--orange-institutional)' : '1px solid var(--border-color)',
+                boxShadow: isSelected ? 'var(--shadow-md)' : 'none',
+                transform: isSelected ? 'translateY(-1px)' : 'none',
+                transition: 'all 0.15s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: 6,
+                padding: '10px 14px'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <strong style={{ fontSize: '0.82rem' }}>{row.farm}</strong>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <strong className="rate" style={{ fontSize: '0.95rem' }}>{formatPercentValue(row.rate)}</strong>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({row.count} ocorr.)</span>
+                </div>
+              </div>
+              <div style={{ height: 6, background: '#E5E7EB', borderRadius: 3, overflow: 'hidden', width: '100%' }}>
+                <i style={{ 
+                  display: 'block', 
+                  height: '100%', 
+                  width: `${(row.rate / maxRate) * 100}%`,
+                  background: statusClass === 'danger' ? 'var(--danger-color)' : statusClass === 'warning' ? 'var(--warning-color)' : 'var(--green-institutional)',
+                  borderRadius: 3
+                }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function PodaFarmParcelsChart({ records, selectedKey, selectedFarm, onSelectFarm }) {
+  const farmRecords = records.filter(r => r.farm === selectedFarm);
+  const buckets = new Map();
+  farmRecords.forEach(r => {
+    const p = r.parcel || 'Sem parcela';
+    if (!buckets.has(p)) buckets.set(p, []);
+    buckets.get(p).push(r);
+  });
+  const data = Array.from(buckets.entries()).map(([parcel, recs]) => {
+    const totals = aggregateRecords(recs);
+    const indicators = podaIndicatorDefinitions(totals);
+    const ind = indicators.find(i => i.key === selectedKey) || { rate: 0, count: 0, status: 'Dentro da meta' };
+    return {
+      parcel,
+      rate: ind.rate,
+      count: ind.count,
+      total: recs.length,
+      status: ind.status
+    };
+  }).sort((a, b) => b.rate - a.rate);
+
+  const visibleData = data.slice(0, 6);
+  const maxRate = Math.max(...visibleData.map(d => d.rate), 0.1);
+
+  return (
+    <section className="poda-breakdown-card" style={{ height: '100%' }}>
+      <div className="poda-breakdown-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
+        <div>
+          <h3 style={{ margin: 0 }}>Parcelas por Fazenda</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Top ofensores</span>
+        </div>
+        <select 
+          value={selectedFarm} 
+          onChange={(e) => onSelectFarm(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            padding: '4px 10px',
+            fontSize: '0.72rem',
+            fontWeight: '700',
+            borderRadius: '6px',
+            border: '1px solid var(--border-color)',
+            background: 'white',
+            color: 'var(--text-primary)',
+            cursor: 'pointer'
+          }}
+        >
+          <option value="FÉ EM DEUS">Fé em Deus</option>
+          <option value="VILA NOVA">Vila Nova</option>
+          <option value="SANTA MARIA">Santa Maria</option>
+        </select>
+      </div>
+      <div className="poda-breakdown-list" style={{ gap: 8, padding: 12 }}>
+        {visibleData.length ? visibleData.map((row) => {
+          const statusClass = row.status === 'Crítico' ? 'danger' : row.status === 'Atenção' ? 'warning' : 'ok';
+          return (
+            <div 
+              key={row.parcel}
+              className={`poda-breakdown-row status-${statusClass}`}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: 6,
+                padding: '10px 14px'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <strong style={{ fontSize: '0.8rem' }}>Parcela {row.parcel}</strong>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <strong className="rate" style={{ fontSize: '0.9rem' }}>{formatPercentValue(row.rate)}</strong>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({row.count} ocorr. / {row.total} col.)</span>
+                </div>
+              </div>
+              <div style={{ height: 4, background: '#E5E7EB', borderRadius: 2, overflow: 'hidden', width: '100%' }}>
+                <i style={{ 
+                  display: 'block', 
+                  height: '100%', 
+                  width: `${(row.rate / maxRate) * 100}%`,
+                  background: statusClass === 'danger' ? 'var(--danger-color)' : statusClass === 'warning' ? 'var(--warning-color)' : 'var(--green-institutional)',
+                  borderRadius: 2
+                }} />
+              </div>
+            </div>
+          );
+        }) : (
+          <div className="poda-breakdown-empty">Nenhum dado para a fazenda selecionada</div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+
 function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresent, presentationMode = false, filters = {}, mapProps = {} }) {
   const indicators = buildPodaIndicatorRows(totals);
   const parcelRows = buildPodaGroupedRows(records, (record) => `${record.farm || 'Sem fazenda'} · ${record.parcel || 'Sem parcela'}`);
@@ -1075,6 +1239,7 @@ function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresen
   const [activeBreakdown, setActiveBreakdown] = useState('parcel');
   const [activeViewTab, setActiveViewTab] = useState('ranking'); // 'ranking', 'trend', 'map'
   const [activeTrendPeriod, setActiveTrendPeriod] = useState('week'); // 'week', 'month'
+  const [selectedFarm, setSelectedFarm] = useState('FÉ EM DEUS');
   
   const selectedIndicator = indicators.find((row) => row.key === selectedIndicatorKey) || topIssue || indicators[0];
   const selectedKey = selectedIndicator?.key || selectedIndicatorKey;
@@ -1137,58 +1302,76 @@ function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresen
       </section>
 
       {/* Unified Presentation Grid */}
-      <main className="poda-modern-presentation-grid">
-        {/* Coluna 1: Evolução */}
-        <div className="poda-presentation-col poda-col-trend" style={{ flex: 1.5 }}>
-          <div className="poda-modern-side-card" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <div className="poda-trend-toggle">
-              <button
-                type="button"
-                className={activeTrendPeriod === 'week' ? 'active' : ''}
-                onClick={() => setActiveTrendPeriod('week')}
-              >
-                Semanas
-              </button>
-              <button
-                type="button"
-                className={activeTrendPeriod === 'month' ? 'active' : ''}
-                onClick={() => setActiveTrendPeriod('month')}
-              >
-                Meses
-              </button>
+      <main style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: 1, minHeight: 0 }}>
+        {/* Linha 1: Evolução Semanal/Mensal e Comparação das Fazendas */}
+        <div className="poda-modern-presentation-grid">
+          {/* Coluna 1: Evolução */}
+          <div className="poda-presentation-col poda-col-trend" style={{ flex: 1.5 }}>
+            <div className="poda-modern-side-card" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <div className="poda-trend-toggle">
+                <button
+                  type="button"
+                  className={activeTrendPeriod === 'week' ? 'active' : ''}
+                  onClick={() => setActiveTrendPeriod('week')}
+                >
+                  Semanas
+                </button>
+                <button
+                  type="button"
+                  className={activeTrendPeriod === 'month' ? 'active' : ''}
+                  onClick={() => setActiveTrendPeriod('month')}
+                >
+                  Meses
+                </button>
+              </div>
+              {activeTrendPeriod === 'week' ? (
+                <PodaTrendPanel
+                  rows={weekChartRows.length ? weekChartRows : dayRows}
+                  issueLabel={selectedIndicator?.label || 'Falhas'}
+                  title={`Semanal - ${selectedIndicator?.label || 'Geral'}`}
+                />
+              ) : (
+                <PodaTrendPanel
+                  rows={monthChartRows.length ? monthChartRows : dayRows}
+                  issueLabel={selectedIndicator?.label || 'Falhas'}
+                  title={`Mensal - ${selectedIndicator?.label || 'Geral'}`}
+                />
+              )}
             </div>
-            {activeTrendPeriod === 'week' ? (
-              <PodaTrendPanel
-                rows={weekChartRows.length ? weekChartRows : dayRows}
-                issueLabel={selectedIndicator?.label || 'Falhas'}
-                title={`Semanal - ${selectedIndicator?.label || 'Geral'}`}
-              />
-            ) : (
-              <PodaTrendPanel
-                rows={monthChartRows.length ? monthChartRows : dayRows}
-                issueLabel={selectedIndicator?.label || 'Falhas'}
-                title={`Mensal - ${selectedIndicator?.label || 'Geral'}`}
-              />
-            )}
           </div>
-        </div>
-        
-        {/* Colunas de Top Ofensores */}
-        <div className="poda-presentation-col poda-col-lists" style={{ flex: 1 }}>
-          <div className="poda-modern-side-card" style={{ flex: 1, overflow: 'hidden', padding: 0 }}>
-            <PodaBreakdownList title="Top Parcelas" rows={drilldowns.parcel} limit={6} />
+
+          {/* Coluna 2: Comparação de Fazendas */}
+          <div className="poda-presentation-col poda-col-lists" style={{ flex: 1 }}>
+            <div className="poda-modern-side-card" style={{ flex: 1, overflow: 'hidden', padding: 0 }}>
+              <PodaFarmsComparisonChart
+                records={records}
+                selectedKey={selectedKey}
+                selectedFarm={selectedFarm}
+                onSelectFarm={setSelectedFarm}
+              />
+            </div>
           </div>
         </div>
 
-        <div className="poda-presentation-col poda-col-lists" style={{ flex: 1 }}>
-          <div className="poda-modern-side-card" style={{ flex: 1, overflow: 'hidden', padding: 0 }}>
-            <PodaBreakdownList title="Top Fazendas" rows={drilldowns.farm} limit={6} />
+        {/* Linha 2: Parcelas por Fazenda (selecionada) e Fiscais */}
+        <div className="poda-modern-presentation-grid">
+          {/* Coluna 1: Parcelas da Fazenda Selecionada */}
+          <div className="poda-presentation-col poda-col-trend" style={{ flex: 1.5 }}>
+            <div className="poda-modern-side-card" style={{ flex: 1, overflow: 'hidden', padding: 0 }}>
+              <PodaFarmParcelsChart
+                records={records}
+                selectedKey={selectedKey}
+                selectedFarm={selectedFarm}
+                onSelectFarm={setSelectedFarm}
+              />
+            </div>
           </div>
-        </div>
 
-        <div className="poda-presentation-col poda-col-lists" style={{ flex: 1 }}>
-          <div className="poda-modern-side-card" style={{ flex: 1, overflow: 'hidden', padding: 0 }}>
-            <PodaBreakdownList title="Top Fiscais" rows={drilldowns.fiscal} limit={6} />
+          {/* Coluna 2: Top Fiscais */}
+          <div className="poda-presentation-col poda-col-lists" style={{ flex: 1 }}>
+            <div className="poda-modern-side-card" style={{ flex: 1, overflow: 'hidden', padding: 0 }}>
+              <PodaBreakdownList title="Top Fiscais" rows={drilldowns.fiscal} limit={6} />
+            </div>
           </div>
         </div>
       </main>
