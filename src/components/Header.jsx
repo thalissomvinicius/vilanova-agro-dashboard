@@ -201,7 +201,7 @@ export default function Header({
 
           {visibleFilterSet.has('evaluator') ? (
             <label className="header-filter-control header-filter-control-wide">
-              <span>Fiscal Resp.</span>
+              <span>Fiscal equipe</span>
               <select
                 className="header-filter-select"
                 value={evaluatorFilter}

@@ -737,8 +737,8 @@ function FiscalQualityCards({ rows, loading = false, selectedLabel = '', onSelec
       ) : (
         <>
           <div className="field-bi-evaluator-head">
-            <h3>Fiscal responsável</h3>
-            <span>{selectedLabel ? 'fiscal em análise' : 'clique para analisar'}</span>
+            <h3>Fiscal resp. equipe</h3>
+            <span>{selectedLabel ? 'fiscal da equipe em análise' : 'clique para analisar'}</span>
           </div>
           {visibleRows.map((row) => {
             const active = selectedLabel === row.label;
@@ -763,7 +763,7 @@ function FiscalQualityCards({ rows, loading = false, selectedLabel = '', onSelec
               </button>
             );
           })}
-          {!visibleRows.length && <div className="empty-panel smart-empty-panel"><strong>Sem fiscais</strong><span>Nenhuma coleta do período trouxe fiscal responsável válido.</span></div>}
+          {!visibleRows.length && <div className="empty-panel smart-empty-panel"><strong>Sem fiscais</strong><span>Nenhuma coleta do período trouxe fiscal responsável da equipe válido.</span></div>}
         </>
       )}
     </section>
@@ -1076,7 +1076,7 @@ function FieldBiBoard({
             <div className="field-bi-focus-chip">
               <span>Filtro da análise</span>
               {selectedFarmRow ? <strong>Fazenda: {selectedFarmRow.label}</strong> : null}
-              {selectedFiscalRow ? <strong>Fiscal: {selectedFiscalRow.label}</strong> : null}
+              {selectedFiscalRow ? <strong>Fiscal equipe: {selectedFiscalRow.label}</strong> : null}
               <em>{formatNumber(focusedModel.records.length)} coleta(s)</em>
               <button type="button" onClick={clearFocus}>Ver todos</button>
             </div>
@@ -1141,7 +1141,7 @@ function FieldGeoQualityOverlay({ mapProps, periodText, updateText, latestCollec
           <div>
             <span>Georreferenciamento CQO Poda</span>
             <h2>Qualidade por parcela</h2>
-            <p>Shapes das parcelas com semáforo de qualidade da poda, filtros atuais e detalhe por fazenda, parcela, fiscal e período.</p>
+            <p>Shapes das parcelas com semáforo de qualidade da poda, filtros atuais e detalhe por fazenda, parcela, fiscal da equipe e período.</p>
           </div>
           <div className="field-map-context">
             <span>{periodText}</span>

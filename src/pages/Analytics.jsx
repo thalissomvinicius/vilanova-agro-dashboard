@@ -653,7 +653,7 @@ function PodaFilterBar({
     `${fmt(totals.linhas)} linhas`,
     `${fmt(totals.podaPlantasObservadas)} plantas`,
     `Fazenda: ${readableFilter(filters.farmFilter, 'Todas')}`,
-    `Fiscal: ${readableFilter(filters.evaluatorFilter, 'Todos')}`,
+    `Fiscal equipe: ${readableFilter(filters.evaluatorFilter, 'Todos')}`,
     `Ano: ${year}`,
     `Foco: ${selectedIndicator?.label || 'Todas as falhas'}`,
   ];
@@ -1617,7 +1617,7 @@ function PodaFiscalCards({ rows, loading = false }) {
       ) : (
         <>
           <div className="field-bi-evaluator-head">
-            <h3>Fiscal responsável</h3>
+            <h3>Fiscal resp. equipe</h3>
             <span>ranking por risco de qualidade da poda</span>
           </div>
           {visibleRows.map((row) => (
@@ -1639,7 +1639,7 @@ function PodaFiscalCards({ rows, loading = false }) {
           {!visibleRows.length && (
             <div className="empty-panel smart-empty-panel">
               <strong>Sem fiscais</strong>
-              <span>Nenhuma coleta do período trouxe fiscal responsável válido.</span>
+              <span>Nenhuma coleta do período trouxe fiscal responsável da equipe válido.</span>
             </div>
           )}
         </>

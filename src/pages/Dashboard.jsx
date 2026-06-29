@@ -538,7 +538,7 @@ function FiscalQualityCards({ rows, loading = false }) {
       ) : (
         <>
           <div className="field-bi-evaluator-head">
-            <h3>Fiscal responsável</h3>
+            <h3>Fiscal resp. equipe</h3>
             <span>ranking por risco de qualidade</span>
           </div>
           {visibleRows.map((row) => (
@@ -555,7 +555,7 @@ function FiscalQualityCards({ rows, loading = false }) {
               <small>{formatNumber(row.recordsCount)} coleta(s) · {row.tone === 'danger' ? 'prioridade alta' : row.tone === 'warning' ? 'acompanhar' : 'controlado'}</small>
             </div>
           ))}
-          {!visibleRows.length && <div className="empty-panel smart-empty-panel"><strong>Sem fiscais</strong><span>Nenhuma coleta do período trouxe fiscal responsável válido.</span></div>}
+          {!visibleRows.length && <div className="empty-panel smart-empty-panel"><strong>Sem fiscais</strong><span>Nenhuma coleta do período trouxe fiscal responsável da equipe válido.</span></div>}
         </>
       )}
     </section>
