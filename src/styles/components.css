@@ -1737,6 +1737,29 @@ body.presentation-active {
   overflow: hidden;
 }
 
+button.field-bi-kpi {
+  width: 100%;
+  cursor: pointer;
+  font: inherit;
+  appearance: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+button.field-bi-kpi:hover:not(:disabled),
+button.field-bi-kpi.is-active {
+  border-color: rgba(13, 91, 52, 0.42);
+  box-shadow: 0 0 0 3px rgba(13, 91, 52, 0.11), var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+button.field-bi-kpi.is-active {
+  background: linear-gradient(180deg, rgba(13, 91, 52, 0.08), var(--bg-card) 58%);
+}
+
+button.field-bi-kpi:disabled {
+  cursor: default;
+}
+
 .field-bi-kpi span {
   display: block;
   color: var(--text-primary);
@@ -1767,6 +1790,56 @@ body.presentation-active {
 
 .field-bi-kpi-danger strong {
   color: var(--status-danger);
+}
+
+.field-line-metric-selector {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin: -1px 0 10px;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.field-line-metric-selector button {
+  min-height: 31px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 850;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.field-line-metric-selector button:hover,
+.field-line-metric-selector button.active {
+  border-color: rgba(13, 91, 52, 0.36);
+  color: var(--green-institutional);
+  box-shadow: 0 0 0 3px rgba(13, 91, 52, 0.08);
+}
+
+.field-line-metric-selector button.active {
+  background: var(--green-institutional);
+  color: var(--white);
+}
+
+.field-line-metric-selector i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
 }
 
 .field-bi-main-grid {

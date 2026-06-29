@@ -316,16 +316,31 @@ function qualityTone(value, meta, goodWhen = 'low') {
   return { tone: 'danger', color: 'var(--status-danger)', status: 'Fora da meta' };
 }
 
-function FieldBiKpiCard({ label, value, meta, goodWhen = 'low', loading = false }) {
+function FieldBiKpiCard({ label, value, meta, goodWhen = 'low', loading = false, onClick, active = false }) {
   const tone = qualityTone(value, meta, goodWhen);
   const signal = tone.tone === 'green' ? '✓' : '!';
-  return (
-    <div className={`field-bi-kpi field-bi-kpi-${tone.tone}`}>
+  const className = `field-bi-kpi field-bi-kpi-${tone.tone} ${active ? 'is-active' : ''}`.trim();
+  const content = (
+    <>
       <span>{label}</span>
       <strong className={loading ? 'skeleton-text' : ''}>
         {loading ? '\u00A0' : `${formatPercent(value)}${signal}`}
       </strong>
       <small>Meta: {formatPercent(meta)} · {tone.status}</small>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button type="button" className={className} onClick={onClick} disabled={loading}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className={className}>
+      {content}
     </div>
   );
 }
@@ -352,6 +367,8 @@ const BI_SERIES = [
   { key: 'passado', sourceKey: 'cachoPassadoPct', label: 'CE %', fullLabel: 'Cacho exposto %', color: 'var(--text-primary)', target: 2 },
   { key: 'verde', sourceKey: 'cachoVerdePct', label: 'PMC %', fullLabel: 'Poda meia coroa %', color: 'var(--green-institutional)', target: 2 },
   { key: 'avermelhado', sourceKey: 'cachoAvermelhadoPct', label: 'CP %', fullLabel: 'Cacho podre %', color: 'var(--status-danger)', target: 1 },
+  { key: 'estrela', sourceKey: 'taloCompridoPct', label: 'PM 1:1 %', fullLabel: 'Poda maior 1:1 %', color: '#7C3AED', target: 2 },
+  { key: 'talo', sourceKey: 'cachoEstrelaPct', label: 'BG %', fullLabel: 'Bico de gaita %', color: '#2563EB', target: 2 },
 ];
 
 function qualityValuesFromRow(row) {
@@ -360,6 +377,8 @@ function qualityValuesFromRow(row) {
     passado: Number(row.cachoPassadoPct || 0),
     verde: Number(row.cachoVerdePct || 0),
     avermelhado: Number(row.cachoAvermelhadoPct || 0),
+    estrela: Number(row.cachoEstrelaPct || 0),
+    talo: Number(row.taloCompridoPct || 0),
     samples: row.recordsCount || 0,
   };
 
@@ -369,11 +388,14 @@ function qualityValuesFromRow(row) {
 
   if (row.qualidade) {
     const base = Math.max(row.qualidade.cachosObservados || 0, 0);
+    const plantBase = row.qualidade.podaPlantasObservadas || row.qualidade.plantasObservadas || base;
     return {
       maduro: base ? (row.qualidade.cachoMaduro / base) * 100 : 0,
       passado: base ? (row.qualidade.cachoPassado / base) * 100 : 0,
       verde: base ? (row.qualidade.cachoVerde / base) * 100 : 0,
       avermelhado: base ? (row.qualidade.cachoAvermelhado / base) * 100 : 0,
+      estrela: safePct(row.qualidade.podaMaiorUmParaUm, plantBase),
+      talo: safePct(row.qualidade.bicoGaita, plantBase),
       samples: base,
     };
   }
@@ -390,6 +412,8 @@ function dailyQualityValuesFromRow(row) {
     passado: safePct(row.passado, base),
     verde: safePct(row.verde, base),
     avermelhado: safePct(row.avermelhado, base),
+    estrela: safePct(row.estrela, base),
+    talo: safePct(row.talo, base),
     samples: base,
   };
 }
@@ -462,6 +486,27 @@ function FieldBiFarmChart({ rows, loading = false }) {
   );
 }
 
+function PodaLineMetricSelector({ selectedKey, activeSeries, onSelect }) {
+  return (
+    <div className="field-line-metric-selector" role="group" aria-label="Indicador exibido no gráfico">
+      <button type="button" className={selectedKey === 'all' ? 'active' : ''} onClick={() => onSelect('all')}>
+        Todos
+      </button>
+      {activeSeries.map((series) => (
+        <button
+          type="button"
+          key={series.key}
+          className={selectedKey === series.key ? 'active' : ''}
+          onClick={() => onSelect(series.key)}
+        >
+          <i style={{ background: series.color }} />
+          {series.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function PodaTargetLineChart({
   rows,
   loading = false,
@@ -478,33 +523,46 @@ function PodaTargetLineChart({
   className = '',
 }) {
   const visibleRows = rows.slice(-maxRows);
+  const normalizedSeries = (Array.isArray(series) ? series : [series]).filter(Boolean);
+  const selectedSeries = normalizedSeries.length ? normalizedSeries : [BI_SERIES[1]];
+  const isMultiSeries = selectedSeries.length > 1;
   const chartHeight = 244;
   const padding = { top: 30, right: 34, bottom: 42, left: 48 };
   const columnWidth = 88;
   const width = Math.max(minWidth, padding.left + padding.right + Math.max(visibleRows.length - 1, 1) * columnWidth + 54);
   const graphHeight = chartHeight - padding.top - padding.bottom;
   const graphWidth = width - padding.left - padding.right;
-  const target = Number(series.target || 0);
-  const values = visibleRows.map((row, index) => ({
-    row,
-    key: rowKey(row, index),
-    label: labelForRow(row),
-    value: Number(getValues(row)?.[series.key] || 0),
+  const valuesBySeries = selectedSeries.map((item) => ({
+    series: item,
+    values: visibleRows.map((row, index) => ({
+      row,
+      key: `${item.key}-${rowKey(row, index)}`,
+      label: labelForRow(row),
+      value: Number(getValues(row)?.[item.key] || 0),
+    })),
   }));
-  const maxValue = Math.max(target * 1.45, ...values.map((item) => item.value * 1.18), target + 0.2, 1);
+  const maxValue = Math.max(
+    ...selectedSeries.map((item) => Number(item.target || 0) * 1.45),
+    ...valuesBySeries.flatMap((group) => group.values.map((item) => item.value * 1.18)),
+    1
+  );
   const yFor = (value) => padding.top + graphHeight - (Math.min(Math.max(value, 0), maxValue) / maxValue) * graphHeight;
   const xFor = (index) => {
-    if (values.length <= 1) return padding.left + graphWidth / 2;
-    return padding.left + (index / (values.length - 1)) * graphWidth;
+    if (visibleRows.length <= 1) return padding.left + graphWidth / 2;
+    return padding.left + (index / (visibleRows.length - 1)) * graphWidth;
   };
-  const points = values.map((item, index) => ({ ...item, x: xFor(index), y: yFor(item.value) }));
-  const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
-  const areaPath = points.length > 1
-    ? `${linePath} L ${points[points.length - 1].x} ${padding.top + graphHeight} L ${points[0].x} ${padding.top + graphHeight} Z`
-    : '';
-  const targetY = yFor(target);
-  const gridValues = Array.from(new Set([0, target, Math.ceil(maxValue * 10) / 10]))
+  const pointGroups = valuesBySeries.map((group) => {
+    const points = group.values.map((item, index) => ({ ...item, x: xFor(index), y: yFor(item.value) }));
+    const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+    const areaPath = points.length > 1
+      ? `${linePath} L ${points[points.length - 1].x} ${padding.top + graphHeight} L ${points[0].x} ${padding.top + graphHeight} Z`
+      : '';
+    return { ...group, points, linePath, areaPath };
+  });
+  const targetLines = selectedSeries.map((item) => ({ ...item, y: yFor(Number(item.target || 0)) }));
+  const gridValues = Array.from(new Set([0, ...selectedSeries.map((item) => Number(item.target || 0)), Math.ceil(maxValue * 10) / 10]))
     .sort((a, b) => a - b);
+  const hasPoints = pointGroups.some((group) => group.points.length);
 
   return (
     <section className={`field-bi-panel field-poda-line-panel ${className}`.trim()}>
@@ -514,19 +572,21 @@ function PodaTargetLineChart({
           {subtitle ? <span>{subtitle}</span> : null}
         </div>
         <div className="field-line-chart-target">
-          <strong>{formatPercent(target)}</strong>
-          <span>Meta</span>
+          <strong>{isMultiSeries ? 'Todas' : formatPercent(selectedSeries[0]?.target || 0)}</strong>
+          <span>{isMultiSeries ? 'Metas' : 'Meta'}</span>
         </div>
       </div>
       <div className="field-daily-legend">
-        <span><i style={{ background: series.color }} />{series.fullLabel}</span>
-        <span><i className="field-target-dot" />Linha da meta</span>
+        {selectedSeries.map((item) => (
+          <span key={item.key}><i style={{ background: item.color }} />{item.fullLabel}</span>
+        ))}
+        <span><i className="field-target-dot" />{isMultiSeries ? 'Linhas de meta' : 'Linha da meta'}</span>
       </div>
       {loading ? (
         <div className="skeleton-chart" style={{ height: chartHeight }} />
       ) : (
         <div className="field-bi-week-scroll">
-          {points.length ? (
+          {hasPoints ? (
             <svg className="field-bi-week-chart" viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight}>
               {gridValues.map((gridValue) => {
                 const y = yFor(gridValue);
@@ -539,44 +599,60 @@ function PodaTargetLineChart({
                   </g>
                 );
               })}
-              <line
-                x1={padding.left}
-                x2={width - padding.right}
-                y1={targetY}
-                y2={targetY}
-                className="field-target-line"
-              />
-              <text x={width - padding.right - 4} y={targetY - 7} textAnchor="end" className="field-target-label">
-                Meta {formatPercent(target)}
-              </text>
-              {areaPath ? <path d={areaPath} fill={series.color} className="field-line-area" /> : null}
-              {linePath ? <path d={linePath} stroke={series.color} className="field-line-path" /> : null}
-              {points.map((point, index) => (
-                <g key={point.key}>
-                  <line x1={point.x} x2={point.x} y1={padding.top + graphHeight} y2={padding.top + graphHeight + 5} className="chart-grid-line" />
-                  <circle
-                    cx={point.x}
-                    cy={point.y}
-                    r={5.5}
-                    className={`field-line-point ${point.value > target ? 'is-over-target' : 'is-under-target'}`}
-                  >
-                    <title>{`${point.label} - ${series.fullLabel}: ${formatPercent(point.value)} | Meta: ${formatPercent(target)}`}</title>
-                  </circle>
-                  <text
-                    x={point.x}
-                    y={point.y - 11}
-                    textAnchor="middle"
-                    className={`field-line-value ${point.value > target ? 'is-over-target' : ''}`}
-                  >
-                    {formatPercent(point.value, 1)}
-                  </text>
-                  <text x={point.x} y={chartHeight - 12} textAnchor="middle" className="chart-axis-text">
-                    {point.label}
-                  </text>
-                  {index > 0 && point.value > target && points[index - 1].value <= target ? (
-                    <text x={point.x + 8} y={targetY - 12} className="field-cross-label">acima</text>
+              {targetLines.map((targetLine, index) => (
+                <g key={`target-${targetLine.key}`}>
+                  <line
+                    x1={padding.left}
+                    x2={width - padding.right}
+                    y1={targetLine.y}
+                    y2={targetLine.y}
+                    className="field-target-line"
+                    style={{ stroke: targetLine.color, opacity: isMultiSeries ? 0.45 : 0.95 }}
+                  />
+                  {(!isMultiSeries || index === targetLines.length - 1) ? (
+                    <text x={width - padding.right - 4} y={targetLine.y - 7} textAnchor="end" className="field-target-label" style={{ fill: targetLine.color }}>
+                      Meta {formatPercent(targetLine.target)}
+                    </text>
                   ) : null}
                 </g>
+              ))}
+              {pointGroups.map((group) => (
+                <g key={`line-${group.series.key}`}>
+                  {!isMultiSeries && group.areaPath ? <path d={group.areaPath} fill={group.series.color} className="field-line-area" /> : null}
+                  {group.linePath ? <path d={group.linePath} stroke={group.series.color} className="field-line-path" /> : null}
+                  {group.points.map((point) => {
+                    const overTarget = point.value > Number(group.series.target || 0);
+                    return (
+                      <g key={point.key}>
+                        {!isMultiSeries ? <line x1={point.x} x2={point.x} y1={padding.top + graphHeight} y2={padding.top + graphHeight + 5} className="chart-grid-line" /> : null}
+                        <circle
+                          cx={point.x}
+                          cy={point.y}
+                          r={isMultiSeries ? 4.3 : 5.5}
+                          className={`field-line-point ${overTarget ? 'is-over-target' : 'is-under-target'}`}
+                          style={{ fill: group.series.color }}
+                        >
+                          <title>{`${point.label} - ${group.series.fullLabel}: ${formatPercent(point.value)} | Meta: ${formatPercent(group.series.target)}`}</title>
+                        </circle>
+                        {!isMultiSeries ? (
+                          <text
+                            x={point.x}
+                            y={point.y - 11}
+                            textAnchor="middle"
+                            className={`field-line-value ${overTarget ? 'is-over-target' : ''}`}
+                          >
+                            {formatPercent(point.value, 1)}
+                          </text>
+                        ) : null}
+                      </g>
+                    );
+                  })}
+                </g>
+              ))}
+              {visibleRows.map((row, index) => (
+                <text key={`axis-${rowKey(row, index)}`} x={xFor(index)} y={chartHeight - 12} textAnchor="middle" className="chart-axis-text">
+                  {labelForRow(row)}
+                </text>
               ))}
             </svg>
           ) : (
@@ -589,12 +665,14 @@ function PodaTargetLineChart({
 }
 
 function FieldBiWeekChart({ rows, loading = false, series = BI_SERIES[1] }) {
+  const selectedSeries = Array.isArray(series) ? series : [series];
+  const chartLabel = selectedSeries.length > 1 ? 'todos os indicadores' : selectedSeries[0]?.fullLabel;
   return (
     <PodaTargetLineChart
       rows={rows}
       loading={loading}
       series={series}
-      title={`Evolução semanal - ${series.fullLabel}`}
+      title={`Evolução semanal - ${chartLabel}`}
       subtitle="Linha do indicador contra a meta operacional."
       emptyTitle="Sem semanas no filtro"
       emptyMessage="A visão semanal aparece quando houver coletas dentro do período selecionado."
@@ -654,12 +732,14 @@ function FiscalQualityCards({ rows, loading = false }) {
 }
 
 function DailyBunchBarChart({ rows, loading = false, series = BI_SERIES[1] }) {
+  const selectedSeries = Array.isArray(series) ? series : [series];
+  const chartLabel = selectedSeries.length > 1 ? 'todos os indicadores' : selectedSeries[0]?.fullLabel;
   return (
     <PodaTargetLineChart
       rows={rows}
       loading={loading}
       series={series}
-      title={`Evolução diária - ${series.fullLabel}`}
+      title={`Evolução diária - ${chartLabel}`}
       subtitle="Percentual diário sobre plantas avaliadas, comparado com a meta."
       emptyTitle="Sem dados diários"
       emptyMessage="O gráfico por dia será montado quando houver coletas no período selecionado."
@@ -815,7 +895,10 @@ function FieldBiBoard({
   presentationMode = false,
 }) {
   const isTotalMode = !presentationMode && boardMode === 'total';
-  const mainLineSeries = primaryPodaSeries(quality);
+  const [selectedLineKey, setSelectedLineKey] = useState('all');
+  const selectedSeries = selectedLineKey === 'all'
+    ? BI_SERIES
+    : [BI_SERIES.find((series) => series.key === selectedLineKey) || primaryPodaSeries(quality)];
 
   return (
     <div className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
@@ -889,21 +972,27 @@ function FieldBiBoard({
       ) : !isTotalMode ? (
         <>
           <div className="field-bi-kpi-grid">
-            <FieldBiKpiCard loading={loading} label="Planta sem podar %" value={quality.cachoMaduroPct} meta={1} />
-            <FieldBiKpiCard loading={loading} label="Cacho exposto %" value={quality.cachoPassadoPct} meta={2} />
-            <FieldBiKpiCard loading={loading} label="Poda meia coroa %" value={quality.cachoVerdePct} meta={2} />
-            <FieldBiKpiCard loading={loading} label="Cacho podre %" value={quality.cachoAvermelhadoPct} meta={1} />
-            <FieldBiKpiCard loading={loading} label="Poda maior 1:1 %" value={quality.taloCompridoPct} meta={2} />
-            <FieldBiKpiCard loading={loading} label="Bico de gaita %" value={quality.cachoEstrelaPct} meta={2} />
+            <FieldBiKpiCard loading={loading} label="Planta sem podar %" value={quality.cachoMaduroPct} meta={1} active={selectedLineKey === 'maduro'} onClick={() => setSelectedLineKey('maduro')} />
+            <FieldBiKpiCard loading={loading} label="Cacho exposto %" value={quality.cachoPassadoPct} meta={2} active={selectedLineKey === 'passado'} onClick={() => setSelectedLineKey('passado')} />
+            <FieldBiKpiCard loading={loading} label="Poda meia coroa %" value={quality.cachoVerdePct} meta={2} active={selectedLineKey === 'verde'} onClick={() => setSelectedLineKey('verde')} />
+            <FieldBiKpiCard loading={loading} label="Cacho podre %" value={quality.cachoAvermelhadoPct} meta={1} active={selectedLineKey === 'avermelhado'} onClick={() => setSelectedLineKey('avermelhado')} />
+            <FieldBiKpiCard loading={loading} label="Poda maior 1:1 %" value={quality.taloCompridoPct} meta={2} active={selectedLineKey === 'estrela'} onClick={() => setSelectedLineKey('estrela')} />
+            <FieldBiKpiCard loading={loading} label="Bico de gaita %" value={quality.cachoEstrelaPct} meta={2} active={selectedLineKey === 'talo'} onClick={() => setSelectedLineKey('talo')} />
           </div>
+
+          <PodaLineMetricSelector
+            selectedKey={selectedLineKey}
+            activeSeries={BI_SERIES}
+            onSelect={setSelectedLineKey}
+          />
 
           <div className="field-bi-main-grid">
             <FieldBiFarmChart rows={model.farmRows} loading={loading} />
-            <FieldBiWeekChart rows={model.weekRows} loading={loading} series={mainLineSeries} />
+            <FieldBiWeekChart rows={model.weekRows} loading={loading} series={selectedSeries} />
             <FiscalQualityCards rows={model.evaluatorRows} loading={loading} />
           </div>
 
-          <DailyBunchBarChart rows={dailyBunchRows} loading={loading} series={mainLineSeries} />
+          <DailyBunchBarChart rows={dailyBunchRows} loading={loading} series={selectedSeries} />
         </>
       ) : (
         <FieldTotalDataPanel model={model} selectedSection={totalSection} loading={loading} />
