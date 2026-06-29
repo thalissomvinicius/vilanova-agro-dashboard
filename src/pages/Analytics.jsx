@@ -1013,7 +1013,7 @@ function PodaBiBoard({ totals, records, periodText, demoActive, source, onPresen
   const mapMetricId = PODA_MAP_METRIC_BY_KEY[selectedKey] || 'poda_planta_sem_podar';
 
   return (
-    <div className={`poda-bi-board poda-executive-board poda-carreamento-layout ${presentationMode ? 'is-presentation' : ''}`}>
+    <div className={`poda-bi-board poda-carreamento-layout ${presentationMode ? 'is-presentation' : ''}`}>
       <div className="poda-bi-header">
         <img src="/logo.png" alt="Vila Nova Agroindustrial" />
         <div>
