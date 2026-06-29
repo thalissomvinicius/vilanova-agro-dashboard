@@ -755,10 +755,6 @@ function sortDateTexts(values) {
     .sort((a, b) => dateOrderValue(a) - dateOrderValue(b));
 }
 
-function rawPersonValue(record, key) {
-  return String(record?.raw?.[key] || '').trim();
-}
-
 function buildParcelSummary({ feature, records, heatSummary, metric, operation }) {
   const props = feature?.properties || {};
   const shapeParcel = shapeParcelCode(props);
@@ -890,20 +886,6 @@ function compactOperationBubbleCard({ title, subtitle, bubbles, emptyText, class
   `;
 }
 
-function parcelMainFiscal(records) {
-  const fiscalRows = records
-    .map((record) => rawPersonValue(record, 'fiscal_resp_equipe') || record.fiscal)
-    .filter((value) => value && value !== '--');
-  if (!fiscalRows.length) return 'Sem fiscal informado';
-
-  const counts = fiscalRows.reduce((acc, name) => {
-    acc[name] = (acc[name] || 0) + 1;
-    return acc;
-  }, {});
-
-  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
-}
-
 function compactParcelSummaryHtml({
   totals,
   corteTotals,
@@ -916,6 +898,14 @@ function compactParcelSummaryHtml({
   summaryOperation = 'all',
 }) {
   const summaryMode = activeSummaryOperation(summaryOperation);
+  const summaryRecords = recordsByType(parcelRecords, summaryMode.id === 'all' ? 'all' : summaryMode.id);
+  const summaryTotals = operationTotalsFor({
+    totals,
+    corteTotals,
+    carreamentoTotals,
+    podaTotals,
+    operation: summaryMode.id === 'all' ? activeOperationMode('perdas') : summaryMode,
+  }) || totals;
   const corteScore = corteTotals ? Number(corteTotals.corteScore || 0) : null;
   const carreamentoScore = carreamentoTotals ? Number(carreamentoTotals.carreamentoScore || 0) : null;
   const podaScore = podaTotals ? Number(podaTotals.podaScore || 0) : null;
@@ -1151,7 +1141,7 @@ function compactParcelSummaryHtml({
     <div class="parcel-popup-summary-grid">
       ${compactMetricBox(summaryMode.id === 'all' ? 'Nota geral' : `Nota ${summaryMode.label}`, summaryScore !== null && summaryScore !== undefined ? `${formatDecimal(summaryScore, 0)}%` : 'N/D', summaryScoreDetail, summaryScore !== null && summaryScore !== undefined ? getScoreColor(summaryScore) : '#64748B')}
       ${compactMetricBox('Área', areaHa ? `${formatDecimal(areaHa, 2)} ha` : 'N/D', densityShape ? `${formatDecimal(densityShape, 0)} pl/ha` : 'densidade N/D')}
-      ${compactMetricBox('Fiscal equipe', parcelMainFiscal(parcelRecords), `${formatInteger(parcelRecords.length)} coleta(s)`)}
+      ${compactMetricBox('Coletas', `${formatInteger(summaryRecords.length || parcelRecords.length)}`, `${formatInteger(summaryTotals?.linhas || 0)} linha(s) avaliadas`)}
     </div>
 
     <div class="parcel-operation-bubble-stack">

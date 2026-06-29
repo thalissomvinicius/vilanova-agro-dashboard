@@ -2737,17 +2737,17 @@ body.field-map-active {
   min-width: 0;
   height: calc(100dvh - 28px);
   display: grid;
-  grid-template-rows: 82px minmax(0, 1fr);
+  grid-template-rows: minmax(102px, auto) minmax(0, 1fr);
   gap: 10px;
 }
 
 .field-map-header {
   min-width: 0;
   display: grid;
-  grid-template-columns: 148px minmax(0, 1fr) minmax(260px, auto);
+  grid-template-columns: 150px minmax(0, 1fr) minmax(250px, auto);
   align-items: center;
   gap: 16px;
-  padding: 12px 64px 12px 16px;
+  padding: 14px 64px 14px 16px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 10px;
   background:
@@ -2777,16 +2777,18 @@ body.field-map-active {
 .field-map-header h2 {
   margin: 2px 0;
   color: var(--white);
-  font-size: clamp(1.45rem, 2vw, 2rem);
+  font-size: clamp(1.55rem, 2.25vw, 2.15rem);
   line-height: 1.05;
   font-weight: 900;
 }
 
 .field-map-header p {
   max-width: 820px;
+  margin: 0;
   color: rgba(255, 255, 255, 0.76);
-  font-size: 0.78rem;
-  line-height: 1.25;
+  font-size: 0.82rem;
+  line-height: 1.28;
+  white-space: normal;
 }
 
 .field-map-context {
@@ -2794,19 +2796,20 @@ body.field-map-active {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
+  gap: 6px;
 }
 
 .field-map-context span {
   max-width: 100%;
-  min-height: 22px;
+  min-height: 24px;
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
+  padding: 4px 9px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.9);
-  font-size: 0.66rem;
+  font-size: 0.68rem;
+  font-weight: 900;
   letter-spacing: 0;
   text-transform: none;
   overflow: hidden;
@@ -2827,6 +2830,7 @@ body.field-map-active {
 .field-map-frame .gps-map-card {
   height: 100%;
   min-height: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(510px, 540px);
   border: 0;
   border-radius: 10px;
   box-shadow: none;
@@ -9998,13 +10002,13 @@ body.field-map-active {
 
 .gps-home-summary .parcel-popup-summary-grid,
 .gps-detail-content .parcel-popup-summary-grid {
-  gap: 6px;
+  gap: 8px;
 }
 
 .gps-home-summary .parcel-compact-metric,
 .gps-detail-content .parcel-compact-metric {
-  min-height: 48px;
-  padding: 6px;
+  min-height: 56px;
+  padding: 7px 8px;
   border-radius: 8px;
 }
 
@@ -10016,13 +10020,16 @@ body.field-map-active {
 .gps-home-summary .parcel-compact-metric strong,
 .gps-detail-content .parcel-compact-metric strong {
   margin-top: 3px;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
+  line-height: 1.08;
 }
 
 .gps-home-summary .parcel-compact-metric small,
 .gps-detail-content .parcel-compact-metric small {
   margin-top: 2px;
-  font-size: 0.54rem;
+  font-size: 0.56rem;
+  line-height: 1.14;
+  white-space: normal;
 }
 
 .gps-home-summary .parcel-compact-section,
@@ -10050,36 +10057,45 @@ body.field-map-active {
 
 .gps-home-summary .parcel-quality-bubble,
 .gps-detail-content .parcel-quality-bubble {
-  --quality-bubble-size: 58px;
-  min-height: 106px;
-  padding: 7px 5px 5px;
+  --quality-bubble-size: 64px;
+  min-height: 122px;
+  grid-template-rows: var(--quality-bubble-size) minmax(24px, auto) minmax(15px, auto);
+  gap: 5px;
+  padding: 8px 6px 6px;
   border-radius: 10px;
 }
 
 .gps-home-summary .parcel-quality-bubble strong,
 .gps-detail-content .parcel-quality-bubble strong {
-  font-size: 0.76rem;
+  font-size: 0.78rem;
+  line-height: 0.98;
 }
 
 .gps-home-summary .parcel-quality-bubble span,
 .gps-detail-content .parcel-quality-bubble span {
-  margin-top: 2px;
-  font-size: 0.54rem;
+  max-width: calc(var(--quality-bubble-size) - 6px);
+  margin-top: 3px;
+  font-size: 0.52rem;
+  line-height: 1.02;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .gps-home-summary .parcel-quality-bubble small,
 .gps-detail-content .parcel-quality-bubble small {
   width: 100%;
-  font-size: 0.56rem;
+  font-size: 0.57rem;
+  line-height: 1.12;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .gps-home-summary .parcel-quality-bubble .parcel-quality-bubble-meta,
 .gps-detail-content .parcel-quality-bubble .parcel-quality-bubble-meta {
   grid-area: 3 / 1;
-  font-size: 0.5rem !important;
+  font-size: 0.52rem !important;
+  line-height: 1.05 !important;
 }
 
 .gps-home-summary .parcel-operation-bubble-stack,
@@ -10089,25 +10105,27 @@ body.field-map-active {
 
 .gps-home-summary .parcel-operation-bubble-card,
 .gps-detail-content .parcel-operation-bubble-card {
-  gap: 7px;
-  padding: 7px;
+  gap: 8px;
+  padding: 8px;
   border-radius: 9px;
   box-shadow: none;
 }
 
 .gps-home-summary .parcel-operation-bubble-head strong,
 .gps-detail-content .parcel-operation-bubble-head strong {
-  font-size: 0.66rem;
+  font-size: 0.72rem;
 }
 
 .gps-home-summary .parcel-operation-bubble-head span,
 .gps-detail-content .parcel-operation-bubble-head span {
-  font-size: 0.52rem;
+  max-width: 66%;
+  font-size: 0.56rem;
+  line-height: 1.18;
 }
 
 .gps-home-summary .parcel-operation-bubble-grid,
 .gps-detail-content .parcel-operation-bubble-grid {
-  gap: 6px;
+  gap: 8px;
 }
 
 .gps-home-summary .parcel-operation-bubble-card-carreamento .parcel-operation-bubble-grid,
@@ -10122,8 +10140,9 @@ body.field-map-active {
 
 .gps-home-summary .parcel-operation-bubble-note,
 .gps-detail-content .parcel-operation-bubble-note {
-  padding: 5px 7px;
-  font-size: 0.52rem;
+  padding: 6px 8px;
+  font-size: 0.56rem;
+  line-height: 1.16;
 }
 
 .gps-home-summary .parcel-compact-ops-grid,

@@ -1325,7 +1325,7 @@ function FieldGeoQualityOverlay({ mapProps, periodText, updateText, latestCollec
           <div>
             <span>Georreferenciamento CQO Poda</span>
             <h2>Qualidade por parcela</h2>
-            <p>Shapes das parcelas com semáforo de qualidade da poda, filtros atuais e detalhe por fazenda, parcela, fiscal da equipe e período.</p>
+            <p>Shapes das parcelas com semáforo de qualidade da poda, filtros atuais e detalhe por fazenda, parcela e período.</p>
           </div>
           <div className="field-map-context">
             <span>{periodText}</span>
