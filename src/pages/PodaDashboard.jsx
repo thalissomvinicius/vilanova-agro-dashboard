@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars -- a tela de poda mantém variantes de apresentação antigas para alternância rápida durante a reunião. */
-import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
@@ -664,6 +664,8 @@ function FieldBiFarmChart({ rows, loading = false, selectedLabel = '', onSelect 
   );
 }
 
+const MemoFieldBiFarmChart = React.memo(FieldBiFarmChart);
+
 function PodaLineMetricSelector({ selectedKey, activeSeries, onSelect }) {
   return (
     <div className="field-line-metric-selector" role="group" aria-label="Indicador exibido no gráfico">
@@ -684,6 +686,8 @@ function PodaLineMetricSelector({ selectedKey, activeSeries, onSelect }) {
     </div>
   );
 }
+
+const MemoPodaLineMetricSelector = React.memo(PodaLineMetricSelector);
 
 function PodaTargetLineChart({
   rows,
@@ -992,6 +996,8 @@ function FieldBiEvolutionChart({
   );
 }
 
+const MemoFieldBiEvolutionChart = React.memo(FieldBiEvolutionChart);
+
 function FiscalQualityCards({ rows, loading = false, selectedLabel = '', onSelect }) {
   const visibleRows = rows
     .map((row) => {
@@ -1055,6 +1061,7 @@ function FieldBiMapPanel({
   loading = false,
   mapSeries,
   onOpenGeoQuality,
+  onMapLoadingChange,
 }) {
   const activeSeries = mapSeries || BI_SERIES[1];
   const [selectedParcelState, setSelectedParcelState] = useState({ mapKey: '', summary: null });
@@ -1083,6 +1090,9 @@ function FieldBiMapPanel({
     if (!selectedParcelSummary) return '';
     return signalToneFor(Number(selectedParcelSummary.value || 0), activeSeries.target);
   }, [activeSeries.target, selectedParcelSummary]);
+  const handleParcelSelect = useCallback((summary) => {
+    setSelectedParcelState({ mapKey, summary });
+  }, [mapKey]);
 
   return (
     <section className="field-bi-panel field-bi-map-panel">
@@ -1166,7 +1176,8 @@ function FieldBiMapPanel({
               areaFilter="poda"
               initialOperation="poda"
               initialMetricId={mapMetricId}
-              onParcelSelect={(summary) => setSelectedParcelState({ mapKey, summary })}
+              onParcelSelect={handleParcelSelect}
+              onLoadingChange={onMapLoadingChange}
             />
           </Suspense>
         )}
@@ -1174,6 +1185,8 @@ function FieldBiMapPanel({
     </section>
   );
 }
+
+const MemoFieldBiMapPanel = React.memo(FieldBiMapPanel);
 
 function DailyBunchBarChart({ rows, loading = false, series = BI_SERIES[1] }) {
   const selectedSeries = Array.isArray(series) ? series : [series];
@@ -1201,6 +1214,8 @@ function DailyBunchBarChart({ rows, loading = false, series = BI_SERIES[1] }) {
     />
   );
 }
+
+const MemoDailyBunchBarChart = React.memo(DailyBunchBarChart);
 
 function buildTotalMetricGroups(model) {
   const totals = model.podaTotals || {};
@@ -1423,6 +1438,12 @@ function FieldBiBoard({
   const [selectedFiscalLabel, setSelectedFiscalLabel] = useState('');
   const [selectedFarmLabel, setSelectedFarmLabel] = useState('');
   const [evolutionMode, setEvolutionMode] = useState('week');
+  const [viewReady, setViewReady] = useState(false);
+  const [mapLoadingState, setMapLoadingState] = useState({
+    loading: true,
+    progress: 12,
+    label: 'Preparando mapa das parcelas',
+  });
   const farmFilteredModel = useMemo(() => {
     if (!selectedFarmLabel) return model;
     return buildPodaOperacional(model.records.filter((record) => recordFarmLabel(record) === selectedFarmLabel));
@@ -1467,28 +1488,131 @@ function FieldBiBoard({
     farmFilter: selectedFarmId || mapProps?.farmFilter || 'all',
   }), [mapProps, selectedFarmId]);
   const focusedQuality = focusedModel.quality || quality;
-  const selectedSeries = selectedLineKey === 'all'
-    ? BI_SERIES
-    : [BI_SERIES.find((series) => series.key === selectedLineKey) || primaryPodaSeries(focusedQuality)];
-  const mapSeries = selectedLineKey === 'all'
-    ? primaryPodaSeries(focusedQuality)
-    : selectedSeries[0];
+  const selectedSeries = useMemo(() => (
+    selectedLineKey === 'all'
+      ? BI_SERIES
+      : [BI_SERIES.find((series) => series.key === selectedLineKey) || primaryPodaSeries(focusedQuality)]
+  ), [focusedQuality, selectedLineKey]);
+  const mapSeries = useMemo(() => (
+    selectedLineKey === 'all'
+      ? primaryPodaSeries(focusedQuality)
+      : selectedSeries[0]
+  ), [focusedQuality, selectedLineKey, selectedSeries]);
 
-  const handleSelectFiscal = (row) => {
+  const handleSelectFiscal = useCallback((row) => {
     setSelectedFiscalLabel((current) => (current === row.label ? '' : row.label));
-  };
+  }, []);
 
-  const handleSelectFarm = (row) => {
+  const handleSelectFarm = useCallback((row) => {
     setSelectedFarmLabel((current) => (current === row.label ? '' : row.label));
-  };
+  }, []);
 
-  const clearFocus = () => {
+  const clearFocus = useCallback(() => {
     setSelectedFiscalLabel('');
     setSelectedFarmLabel('');
-  };
+  }, []);
+
+  const handleMapLoadingChange = useCallback((state) => {
+    setMapLoadingState((current) => {
+      const nextProgress = Math.max(0, Math.min(100, Number(state?.progress || 0)));
+      const nextLabel = state?.label || (state?.loading ? 'Preparando mapa das parcelas' : 'Mapa pronto');
+      const nextLoading = Boolean(state?.loading);
+      if (
+        current.loading === nextLoading
+        && current.progress === nextProgress
+        && current.label === nextLabel
+      ) {
+        return current;
+      }
+      return {
+        loading: nextLoading,
+        progress: nextProgress,
+        label: nextLabel,
+      };
+    });
+  }, []);
+
+  const handleOpenGeoQuality = useCallback(() => {
+    onOpenGeoQuality?.(focusedMapProps);
+  }, [focusedMapProps, onOpenGeoQuality]);
+
+  const viewSignature = useMemo(() => [
+    boardMode,
+    selectedLineKey,
+    selectedFarmLabel,
+    selectedFiscalLabel,
+    evolutionMode,
+    recordCount,
+    focusedMapProps?.farmFilter || 'all',
+    focusedMapProps?.sourceFilter || 'all',
+    focusedMapProps?.dateFrom || '',
+    focusedMapProps?.dateTo || '',
+  ].join('|'), [
+    boardMode,
+    evolutionMode,
+    focusedMapProps?.dateFrom,
+    focusedMapProps?.dateTo,
+    focusedMapProps?.farmFilter,
+    focusedMapProps?.sourceFilter,
+    recordCount,
+    selectedFarmLabel,
+    selectedFiscalLabel,
+    selectedLineKey,
+  ]);
+
+  useEffect(() => {
+    if (presentationMode) {
+      return undefined;
+    }
+
+    const resetTimer = window.setTimeout(() => setViewReady(false), 0);
+    const settleTimer = window.setTimeout(() => setViewReady(true), loading ? 280 : 520);
+    const safetyTimer = window.setTimeout(() => {
+      setViewReady(true);
+      setMapLoadingState((current) => (current.loading ? {
+        loading: false,
+        progress: 100,
+        label: 'Mapa pronto',
+      } : current));
+    }, 5200);
+
+    return () => {
+      window.clearTimeout(resetTimer);
+      window.clearTimeout(settleTimer);
+      window.clearTimeout(safetyTimer);
+    };
+  }, [loading, presentationMode, viewSignature]);
+
+  const mapAreaActive = !isTotalMode && !loading && recordCount > 0;
+  const showBoardLoading = !presentationMode && (
+    loading
+    || (mapAreaActive && (!viewReady || mapLoadingState.loading))
+  );
+  const boardLoadingProgress = loading
+    ? 24
+    : mapAreaActive
+      ? Math.max(viewReady ? 72 : 48, mapLoadingState.progress)
+      : 100;
+  const boardLoadingLabel = loading
+    ? 'Buscando dados de poda'
+    : mapAreaActive
+      ? mapLoadingState.label
+      : 'Preparando visualização';
 
   return (
     <div className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
+      {showBoardLoading ? (
+        <div className="field-bi-ready-overlay" role="status" aria-live="polite">
+          <div className="field-bi-ready-card">
+            <div className="field-bi-ready-orb" />
+            <strong>Preparando CQO Poda</strong>
+            <span>{boardLoadingLabel}</span>
+            <div className="field-bi-ready-progress" aria-hidden="true">
+              <i style={{ width: `${Math.min(100, Math.max(8, boardLoadingProgress))}%` }} />
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div className="field-bi-header">
         <img src="/logo.png" alt="Vila Nova Agroindustrial" className="field-bi-logo" />
         <div className="field-bi-title-block">
@@ -1564,7 +1688,7 @@ function FieldBiBoard({
             <FieldBiKpiCard loading={loading} label="Bico de gaita %" value={focusedQuality.cachoEstrelaPct} meta={2} active={selectedLineKey === 'talo'} onClick={() => setSelectedLineKey('talo')} />
           </div>
 
-          <PodaLineMetricSelector
+          <MemoPodaLineMetricSelector
             selectedKey={selectedLineKey}
             activeSeries={BI_SERIES}
             onSelect={setSelectedLineKey}
@@ -1581,13 +1705,13 @@ function FieldBiBoard({
           ) : null}
 
           <div className="field-bi-main-grid">
-            <FieldBiFarmChart
+            <MemoFieldBiFarmChart
               rows={farmChartModel.farmRows}
               loading={loading}
               selectedLabel={selectedFarmLabel}
               onSelect={handleSelectFarm}
             />
-            <FieldBiEvolutionChart
+            <MemoFieldBiEvolutionChart
               weekRows={focusedModel.weekRows}
               monthRows={focusedModel.monthRows}
               loading={loading}
@@ -1595,16 +1719,17 @@ function FieldBiBoard({
               mode={evolutionMode}
               onModeChange={setEvolutionMode}
             />
-            <FieldBiMapPanel
+            <MemoFieldBiMapPanel
               mapProps={focusedMapProps}
               records={focusedRecords}
               loading={loading}
               mapSeries={mapSeries}
-              onOpenGeoQuality={() => onOpenGeoQuality?.(focusedMapProps)}
+              onOpenGeoQuality={handleOpenGeoQuality}
+              onMapLoadingChange={handleMapLoadingChange}
             />
           </div>
 
-          <DailyBunchBarChart rows={focusedDailyRows} loading={loading} series={selectedSeries} />
+          <MemoDailyBunchBarChart rows={focusedDailyRows} loading={loading} series={selectedSeries} />
         </>
       ) : (
         <FieldTotalDataPanel model={model} selectedSection={totalSection} loading={loading} />
@@ -1757,7 +1882,7 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
     };
   }, [allRecords, mobileRecords, excelRecords, mergedRecords, records, demoRecords.length, farmFilter, sourceFilter, dateFrom, dateTo, lastSyncTime]);
 
-  const mapProps = {
+  const mapProps = useMemo(() => ({
     theme,
     farmFilter,
     areaFilter: 'poda',
@@ -1767,9 +1892,33 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
     sourceFilter,
     dateFrom,
     dateTo,
-  };
+  }), [cycleFilter, dateFrom, dateTo, evaluatorFilter, farmFilter, periodFilter, sourceFilter, theme]);
 
-  const boardProps = {
+  const openPresentation = useCallback(() => {
+    setPresentationOpen(true);
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  }, []);
+
+  const closePresentation = useCallback(() => {
+    setPresentationOpen(false);
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+  }, []);
+
+  const openGeoQuality = useCallback((nextMapProps = null) => {
+    setGeoQualityMapProps(nextMapProps);
+    setGeoQualityOpen(true);
+  }, []);
+
+  const closeGeoQuality = useCallback(() => {
+    setGeoQualityOpen(false);
+    setGeoQualityMapProps(null);
+  }, []);
+
+  const boardProps = useMemo(() => ({
     loading,
     model,
     quality,
@@ -1791,7 +1940,27 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
     onResetFilters,
     onClearFilter,
     mapProps,
-  };
+  }), [
+    dailyBunchRows,
+    dateFrom,
+    dateTo,
+    diagnostics,
+    filterState,
+    latestCollectionText,
+    loading,
+    mapProps,
+    mergedRecords.length,
+    model,
+    onClearFilter,
+    onResetFilters,
+    periodText,
+    quality,
+    setDateFrom,
+    setDateTo,
+    totalSection,
+    updateText,
+    boardMode,
+  ]);
 
   useEffect(() => {
     const openPresentation = () => {
@@ -1830,29 +1999,6 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
       document.body.classList.remove('field-map-active');
     };
   }, [geoQualityOpen]);
-
-  const openPresentation = () => {
-    setPresentationOpen(true);
-    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen().catch(() => {});
-    }
-  };
-
-  const closePresentation = () => {
-    setPresentationOpen(false);
-    if (document.fullscreenElement && document.exitFullscreen) {
-      document.exitFullscreen().catch(() => {});
-    }
-  };
-
-  const openGeoQuality = (nextMapProps = null) => {
-    setGeoQualityMapProps(nextMapProps);
-    setGeoQualityOpen(true);
-  };
-  const closeGeoQuality = () => {
-    setGeoQualityOpen(false);
-    setGeoQualityMapProps(null);
-  };
 
   return (
     <div className="fade-in page-shell field-bi-page">

@@ -1411,6 +1411,7 @@ export default function LeafletMap({
   initialOperation = 'perdas',
   initialMetricId = '',
   onParcelSelect,
+  onLoadingChange,
 }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -2170,6 +2171,15 @@ export default function LeafletMap({
     : parcelGeoStatus === 'loading'
       ? 'Carregando parcelas do mapa'
       : mapRenderState.label;
+
+  useEffect(() => {
+    onLoadingChange?.({
+      loading: mapIsLoading,
+      progress: mapProgress,
+      label: mapLoadingLabel,
+    });
+  }, [mapIsLoading, mapLoadingLabel, mapProgress, onLoadingChange]);
+
   const activeSummaryOperationId = activeSummaryOperation(summaryOperation).id;
   const applyMapOperation = (operationId) => {
     const nextMode = activeOperationMode(operationId);
