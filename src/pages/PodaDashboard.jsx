@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import ActiveFilterSummary from '../components/ui/ActiveFilterSummary';
 import StatusBanner from '../components/ui/StatusBanner';
-import { aggregateRecords, LOCAL_DEMO_MODE, parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
+import { aggregateRecords, CQO_FARMS, LOCAL_DEMO_MODE, parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
 import { buildPodaOperacional } from '../utils/podaOperacionalData';
 import { buildPodaDemoRecords } from '../utils/podaDemoData';
 
@@ -466,6 +466,14 @@ function riskFromValues(values) {
 
 function recordFarmLabel(record) {
   return record.farm || 'Sem fazenda';
+}
+
+function comparableFarmName(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
 }
 
 function parcelKey(record) {
@@ -1165,6 +1173,19 @@ function FieldBiBoard({
     () => (hasFocus ? buildDailyBunchRows(focusedRecords) : dailyBunchRows),
     [dailyBunchRows, focusedRecords, hasFocus]
   );
+  const selectedFarmId = useMemo(() => {
+    if (!selectedFarmLabel) return '';
+    const recordMatch = focusedRecords.find((record) => recordFarmLabel(record) === selectedFarmLabel && record.farmId)
+      || model.records.find((record) => recordFarmLabel(record) === selectedFarmLabel && record.farmId);
+    if (recordMatch?.farmId) return recordMatch.farmId;
+
+    const normalizedSelected = comparableFarmName(selectedFarmLabel);
+    return CQO_FARMS.find((farm) => comparableFarmName(farm.name) === normalizedSelected)?.id || '';
+  }, [focusedRecords, model.records, selectedFarmLabel]);
+  const focusedMapProps = useMemo(() => ({
+    ...mapProps,
+    farmFilter: selectedFarmId || mapProps?.farmFilter || 'all',
+  }), [mapProps, selectedFarmId]);
   const focusedQuality = focusedModel.quality || quality;
   const selectedSeries = selectedLineKey === 'all'
     ? BI_SERIES
@@ -1205,7 +1226,7 @@ function FieldBiBoard({
         </div>
         {!presentationMode && (
           <div className="field-bi-header-actions">
-            <button type="button" className="field-bi-map-btn" onClick={onOpenGeoQuality}>
+            <button type="button" className="field-bi-map-btn" onClick={() => onOpenGeoQuality?.(focusedMapProps)}>
               <MapPinned size={17} />
               Qualidade por parcela
             </button>
@@ -1307,11 +1328,11 @@ function FieldBiBoard({
               onModeChange={setEvolutionMode}
             />
             <FieldBiMapPanel
-              mapProps={mapProps}
+              mapProps={focusedMapProps}
               records={focusedRecords}
               loading={loading}
               mapSeries={mapSeries}
-              onOpenGeoQuality={onOpenGeoQuality}
+              onOpenGeoQuality={() => onOpenGeoQuality?.(focusedMapProps)}
             />
           </div>
 
@@ -1386,6 +1407,7 @@ function FieldGeoQualityOverlay({ mapProps, periodText, updateText, latestCollec
 export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, setDateFrom, setDateTo, searchTerm, lastSyncTime, onResetFilters, onClearFilter }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
   const [geoQualityOpen, setGeoQualityOpen] = useState(false);
+  const [geoQualityMapProps, setGeoQualityMapProps] = useState(null);
   const [boardMode, setBoardMode] = useState('meeting');
   const [totalSection, setTotalSection] = useState('qualidade');
   const {
@@ -1555,8 +1577,14 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
     }
   };
 
-  const openGeoQuality = () => setGeoQualityOpen(true);
-  const closeGeoQuality = () => setGeoQualityOpen(false);
+  const openGeoQuality = (nextMapProps = null) => {
+    setGeoQualityMapProps(nextMapProps);
+    setGeoQualityOpen(true);
+  };
+  const closeGeoQuality = () => {
+    setGeoQualityOpen(false);
+    setGeoQualityMapProps(null);
+  };
 
   return (
     <div className="fade-in page-shell field-bi-page">
@@ -1569,7 +1597,7 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
 
       {geoQualityOpen && (
         <FieldGeoQualityOverlay
-          mapProps={mapProps}
+          mapProps={geoQualityMapProps || mapProps}
           periodText={periodText}
           updateText={updateText}
           latestCollectionText={latestCollectionText}
