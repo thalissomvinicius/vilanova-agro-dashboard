@@ -2,7 +2,16 @@ import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { SIDEBAR_GROUPS, getRouteById } from '../config/routeConfig';
 
-export default function Sidebar({ activePage, setActivePage, collapsed, setCollapsed, width, visiblePageIds }) {
+function userInitials(name = '') {
+  const parts = String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!parts.length) return 'VN';
+  return `${parts[0]?.[0] || ''}${parts.length > 1 ? parts[parts.length - 1]?.[0] || '' : ''}`.toUpperCase();
+}
+
+export default function Sidebar({ activePage, setActivePage, collapsed, setCollapsed, width, visiblePageIds, user }) {
   const isVisible = (pageId) => !visiblePageIds || visiblePageIds.has(pageId);
   const visibleGroups = SIDEBAR_GROUPS
     .map((group) => ({
@@ -14,6 +23,9 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
   const handleItemClick = (item) => {
     setActivePage(item.id);
   };
+  const userName = user?.nome || 'Usuário CQO';
+  const userMeta = user?.matricula ? `Mat. ${user.matricula}` : 'Sessão ativa';
+  const userRole = user?.cargo || user?.departamento || user?.role || 'Qualidade agrícola';
 
   return (
     <aside
@@ -22,7 +34,7 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
     >
       <div className="sidebar-brand">
         <div className="sidebar-logo-container">
-          <img src={collapsed ? "/favicon.svg" : "/logo.png"} alt="Vila Nova Agroindustrial" className="sidebar-logo" />
+          <img src="/logo.png" alt="Vila Nova Agroindustrial" className="sidebar-logo" />
         </div>
         <div className="sidebar-brand-info">
           <h1 className="sidebar-brand-name">Vila Nova</h1>
@@ -93,11 +105,12 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
         })}
       </nav>
 
-      <div className="sidebar-footer">
-        <div className="sidebar-footer-avatar">CQ</div>
+      <div className="sidebar-footer" title={`${userName} - ${userMeta}`}>
+        <div className="sidebar-footer-avatar">{userInitials(userName)}</div>
         <div className="sidebar-footer-info">
-          <span className="sidebar-footer-name">Central CQO</span>
-          <span className="sidebar-footer-role">Corte / Carreamento</span>
+          <span className="sidebar-footer-name">{userName}</span>
+          <span className="sidebar-footer-role">{userMeta}</span>
+          <span className="sidebar-footer-role sidebar-footer-role-secondary">{userRole}</span>
         </div>
       </div>
     </aside>

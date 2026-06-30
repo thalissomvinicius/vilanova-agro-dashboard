@@ -831,6 +831,7 @@ export default function App() {
         setCollapsed={setSidebarCollapsed}
         width={sidebarCollapsed ? 76 : sidebarWidth}
         visiblePageIds={accessiblePages}
+        user={user}
       />
       <button
         type="button"

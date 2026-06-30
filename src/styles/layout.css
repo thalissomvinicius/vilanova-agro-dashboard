@@ -328,11 +328,13 @@ body.sidebar-resizing {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .sidebar-footer-avatar {
   width: 36px;
   height: 36px;
+  flex: 0 0 36px;
   border-radius: var(--border-radius-full);
   background-color: var(--green-institutional);
   color: var(--white);
@@ -347,23 +349,48 @@ body.sidebar-resizing {
 .sidebar-footer-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  gap: 2px;
 }
 
 .sidebar-footer-name {
   color: var(--white);
   font-size: 0.875rem;
   font-weight: 600;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar-footer-role {
   color: var(--text-sidebar);
   font-size: 0.75rem;
   opacity: 0.7;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-footer-role-secondary {
+  opacity: 0.55;
+  font-size: 0.68rem;
 }
 
 .app-sidebar.collapsed .sidebar-brand {
   justify-content: center;
   padding: 16px 0;
+}
+
+.app-sidebar.collapsed .sidebar-logo-container {
+  width: 44px;
+  height: 44px;
+}
+
+.app-sidebar.collapsed .sidebar-logo {
+  max-width: 34px;
+  max-height: 24px;
 }
 
 .app-sidebar.collapsed .sidebar-brand-info,

@@ -275,14 +275,17 @@ function buildDailyBunchRows(records) {
     .forEach((record) => {
       const date = resolveRecordDate(record);
       const sortKey = date ? localDateKey(date) : `sem-data-${record.id}`;
-      const label = date
+      const dayMonth = date
         ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`
         : 'Sem data';
+      const year = date ? date.getFullYear() : '';
 
       if (!buckets.has(sortKey)) {
         buckets.set(sortKey, {
           sortKey,
-          label,
+          label: dayMonth,
+          dayMonth,
+          year,
           samples: 0,
           maduro: 0,
           passado: 0,
@@ -303,7 +306,12 @@ function buildDailyBunchRows(records) {
       bucket.talo += record.totals?.bicoGaita || 0;
     });
 
-  return Array.from(buckets.values()).sort((a, b) => String(a.sortKey).localeCompare(String(b.sortKey)));
+  const rows = Array.from(buckets.values()).sort((a, b) => String(a.sortKey).localeCompare(String(b.sortKey)));
+  const years = new Set(rows.map((row) => row.year).filter(Boolean));
+  return rows.map((row) => ({
+    ...row,
+    label: years.size > 1 && row.year ? `${row.dayMonth}/${String(row.year).slice(-2)}` : row.dayMonth || row.label,
+  }));
 }
 
 function qualityTone(value, meta, goodWhen = 'low') {
@@ -659,9 +667,11 @@ function PodaTargetLineChart({
   minWidth = 560,
   compact = false,
   chartHeightOverride = null,
+  columnWidthOverride = null,
+  axisLabelEvery = 1,
   className = '',
 }) {
-  const visibleRows = rows.slice(-maxRows);
+  const visibleRows = Number(maxRows) > 0 ? rows.slice(-maxRows) : rows;
   const normalizedSeries = (Array.isArray(series) ? series : [series]).filter(Boolean);
   const selectedSeries = normalizedSeries.length ? normalizedSeries : [BI_SERIES[1]];
   const isMultiSeries = selectedSeries.length > 1;
@@ -669,7 +679,7 @@ function PodaTargetLineChart({
   const padding = compact
     ? { top: 24, right: 28, bottom: 34, left: 42 }
     : { top: 30, right: 34, bottom: 42, left: 48 };
-  const columnWidth = compact ? 76 : 88;
+  const columnWidth = Number(columnWidthOverride) || (compact ? 76 : 88);
   const width = Math.max(minWidth, padding.left + padding.right + Math.max(visibleRows.length - 1, 1) * columnWidth + 54);
   const graphHeight = chartHeight - padding.top - padding.bottom;
   const graphWidth = width - padding.left - padding.right;
@@ -793,11 +803,16 @@ function PodaTargetLineChart({
                   })}
                 </g>
               ))}
-              {visibleRows.map((row, index) => (
-                <text key={`axis-${rowKey(row, index)}`} x={xFor(index)} y={chartHeight - 12} textAnchor="middle" className="chart-axis-text">
-                  {labelForRow(row)}
-                </text>
-              ))}
+              {visibleRows.map((row, index) => {
+                const shouldShowLabel = index === 0
+                  || index === visibleRows.length - 1
+                  || index % Math.max(Number(axisLabelEvery) || 1, 1) === 0;
+                return shouldShowLabel ? (
+                  <text key={`axis-${rowKey(row, index)}`} x={xFor(index)} y={chartHeight - 12} textAnchor="middle" className="chart-axis-text">
+                    {labelForRow(row)}
+                  </text>
+                ) : null;
+              })}
             </svg>
           ) : (
             <div className="empty-panel smart-empty-panel"><strong>{emptyTitle}</strong><span>{emptyMessage}</span></div>
@@ -995,6 +1010,8 @@ function FieldBiMapPanel({
 function DailyBunchBarChart({ rows, loading = false, series = BI_SERIES[1] }) {
   const selectedSeries = Array.isArray(series) ? series : [series];
   const chartLabel = selectedSeries.length > 1 ? 'todos os indicadores' : selectedSeries[0]?.fullLabel;
+  const axisLabelEvery = rows.length > 80 ? 5 : rows.length > 52 ? 4 : rows.length > 32 ? 3 : rows.length > 18 ? 2 : 1;
+  const columnWidth = rows.length > 80 ? 34 : rows.length > 52 ? 42 : rows.length > 32 ? 50 : 58;
   return (
     <PodaTargetLineChart
       rows={rows}
@@ -1007,9 +1024,11 @@ function DailyBunchBarChart({ rows, loading = false, series = BI_SERIES[1] }) {
       getValues={dailyQualityValuesFromRow}
       labelForRow={(row) => row.label}
       rowKey={(row) => row.sortKey}
-      maxRows={12}
-      minWidth={760}
+      maxRows={rows.length || 1}
+      minWidth={900}
       chartHeightOverride={188}
+      columnWidthOverride={columnWidth}
+      axisLabelEvery={axisLabelEvery}
       className="field-bi-daily-panel"
     />
   );
@@ -1299,10 +1318,6 @@ function FieldBiBoard({
     setSelectedFiscalLabel('');
     setSelectedFarmLabel('');
   };
-  const openFarmStats = () => {
-    setBoardMode('total');
-    setTotalSection('fazendas');
-  };
 
   return (
     <div className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
@@ -1319,14 +1334,6 @@ function FieldBiBoard({
         </div>
         {!presentationMode && (
           <div className="field-bi-header-actions">
-            <button type="button" className="field-bi-map-btn" onClick={() => onOpenGeoQuality?.(focusedMapProps)}>
-              <MapPinned size={17} />
-              Qualidade por parcela
-            </button>
-            <button type="button" className="field-bi-map-btn" onClick={openFarmStats}>
-              <SlidersHorizontal size={17} />
-              Estatísticas por fazenda
-            </button>
             <button type="button" className="field-bi-present-btn" onClick={onPresent}>
               <MonitorPlay size={18} />
               Apresentar

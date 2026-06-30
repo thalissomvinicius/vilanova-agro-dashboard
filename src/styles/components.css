@@ -2864,8 +2864,32 @@ button.field-bi-evaluator-danger.is-active {
   font-size: 0.66rem;
 }
 
+.field-bi-daily-panel .field-bi-week-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+}
+
+.field-bi-daily-panel .field-bi-week-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.field-bi-daily-panel .field-bi-week-scroll::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.86);
+}
+
+.field-bi-daily-panel .field-bi-week-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.72);
+}
+
 .field-bi-daily-panel .field-bi-week-chart {
   min-height: 188px;
+}
+
+.field-bi-daily-panel .chart-axis-text {
+  font-size: 9px;
 }
 
 .field-total-panel {
