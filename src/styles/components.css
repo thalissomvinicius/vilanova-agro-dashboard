@@ -2055,6 +2055,16 @@ button.field-bi-kpi:disabled {
   line-height: 1.15;
 }
 
+.field-bi-farm-panel {
+  min-height: 158px;
+  padding: 7px;
+}
+
+.field-bi-farm-panel h3 {
+  margin-bottom: 4px;
+  font-size: clamp(0.95rem, 1.16vw, 1.12rem);
+}
+
 .field-bi-legend,
 .field-daily-legend {
   display: flex;
@@ -2068,8 +2078,8 @@ button.field-bi-kpi:disabled {
 }
 
 .field-bi-legend {
-  gap: 5px 9px;
-  font-size: 0.62rem;
+  gap: 4px 7px;
+  font-size: 0.56rem;
   line-height: 1.1;
 }
 
@@ -2086,44 +2096,44 @@ button.field-bi-kpi:disabled {
 
 .field-bi-legend i,
 .field-daily-legend i {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
   flex-shrink: 0;
 }
 
 .field-bi-farm-note {
-  margin: -4px 0 6px;
+  margin: -3px 0 4px;
   color: var(--text-secondary);
   text-align: center;
-  font-size: 0.66rem;
+  font-size: 0.58rem;
   font-weight: 650;
   line-height: 1.15;
 }
 
 .field-bi-farm-table {
   display: grid;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 6px;
+  gap: 4px;
+  margin-top: 5px;
+  padding: 4px;
   border: 1px solid rgba(226, 232, 240, 0.92);
-  border-radius: 10px;
+  border-radius: 8px;
   background: linear-gradient(180deg, var(--white), rgba(248, 250, 252, 0.72));
 }
 
 .field-bi-farm-table-head,
 .field-bi-farm-table-row {
   display: grid;
-  grid-template-columns: minmax(88px, 1.12fr) repeat(6, minmax(54px, 0.74fr));
+  grid-template-columns: minmax(72px, 0.98fr) repeat(6, minmax(45px, 0.68fr));
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 button.field-bi-farm-table-row {
   width: 100%;
-  padding: 5px;
+  padding: 3px;
   border: 1px solid rgba(226, 232, 240, 0.68);
-  border-radius: 9px;
+  border-radius: 7px;
   background: transparent;
   font: inherit;
   cursor: pointer;
@@ -2144,14 +2154,14 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 }
 
 .field-bi-farm-table-head {
-  padding: 0 6px 3px;
+  padding: 0 4px 2px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.78);
 }
 
 .field-bi-farm-table-head span {
   color: var(--text-secondary);
   text-align: center;
-  font-size: 0.63rem;
+  font-size: 0.56rem;
   font-weight: 950;
   line-height: 1;
   white-space: nowrap;
@@ -2163,7 +2173,7 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 
 .field-bi-farm-name {
   color: var(--text-secondary);
-  font-size: 0.68rem;
+  font-size: 0.58rem;
   font-weight: 900;
   line-height: 1.08;
   text-align: left;
@@ -2173,21 +2183,21 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 
 .field-bi-farm-cell {
   min-width: 0;
-  min-height: 40px;
+  min-height: 30px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 3px;
-  padding: 6px 7px;
+  gap: 2px;
+  padding: 4px 4px;
   border: 1px solid color-mix(in srgb, var(--metric-color) 28%, var(--border-color));
-  border-radius: 8px;
+  border-radius: 7px;
   background: color-mix(in srgb, var(--metric-color) 9%, var(--white));
   color: var(--metric-color);
 }
 
 .field-bi-farm-cell b {
   min-width: 0;
-  font-size: 0.82rem;
+  font-size: 0.68rem;
   font-weight: 950;
   line-height: 1;
   text-align: center;
@@ -2195,13 +2205,13 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 }
 
 .field-bi-farm-cell em {
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  font-size: 0.68rem;
+  font-size: 0.54rem;
   font-style: normal;
   font-weight: 950;
   line-height: 1;

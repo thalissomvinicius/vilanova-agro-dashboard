@@ -613,7 +613,7 @@ function FieldBiFarmChart({ rows, loading = false, selectedLabel = '', onSelect 
   const visibleRows = rows.slice(0, 5);
 
   return (
-    <section className="field-bi-panel">
+    <section className="field-bi-panel field-bi-farm-panel">
       <h3>Qualidade por Fazenda</h3>
       <p className="field-bi-farm-note">Percentual consolidado: ocorrências da fazenda / base amostrada da fazenda.</p>
       <FieldBiLegend />
