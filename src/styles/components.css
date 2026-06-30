@@ -2294,12 +2294,14 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
   width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
+  padding-bottom: 10px;
 }
 
 .field-bi-week-chart,
 .field-daily-chart-svg {
   display: block;
   min-height: 220px;
+  overflow: visible;
 }
 
 .field-line-chart-head {
@@ -2487,6 +2489,7 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 .field-bi-evolution-panel .field-bi-week-scroll {
   min-height: 0;
   padding-top: 2px;
+  padding-bottom: 12px;
 }
 
 .field-bi-evolution-panel .field-bi-week-chart {
@@ -2504,6 +2507,13 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 .field-bi-evolution-panel .chart-axis-text,
 .field-bi-evolution-panel .field-target-label {
   font-size: 9px;
+}
+
+.field-bi-evolution-panel .field-chart-axis-label,
+.field-bi-daily-panel .field-chart-axis-label {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .field-target-line {
@@ -3553,7 +3563,7 @@ button.field-bi-evaluator-danger.is-active {
 .field-bi-daily-panel .field-bi-week-scroll {
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 8px;
+  padding-bottom: 12px;
 }
 
 .field-bi-daily-panel .field-bi-week-scroll::-webkit-scrollbar {

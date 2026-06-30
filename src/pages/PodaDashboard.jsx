@@ -801,12 +801,13 @@ function PodaTargetLineChart({
   const isMultiSeries = selectedSeries.length > 1;
   const chartHeight = Number(chartHeightOverride) || (compact ? 216 : 244);
   const padding = compact
-    ? { top: 24, right: 28, bottom: 34, left: 42 }
-    : { top: 30, right: 34, bottom: 42, left: 48 };
+    ? { top: 24, right: 34, bottom: 46, left: 44 }
+    : { top: 30, right: 40, bottom: 50, left: 50 };
   const columnWidth = Number(columnWidthOverride) || (compact ? 76 : 88);
   const width = Math.max(minWidth, padding.left + padding.right + Math.max(visibleRows.length - 1, 1) * columnWidth + 54);
   const graphHeight = chartHeight - padding.top - padding.bottom;
   const graphWidth = width - padding.left - padding.right;
+  const axisLabelY = chartHeight - (compact ? 18 : 20);
   const valuesBySeries = selectedSeries.map((item) => ({
     series: item,
     values: visibleRows.map((row, index) => {
@@ -1031,8 +1032,20 @@ function PodaTargetLineChart({
                 const shouldShowLabel = index === 0
                   || index === visibleRows.length - 1
                   || index % Math.max(Number(axisLabelEvery) || 1, 1) === 0;
+                const tickAnchor = index === 0 ? 'start' : index === visibleRows.length - 1 ? 'end' : 'middle';
+                const tickX = index === 0
+                  ? Math.max(xFor(index), padding.left + 2)
+                  : index === visibleRows.length - 1
+                    ? Math.min(xFor(index), width - padding.right - 2)
+                    : xFor(index);
                 return shouldShowLabel ? (
-                  <text key={`axis-${rowKey(row, index)}`} x={xFor(index)} y={chartHeight - 12} textAnchor="middle" className="chart-axis-text">
+                  <text
+                    key={`axis-${rowKey(row, index)}`}
+                    x={tickX}
+                    y={axisLabelY}
+                    textAnchor={tickAnchor}
+                    className="chart-axis-text field-chart-axis-label"
+                  >
                     {labelForRow(row)}
                   </text>
                 ) : null;
