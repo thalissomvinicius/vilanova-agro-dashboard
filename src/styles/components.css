@@ -2027,7 +2027,16 @@ button.field-bi-kpi:disabled {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 8px;
+}
+
+.field-bi-farm-note {
+  margin: -4px 0 6px;
+  color: var(--text-secondary);
+  text-align: center;
+  font-size: 0.66rem;
+  font-weight: 650;
+  line-height: 1.15;
 }
 
 .field-bi-farm-row {
@@ -2074,36 +2083,89 @@ button.field-bi-farm-row.is-active strong {
 .field-bi-farm-bars {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
 
 .field-bi-farm-bar-line {
   position: relative;
-  height: 14px;
-  padding-right: 44px;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 88px;
+  align-items: center;
+  gap: 5px;
+  min-height: 18px;
 }
 
-.field-bi-farm-bar-line span {
+.field-bi-farm-bar-line > em {
+  color: var(--text-secondary);
+  font-size: 0.56rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.field-bi-farm-bar-line > span {
+  display: block;
+  height: 8px;
+  min-width: 0;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.72);
+  overflow: hidden;
+}
+
+.field-bi-farm-bar-line > span b {
   display: block;
   height: 100%;
   min-width: 0;
+  border-radius: inherit;
 }
 
 .field-bi-farm-bar-line small {
-  position: absolute;
-  top: -1px;
-  right: 0;
   color: var(--text-secondary);
-  font-size: 0.66rem;
+  font-size: 0.62rem;
+  font-weight: 900;
   line-height: 1;
   white-space: nowrap;
+}
+
+.field-bi-farm-bar-line small i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 31px;
+  margin-left: 4px;
+  padding: 2px 4px;
+  border-radius: 999px;
+  font-size: 0.5rem;
+  font-style: normal;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.field-bi-farm-bar-line.is-in-target small {
+  color: var(--green-institutional);
+}
+
+.field-bi-farm-bar-line.is-in-target small i {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--green-institutional);
+}
+
+.field-bi-farm-bar-line.is-out-target small {
+  color: var(--status-danger);
+}
+
+.field-bi-farm-bar-line.is-out-target small i {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--status-danger);
 }
 
 .field-bi-axis {
   display: flex;
   justify-content: space-between;
-  margin: 8px 50px 0 132px;
+  margin: 8px 94px 0 180px;
   color: var(--text-secondary);
   font-size: 0.72rem;
 }

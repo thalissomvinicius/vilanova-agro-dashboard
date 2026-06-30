@@ -575,6 +575,7 @@ function FieldBiFarmChart({ rows, loading = false, selectedLabel = '', onSelect 
   return (
     <section className="field-bi-panel">
       <h3>Qualidade por Fazenda</h3>
+      <p className="field-bi-farm-note">Percentual consolidado: ocorrências da fazenda / base amostrada da fazenda.</p>
       <FieldBiLegend />
       {loading ? (
         <div className="skeleton-chart" style={{ height: 180 }} />
@@ -593,15 +594,19 @@ function FieldBiFarmChart({ rows, loading = false, selectedLabel = '', onSelect 
               >
                 <strong>{row.label}</strong>
                 <div className="field-bi-farm-bars">
-                  {BI_SERIES.map((item, index) => {
+                  {BI_SERIES.map((item) => {
                     const value = values[item.key];
+                    const insideTarget = Number(value || 0) <= Number(item.target || 0);
                     return (
-                      <div className="field-bi-farm-bar-line" key={item.key}>
-                        <span
-                          style={{ width: `${Math.min(value, 100)}%`, background: item.color }}
-                          title={`${row.label} - ${item.fullLabel}: ${formatPercent(value)}`}
-                        />
-                        {index === 0 && <small>{formatPercent(value)}</small>}
+                      <div className={`field-bi-farm-bar-line ${insideTarget ? 'is-in-target' : 'is-out-target'}`} key={item.key}>
+                        <em>{item.label}</em>
+                        <span title={`${row.label} - ${item.fullLabel}: ${formatPercent(value)} | Meta <= ${formatPercent(item.target)}`}>
+                          <b style={{ width: `${Math.min(value, 100)}%`, background: item.color }} />
+                        </span>
+                        <small>
+                          {formatPercent(value)}
+                          <i>{insideTarget ? 'meta' : 'fora'}</i>
+                        </small>
                       </div>
                     );
                   })}
