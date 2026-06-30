@@ -1304,7 +1304,7 @@ function FieldBiBoard({
       <div className="field-bi-header">
         <img src="/logo.png" alt="Vila Nova Agroindustrial" className="field-bi-logo" />
         <div className="field-bi-title-block">
-          <h2>Qualidade Agrícola</h2>
+          <h2>VNA - Qualidade Agrícola - Poda</h2>
           <div className="field-bi-meta-line">
             <span title={`Período filtrado: ${periodText}`}><CalendarDays size={14} />Período: {periodText}</span>
             <ActiveFilterSummary filters={filterState} onClearFilter={onClearFilter} />
