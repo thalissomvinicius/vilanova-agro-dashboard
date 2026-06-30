@@ -1216,7 +1216,7 @@ function FieldBiMapPanel({
 
 const MemoFieldBiMapPanel = React.memo(FieldBiMapPanel);
 
-function DailyBunchBarChart({ rows, loading = false, series = BI_SERIES[1] }) {
+function DailyBunchBarChart({ rows, loading = false, series = BI_SERIES[1], chartHeight = 188 }) {
   const selectedSeries = Array.isArray(series) ? series : [series];
   const chartLabel = selectedSeries.length > 1 ? 'todos os indicadores' : selectedSeries[0]?.fullLabel;
   const axisLabelEvery = rows.length > 80 ? 5 : rows.length > 52 ? 4 : rows.length > 32 ? 3 : rows.length > 18 ? 2 : 1;
@@ -1235,7 +1235,7 @@ function DailyBunchBarChart({ rows, loading = false, series = BI_SERIES[1] }) {
       rowKey={(row) => row.sortKey}
       maxRows={rows.length || 1}
       minWidth={900}
-      chartHeightOverride={188}
+      chartHeightOverride={chartHeight}
       columnWidthOverride={columnWidth}
       axisLabelEvery={axisLabelEvery}
       className="field-bi-daily-panel"
@@ -1755,7 +1755,12 @@ function FieldBiBoard({
               onOpenGeoQuality={handleOpenGeoQuality}
               onMapLoadingChange={handleMapLoadingChange}
             />
-            <MemoDailyBunchBarChart rows={focusedDailyRows} loading={loading} series={selectedSeries} />
+            <MemoDailyBunchBarChart
+              rows={focusedDailyRows}
+              loading={loading}
+              series={selectedSeries}
+              chartHeight={presentationMode ? 252 : 188}
+            />
           </div>
         </>
       ) : (
@@ -1768,7 +1773,7 @@ function FieldBiBoard({
 
 function PresentationOverlay(props) {
   return createPortal(
-    <div className="presentation-overlay" role="dialog" aria-modal="true" aria-label="Apresentacao em tela cheia">
+    <div className="presentation-overlay field-bi-presentation-overlay" role="dialog" aria-modal="true" aria-label="Apresentacao em tela cheia">
       <button type="button" className="presentation-close-btn field-bi-close-btn" onClick={props.onClose} title="Fechar apresentacao" aria-label="Fechar apresentacao">
         <X size={22} />
       </button>
