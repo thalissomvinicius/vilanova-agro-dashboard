@@ -3000,7 +3000,7 @@ button.field-bi-evaluator-danger.is-active {
   min-height: 0;
   height: 100%;
   display: grid;
-  grid-template-rows: auto auto minmax(214px, 1fr);
+  grid-template-rows: auto auto minmax(214px, 1fr) auto;
   gap: 8px;
   padding: 10px;
 }
@@ -3351,6 +3351,126 @@ button.field-bi-evaluator-danger.is-active {
 .field-bi-inline-map-frame .leaflet-control-container .leaflet-top,
 .field-bi-inline-map-frame .leaflet-control-container .leaflet-bottom {
   display: none !important;
+}
+
+.field-bi-map-legend-card {
+  min-width: 0;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: minmax(78px, 0.38fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), #fff);
+}
+
+.field-bi-map-legend-title {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.field-bi-map-legend-title strong {
+  color: var(--text-primary);
+  font-size: 0.62rem;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.field-bi-map-legend-title span {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.54rem;
+  font-weight: 850;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.field-bi-map-legend-items {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.field-bi-map-legend-items span {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "dot label"
+    "dot rule";
+  align-items: center;
+  gap: 0 5px;
+  padding: 5px 6px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 7px;
+  color: var(--text-primary);
+  font-size: 0.58rem;
+  font-weight: 950;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.field-bi-map-legend-items i {
+  grid-area: dot;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+}
+
+.field-bi-map-legend-items small {
+  grid-area: rule;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 0.5rem;
+  font-weight: 850;
+  line-height: 1.05;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.field-bi-map-legend-items .is-ok {
+  background: rgba(34, 197, 94, 0.07);
+  border-color: rgba(34, 197, 94, 0.22);
+}
+
+.field-bi-map-legend-items .is-ok i {
+  background: #22C55E;
+}
+
+.field-bi-map-legend-items .is-warning {
+  background: rgba(242, 140, 0, 0.07);
+  border-color: rgba(242, 140, 0, 0.26);
+}
+
+.field-bi-map-legend-items .is-warning i {
+  background: var(--orange-institutional);
+}
+
+.field-bi-map-legend-items .is-critical {
+  background: rgba(239, 68, 68, 0.07);
+  border-color: rgba(239, 68, 68, 0.24);
+}
+
+.field-bi-map-legend-items .is-critical i {
+  background: var(--status-danger);
+}
+
+.field-bi-map-legend-items .is-empty {
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.field-bi-map-legend-items .is-empty i {
+  background: #fff;
+  border: 2px dashed rgba(100, 116, 139, 0.72);
 }
 
 .field-bi-daily-panel {

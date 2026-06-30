@@ -392,6 +392,7 @@ const MAP_METRIC_BY_SERIES = {
   estrela: 'poda_maior_1_1',
   talo: 'poda_bico_gaita',
 };
+const MAP_ATTENTION_MULTIPLIER = 2.2;
 
 function qualityValuesFromRow(row) {
   const directValues = {
@@ -549,7 +550,7 @@ function signalToneFor(value, target) {
   const numeric = Number(value || 0);
   const meta = Math.max(Number(target || 0), 0.01);
   if (numeric <= meta) return 'ok';
-  if (numeric <= meta * 1.5) return 'warning';
+  if (numeric <= meta * MAP_ATTENTION_MULTIPLIER) return 'warning';
   return 'critical';
 }
 
@@ -1212,6 +1213,35 @@ function FieldBiMapPanel({
             />
           </Suspense>
         )}
+      </div>
+
+      <div className="field-bi-map-legend-card" aria-label="Legenda do mapa das parcelas">
+        <div className="field-bi-map-legend-title">
+          <strong>Legenda</strong>
+          <span>{activeSeries.fullLabel}</span>
+        </div>
+        <div className="field-bi-map-legend-items">
+          <span className="is-ok">
+            <i />
+            Dentro
+            <small>{`até ${formatPercent(activeSeries.target)}`}</small>
+          </span>
+          <span className="is-warning">
+            <i />
+            Atenção
+            <small>{`até ${formatPercent(activeSeries.target * MAP_ATTENTION_MULTIPLIER)}`}</small>
+          </span>
+          <span className="is-critical">
+            <i />
+            Crítico
+            <small>{`acima de ${formatPercent(activeSeries.target * MAP_ATTENTION_MULTIPLIER)}`}</small>
+          </span>
+          <span className="is-empty">
+            <i />
+            Sem avaliação
+            <small>sem coleta no filtro</small>
+          </span>
+        </div>
       </div>
     </section>
   );
