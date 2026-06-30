@@ -536,6 +536,52 @@ function comparableFarmName(value) {
     .toLowerCase();
 }
 
+function reviewState(record) {
+  const status = String(record?.status || '').toLowerCase();
+  if (status.includes('aprov')) return 'approved';
+  if (status.includes('reprov')) return 'rejected';
+  return 'pending';
+}
+
+function normalizeParcelCode(value) {
+  const compact = String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+
+  const parsed = compact.match(/^([a-z]*)(0*\d+)([a-z]*)$/);
+  if (!parsed) return compact;
+  return `${parsed[1]}${Number(parsed[2])}${parsed[3]}`;
+}
+
+function shapeParcelCode(props = {}) {
+  let shapeParcel = props.ID_PARCELA || props.IDE || props.ide || props.parcela || props.parcelId || '';
+  if (shapeParcel && props.farmId && String(shapeParcel).startsWith(`${props.farmId}-`)) {
+    shapeParcel = String(shapeParcel).replace(`${props.farmId}-`, '');
+  }
+  return shapeParcel;
+}
+
+function parcelShapeKey(farmId, parcel) {
+  return `${farmId || 'default'}|${normalizeParcelCode(parcel)}`;
+}
+
+function geoNumber(value) {
+  const parsed = Number(String(value || '').replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parcelAreaHa(props = {}) {
+  return geoNumber(
+    props.HECTARE_PA
+    || props.HECTARES
+    || props.HECTARE
+    || props.AREA_HA
+    || props.areaHa
+  );
+}
+
 function parcelKey(record) {
   return `${record.farmId || record.farm || 'sem-fazenda'}|${record.parcel || 'sem-parcela'}`;
 }
@@ -554,25 +600,43 @@ function signalToneFor(value, target) {
   return 'critical';
 }
 
-function buildParcelSignalSummary(records, series) {
+function buildParcelSignalSummary(records, series, parcelFeatures = []) {
   const selectedSeries = series || BI_SERIES[1];
+  const approvedRecords = records
+    .filter((record) => record.type === 'poda' && reviewState(record) === 'approved');
   const buckets = new Map();
 
-  records
-    .filter((record) => record.type === 'poda')
+  approvedRecords
     .forEach((record) => {
-      const key = parcelKey(record);
+      const key = parcelShapeKey(record.farmId || record.farm, record.parcel);
       if (!buckets.has(key)) {
         buckets.set(key, {
           key,
           label: parcelLabel(record),
           records: [],
+          areaHa: 0,
         });
       }
       buckets.get(key).records.push(record);
     });
 
-  const rows = Array.from(buckets.values()).map((bucket) => {
+  const hasFeatures = Array.isArray(parcelFeatures) && parcelFeatures.length > 0;
+  const featureRows = hasFeatures
+    ? parcelFeatures.map((feature) => {
+      const props = feature?.properties || {};
+      const shapeParcel = shapeParcelCode(props);
+      const key = parcelShapeKey(props.farmId, shapeParcel);
+      const bucket = buckets.get(key);
+      if (!bucket?.records?.length) return null;
+      return {
+        ...bucket,
+        label: `${props.farmName || props.farmId || 'Fazenda'} / ${shapeParcel || '--'}`,
+        areaHa: parcelAreaHa(props),
+      };
+    }).filter(Boolean)
+    : Array.from(buckets.values());
+
+  const rows = featureRows.map((bucket) => {
     const aggregated = aggregateRecords(bucket.records);
     const values = qualityValuesFromRow({ qualidade: aggregated });
     const value = Number(values[selectedSeries.key] || 0);
@@ -585,17 +649,27 @@ function buildParcelSignalSummary(records, series) {
     };
   });
 
+  const totals = approvedRecords.length ? aggregateRecords(approvedRecords) : null;
+  const totalValues = qualityValuesFromRow({ qualidade: totals || {} });
+  const totalQuantity = seriesQuantityFromRow({ qualidade: totals || {} }, selectedSeries.key, totalValues);
+
   return rows.reduce((acc, row) => {
     acc.total += 1;
     acc[row.tone] += 1;
+    acc.evaluatedAreaHa += Number(row.areaHa || 0);
     if (!acc.worst || row.value > acc.worst.value) acc.worst = row;
     return acc;
   }, {
     total: 0,
+    availableParcels: hasFeatures ? parcelFeatures.length : 0,
     ok: 0,
     warning: 0,
     critical: 0,
     worst: null,
+    coletas: approvedRecords.length,
+    quantity: totalQuantity.quantity,
+    base: totalQuantity.base,
+    evaluatedAreaHa: 0,
   });
 }
 
@@ -1071,10 +1145,18 @@ function FieldBiMapPanel({
 }) {
   const activeSeries = mapSeries || BI_SERIES[1];
   const [selectedParcelState, setSelectedParcelState] = useState({ mapKey: '', summary: null });
+  const [parcelGeoJson, setParcelGeoJson] = useState(null);
   const mapMetricId = mapMetricIdForSeries(activeSeries);
+  const farmFilterKey = mapProps?.farmFilter || 'all';
+  const filteredParcelFeatures = useMemo(() => (
+    parcelGeoJson?.features?.filter((feature) => (
+      farmFilterKey === 'all'
+      || feature.properties?.farmId === farmFilterKey
+    )) || []
+  ), [farmFilterKey, parcelGeoJson]);
   const signalSummary = useMemo(
-    () => buildParcelSignalSummary(records, activeSeries),
-    [records, activeSeries]
+    () => buildParcelSignalSummary(records, activeSeries, filteredParcelFeatures),
+    [records, activeSeries, filteredParcelFeatures]
   );
   const mapKey = [
     'poda-inline-map',
@@ -1118,6 +1200,25 @@ function FieldBiMapPanel({
   const handleParcelSelect = useCallback((summary) => {
     setSelectedParcelState({ mapKey, summary });
   }, [mapKey]);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('/data/farm-parcels.geojson')
+      .then((response) => {
+        if (!response.ok) throw new Error('Mapa de parcelas indisponível.');
+        return response.json();
+      })
+      .then((geojson) => {
+        if (mounted) setParcelGeoJson(geojson);
+      })
+      .catch(() => {
+        if (mounted) setParcelGeoJson(null);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <section className="field-bi-panel field-bi-map-panel">
@@ -1180,7 +1281,31 @@ function FieldBiMapPanel({
           </div>
           <div className="signal-total">
             <span>Parcelas</span>
-            <strong>{formatNumber(signalSummary.total)}</strong>
+            <strong>
+              {formatNumber(signalSummary.total)}
+              {signalSummary.availableParcels ? `/${formatNumber(signalSummary.availableParcels)}` : ''}
+            </strong>
+            <small>avaliadas/total</small>
+          </div>
+          <div className="signal-data">
+            <span>Avaliadas</span>
+            <strong>{formatNumber(signalSummary.base)}</strong>
+            <small>plantas</small>
+          </div>
+          <div className="signal-data signal-found">
+            <span>Encontrado</span>
+            <strong>{formatNumber(signalSummary.quantity)}</strong>
+            <small>{activeSeries.label.replace('%', '').trim()}</small>
+          </div>
+          <div className="signal-data">
+            <span>Coletas</span>
+            <strong>{formatNumber(signalSummary.coletas)}</strong>
+            <small>aprovadas</small>
+          </div>
+          <div className="signal-data">
+            <span>Área aval.</span>
+            <strong>{formatNumber(signalSummary.evaluatedAreaHa, 1)}</strong>
+            <small>hectares</small>
           </div>
         </div>
       )}

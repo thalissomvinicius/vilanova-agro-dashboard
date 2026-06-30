@@ -3050,20 +3050,21 @@ button.field-bi-evaluator-danger.is-active {
 .field-bi-map-signals {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
 }
 
 .field-bi-map-signals div {
   min-width: 0;
-  min-height: 50px;
+  min-height: 45px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
     "dot label"
-    "dot value";
+    "dot value"
+    "dot detail";
   align-items: center;
-  gap: 0 7px;
-  padding: 7px 8px;
+  gap: 0 6px;
+  padding: 6px 7px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--bg-secondary);
@@ -3081,7 +3082,7 @@ button.field-bi-evaluator-danger.is-active {
   grid-area: label;
   min-width: 0;
   color: var(--text-muted);
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 900;
   line-height: 1.05;
   text-transform: uppercase;
@@ -3091,9 +3092,21 @@ button.field-bi-evaluator-danger.is-active {
 .field-bi-map-signals strong {
   grid-area: value;
   color: var(--text-primary);
-  font-size: 1.06rem;
+  font-size: 1rem;
   font-weight: 950;
   line-height: 1;
+}
+
+.field-bi-map-signals small {
+  grid-area: detail;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 0.5rem;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .field-bi-map-signals .signal-ok {
@@ -3127,7 +3140,31 @@ button.field-bi-evaluator-danger.is-active {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
     "label"
-    "value";
+    "value"
+    "detail";
+}
+
+.field-bi-map-signals .signal-data {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "label"
+    "value"
+    "detail";
+  background: #fff;
+}
+
+.field-bi-map-signals .signal-data strong {
+  color: var(--green-institutional);
+  font-size: 0.95rem;
+}
+
+.field-bi-map-signals .signal-found {
+  border-color: rgba(242, 140, 0, 0.22);
+  background: rgba(242, 140, 0, 0.05);
+}
+
+.field-bi-map-signals .signal-found strong {
+  color: var(--orange-institutional);
 }
 
 .field-bi-map-signals-selected div {
