@@ -875,6 +875,24 @@ function PodaTargetLineChart({
     return `${Math.max(3, Math.min(100, (numericValue / singleScaleMax) * 100))}%`;
   };
   const singleTargetLeft = (value) => `${Math.min(100, (Math.max(Number(value || 0), 0) / singleScaleMax) * 100)}%`;
+  const handleHorizontalWheel = (event) => {
+    const node = event.currentTarget;
+    const maxScrollLeft = node.scrollWidth - node.clientWidth;
+    if (maxScrollLeft <= 1) return;
+
+    const rawDelta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    if (!rawDelta) return;
+
+    const multiplier = event.deltaMode === 1 ? 18 : event.deltaMode === 2 ? node.clientWidth : 1;
+    const delta = rawDelta * multiplier;
+    const currentLeft = node.scrollLeft;
+    const canScrollLeft = delta < 0 && currentLeft > 0;
+    const canScrollRight = delta > 0 && currentLeft < maxScrollLeft - 1;
+    if (!canScrollLeft && !canScrollRight) return;
+
+    event.preventDefault();
+    node.scrollLeft = Math.max(0, Math.min(maxScrollLeft, currentLeft + delta));
+  };
 
   return (
     <section className={`field-bi-panel field-poda-line-panel ${className}`.trim()}>
@@ -900,7 +918,7 @@ function PodaTargetLineChart({
       {loading ? (
         <div className="skeleton-chart" style={{ height: chartHeight }} />
       ) : (
-        <div className="field-bi-week-scroll">
+        <div className="field-bi-week-scroll" onWheel={handleHorizontalWheel}>
           {singlePointGroups.length ? (
             <div className="field-line-single-bars field-line-single-bars-compact">
               <div className="field-line-single-head">
