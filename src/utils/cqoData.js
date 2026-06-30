@@ -1174,8 +1174,24 @@ function cqoSnapshotFiscal(row) {
   ]);
 }
 
+function formatSnapshotCycleValue(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  const parsed = parseRecordDateValue(raw);
+  const looksLikeDate = /^\d{4}-\d{2}/.test(raw)
+    || /^\d{2}\/\d{2}\/\d{4}/.test(raw)
+    || (/^\d+(?:[,.]\d+)?$/.test(raw) && Number(raw.replace(',', '.')) > 20000);
+
+  if (looksLikeDate && parsed) {
+    return `${String(parsed.getMonth() + 1).padStart(2, '0')}/${parsed.getFullYear()}`;
+  }
+
+  return raw;
+}
+
 function cqoSnapshotCycle(row) {
-  return rowText(row, ['ciclo_mes', 'CicloMes', 'Ciclo', 'Mes', 'Mês', 'mes_referencia_iso']) || '--';
+  return formatSnapshotCycleValue(rowText(row, ['ciclo_mes', 'CicloMes', 'Ciclo', 'Mes', 'Mês', 'mes_referencia_iso'])) || '--';
 }
 
 function buildCorteSnapshotLine(row, index) {
