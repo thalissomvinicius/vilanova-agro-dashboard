@@ -571,7 +571,7 @@ function FieldBiLegend() {
   return (
     <div className="field-bi-legend">
       {BI_SERIES.map((item) => (
-        <span key={item.key}><i style={{ background: item.color }} />{item.fullLabel}</span>
+        <span key={item.key} title={item.fullLabel}><i style={{ background: item.color }} />{item.label}</span>
       ))}
     </div>
   );
@@ -607,14 +607,10 @@ function FieldBiFarmChart({ rows, loading = false, selectedLabel = '', onSelect 
                     const insideTarget = Number(value || 0) <= Number(item.target || 0);
                     return (
                       <div className={`field-bi-farm-bar-line ${insideTarget ? 'is-in-target' : 'is-out-target'}`} key={item.key}>
-                        <em>{item.label}</em>
                         <span title={`${row.label} - ${item.fullLabel}: ${formatPercent(value)} | Meta <= ${formatPercent(item.target)}`}>
                           <b style={{ width: `${Math.min(value, 100)}%`, background: item.color }} />
                         </span>
-                        <small>
-                          {formatPercent(value)}
-                          <i>{insideTarget ? 'meta' : 'fora'}</i>
-                        </small>
+                        <small title={insideTarget ? 'Dentro da meta' : 'Fora da meta'}>{formatPercent(value, 1)}</small>
                       </div>
                     );
                   })}
