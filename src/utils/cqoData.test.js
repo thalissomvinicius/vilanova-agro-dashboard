@@ -117,13 +117,16 @@ describe('filterRecords', () => {
     expect(result[0].id).toBe('cq-1');
   });
 
-  it('ignora fazendas fora do escopo CQO ativo', () => {
-    const result = filterRecords([
+  it('mantem fazendas novas visiveis em todas e filtra quando uma fazenda e selecionada', () => {
+    const records = [
       record({ id: 'valid' }),
       record({ id: 'inactive', farmId: 'rio-capim', farm: 'Rio Capim' }),
-    ], { periodFilter: 'all' });
+    ];
+    const allFarms = filterRecords(records, { periodFilter: 'all' });
+    const selectedFarm = filterRecords(records, { periodFilter: 'all', farmFilter: 'vila-nova' });
 
-    expect(result.map((item) => item.id)).toEqual(['valid']);
+    expect(allFarms.map((item) => item.id)).toEqual(['valid', 'inactive']);
+    expect(selectedFarm.map((item) => item.id)).toEqual(['valid']);
   });
 
   it('filtra registros do Excel por ano mesmo quando a data vem como serial', () => {

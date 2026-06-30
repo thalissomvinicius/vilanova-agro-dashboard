@@ -1851,7 +1851,7 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
     searchTerm,
   });
 
-  const demoRecords = useMemo(() => buildPodaDemoRecords(), []);
+  const demoRecords = useMemo(() => (LOCAL_DEMO_MODE ? buildPodaDemoRecords() : []), []);
   const mergedRecords = useMemo(() => {
     const realPoda = records.filter((record) => record.type === 'poda');
     return [...demoRecords, ...realPoda];
@@ -1894,12 +1894,13 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
       tone,
       status,
       message,
-      rawExcelRows: 0,
+      rawExcelRows: Number(cqoImport?.podaRows || 0),
       transformedRecords,
       visibleCount,
       hiddenByFilters,
       mobileCount: mobileRecords.filter((r) => r.type === 'poda').length,
       excelCount: excelRecords.filter((r) => r.type === 'poda').length,
+      podaSnapshotRows: Number(cqoImport?.podaRows || 0),
       snapshotLabel: 'CQO Poda',
       updatedAtLabel: updateLabel(lastSyncTime),
       filterLabel: [
@@ -1908,7 +1909,7 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
         periodLabel(dateFrom, dateTo),
       ].filter(Boolean).join(' · '),
     };
-  }, [allRecords, mobileRecords, excelRecords, mergedRecords, records, demoRecords.length, farmFilter, sourceFilter, dateFrom, dateTo, lastSyncTime]);
+  }, [allRecords, mobileRecords, excelRecords, mergedRecords, records, demoRecords.length, cqoImport?.podaRows, farmFilter, sourceFilter, dateFrom, dateTo, lastSyncTime]);
 
   const mapProps = useMemo(() => ({
     theme,

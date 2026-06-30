@@ -1850,7 +1850,6 @@ function isWithinPeriod(record, periodFilter, dateFrom = '', dateTo = '') {
 export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all', periodFilter = 'month', cycleFilter = 'all', evaluatorFilter = 'all', sourceFilter = 'all', dateFrom = '', dateTo = '', searchTerm = '', statusFilter = 'all' } = {}) {
   const search = normalizeText(searchTerm);
   return records.filter((record) => {
-    const activeFarmOk = ACTIVE_CQO_FARM_IDS.includes(record.farmId);
     const farmOk = farmFilter === 'all' || record.farmId === farmFilter;
     const areaOk = areaFilter === 'all' || record.type === areaFilter;
     const cycleOk = cycleFilter === 'all' || String(record.cycle) === String(cycleFilter);
@@ -1869,7 +1868,7 @@ export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all',
       record.fiscal,
     ].join(' '));
     const searchOk = !search || haystack.includes(search);
-    return activeFarmOk && farmOk && areaOk && cycleOk && evaluatorOk && sourceOk && statusOk && periodOk && searchOk;
+    return farmOk && areaOk && cycleOk && evaluatorOk && sourceOk && statusOk && periodOk && searchOk;
   });
 }
 
