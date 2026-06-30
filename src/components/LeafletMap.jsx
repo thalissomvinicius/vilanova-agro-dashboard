@@ -811,7 +811,7 @@ function fitMapToBounds(map, bounds, {
 } = {}) {
   if (!map || !bounds?.isValid?.()) return false;
   map.invalidateSize({ pan: false, debounceMoveend: false });
-  map.fitBounds(bounds.pad(pad), { maxZoom, animate });
+  map.fitBounds(bounds.pad(pad), { maxZoom, animate, padding: [18, 18] });
   if (minZoom && map.getZoom() < minZoom) {
     map.setZoom(minZoom, { animate });
   }
@@ -1752,6 +1752,7 @@ export default function LeafletMap({
     }, 0);
     let viewportFrame = 0;
     let viewportTimer = 0;
+    let settleTimer = 0;
     let finishTimer = 0;
 
     const drawTimer = window.setTimeout(() => {
@@ -2074,21 +2075,21 @@ export default function LeafletMap({
 
       const selectedBounds = selectedParcelSummary ? featureBounds(selectedParcelSummary.feature) : null;
       if (mapLayer !== 'route' && selectedBounds) {
-        fitMapToBounds(map, selectedBounds, { pad: 0.38, maxZoom: 17, minZoom: 15, animate: false });
+        fitMapToBounds(map, selectedBounds, { pad: 0.22, maxZoom: 17, minZoom: 15, animate: false });
       } else if (mapLayer !== 'route' && farmFilter !== 'all' && farmLayerBounds.length > 0) {
         const bounds = farmLayerBounds.reduce((acc, item) => acc.extend(item), L.latLngBounds([]));
-        fitMapToBounds(map, bounds, { pad: 0.16, maxZoom: 16, minZoom: 13, animate: false });
+        fitMapToBounds(map, bounds, { pad: 0.08, maxZoom: 16, minZoom: 14, animate: false });
       } else if (mapLayer !== 'route' && evaluatedLayerBounds.length > 0) {
         const bounds = evaluatedLayerBounds.reduce((acc, item) => acc.extend(item), L.latLngBounds([]));
-        fitMapToBounds(map, bounds, { pad: 0.18, maxZoom: 16, minZoom: presentationMode ? 12 : 11, animate: false });
+        fitMapToBounds(map, bounds, { pad: 0.1, maxZoom: 16, minZoom: presentationMode ? 13 : 12, animate: false });
       } else if (mapLayer === 'route' && gpsLatLngs.length === 1) {
         map.setView(gpsLatLngs[0], 17, { animate: false });
       } else if (mapLayer === 'route' && gpsLatLngs.length > 1) {
         const bounds = L.latLngBounds(gpsLatLngs);
-        fitMapToBounds(map, bounds, { pad: 0.18, maxZoom: 17, minZoom: 13, animate: false });
+        fitMapToBounds(map, bounds, { pad: 0.12, maxZoom: 17, minZoom: 13, animate: false });
       } else if (farmLayerBounds.length > 0) {
         const bounds = farmLayerBounds.reduce((acc, item) => acc.extend(item), L.latLngBounds([]));
-        fitMapToBounds(map, bounds, { pad: 0.12, maxZoom: mapLayer === 'route' ? 14 : 15, minZoom: farmFilter === 'all' ? 11 : 13, animate: false });
+        fitMapToBounds(map, bounds, { pad: 0.08, maxZoom: mapLayer === 'route' ? 14 : 15, minZoom: farmFilter === 'all' ? 12 : 13, animate: false });
       } else if (farmFilter !== 'all') {
         const selectedFarm = FARMS.find((farm) => farm.id === farmFilter);
         if (selectedFarm) {
@@ -2106,6 +2107,7 @@ export default function LeafletMap({
           });
           applyViewport();
           viewportTimer = window.setTimeout(applyViewport, 120);
+          settleTimer = window.setTimeout(applyViewport, 420);
           finishTimer = window.setTimeout(() => {
             setMapRenderState({
               loading: false,
@@ -2122,6 +2124,7 @@ export default function LeafletMap({
       window.clearTimeout(drawTimer);
       window.cancelAnimationFrame(viewportFrame);
       window.clearTimeout(viewportTimer);
+      window.clearTimeout(settleTimer);
       window.clearTimeout(finishTimer);
     };
   }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, selectedRiskMetric, selectedOperation, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, parcelGeoStatus, filteredParcelFeatures, parcelSummaryByKey, selectedParcelSummary, presentationMode]);
@@ -2144,7 +2147,7 @@ export default function LeafletMap({
     const timer = window.setTimeout(() => {
       const bounds = featureBounds(selectedParcelSummary.feature);
       if (bounds) {
-        fitMapToBounds(map, bounds, { pad: 0.38, maxZoom: 17, minZoom: 15, animate: true });
+        fitMapToBounds(map, bounds, { pad: 0.22, maxZoom: 17, minZoom: 15, animate: true });
       }
     }, 80);
 
@@ -2195,9 +2198,9 @@ export default function LeafletMap({
 
       if (overviewBounds.isValid()) {
         fitMapToBounds(map, overviewBounds, {
-          pad: selectedParcelSummary?.props?.farmId ? 0.16 : 0.14,
+          pad: selectedParcelSummary?.props?.farmId ? 0.08 : 0.1,
           maxZoom: 16,
-          minZoom: selectedParcelSummary?.props?.farmId || farmFilter !== 'all' ? 13 : 11,
+          minZoom: selectedParcelSummary?.props?.farmId || farmFilter !== 'all' ? 14 : 12,
           animate,
         });
         return;

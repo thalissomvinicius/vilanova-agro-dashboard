@@ -629,13 +629,14 @@ function PodaTargetLineChart({
   maxRows = 10,
   minWidth = 560,
   compact = false,
+  chartHeightOverride = null,
   className = '',
 }) {
   const visibleRows = rows.slice(-maxRows);
   const normalizedSeries = (Array.isArray(series) ? series : [series]).filter(Boolean);
   const selectedSeries = normalizedSeries.length ? normalizedSeries : [BI_SERIES[1]];
   const isMultiSeries = selectedSeries.length > 1;
-  const chartHeight = compact ? 216 : 244;
+  const chartHeight = Number(chartHeightOverride) || (compact ? 216 : 244);
   const padding = compact
     ? { top: 24, right: 28, bottom: 34, left: 42 }
     : { top: 30, right: 34, bottom: 42, left: 48 };
@@ -912,7 +913,7 @@ function FieldBiMapPanel({
       <div className="field-bi-map-signals" aria-label="Resumo do semáforo das parcelas">
         <div className="signal-ok">
           <i />
-          <span>Dentro</span>
+          <span>Dentro da meta</span>
           <strong>{formatNumber(signalSummary.ok)}</strong>
         </div>
         <div className="signal-warning">
@@ -930,19 +931,6 @@ function FieldBiMapPanel({
           <strong>{formatNumber(signalSummary.total)}</strong>
         </div>
       </div>
-
-      {signalSummary.worst ? (
-        <div className={`field-bi-map-worst is-${signalSummary.worst.tone}`}>
-          <span>Maior atenção</span>
-          <strong>{signalSummary.worst.label}</strong>
-          <em>{formatPercent(signalSummary.worst.value)} · meta {formatPercent(activeSeries.target)}</em>
-        </div>
-      ) : (
-        <div className="field-bi-map-worst is-empty">
-          <span>Sem parcelas avaliadas</span>
-          <strong>Amplie o período ou confirme a carga de poda.</strong>
-        </div>
-      )}
 
       <div className="field-bi-inline-map-frame">
         {loading ? (
@@ -992,6 +980,7 @@ function DailyBunchBarChart({ rows, loading = false, series = BI_SERIES[1] }) {
       rowKey={(row) => row.sortKey}
       maxRows={12}
       minWidth={760}
+      chartHeightOverride={188}
       className="field-bi-daily-panel"
     />
   );
