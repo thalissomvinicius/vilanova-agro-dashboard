@@ -2032,6 +2032,10 @@ button.field-bi-kpi:disabled {
 .field-bi-main-grid {
   display: grid;
   grid-template-columns: minmax(280px, 30%) minmax(360px, 1fr) minmax(300px, 37%);
+  grid-template-areas:
+    "farm evolution map"
+    "daily daily map";
+  align-items: stretch;
   gap: 10px;
 }
 
@@ -2056,6 +2060,7 @@ button.field-bi-kpi:disabled {
 }
 
 .field-bi-farm-panel {
+  grid-area: farm;
   min-height: 158px;
   padding: 7px;
 }
@@ -2340,6 +2345,7 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 }
 
 .field-bi-evolution-panel {
+  grid-area: evolution;
   min-height: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
@@ -2463,7 +2469,7 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 
 .field-target-line {
   stroke: var(--orange-institutional);
-  stroke-width: 2.2;
+  stroke-width: 1.35;
   stroke-dasharray: 8 7;
   opacity: 0.95;
 }
@@ -2501,14 +2507,14 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 
 .field-line-path {
   fill: none;
-  stroke-width: 3.4;
+  stroke-width: 2.05;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .field-line-point {
   stroke: var(--white);
-  stroke-width: 2.5;
+  stroke-width: 1.8;
   fill: var(--status-success);
   filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.18));
 }
@@ -2518,7 +2524,7 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 }
 
 .field-line-point.is-clipped {
-  stroke-width: 3.2;
+  stroke-width: 2.2;
   filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.28));
 }
 
@@ -2951,7 +2957,9 @@ button.field-bi-evaluator-danger.is-active {
 }
 
 .field-bi-map-panel {
-  min-height: 360px;
+  grid-area: map;
+  min-height: 0;
+  height: 100%;
   display: grid;
   grid-template-rows: auto auto minmax(214px, 1fr);
   gap: 8px;
@@ -3274,7 +3282,7 @@ button.field-bi-evaluator-danger.is-active {
 }
 
 .field-bi-inline-map-frame {
-  min-height: 190px;
+  min-height: 0;
   height: 100%;
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -3307,8 +3315,9 @@ button.field-bi-evaluator-danger.is-active {
 }
 
 .field-bi-daily-panel {
+  grid-area: daily;
   min-height: 220px;
-  margin-top: 6px;
+  margin-top: 0;
   padding: 8px 10px;
 }
 
@@ -12797,6 +12806,11 @@ body.field-map-active {
 
   .field-bi-main-grid {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "farm"
+      "evolution"
+      "map"
+      "daily";
   }
 
   .field-bi-map-parcel-strip {

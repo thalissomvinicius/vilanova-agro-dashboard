@@ -911,7 +911,7 @@ function PodaTargetLineChart({
                         <circle
                           cx={point.x}
                           cy={point.y}
-                          r={isMultiSeries ? 4.3 : 5.5}
+                          r={isMultiSeries ? 3.4 : 4.4}
                           className={`field-line-point ${overTarget ? 'is-over-target' : 'is-under-target'} ${point.clipped ? 'is-clipped' : ''}`.trim()}
                           style={{ fill: group.series.color }}
                         >
@@ -1755,9 +1755,8 @@ function FieldBiBoard({
               onOpenGeoQuality={handleOpenGeoQuality}
               onMapLoadingChange={handleMapLoadingChange}
             />
+            <MemoDailyBunchBarChart rows={focusedDailyRows} loading={loading} series={selectedSeries} />
           </div>
-
-          <MemoDailyBunchBarChart rows={focusedDailyRows} loading={loading} series={selectedSeries} />
         </>
       ) : (
         <FieldTotalDataPanel model={model} selectedSection={totalSection} loading={loading} />
