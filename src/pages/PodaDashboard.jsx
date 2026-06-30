@@ -455,6 +455,38 @@ function dailyQualityValuesFromRow(row) {
   };
 }
 
+function seriesQuantityFromRow(row, seriesKey, values = {}) {
+  const directValue = Number(row?.[seriesKey]);
+  const totals = row?.qualidade || {};
+  const quantityBySeries = {
+    maduro: totals.plantaSemPodar,
+    passado: totals.cachoExposto,
+    verde: totals.podaMeiaCoroa,
+    avermelhado: totals.cachoPodrePlanta,
+    estrela: totals.podaMaiorUmParaUm,
+    talo: totals.bicoGaita,
+  };
+  const quantity = Number.isFinite(directValue)
+    ? directValue
+    : Number(quantityBySeries[seriesKey] || 0);
+  const base = Number(values.samples || row?.samples || totals.podaPlantasObservadas || totals.plantasObservadas || 0);
+
+  return {
+    quantity,
+    base,
+  };
+}
+
+function seriesPointTooltip(point, series) {
+  const quantityLabel = Number.isFinite(point.quantity)
+    ? ` | Qtd.: ${formatNumber(point.quantity)}`
+    : '';
+  const baseLabel = Number(point.base || 0) > 0
+    ? ` | Base: ${formatNumber(point.base)} plantas`
+    : '';
+  return `${point.label} - ${series.fullLabel}: ${formatPercent(point.value)} | Meta: ${formatPercent(series.target)}${quantityLabel}${baseLabel}`;
+}
+
 function primaryPodaSeries(quality) {
   return BI_SERIES
     .map((series) => {
@@ -681,12 +713,17 @@ function PodaTargetLineChart({
   const graphWidth = width - padding.left - padding.right;
   const valuesBySeries = selectedSeries.map((item) => ({
     series: item,
-    values: visibleRows.map((row, index) => ({
-      row,
-      key: `${item.key}-${rowKey(row, index)}`,
-      label: labelForRow(row),
-      value: Number(getValues(row)?.[item.key] || 0),
-    })),
+    values: visibleRows.map((row, index) => {
+      const values = getValues(row) || {};
+      const quantityInfo = seriesQuantityFromRow(row, item.key, values);
+      return {
+        row,
+        key: `${item.key}-${rowKey(row, index)}`,
+        label: labelForRow(row),
+        value: Number(values[item.key] || 0),
+        ...quantityInfo,
+      };
+    }),
   }));
   const maxValue = Math.max(
     ...selectedSeries.map((item) => Number(item.target || 0) * 1.45),
@@ -782,7 +819,7 @@ function PodaTargetLineChart({
                           className={`field-line-point ${overTarget ? 'is-over-target' : 'is-under-target'}`}
                           style={{ fill: group.series.color }}
                         >
-                          <title>{`${point.label} - ${group.series.fullLabel}: ${formatPercent(point.value)} | Meta: ${formatPercent(group.series.target)}`}</title>
+                          <title>{seriesPointTooltip(point, group.series)}</title>
                         </circle>
                         {!isMultiSeries ? (
                           <text
