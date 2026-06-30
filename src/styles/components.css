@@ -2452,6 +2452,10 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
   min-height: 192px !important;
 }
 
+.field-bi-evolution-panel .field-line-single-bars-compact {
+  min-height: 0 !important;
+}
+
 .field-bi-evolution-panel .chart-axis-text,
 .field-bi-evolution-panel .field-target-label {
   font-size: 9px;
@@ -2673,6 +2677,119 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
   font-weight: 800;
   line-height: 1.05;
   text-align: center;
+}
+
+.field-line-single-bars-compact {
+  gap: 6px;
+  padding: 7px;
+}
+
+.field-line-single-bars-compact .field-line-single-head {
+  padding-bottom: 5px;
+}
+
+.field-line-single-compact-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 6px;
+}
+
+.field-line-single-compact-item {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 6px 7px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.field-line-single-compact-item.is-over-target {
+  border-color: rgba(239, 68, 68, 0.24);
+  background: linear-gradient(180deg, rgba(254, 242, 242, 0.68), #fff);
+}
+
+.field-line-single-compact-top {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.field-line-single-compact-top span {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-primary);
+  font-size: 0.6rem;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.field-line-single-compact-top span i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+
+.field-line-single-compact-top strong {
+  color: var(--green-institutional);
+  font-size: 0.68rem;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.field-line-single-compact-item.is-over-target .field-line-single-compact-top strong {
+  color: var(--status-danger);
+}
+
+.field-line-single-compact-top strong em {
+  font-style: normal;
+}
+
+.field-line-single-mini-track {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.9);
+}
+
+.field-line-single-mini-track i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  min-width: 0;
+  border-radius: inherit;
+}
+
+.field-line-single-mini-track span {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 2px;
+  z-index: 2;
+  border-radius: 999px;
+  background: var(--orange-institutional);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9);
+}
+
+.field-line-single-compact-item small {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 0.52rem;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .field-cross-label {

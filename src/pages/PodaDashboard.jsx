@@ -777,13 +777,17 @@ function PodaTargetLineChart({
       .map((group) => ({ series: group.series, point: group.points[0] }))
       .filter((item) => item.point)
     : [];
-  const singleBarHeight = Math.max(chartHeight - 62, 108);
   const singleScaleMax = Math.max(
     ...singlePointGroups.map(({ series: item, point }) => Math.max(Number(point.value || 0), Number(item.target || 0)) * 1.18),
     maxTargetValue * 1.35,
     3
   );
-  const singleBarY = (value) => 18 + singleBarHeight - (Math.min(Math.max(Number(value || 0), 0), singleScaleMax) / singleScaleMax) * singleBarHeight;
+  const singleBarWidth = (value) => {
+    const numericValue = Math.max(Number(value || 0), 0);
+    if (!numericValue) return '0%';
+    return `${Math.max(3, Math.min(100, (numericValue / singleScaleMax) * 100))}%`;
+  };
+  const singleTargetLeft = (value) => `${Math.min(100, (Math.max(Number(value || 0), 0) / singleScaleMax) * 100)}%`;
 
   return (
     <section className={`field-bi-panel field-poda-line-panel ${className}`.trim()}>
@@ -811,35 +815,33 @@ function PodaTargetLineChart({
       ) : (
         <div className="field-bi-week-scroll">
           {singlePointGroups.length ? (
-            <div className="field-line-single-bars" style={{ minHeight: chartHeight }}>
+            <div className="field-line-single-bars field-line-single-bars-compact">
               <div className="field-line-single-head">
                 <span>Recorte filtrado</span>
                 <strong>{labelForRow(visibleRows[0])}</strong>
               </div>
-              <div className="field-line-single-bar-grid">
+              <div className="field-line-single-compact-grid">
                 {singlePointGroups.map(({ series: item, point }) => {
                   const overTarget = Number(point.value || 0) > Number(item.target || 0);
-                  const barTop = singleBarY(point.value);
-                  const targetY = singleBarY(item.target);
-                  const barHeight = Math.max(18 + singleBarHeight - barTop, 3);
                   return (
                     <div
-                      className={`field-line-single-bar ${overTarget ? 'is-over-target' : 'is-within-target'}`.trim()}
+                      className={`field-line-single-compact-item ${overTarget ? 'is-over-target' : 'is-within-target'}`.trim()}
                       key={point.key}
                       title={seriesPointTooltip(point, item)}
                     >
-                      <strong>{formatPercent(point.value, 1)} <em>{overTarget ? '!' : '✓'}</em></strong>
-                      <div className="field-line-single-bar-plot" style={{ height: singleBarHeight + 24 }}>
-                        <span className="field-line-single-bar-target" style={{ top: targetY }} title={`Meta ${formatPercent(item.target)}`} />
+                      <div className="field-line-single-compact-top">
+                        <span><i style={{ background: item.color }} />{item.label}</span>
+                        <strong>{formatPercent(point.value, 1)} <em>{overTarget ? '!' : '✓'}</em></strong>
+                      </div>
+                      <div className="field-line-single-mini-track">
+                        <span style={{ left: singleTargetLeft(item.target) }} title={`Meta ${formatPercent(item.target)}`} />
                         <i
                           style={{
-                            top: barTop,
-                            height: barHeight,
+                            width: singleBarWidth(point.value),
                             background: item.color,
                           }}
                         />
                       </div>
-                      <span>{item.label}</span>
                       <small>Meta {formatPercent(item.target, 1)} · Qtd. {formatNumber(point.quantity)}</small>
                     </div>
                   );
