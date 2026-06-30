@@ -1090,6 +1090,25 @@ function FieldBiMapPanel({
     if (!selectedParcelSummary) return '';
     return signalToneFor(Number(selectedParcelSummary.value || 0), activeSeries.target);
   }, [activeSeries.target, selectedParcelSummary]);
+  const selectedParcelMetrics = useMemo(() => {
+    if (!selectedParcelSummary) return [];
+    const totals = selectedParcelSummary.totals || aggregateRecords(selectedParcelSummary.records || []);
+    const values = qualityValuesFromRow({ qualidade: totals });
+
+    return BI_SERIES.map((series) => {
+      const { quantity, base } = seriesQuantityFromRow({ qualidade: totals }, series.key, values);
+      const value = Number(values[series.key] || 0);
+      const isInTarget = value <= Number(series.target || 0);
+
+      return {
+        ...series,
+        value,
+        quantity,
+        base,
+        isInTarget,
+      };
+    });
+  }, [selectedParcelSummary]);
   const handleParcelSelect = useCallback((summary) => {
     setSelectedParcelState({ mapKey, summary });
   }, [mapKey]);
@@ -1110,23 +1129,30 @@ function FieldBiMapPanel({
       </div>
 
       {selectedParcelSummary ? (
-        <div className="field-bi-map-signals field-bi-map-signals-selected" aria-label="Resumo da parcela selecionada">
-          <div className="signal-total">
+        <div className="field-bi-map-parcel-strip" aria-label="Resumo da parcela selecionada">
+          <div className="field-bi-map-parcel-id">
             <span>Parcela</span>
             <strong>{selectedParcelSummary.props?.farmName || selectedParcelSummary.props?.farmId || 'Fazenda'} / {selectedParcelSummary.shapeParcel || '--'}</strong>
+            <small>{formatNumber(selectedParcelSummary.records?.length || 0)} coleta(s) · {selectedParcelDateRange}</small>
           </div>
-          <div className={`signal-${selectedParcelTone === 'critical' ? 'critical' : selectedParcelTone === 'warning' ? 'warning' : 'ok'}`}>
-            <i />
-            <span>{activeSeries.fullLabel}</span>
-            <strong>{formatPercent(selectedParcelSummary.value || 0)} · meta {formatPercent(activeSeries.target)}</strong>
-          </div>
-          <div className="signal-total">
-            <span>Coletas</span>
-            <strong>{formatNumber(selectedParcelSummary.records?.length || 0)}</strong>
-          </div>
-          <div className="signal-total">
-            <span>Período</span>
-            <strong>{selectedParcelDateRange}</strong>
+          <div className="field-bi-map-parcel-metrics">
+            {selectedParcelMetrics.map((metric) => (
+              <div
+                key={metric.key}
+                title={`${metric.fullLabel}: ${formatPercent(metric.value, 2)} | ${formatNumber(metric.quantity)} ocorrência(s) em ${formatNumber(metric.base)} planta(s) | Meta ${formatPercent(metric.target)}`}
+                className={[
+                  'field-bi-map-parcel-metric',
+                  metric.key === activeSeries.key ? 'is-active' : '',
+                  metric.isInTarget ? 'is-in-target' : 'is-out-target',
+                  selectedParcelTone ? `tone-${selectedParcelTone}` : '',
+                ].filter(Boolean).join(' ')}
+                style={{ '--metric-color': metric.color }}
+              >
+                <span>{metric.label}</span>
+                <strong>{formatPercent(metric.value, 1)} {metric.isInTarget ? '✓' : '!'}</strong>
+                <small>{formatNumber(metric.quantity)}/{formatNumber(metric.base)}</small>
+              </div>
+            ))}
           </div>
         </div>
       ) : (
