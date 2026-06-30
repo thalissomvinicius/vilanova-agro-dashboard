@@ -593,11 +593,41 @@ begin
       rows_json,
       imported_at,
       updated_at
-    from public.cqo_poda_import_snapshots
+    from (
+      select distinct on (
+        coalesce(nullif(source_file, ''), import_key),
+        coalesce(nullif(source_sheet, ''), 'poda')
+      )
+        import_key,
+        fonte,
+        source_file,
+        source_path,
+        source_sheet,
+        file_last_write_time,
+        total_rows,
+        columns_json,
+        rows_json,
+        imported_at,
+        updated_at
+      from public.cqo_poda_import_snapshots
+      order by
+        coalesce(nullif(source_file, ''), import_key),
+        coalesce(nullif(source_sheet, ''), 'poda'),
+        greatest(
+          coalesce(updated_at, '-infinity'::timestamptz),
+          coalesce(file_last_write_time, '-infinity'::timestamptz),
+          coalesce(imported_at, '-infinity'::timestamptz)
+        ) desc,
+        total_rows desc
+      limit 500
+    ) latest_poda
     order by
-      updated_at desc nulls last,
-      imported_at desc nulls last
-    limit 20
+      greatest(
+        coalesce(updated_at, '-infinity'::timestamptz),
+        coalesce(file_last_write_time, '-infinity'::timestamptz),
+        coalesce(imported_at, '-infinity'::timestamptz)
+      ) desc,
+      total_rows desc
   ) row_data;
 
   return jsonb_build_object(
