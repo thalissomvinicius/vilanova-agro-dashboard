@@ -600,8 +600,11 @@ function signalToneFor(value, target) {
   return 'critical';
 }
 
-function buildParcelSignalSummary(records, series, parcelFeatures = []) {
+function buildParcelSignalSummary(records, series, parcelFeatures = [], quantitySeries = null) {
   const selectedSeries = series || BI_SERIES[1];
+  const quantitySeriesList = Array.isArray(quantitySeries) && quantitySeries.length
+    ? quantitySeries
+    : [selectedSeries];
   const approvedRecords = records
     .filter((record) => record.type === 'poda' && reviewState(record) === 'approved');
   const buckets = new Map();
@@ -651,7 +654,12 @@ function buildParcelSignalSummary(records, series, parcelFeatures = []) {
 
   const totals = approvedRecords.length ? aggregateRecords(approvedRecords) : null;
   const totalValues = qualityValuesFromRow({ qualidade: totals || {} });
-  const totalQuantity = seriesQuantityFromRow({ qualidade: totals || {} }, selectedSeries.key, totalValues);
+  const totalQuantity = quantitySeriesList.reduce((acc, item) => {
+    const seriesTotal = seriesQuantityFromRow({ qualidade: totals || {} }, item.key, totalValues);
+    acc.quantity += Number(seriesTotal.quantity || 0);
+    acc.base = Math.max(acc.base, Number(seriesTotal.base || 0));
+    return acc;
+  }, { quantity: 0, base: 0 });
 
   return rows.reduce((acc, row) => {
     acc.total += 1;
@@ -1140,10 +1148,15 @@ function FieldBiMapPanel({
   records,
   loading = false,
   mapSeries,
+  summarySeries,
   onOpenGeoQuality,
   onMapLoadingChange,
 }) {
   const activeSeries = mapSeries || BI_SERIES[1];
+  const activeSummarySeries = useMemo(() => (
+    Array.isArray(summarySeries) && summarySeries.length ? summarySeries : [activeSeries]
+  ), [activeSeries, summarySeries]);
+  const isAllSummary = activeSummarySeries.length > 1;
   const [selectedParcelState, setSelectedParcelState] = useState({ mapKey: '', summary: null });
   const [parcelGeoJson, setParcelGeoJson] = useState(null);
   const mapMetricId = mapMetricIdForSeries(activeSeries);
@@ -1155,8 +1168,8 @@ function FieldBiMapPanel({
     )) || []
   ), [farmFilterKey, parcelGeoJson]);
   const signalSummary = useMemo(
-    () => buildParcelSignalSummary(records, activeSeries, filteredParcelFeatures),
-    [records, activeSeries, filteredParcelFeatures]
+    () => buildParcelSignalSummary(records, activeSeries, filteredParcelFeatures, activeSummarySeries),
+    [records, activeSeries, filteredParcelFeatures, activeSummarySeries]
   );
   const mapKey = [
     'poda-inline-map',
@@ -1225,7 +1238,10 @@ function FieldBiMapPanel({
       <div className="field-bi-map-head">
         <div>
           <h3>Mapa das parcelas</h3>
-          <span>Semáforo por {activeSeries.fullLabel.toLowerCase()}</span>
+          <span>
+            Semáforo por {activeSeries.fullLabel.toLowerCase()}
+            {isAllSummary ? ' · resumo de todos os indicadores' : ''}
+          </span>
         </div>
         {onOpenGeoQuality ? (
           <button type="button" onClick={onOpenGeoQuality}>
@@ -1295,7 +1311,7 @@ function FieldBiMapPanel({
           <div className="signal-data signal-found">
             <span>Encontrado</span>
             <strong>{formatNumber(signalSummary.quantity)}</strong>
-            <small>{activeSeries.label.replace('%', '').trim()}</small>
+            <small>{isAllSummary ? 'todos indicadores' : activeSeries.label.replace('%', '').trim()}</small>
           </div>
           <div className="signal-data">
             <span>Coletas</span>
@@ -1910,6 +1926,7 @@ function FieldBiBoard({
               records={focusedRecords}
               loading={loading}
               mapSeries={mapSeries}
+              summarySeries={selectedSeries}
               onOpenGeoQuality={handleOpenGeoQuality}
               onMapLoadingChange={handleMapLoadingChange}
             />
