@@ -762,6 +762,11 @@ function PodaTargetLineChart({
   const hasPoints = pointGroups.some((group) => group.points.length);
   const greenBandY = yFor(minTargetValue);
   const warningBandY = yFor(warningLimit);
+  const singlePointGroups = hasPoints && visibleRows.length === 1
+    ? pointGroups
+      .map((group) => ({ series: group.series, point: group.points[0] }))
+      .filter((item) => item.point)
+    : [];
 
   return (
     <section className={`field-bi-panel field-poda-line-panel ${className}`.trim()}>
@@ -788,7 +793,35 @@ function PodaTargetLineChart({
         <div className="skeleton-chart" style={{ height: chartHeight }} />
       ) : (
         <div className="field-bi-week-scroll">
-          {hasPoints ? (
+          {singlePointGroups.length ? (
+            <div className="field-line-single-snapshot" style={{ minHeight: chartHeight }}>
+              <div className="field-line-single-head">
+                <span>Recorte filtrado</span>
+                <strong>{labelForRow(visibleRows[0])}</strong>
+              </div>
+              <div className="field-line-single-grid">
+                {singlePointGroups.map(({ series: item, point }) => {
+                  const overTarget = point.value > Number(item.target || 0);
+                  return (
+                    <div
+                      className={`field-line-single-card ${overTarget ? 'is-over-target' : 'is-within-target'}`.trim()}
+                      key={point.key}
+                      title={seriesPointTooltip(point, item)}
+                    >
+                      <i style={{ background: item.color }} />
+                      <span>{item.fullLabel}</span>
+                      <strong>{formatPercent(point.value)}</strong>
+                      <small>Meta {formatPercent(item.target)} · {overTarget ? 'fora' : 'dentro'} da meta</small>
+                      <em>
+                        Qtd. {formatNumber(point.quantity)}
+                        {Number(point.base || 0) > 0 ? ` / ${formatNumber(point.base)} plantas` : ''}
+                      </em>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : hasPoints ? (
             <svg className="field-bi-week-chart" viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight}>
               <rect
                 x={padding.left}
