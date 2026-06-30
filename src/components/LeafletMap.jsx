@@ -1410,6 +1410,7 @@ export default function LeafletMap({
   presentationMode = false,
   initialOperation = 'perdas',
   initialMetricId = '',
+  onParcelSelect,
 }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -1846,7 +1847,11 @@ export default function LeafletMap({
 
           layer.on('click', () => {
             const key = parcelHeatKey(props.farmId, shapeParcel);
-            setSelectedParcelKey(key);
+            setSelectedParcelKey((current) => {
+              const nextKey = current === key ? null : key;
+              onParcelSelect?.(nextKey ? parcelSummaryByKey.get(key) || summary || null : null);
+              return nextKey;
+            });
           });
 
           layer.on('mouseover', () => {
@@ -2127,7 +2132,7 @@ export default function LeafletMap({
       window.clearTimeout(settleTimer);
       window.clearTimeout(finishTimer);
     };
-  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, selectedRiskMetric, selectedOperation, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, parcelGeoStatus, filteredParcelFeatures, parcelSummaryByKey, selectedParcelSummary, presentationMode]);
+  }, [theme, farmFilter, areaFilter, mapLayer, baseLayer, selectedRiskMetric, selectedOperation, geoRecords, trackPoints, occurrencePoints, allGpsPoints, heatPoints, heatByParcel, parcelGeoJson, parcelGeoStatus, filteredParcelFeatures, parcelSummaryByKey, selectedParcelSummary, presentationMode, onParcelSelect]);
 
   useEffect(() => {
     const map = mapInstanceRef.current;

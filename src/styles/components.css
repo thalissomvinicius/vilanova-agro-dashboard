@@ -2360,6 +2360,22 @@ button.field-bi-farm-row.is-active strong {
   opacity: 0.95;
 }
 
+.field-target-band {
+  pointer-events: none;
+}
+
+.field-target-band-ok {
+  fill: rgba(34, 197, 94, 0.07);
+}
+
+.field-target-band-warning {
+  fill: rgba(242, 140, 0, 0.06);
+}
+
+.field-target-band-critical {
+  fill: rgba(239, 68, 68, 0.035);
+}
+
 .field-target-label {
   fill: var(--orange-institutional);
   font-size: 0.72rem;
@@ -2393,6 +2409,11 @@ button.field-bi-farm-row.is-active strong {
   fill: var(--status-danger);
 }
 
+.field-line-point.is-clipped {
+  stroke-width: 3.2;
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.28));
+}
+
 .field-line-value {
   fill: var(--text-primary);
   font-size: 0.72rem;
@@ -2405,6 +2426,10 @@ button.field-bi-farm-row.is-active strong {
 .field-line-value.is-over-target,
 .field-cross-label {
   fill: var(--status-danger);
+}
+
+.field-line-value.is-clipped-label {
+  font-size: 0.62rem;
 }
 
 .field-cross-label {
@@ -2696,6 +2721,17 @@ button.field-bi-evaluator-danger.is-active {
   grid-template-areas:
     "label"
     "value";
+}
+
+.field-bi-map-signals-selected div {
+  min-height: 54px;
+}
+
+.field-bi-map-signals-selected .signal-total strong,
+.field-bi-map-signals-selected div strong {
+  font-size: 0.82rem;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
 }
 
 .field-bi-map-worst {

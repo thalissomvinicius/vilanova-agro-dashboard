@@ -725,18 +725,31 @@ function PodaTargetLineChart({
       };
     }),
   }));
-  const maxValue = Math.max(
+  const rawMaxValue = Math.max(
     ...selectedSeries.map((item) => Number(item.target || 0) * 1.45),
     ...valuesBySeries.flatMap((group) => group.values.map((item) => item.value * 1.18)),
     1
   );
+  const targetValues = selectedSeries.map((item) => Number(item.target || 0)).filter((value) => value > 0);
+  const minTargetValue = targetValues.length ? Math.min(...targetValues) : 1;
+  const maxTargetValue = targetValues.length ? Math.max(...targetValues) : 2;
+  const warningLimit = isMultiSeries ? maxTargetValue : maxTargetValue * 1.5;
+  const softScaleMax = Math.max(maxTargetValue * 4, warningLimit * 1.35, 5);
+  const hasClippedValues = rawMaxValue > softScaleMax * 1.12;
+  const maxValue = hasClippedValues ? softScaleMax : rawMaxValue;
   const yFor = (value) => padding.top + graphHeight - (Math.min(Math.max(value, 0), maxValue) / maxValue) * graphHeight;
   const xFor = (index) => {
     if (visibleRows.length <= 1) return padding.left + graphWidth / 2;
     return padding.left + (index / (visibleRows.length - 1)) * graphWidth;
   };
   const pointGroups = valuesBySeries.map((group) => {
-    const points = group.values.map((item, index) => ({ ...item, x: xFor(index), y: yFor(item.value) }));
+    const points = group.values.map((item, index) => ({
+      ...item,
+      x: xFor(index),
+      y: yFor(item.value),
+      clipped: item.value > maxValue,
+      scaleMax: maxValue,
+    }));
     const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
     const areaPath = points.length > 1
       ? `${linePath} L ${points[points.length - 1].x} ${padding.top + graphHeight} L ${points[0].x} ${padding.top + graphHeight} Z`
@@ -744,9 +757,11 @@ function PodaTargetLineChart({
     return { ...group, points, linePath, areaPath };
   });
   const targetLines = selectedSeries.map((item) => ({ ...item, y: yFor(Number(item.target || 0)) }));
-  const gridValues = Array.from(new Set([0, ...selectedSeries.map((item) => Number(item.target || 0)), Math.ceil(maxValue * 10) / 10]))
+  const gridValues = Array.from(new Set([0, minTargetValue, warningLimit, Math.ceil(maxValue * 10) / 10]))
     .sort((a, b) => a - b);
   const hasPoints = pointGroups.some((group) => group.points.length);
+  const greenBandY = yFor(minTargetValue);
+  const warningBandY = yFor(warningLimit);
 
   return (
     <section className={`field-bi-panel field-poda-line-panel ${className}`.trim()}>
@@ -775,6 +790,27 @@ function PodaTargetLineChart({
         <div className="field-bi-week-scroll">
           {hasPoints ? (
             <svg className="field-bi-week-chart" viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight}>
+              <rect
+                x={padding.left}
+                y={warningBandY}
+                width={graphWidth}
+                height={Math.max(greenBandY - warningBandY, 0)}
+                className="field-target-band field-target-band-warning"
+              />
+              <rect
+                x={padding.left}
+                y={greenBandY}
+                width={graphWidth}
+                height={Math.max(padding.top + graphHeight - greenBandY, 0)}
+                className="field-target-band field-target-band-ok"
+              />
+              <rect
+                x={padding.left}
+                y={padding.top}
+                width={graphWidth}
+                height={Math.max(warningBandY - padding.top, 0)}
+                className="field-target-band field-target-band-critical"
+              />
               {gridValues.map((gridValue) => {
                 const y = yFor(gridValue);
                 return (
@@ -816,12 +852,21 @@ function PodaTargetLineChart({
                           cx={point.x}
                           cy={point.y}
                           r={isMultiSeries ? 4.3 : 5.5}
-                          className={`field-line-point ${overTarget ? 'is-over-target' : 'is-under-target'}`}
+                          className={`field-line-point ${overTarget ? 'is-over-target' : 'is-under-target'} ${point.clipped ? 'is-clipped' : ''}`.trim()}
                           style={{ fill: group.series.color }}
                         >
                           <title>{seriesPointTooltip(point, group.series)}</title>
                         </circle>
-                        {!isMultiSeries ? (
+                        {point.clipped ? (
+                          <text
+                            x={point.x}
+                            y={point.y - 12}
+                            textAnchor="middle"
+                            className="field-line-value is-over-target is-clipped-label"
+                          >
+                            {formatPercent(point.value, 1)}
+                          </text>
+                        ) : !isMultiSeries ? (
                           <text
                             x={point.x}
                             y={point.y - 11}
@@ -958,6 +1003,7 @@ function FieldBiMapPanel({
   onOpenGeoQuality,
 }) {
   const activeSeries = mapSeries || BI_SERIES[1];
+  const [selectedParcelState, setSelectedParcelState] = useState({ mapKey: '', summary: null });
   const mapMetricId = mapMetricIdForSeries(activeSeries);
   const signalSummary = useMemo(
     () => buildParcelSignalSummary(records, activeSeries),
@@ -971,6 +1017,18 @@ function FieldBiMapPanel({
     mapProps?.dateFrom || 'start',
     mapProps?.dateTo || 'end',
   ].join('-');
+  const selectedParcelSummary = selectedParcelState.mapKey === mapKey ? selectedParcelState.summary : null;
+  const selectedParcelDateRange = useMemo(() => {
+    if (!selectedParcelSummary) return '';
+    const firstDate = formatDateBr(selectedParcelSummary.firstDate) || selectedParcelSummary.firstDate || '';
+    const lastDate = formatDateBr(selectedParcelSummary.lastDate) || selectedParcelSummary.lastDate || '';
+    if (firstDate && lastDate && firstDate !== lastDate) return `${firstDate} a ${lastDate}`;
+    return firstDate || lastDate || 'Sem data';
+  }, [selectedParcelSummary]);
+  const selectedParcelTone = useMemo(() => {
+    if (!selectedParcelSummary) return '';
+    return signalToneFor(Number(selectedParcelSummary.value || 0), activeSeries.target);
+  }, [activeSeries.target, selectedParcelSummary]);
 
   return (
     <section className="field-bi-panel field-bi-map-panel">
@@ -987,27 +1045,49 @@ function FieldBiMapPanel({
         ) : null}
       </div>
 
-      <div className="field-bi-map-signals" aria-label="Resumo do semáforo das parcelas">
-        <div className="signal-ok">
-          <i />
-          <span>Dentro da meta</span>
-          <strong>{formatNumber(signalSummary.ok)}</strong>
+      {selectedParcelSummary ? (
+        <div className="field-bi-map-signals field-bi-map-signals-selected" aria-label="Resumo da parcela selecionada">
+          <div className="signal-total">
+            <span>Parcela</span>
+            <strong>{selectedParcelSummary.props?.farmName || selectedParcelSummary.props?.farmId || 'Fazenda'} / {selectedParcelSummary.shapeParcel || '--'}</strong>
+          </div>
+          <div className={`signal-${selectedParcelTone === 'critical' ? 'critical' : selectedParcelTone === 'warning' ? 'warning' : 'ok'}`}>
+            <i />
+            <span>{activeSeries.fullLabel}</span>
+            <strong>{formatPercent(selectedParcelSummary.value || 0)} · meta {formatPercent(activeSeries.target)}</strong>
+          </div>
+          <div className="signal-total">
+            <span>Coletas</span>
+            <strong>{formatNumber(selectedParcelSummary.records?.length || 0)}</strong>
+          </div>
+          <div className="signal-total">
+            <span>Período</span>
+            <strong>{selectedParcelDateRange}</strong>
+          </div>
         </div>
-        <div className="signal-warning">
-          <i />
-          <span>Atenção</span>
-          <strong>{formatNumber(signalSummary.warning)}</strong>
+      ) : (
+        <div className="field-bi-map-signals" aria-label="Resumo do semáforo das parcelas">
+          <div className="signal-ok">
+            <i />
+            <span>Dentro da meta</span>
+            <strong>{formatNumber(signalSummary.ok)}</strong>
+          </div>
+          <div className="signal-warning">
+            <i />
+            <span>Atenção</span>
+            <strong>{formatNumber(signalSummary.warning)}</strong>
+          </div>
+          <div className="signal-critical">
+            <i />
+            <span>Crítico</span>
+            <strong>{formatNumber(signalSummary.critical)}</strong>
+          </div>
+          <div className="signal-total">
+            <span>Parcelas</span>
+            <strong>{formatNumber(signalSummary.total)}</strong>
+          </div>
         </div>
-        <div className="signal-critical">
-          <i />
-          <span>Crítico</span>
-          <strong>{formatNumber(signalSummary.critical)}</strong>
-        </div>
-        <div className="signal-total">
-          <span>Parcelas</span>
-          <strong>{formatNumber(signalSummary.total)}</strong>
-        </div>
-      </div>
+      )}
 
       <div className="field-bi-inline-map-frame">
         {loading ? (
@@ -1032,6 +1112,7 @@ function FieldBiMapPanel({
               areaFilter="poda"
               initialOperation="poda"
               initialMetricId={mapMetricId}
+              onParcelSelect={(summary) => setSelectedParcelState({ mapKey, summary })}
             />
           </Suspense>
         )}
