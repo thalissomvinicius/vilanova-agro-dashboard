@@ -468,6 +468,22 @@ function recordFarmLabel(record) {
   return record.farm || 'Sem fazenda';
 }
 
+function collectionDateLabel(record) {
+  const date = resolveRecordDate(record);
+  const dateText = date
+    ? new Intl.DateTimeFormat('pt-BR').format(date)
+    : record?.date || '--';
+  const timeText = record?.time && record.time !== '--' ? ` ${record.time}` : '';
+  return `${dateText}${timeText}`;
+}
+
+function collectionGpsLabel(record) {
+  if (!record?.gpsApplicable) return 'N/A';
+  const points = (record?.gpsOccurrences?.length || 0) + (record?.gpsTrack?.length || 0);
+  if (points > 0) return `${formatNumber(points)} ponto(s)`;
+  return record?.gps ? '1 ponto' : 'Sem GPS';
+}
+
 function comparableFarmName(value) {
   return String(value || '')
     .normalize('NFD')
@@ -615,7 +631,7 @@ function PodaLineMetricSelector({ selectedKey, activeSeries, onSelect }) {
           onClick={() => onSelect(series.key)}
         >
           <i style={{ background: series.color }} />
-          {series.label}
+          <span>{series.fullLabel}</span>
         </button>
       ))}
     </div>
@@ -1050,6 +1066,8 @@ function FieldTotalDataPanel({ model, selectedSection, loading = false }) {
   const groups = buildTotalMetricGroups(model)
     .filter((group) => selectedSection === 'todos' || group.id === selectedSection);
   const farmRows = model.farmRows.slice(0, 8);
+  const collectionRows = [...(model.podaRecords || model.records || [])]
+    .sort((a, b) => (resolveRecordDate(b)?.getTime?.() || 0) - (resolveRecordDate(a)?.getTime?.() || 0));
 
   return (
     <div className={`field-total-panel ${groups.length === 1 ? 'is-single-section' : ''}`}>
@@ -1102,6 +1120,76 @@ function FieldTotalDataPanel({ model, selectedSection, loading = false }) {
               {!farmRows.length ? (
                 <tr>
                   <td colSpan="7">Sem fazendas no filtro atual.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="field-total-section field-total-table-section field-total-collection-section">
+        <div className="field-total-section-head">
+          <div>
+            <h3>Coletas detalhadas</h3>
+            <span>Todas as fichas de poda carregadas no filtro atual, com origem, status e indicadores coletados.</span>
+          </div>
+          <strong>{formatNumber(collectionRows.length)} ficha(s)</strong>
+        </div>
+        <div className="field-total-table-wrap">
+          <table className="field-total-table field-total-collection-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Fonte</th>
+                <th>Status</th>
+                <th>Fazenda</th>
+                <th>Parcela</th>
+                <th>Ciclo</th>
+                <th>Avaliador</th>
+                <th>Fiscal equipe</th>
+                <th>Linhas</th>
+                <th>Plantas</th>
+                <th>Sem podar</th>
+                <th>Cacho exposto</th>
+                <th>Meia coroa</th>
+                <th>Poda &gt; 1:1</th>
+                <th>Bico gaita</th>
+                <th>Cacho podre</th>
+                <th>Folha mamando</th>
+                <th>Palha M.E.</th>
+                <th>GPS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {collectionRows.map((record) => {
+                const totals = record.totals || {};
+                return (
+                  <tr key={record.id}>
+                    <td>{collectionDateLabel(record)}</td>
+                    <td>{record.sourceLabel || record.source || '--'}</td>
+                    <td>{record.status || '--'}</td>
+                    <td>{record.farm || '--'}</td>
+                    <td>{record.parcel || '--'}</td>
+                    <td>{record.cycle || '--'}</td>
+                    <td>{record.evaluator || '--'}</td>
+                    <td>{record.fiscal || '--'}</td>
+                    <td>{formatNumber(totals.linhas)}</td>
+                    <td>{formatNumber(totals.plantasObservadas)}</td>
+                    <td>{formatNumber(totals.plantaSemPodar)}</td>
+                    <td>{formatNumber(totals.cachoExposto)}</td>
+                    <td>{formatNumber(totals.podaMeiaCoroa)}</td>
+                    <td>{formatNumber(totals.podaMaiorUmParaUm)}</td>
+                    <td>{formatNumber(totals.bicoGaita)}</td>
+                    <td>{formatNumber(totals.cachoPodrePlanta)}</td>
+                    <td>{formatNumber(totals.folhaMamando)}</td>
+                    <td>{formatNumber(totals.palhaMalEmpilhada)}</td>
+                    <td>{collectionGpsLabel(record)}</td>
+                  </tr>
+                );
+              })}
+              {!collectionRows.length ? (
+                <tr>
+                  <td colSpan="19">Sem coletas de poda no filtro atual.</td>
                 </tr>
               ) : null}
             </tbody>
