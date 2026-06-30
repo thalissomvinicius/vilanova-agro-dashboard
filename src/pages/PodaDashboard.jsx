@@ -620,40 +620,46 @@ function FieldBiFarmChart({ rows, loading = false, selectedLabel = '', onSelect 
       {loading ? (
         <div className="skeleton-chart" style={{ height: 180 }} />
       ) : (
-        <div className="field-bi-farm-chart">
+        <div className="field-bi-farm-table">
+          <div className="field-bi-farm-table-head">
+            <span>Fazenda</span>
+            {BI_SERIES.map((item) => (
+              <span key={item.key} style={{ color: item.color }}>{item.label}</span>
+            ))}
+          </div>
           {visibleRows.map((row) => {
             const values = qualityValuesFromRow(row);
             const active = selectedLabel === row.label;
             return (
               <button
                 type="button"
-                className={`field-bi-farm-row ${active ? 'is-active' : ''}`.trim()}
+                className={`field-bi-farm-table-row ${active ? 'is-active' : ''}`.trim()}
                 key={row.label}
                 onClick={() => onSelect?.(row)}
                 aria-pressed={active}
               >
-                <strong>{row.label}</strong>
-                <div className="field-bi-farm-bars">
-                  {BI_SERIES.map((item) => {
-                    const value = values[item.key];
-                    const insideTarget = Number(value || 0) <= Number(item.target || 0);
-                    return (
-                      <div className={`field-bi-farm-bar-line ${insideTarget ? 'is-in-target' : 'is-out-target'}`} key={item.key}>
-                        <span title={`${row.label} - ${item.fullLabel}: ${formatPercent(value)} | Meta <= ${formatPercent(item.target)}`}>
-                          <b style={{ width: `${Math.min(value, 100)}%`, background: item.color }} />
-                        </span>
-                        <small title={insideTarget ? 'Dentro da meta' : 'Fora da meta'}>{formatPercent(value, 1)}</small>
-                      </div>
-                    );
-                  })}
-                </div>
+                <strong className="field-bi-farm-name">{row.label}</strong>
+                {BI_SERIES.map((item) => {
+                  const value = values[item.key];
+                  const insideTarget = Number(value || 0) <= Number(item.target || 0);
+                  return (
+                    <span
+                      className={`field-bi-farm-cell ${insideTarget ? 'is-in-target' : 'is-out-target'}`}
+                      key={item.key}
+                      title={`${row.label} - ${item.fullLabel}: ${formatPercent(value)} | Meta <= ${formatPercent(item.target)}`}
+                      style={{ '--metric-color': item.color }}
+                    >
+                      <b>{formatPercent(value, 1)}</b>
+                      <em>{insideTarget ? '✓' : '!'}</em>
+                    </span>
+                  );
+                })}
               </button>
             );
           })}
           {!visibleRows.length && <div className="empty-panel smart-empty-panel"><strong>Sem dados de fazenda</strong><span>Troque o mês, ano ou fazenda para localizar coletas já sincronizadas.</span></div>}
         </div>
       )}
-      <div className="field-bi-axis"><span>0%</span><span>50%</span><span>100%</span></div>
     </section>
   );
 }
@@ -767,6 +773,13 @@ function PodaTargetLineChart({
       .map((group) => ({ series: group.series, point: group.points[0] }))
       .filter((item) => item.point)
     : [];
+  const singleBarHeight = Math.max(chartHeight - 62, 108);
+  const singleScaleMax = Math.max(
+    ...singlePointGroups.map(({ series: item, point }) => Math.max(Number(point.value || 0), Number(item.target || 0)) * 1.18),
+    maxTargetValue * 1.35,
+    3
+  );
+  const singleBarY = (value) => 18 + singleBarHeight - (Math.min(Math.max(Number(value || 0), 0), singleScaleMax) / singleScaleMax) * singleBarHeight;
 
   return (
     <section className={`field-bi-panel field-poda-line-panel ${className}`.trim()}>
@@ -794,28 +807,36 @@ function PodaTargetLineChart({
       ) : (
         <div className="field-bi-week-scroll">
           {singlePointGroups.length ? (
-            <div className="field-line-single-snapshot" style={{ minHeight: chartHeight }}>
+            <div className="field-line-single-bars" style={{ minHeight: chartHeight }}>
               <div className="field-line-single-head">
                 <span>Recorte filtrado</span>
                 <strong>{labelForRow(visibleRows[0])}</strong>
               </div>
-              <div className="field-line-single-grid">
+              <div className="field-line-single-bar-grid">
                 {singlePointGroups.map(({ series: item, point }) => {
-                  const overTarget = point.value > Number(item.target || 0);
+                  const overTarget = Number(point.value || 0) > Number(item.target || 0);
+                  const barTop = singleBarY(point.value);
+                  const targetY = singleBarY(item.target);
+                  const barHeight = Math.max(18 + singleBarHeight - barTop, 3);
                   return (
                     <div
-                      className={`field-line-single-card ${overTarget ? 'is-over-target' : 'is-within-target'}`.trim()}
+                      className={`field-line-single-bar ${overTarget ? 'is-over-target' : 'is-within-target'}`.trim()}
                       key={point.key}
                       title={seriesPointTooltip(point, item)}
                     >
-                      <i style={{ background: item.color }} />
-                      <span>{item.fullLabel}</span>
-                      <strong>{formatPercent(point.value)}</strong>
-                      <small>Meta {formatPercent(item.target)} · {overTarget ? 'fora' : 'dentro'} da meta</small>
-                      <em>
-                        Qtd. {formatNumber(point.quantity)}
-                        {Number(point.base || 0) > 0 ? ` / ${formatNumber(point.base)} plantas` : ''}
-                      </em>
+                      <strong>{formatPercent(point.value, 1)} <em>{overTarget ? '!' : '✓'}</em></strong>
+                      <div className="field-line-single-bar-plot" style={{ height: singleBarHeight + 24 }}>
+                        <span className="field-line-single-bar-target" style={{ top: targetY }} title={`Meta ${formatPercent(item.target)}`} />
+                        <i
+                          style={{
+                            top: barTop,
+                            height: barHeight,
+                            background: item.color,
+                          }}
+                        />
+                      </div>
+                      <span>{item.label}</span>
+                      <small>Meta {formatPercent(item.target, 1)} · Qtd. {formatNumber(point.quantity)}</small>
                     </div>
                   );
                 })}
