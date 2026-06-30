@@ -316,12 +316,15 @@ function buildDailyBunchRows(records) {
 
 function qualityTone(value, meta, goodWhen = 'low') {
   const numeric = Number(value || 0);
+  const target = Number(meta || 0);
   if (goodWhen === 'high') {
-    if (numeric >= meta) return { tone: 'green', color: 'var(--status-success)', status: 'Dentro da meta' };
+    if (numeric >= target) return { tone: 'green', color: 'var(--status-success)', status: 'Dentro da meta' };
+    if (numeric >= target * 0.85) return { tone: 'warning', color: 'var(--orange-institutional)', status: 'Atenção' };
     return { tone: 'danger', color: 'var(--status-danger)', status: 'Fora da meta' };
   }
 
-  if (numeric <= meta) return { tone: 'green', color: 'var(--status-success)', status: 'Dentro da meta' };
+  if (numeric <= target) return { tone: 'green', color: 'var(--status-success)', status: 'Dentro da meta' };
+  if (numeric <= target * 1.5) return { tone: 'warning', color: 'var(--orange-institutional)', status: 'Atenção' };
   return { tone: 'danger', color: 'var(--status-danger)', status: 'Fora da meta' };
 }
 
