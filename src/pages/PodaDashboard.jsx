@@ -1653,6 +1653,8 @@ function FieldBiBoard({
   dateTo,
   setDateFrom,
   setDateTo,
+  sourceFilter = 'all',
+  setSourceFilter,
   boardMode,
   setBoardMode,
   totalSection,
@@ -1868,6 +1870,43 @@ function FieldBiBoard({
         )}
       </div>
 
+      {presentationMode ? (
+        <div className="field-bi-presentation-filters" aria-label="Filtros da apresentação CQO Poda">
+          <label>
+            <span>Fonte</span>
+            <select
+              value={sourceFilter || 'all'}
+              onChange={(event) => setSourceFilter?.(event.target.value)}
+              disabled={!setSourceFilter}
+            >
+              <option value="all">App + Excel</option>
+              <option value="app">Só App</option>
+              <option value="excel">Só Excel</option>
+            </select>
+          </label>
+          <label>
+            <span>Data inicial</span>
+            <input
+              type="date"
+              value={dateFrom || ''}
+              max={dateTo || undefined}
+              onChange={(event) => setDateFrom?.(event.target.value)}
+              disabled={!setDateFrom}
+            />
+          </label>
+          <label>
+            <span>Data final</span>
+            <input
+              type="date"
+              value={dateTo || ''}
+              min={dateFrom || undefined}
+              onChange={(event) => setDateTo?.(event.target.value)}
+              disabled={!setDateTo}
+            />
+          </label>
+        </div>
+      ) : null}
+
       {!presentationMode ? (
         <div className="field-bi-control-bar">
           <div className="field-bi-mode-switch" role="group" aria-label="Modo de visualização CQO Poda">
@@ -2035,7 +2074,7 @@ function FieldGeoQualityOverlay({ mapProps, periodText, updateText, latestCollec
   );
 }
 
-export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, setDateFrom, setDateTo, searchTerm, lastSyncTime, onResetFilters, onClearFilter }) {
+export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', setSourceFilter, dateFrom, dateTo, setDateFrom, setDateTo, searchTerm, lastSyncTime, onResetFilters, onClearFilter }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
   const [geoQualityOpen, setGeoQualityOpen] = useState(false);
   const [geoQualityMapProps, setGeoQualityMapProps] = useState(null);
@@ -2170,6 +2209,8 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
     dateTo,
     setDateFrom,
     setDateTo,
+    sourceFilter,
+    setSourceFilter,
     boardMode,
     setBoardMode,
     totalSection,
@@ -2196,6 +2237,8 @@ export default function PodaDashboard({ theme, farmFilter, areaFilter = 'poda', 
     quality,
     setDateFrom,
     setDateTo,
+    sourceFilter,
+    setSourceFilter,
     totalSection,
     updateText,
     boardMode,

@@ -3987,6 +3987,59 @@ body.field-map-active {
   padding-top: 8px;
 }
 
+.field-bi-presentation-filters {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 7px 0 8px;
+  padding: 6px 8px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-sm);
+}
+
+.field-bi-presentation-filters label {
+  min-width: 148px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 7px;
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.field-bi-presentation-filters span {
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.field-bi-presentation-filters select,
+.field-bi-presentation-filters input {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.field-bi-presentation-filters label:first-child {
+  min-width: 168px;
+}
+
 .presentation-overlay .field-bi-kpi {
   min-height: 86px;
 }

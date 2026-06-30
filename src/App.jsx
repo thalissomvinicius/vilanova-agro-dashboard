@@ -715,6 +715,7 @@ export default function App() {
             cycleFilter={cycleFilter}
             evaluatorFilter={evaluatorFilter}
             sourceFilter={fieldSourceFilter}
+            setSourceFilter={setSourceFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
             setDateFrom={applyDateFrom}
