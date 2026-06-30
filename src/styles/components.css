@@ -2469,7 +2469,7 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 
 .field-target-line {
   stroke: var(--orange-institutional);
-  stroke-width: 1.35;
+  stroke-width: 1.1;
   stroke-dasharray: 8 7;
   opacity: 0.95;
 }
@@ -2507,14 +2507,14 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 
 .field-line-path {
   fill: none;
-  stroke-width: 2.05;
+  stroke-width: 1.55;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .field-line-point {
   stroke: var(--white);
-  stroke-width: 1.8;
+  stroke-width: 1.35;
   fill: var(--status-success);
   filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.18));
 }
@@ -2524,7 +2524,7 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 }
 
 .field-line-point.is-clipped {
-  stroke-width: 2.2;
+  stroke-width: 1.7;
   filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.28));
 }
 

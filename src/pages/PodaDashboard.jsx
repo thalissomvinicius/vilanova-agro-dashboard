@@ -911,7 +911,7 @@ function PodaTargetLineChart({
                         <circle
                           cx={point.x}
                           cy={point.y}
-                          r={isMultiSeries ? 3.4 : 4.4}
+                          r={isMultiSeries ? 3 : 4}
                           className={`field-line-point ${overTarget ? 'is-over-target' : 'is-under-target'} ${point.clipped ? 'is-clipped' : ''}`.trim()}
                           style={{ fill: group.series.color }}
                         >
