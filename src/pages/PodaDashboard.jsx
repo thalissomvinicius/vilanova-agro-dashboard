@@ -847,7 +847,9 @@ function PodaTargetLineChart({
       clipped: item.value > maxValue,
       scaleMax: maxValue,
     }));
-    const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+    const linePath = points.length === 1
+      ? `M ${Math.max(padding.left, points[0].x - 28)} ${points[0].y} L ${Math.min(width - padding.right, points[0].x + 28)} ${points[0].y}`
+      : points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
     const areaPath = points.length > 1
       ? `${linePath} L ${points[points.length - 1].x} ${padding.top + graphHeight} L ${points[0].x} ${padding.top + graphHeight} Z`
       : '';
@@ -859,22 +861,6 @@ function PodaTargetLineChart({
   const hasPoints = pointGroups.some((group) => group.points.length);
   const greenBandY = yFor(minTargetValue);
   const warningBandY = yFor(warningLimit);
-  const singlePointGroups = hasPoints && visibleRows.length === 1
-    ? pointGroups
-      .map((group) => ({ series: group.series, point: group.points[0] }))
-      .filter((item) => item.point)
-    : [];
-  const singleScaleMax = Math.max(
-    ...singlePointGroups.map(({ series: item, point }) => Math.max(Number(point.value || 0), Number(item.target || 0)) * 1.18),
-    maxTargetValue * 1.35,
-    3
-  );
-  const singleBarWidth = (value) => {
-    const numericValue = Math.max(Number(value || 0), 0);
-    if (!numericValue) return '0%';
-    return `${Math.max(3, Math.min(100, (numericValue / singleScaleMax) * 100))}%`;
-  };
-  const singleTargetLeft = (value) => `${Math.min(100, (Math.max(Number(value || 0), 0) / singleScaleMax) * 100)}%`;
   const handleHorizontalWheel = (event) => {
     const node = event.currentTarget;
     const maxScrollLeft = node.scrollWidth - node.clientWidth;
@@ -919,41 +905,7 @@ function PodaTargetLineChart({
         <div className="skeleton-chart" style={{ height: chartHeight }} />
       ) : (
         <div className="field-bi-week-scroll" onWheel={handleHorizontalWheel}>
-          {singlePointGroups.length ? (
-            <div className="field-line-single-bars field-line-single-bars-compact">
-              <div className="field-line-single-head">
-                <span>Recorte filtrado</span>
-                <strong>{labelForRow(visibleRows[0])}</strong>
-              </div>
-              <div className="field-line-single-compact-grid">
-                {singlePointGroups.map(({ series: item, point }) => {
-                  const overTarget = Number(point.value || 0) > Number(item.target || 0);
-                  return (
-                    <div
-                      className={`field-line-single-compact-item ${overTarget ? 'is-over-target' : 'is-within-target'}`.trim()}
-                      key={point.key}
-                      title={seriesPointTooltip(point, item)}
-                    >
-                      <div className="field-line-single-compact-top">
-                        <span><i style={{ background: item.color }} />{item.label}</span>
-                        <strong>{formatPercent(point.value, 1)} <em>{overTarget ? '!' : '✓'}</em></strong>
-                      </div>
-                      <div className="field-line-single-mini-track">
-                        <span style={{ left: singleTargetLeft(item.target) }} title={`Meta ${formatPercent(item.target)}`} />
-                        <i
-                          style={{
-                            width: singleBarWidth(point.value),
-                            background: item.color,
-                          }}
-                        />
-                      </div>
-                      <small>Meta {formatPercent(item.target, 1)} · Qtd. {formatNumber(point.quantity)}</small>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : hasPoints ? (
+          {hasPoints ? (
             <svg className="field-bi-week-chart" viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight}>
               <rect
                 x={padding.left}
