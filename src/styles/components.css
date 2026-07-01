@@ -2143,6 +2143,13 @@ button.field-bi-kpi-danger.is-active {
 
 .field-bi-farm-legacy-panel {
   grid-area: farm;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  align-content: stretch;
+}
+
+.field-bi-farm-legacy-panel h3 {
+  margin-bottom: 5px;
 }
 
 .field-bi-week-panel {
@@ -2150,17 +2157,22 @@ button.field-bi-kpi-danger.is-active {
 }
 
 .field-bi-farm-score-list {
+  min-height: 0;
+  height: 100%;
   display: grid;
-  gap: 6px;
-  margin-top: 7px;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 5px;
+  margin-top: 5px;
+  overflow: hidden;
 }
 
 .field-bi-farm-score-row {
+  min-height: 0;
   display: grid;
-  grid-template-columns: minmax(82px, 0.32fr) minmax(0, 1fr);
+  grid-template-columns: minmax(76px, 0.27fr) minmax(0, 1fr);
   align-items: stretch;
-  gap: 7px;
-  padding: 5px;
+  gap: 5px;
+  padding: 4px;
   border: 1px solid rgba(226, 232, 240, 0.92);
   border-radius: 8px;
   background: linear-gradient(180deg, #fff, rgba(248, 250, 252, 0.76));
@@ -2175,7 +2187,7 @@ button.field-bi-kpi-danger.is-active {
 
 .field-bi-farm-score-name strong {
   color: var(--text-primary);
-  font-size: 0.68rem;
+  font-size: 0.63rem;
   font-weight: 950;
   line-height: 1.06;
   text-transform: uppercase;
@@ -2184,7 +2196,7 @@ button.field-bi-kpi-danger.is-active {
 
 .field-bi-farm-score-name span {
   color: var(--text-muted);
-  font-size: 0.52rem;
+  font-size: 0.48rem;
   font-weight: 850;
   line-height: 1;
 }
@@ -2192,8 +2204,8 @@ button.field-bi-kpi-danger.is-active {
 .field-bi-farm-score-metrics {
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
 }
 
 .field-bi-farm-score-metric {
@@ -2204,10 +2216,10 @@ button.field-bi-kpi-danger.is-active {
     "label value"
     "bar bar";
   align-items: center;
-  gap: 3px 5px;
-  padding: 4px 5px;
+  gap: 2px 4px;
+  padding: 3px 4px;
   border: 1px solid color-mix(in srgb, var(--metric-color) 23%, var(--border-color));
-  border-radius: 7px;
+  border-radius: 6px;
   background: color-mix(in srgb, var(--metric-color) 6%, #fff);
 }
 
@@ -2215,7 +2227,7 @@ button.field-bi-kpi-danger.is-active {
   grid-area: label;
   min-width: 0;
   color: var(--metric-color);
-  font-size: 0.54rem;
+  font-size: 0.49rem;
   font-weight: 950;
   line-height: 1;
   white-space: nowrap;
@@ -2224,7 +2236,7 @@ button.field-bi-kpi-danger.is-active {
 .field-bi-farm-score-metric strong {
   grid-area: value;
   color: var(--text-primary);
-  font-size: 0.58rem;
+  font-size: 0.52rem;
   font-weight: 950;
   line-height: 1;
   text-align: right;
@@ -2233,7 +2245,7 @@ button.field-bi-kpi-danger.is-active {
 
 .field-bi-farm-score-metric i {
   grid-area: bar;
-  height: 5px;
+  height: 4px;
   display: block;
   overflow: hidden;
   border-radius: 999px;
