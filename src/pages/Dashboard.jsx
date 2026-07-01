@@ -305,6 +305,7 @@ function buildDailyBunchRows(records) {
           estrela: 0,
           talo: 0,
           base: 0,
+          plantBase: 0,
         });
       }
 
@@ -317,6 +318,7 @@ function buildDailyBunchRows(records) {
       bucket.estrela += record.totals?.cachoEstrela || 0;
       bucket.talo += record.totals?.taloComprido || 0;
       bucket.base += record.totals?.cachosObservados || 0;
+      bucket.plantBase += record.totals?.plantasObservadas || 0;
     });
 
   return Array.from(buckets.values()).sort((a, b) => String(a.sortKey).localeCompare(String(b.sortKey)));
@@ -333,16 +335,37 @@ function qualityTone(value, meta, goodWhen = 'low') {
   return { tone: 'danger', color: 'var(--status-danger)', status: 'Fora da meta' };
 }
 
-function FieldBiKpiCard({ label, value, meta, goodWhen = 'low', loading = false }) {
+function FieldBiKpiCard({ label, value, meta, goodWhen = 'low', loading = false, onClick, active = false }) {
   const tone = qualityTone(value, meta, goodWhen);
   const signal = tone.tone === 'green' ? '✓' : '!';
-  return (
-    <div className={`field-bi-kpi field-bi-kpi-${tone.tone}`}>
+  const className = `field-bi-kpi field-bi-kpi-${tone.tone} ${active ? 'is-active' : ''}`.trim();
+  const content = (
+    <>
       <span>{label}</span>
       <strong className={loading ? 'skeleton-text' : ''}>
         {loading ? '\u00A0' : `${formatPercent(value)}${signal}`}
       </strong>
       <small>Meta: {formatPercent(meta)} · {tone.status}</small>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className={className}
+        onClick={onClick}
+        disabled={loading}
+        aria-pressed={active}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className={className}>
+      {content}
     </div>
   );
 }
@@ -366,11 +389,33 @@ const TOTAL_SECTION_OPTIONS = [
 ];
 
 const BI_SERIES = [
-  { key: 'maduro', sourceKey: 'cachoMaduroPct', label: 'CM %', fullLabel: 'Cacho Maduro %', color: 'var(--orange-institutional)', target: 85, goodWhen: 'high' },
-  { key: 'passado', sourceKey: 'cachoPassadoPct', label: 'CP %', fullLabel: 'Cacho Passado %', color: 'var(--text-primary)', target: 10, goodWhen: 'low' },
-  { key: 'verde', sourceKey: 'cachoVerdePct', label: 'CV %', fullLabel: 'Cacho Verde %', color: 'var(--green-institutional)', target: 1, goodWhen: 'low' },
-  { key: 'avermelhado', sourceKey: 'cachoAvermelhadoPct', label: 'CA %', fullLabel: 'Cacho Avermelhado %', color: 'var(--status-danger)', target: 4, goodWhen: 'low' },
+  { key: 'maduro', sourceKey: 'cachoMaduroPct', label: 'CM %', fullLabel: 'Cacho Maduro %', color: 'var(--orange-institutional)', target: 85, goodWhen: 'high', mapMetricId: 'maduro' },
+  { key: 'passado', sourceKey: 'cachoPassadoPct', label: 'CP %', fullLabel: 'Cacho Passado %', color: 'var(--text-primary)', target: 10, goodWhen: 'low', mapMetricId: 'passado' },
+  { key: 'verde', sourceKey: 'cachoVerdePct', label: 'CV %', fullLabel: 'Cacho Verde %', color: 'var(--green-institutional)', target: 1, goodWhen: 'low', mapMetricId: 'verde' },
+  { key: 'avermelhado', sourceKey: 'cachoAvermelhadoPct', label: 'CA %', fullLabel: 'Cacho Avermelhado %', color: 'var(--status-danger)', target: 4, goodWhen: 'low', mapMetricId: 'avermelhado' },
+  { key: 'talo', sourceKey: 'taloCompridoPct', label: 'TC %', fullLabel: 'Cacho Talo Compri. %', color: '#64748B', target: 3, goodWhen: 'low', mapMetricId: 'talo' },
+  { key: 'estrela', sourceKey: 'cachoEstrelaPct', label: 'EST %', fullLabel: 'Cacho Estrela %', color: '#2563EB', target: 2, goodWhen: 'low', mapMetricId: 'estrela' },
 ];
+
+function fieldBiSeriesByKey(key) {
+  return BI_SERIES.find((item) => item.key === key) || BI_SERIES[0];
+}
+
+function mapMetricIdForFieldSeries(key) {
+  const series = fieldBiSeriesByKey(key);
+  return series.mapMetricId || series.key;
+}
+
+function dateKeyToIso(value) {
+  const text = String(value || '');
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : '';
+}
+
+function dailyMetricBase(row, metricKey) {
+  return metricKey === 'talo'
+    ? Math.max(row.plantBase || 0, 0)
+    : Math.max(row.base || 0, 0);
+}
 
 function seriesIsInTarget(series, value) {
   const numeric = Number(value || 0);
@@ -381,11 +426,14 @@ function seriesIsInTarget(series, value) {
 function qualityValuesFromRow(row) {
   if (row.qualidade) {
     const base = Math.max(row.qualidade.cachosObservados || 0, 0);
+    const plantBase = Math.max(row.qualidade.cortePlantasObservadas || row.qualidade.plantasObservadas || 0, 0);
     return {
       maduro: base ? (row.qualidade.cachoMaduro / base) * 100 : 0,
       passado: base ? (row.qualidade.cachoPassado / base) * 100 : 0,
       verde: base ? (row.qualidade.cachoVerde / base) * 100 : 0,
       avermelhado: base ? (row.qualidade.cachoAvermelhado / base) * 100 : 0,
+      talo: plantBase ? (row.qualidade.taloComprido / plantBase) * 100 : 0,
+      estrela: base ? (row.qualidade.cachoEstrela / base) * 100 : 0,
       samples: base,
     };
   }
@@ -395,31 +443,53 @@ function qualityValuesFromRow(row) {
     passado: Number(row.cachoPassadoPct || 0),
     verde: Number(row.cachoVerdePct || 0),
     avermelhado: Number(row.cachoAvermelhadoPct || 0),
+    talo: Number(row.taloCompridoPct || 0),
+    estrela: Number(row.cachoEstrelaPct || 0),
     samples: row.recordsCount || 0,
   };
 }
 
 function riskFromValues(values) {
-  return Number(values.passado || 0) + Number(values.verde || 0) + Number(values.avermelhado || 0);
+  const maduroGap = Math.max(0, 85 - Number(values.maduro || 0));
+  return maduroGap
+    + Number(values.passado || 0)
+    + Number(values.verde || 0)
+    + Number(values.avermelhado || 0)
+    + Number(values.talo || 0)
+    + Number(values.estrela || 0);
 }
 
-function FieldBiLegend() {
+function FieldBiLegend({ activeKey = '', onSelect }) {
   return (
     <div className="field-bi-legend">
-      {BI_SERIES.map((item) => (
-        <span key={item.key}><i style={{ background: item.color }} />{item.fullLabel}</span>
-      ))}
+      {BI_SERIES.map((item) => {
+        const content = <><i style={{ background: item.color }} />{item.fullLabel}</>;
+        if (onSelect) {
+          return (
+            <button
+              type="button"
+              key={item.key}
+              className={activeKey === item.key ? 'active' : ''}
+              onClick={() => onSelect(item.key)}
+              aria-pressed={activeKey === item.key}
+            >
+              {content}
+            </button>
+          );
+        }
+        return <span key={item.key}>{content}</span>;
+      })}
     </div>
   );
 }
 
-function FieldBiFarmChart({ rows, loading = false }) {
+function FieldBiFarmChart({ rows, loading = false, activeMetricKey = 'maduro', onSelectMetric }) {
   const visibleRows = rows.slice(0, 5);
 
   return (
     <section className="field-bi-panel field-bi-farm-legacy-panel">
       <h3>Qualidade por Fazenda</h3>
-      <FieldBiLegend />
+      <FieldBiLegend activeKey={activeMetricKey} onSelect={onSelectMetric} />
       {loading ? (
         <div className="skeleton-chart" style={{ height: 180 }} />
       ) : (
@@ -438,7 +508,7 @@ function FieldBiFarmChart({ rows, loading = false }) {
                     const inTarget = seriesIsInTarget(item, value);
                     return (
                       <div
-                        className={`field-bi-farm-score-metric ${inTarget ? 'is-in-target' : 'is-out-target'}`}
+                        className={`field-bi-farm-score-metric ${inTarget ? 'is-in-target' : 'is-out-target'} ${activeMetricKey === item.key ? 'is-active' : ''}`.trim()}
                         key={item.key}
                         style={{ '--metric-color': item.color }}
                         title={`${row.label} - ${item.fullLabel}: ${formatPercent(value)} | Meta ${item.goodWhen === 'high' ? '>=' : '<='} ${formatPercent(item.target)}`}
@@ -460,7 +530,7 @@ function FieldBiFarmChart({ rows, loading = false }) {
   );
 }
 
-function FieldBiWeekChart({ rows, monthRows = [], mode = 'week', onModeChange, loading = false }) {
+function FieldBiWeekChart({ rows, monthRows = [], mode = 'week', onModeChange, loading = false, activeMetricKey = 'maduro', onSelectMetric }) {
   const sourceRows = mode === 'month' ? monthRows : rows;
   const visibleRows = sourceRows.slice(mode === 'month' ? -10 : -8);
   const chartHeight = 232;
@@ -470,6 +540,7 @@ function FieldBiWeekChart({ rows, monthRows = [], mode = 'week', onModeChange, l
   const graphHeight = chartHeight - padding.top - padding.bottom;
   const barWidth = 42;
   const title = mode === 'month' ? 'Qualidade por mês' : 'Qualidade por semana';
+  const activeSeries = fieldBiSeriesByKey(activeMetricKey);
 
   return (
     <section className="field-bi-panel field-bi-week-panel">
@@ -480,7 +551,11 @@ function FieldBiWeekChart({ rows, monthRows = [], mode = 'week', onModeChange, l
           <button type="button" className={mode === 'month' ? 'active' : ''} onClick={() => onModeChange?.('month')}>Mês</button>
         </div>
       </div>
-      <FieldBiLegend />
+      <FieldBiLegend activeKey={activeMetricKey} onSelect={onSelectMetric} />
+      <div className="field-bi-active-context">
+        <span>{activeSeries.fullLabel}</span>
+        <strong>Mapa, fiscal e dia acompanham este indicador</strong>
+      </div>
       {loading ? (
         <div className="skeleton-chart" style={{ height: chartHeight }} />
       ) : (
@@ -548,14 +623,11 @@ function FieldBiWeekChart({ rows, monthRows = [], mode = 'week', onModeChange, l
   );
 }
 
-function FiscalQualityCards({ rows, loading = false }) {
+function FiscalQualityCards({ rows, loading = false, selectedLabel = '', onSelect, activeMetricKey = 'maduro' }) {
+  const activeSeries = fieldBiSeriesByKey(activeMetricKey);
   const visibleRows = rows
     .map((row) => {
-      const risk = riskFromValues({
-        passado: row.cachoPassadoPct,
-        verde: row.cachoVerdePct,
-        avermelhado: row.cachoAvermelhadoPct,
-      });
+      const risk = riskFromValues(qualityValuesFromRow(row));
       return {
         ...row,
         risk,
@@ -573,22 +645,33 @@ function FiscalQualityCards({ rows, loading = false }) {
         <>
           <div className="field-bi-evaluator-head">
             <h3>Fiscal resp. equipe</h3>
-            <span>ranking por risco de qualidade</span>
+            <span>{selectedLabel ? 'fiscal filtrando o mapa' : 'clique para filtrar'}</span>
           </div>
-          {visibleRows.map((row) => (
-            <div className={`field-bi-evaluator-card field-bi-evaluator-${row.tone}`} key={row.label}>
-              <strong>
-                <span>{row.label}</span>
-                <em>{formatPercent(row.risk)} risco</em>
-              </strong>
-              <div>
-                <span><b>{formatPercent(row.cachoPassadoPct)}</b>Cacho passado %</span>
-                <span><b>{formatPercent(row.cachoVerdePct)}</b>Cacho verde %</span>
-                <span><b>{formatPercent(row.cachoMaduroPct)}</b>Cacho maduro %</span>
-              </div>
-              <small>{formatNumber(row.recordsCount)} coleta(s) · {row.tone === 'danger' ? 'prioridade alta' : row.tone === 'warning' ? 'acompanhar' : 'controlado'}</small>
-            </div>
-          ))}
+          {visibleRows.map((row) => {
+            const active = selectedLabel === row.label;
+            const rowValues = qualityValuesFromRow(row);
+            const activeValue = Number(row[activeSeries.sourceKey] ?? rowValues[activeSeries.key] ?? 0);
+            return (
+              <button
+                type="button"
+                className={`field-bi-evaluator-card field-bi-evaluator-${row.tone} ${active ? 'is-active' : ''}`.trim()}
+                key={row.label}
+                onClick={() => onSelect?.(row)}
+                aria-pressed={active}
+              >
+                <strong>
+                  <span>{row.label}</span>
+                  <em>{formatPercent(row.risk)} risco</em>
+                </strong>
+                <div>
+                  <span><b>{formatPercent(activeValue)}</b>{activeSeries.fullLabel}</span>
+                  <span><b>{formatPercent(row.cachoVerdePct)}</b>Cacho verde %</span>
+                  <span><b>{formatPercent(row.cachoMaduroPct)}</b>Cacho maduro %</span>
+                </div>
+                <small>{formatNumber(row.recordsCount)} coleta(s) · {active ? 'em análise' : row.tone === 'danger' ? 'prioridade alta' : row.tone === 'warning' ? 'acompanhar' : 'controlado'}</small>
+              </button>
+            );
+          })}
           {!visibleRows.length && <div className="empty-panel smart-empty-panel"><strong>Sem fiscais</strong><span>Nenhuma coleta do período trouxe fiscal responsável da equipe válido.</span></div>}
         </>
       )}
@@ -596,16 +679,47 @@ function FiscalQualityCards({ rows, loading = false }) {
   );
 }
 
-function FieldBiInlineCorteMap({ mapProps, loading = false, onOpenGeoQuality }) {
+function FieldBiInlineCorteMap({
+  mapProps,
+  loading = false,
+  onOpenGeoQuality,
+  activeMetricKey = 'maduro',
+  selectedFiscalLabel = '',
+  selectedDayKey = '',
+  selectedDayLabel = '',
+}) {
+  const activeSeries = fieldBiSeriesByKey(activeMetricKey);
+  const selectedIsoDate = dateKeyToIso(selectedDayKey);
+  const focusedMapProps = {
+    ...mapProps,
+    evaluatorFilter: selectedFiscalLabel || mapProps?.evaluatorFilter || 'all',
+    periodFilter: selectedIsoDate ? 'custom' : mapProps?.periodFilter,
+    dateFrom: selectedIsoDate || mapProps?.dateFrom,
+    dateTo: selectedIsoDate || mapProps?.dateTo,
+  };
+  const mapKey = [
+    'corte-inline-map',
+    mapMetricIdForFieldSeries(activeMetricKey),
+    focusedMapProps.farmFilter || 'all',
+    focusedMapProps.sourceFilter || 'all',
+    focusedMapProps.evaluatorFilter || 'all',
+    focusedMapProps.dateFrom || 'start',
+    focusedMapProps.dateTo || 'end',
+  ].join('-');
+
   return (
     <section className="field-bi-panel field-bi-map-panel field-bi-corte-map-panel">
       <div className="field-bi-map-head">
         <div>
           <h3>Mapa das parcelas</h3>
-          <span>Shapes com semáforo de corte no filtro atual.</span>
+          <span>
+            Semáforo por {activeSeries.fullLabel.toLowerCase()}
+            {selectedDayLabel ? ` · Dia ${selectedDayLabel}` : ''}
+            {selectedFiscalLabel ? ` · ${selectedFiscalLabel}` : ''}
+          </span>
         </div>
         {onOpenGeoQuality ? (
-          <button type="button" onClick={onOpenGeoQuality}>
+          <button type="button" onClick={() => onOpenGeoQuality?.(focusedMapProps, activeMetricKey)}>
             <MapPinned size={15} />
             Abrir maior
           </button>
@@ -629,10 +743,11 @@ function FieldBiInlineCorteMap({ mapProps, loading = false, onOpenGeoQuality }) 
             )}
           >
             <LeafletMap
-              {...mapProps}
+              key={mapKey}
+              {...focusedMapProps}
               areaFilter="corte"
               initialOperation="corte"
-              initialMetricId="maduro"
+              initialMetricId={mapMetricIdForFieldSeries(activeMetricKey)}
             />
           </Suspense>
         )}
@@ -653,23 +768,41 @@ function FieldBiInlineCorteMap({ mapProps, loading = false, onOpenGeoQuality }) 
   );
 }
 
-function FieldBiRightColumn({ evaluatorRows, mapProps, loading = false, onOpenGeoQuality }) {
+function FieldBiRightColumn({
+  evaluatorRows,
+  mapProps,
+  loading = false,
+  onOpenGeoQuality,
+  activeMetricKey = 'maduro',
+  selectedFiscalLabel = '',
+  selectedDayKey = '',
+  selectedDayLabel = '',
+  onSelectFiscal,
+}) {
   return (
     <div className="field-bi-right-column">
-      <FiscalQualityCards rows={evaluatorRows} loading={loading} />
-      <FieldBiInlineCorteMap mapProps={mapProps} loading={loading} onOpenGeoQuality={onOpenGeoQuality} />
+      <FiscalQualityCards
+        rows={evaluatorRows}
+        loading={loading}
+        selectedLabel={selectedFiscalLabel}
+        onSelect={onSelectFiscal}
+        activeMetricKey={activeMetricKey}
+      />
+      <FieldBiInlineCorteMap
+        mapProps={mapProps}
+        loading={loading}
+        onOpenGeoQuality={onOpenGeoQuality}
+        activeMetricKey={activeMetricKey}
+        selectedFiscalLabel={selectedFiscalLabel}
+        selectedDayKey={selectedDayKey}
+        selectedDayLabel={selectedDayLabel}
+      />
     </div>
   );
 }
 
-function DailyBunchBarChart({ rows, selectedDayKey = '', onSelectDay, loading = false }) {
-  const series = [
-    { key: 'maduro', label: 'Cacho maduro %', color: 'var(--orange-institutional)' },
-    { key: 'passado', label: 'Cacho passado %', color: 'var(--text-primary)' },
-    { key: 'verde', label: 'Cacho verde %', color: 'var(--green-institutional)' },
-    { key: 'avermelhado', label: 'Cacho Avermelhado %', color: 'var(--status-danger)' },
-  ];
-
+function DailyBunchBarChart({ rows, selectedDayKey = '', onSelectDay, loading = false, activeMetricKey = 'maduro' }) {
+  const series = BI_SERIES;
   const visibleRows = rows.slice(-12);
   const chartHeight = 236;
   const padding = { top: 18, right: 18, bottom: 32, left: 46 };
@@ -678,10 +811,12 @@ function DailyBunchBarChart({ rows, selectedDayKey = '', onSelectDay, loading = 
   const graphHeight = chartHeight - padding.top - padding.bottom;
   const barWidth = 62;
   const selectedRow = selectedDayKey ? visibleRows.find((row) => row.sortKey === selectedDayKey) : null;
+  const activeSeries = fieldBiSeriesByKey(activeMetricKey);
 
   return (
     <section className="field-bi-panel field-bi-daily-panel">
       <h3>Qualidade por Dia/Fazenda/Parcela</h3>
+      <span className="field-bi-daily-subtitle">Clique em um dia para o mapa mostrar somente aquele recorte.</span>
       <div className="field-daily-legend">
         {series.map((item) => (
           <span key={item.key}><i style={{ background: item.color }} />{item.label}</span>
@@ -692,8 +827,12 @@ function DailyBunchBarChart({ rows, selectedDayKey = '', onSelectDay, loading = 
           <strong>Dia selecionado: {selectedRow.label}</strong>
           <span>{formatNumber(selectedRow.recordsCount)} coleta(s)</span>
           <span>{formatNumber(selectedRow.base)} cachos avaliados</span>
+          <span>
+            <i style={{ background: activeSeries.color }} />
+            {activeSeries.label}: {formatPercent(safePct(selectedRow[activeSeries.key], dailyMetricBase(selectedRow, activeSeries.key)), 1)} · {formatNumber(selectedRow[activeSeries.key])}
+          </span>
           {series.map((item) => {
-            const total = Math.max(selectedRow.base || 0, 0);
+            const total = dailyMetricBase(selectedRow, item.key);
             const pct = total ? safePct(selectedRow[item.key], total) : 0;
             return (
               <span key={item.key}>
@@ -939,6 +1078,19 @@ function FieldBiBoard({
   const isTotalMode = !presentationMode && boardMode === 'total';
   const [qualityPeriodMode, setQualityPeriodMode] = useState('week');
   const [selectedDayKey, setSelectedDayKey] = useState('');
+  const [activeMetricKey, setActiveMetricKey] = useState('maduro');
+  const [selectedFiscalLabel, setSelectedFiscalLabel] = useState('');
+  const selectedDayRow = selectedDayKey
+    ? dailyBunchRows.find((row) => row.sortKey === selectedDayKey)
+    : null;
+  const kpiCards = [
+    { key: 'maduro', label: 'Cacho Maduro %', value: quality.cachoMaduroPct, meta: 85, goodWhen: 'high' },
+    { key: 'passado', label: 'Cacho passado %', value: quality.cachoPassadoPct, meta: 10 },
+    { key: 'verde', label: 'Cacho verde %', value: quality.cachoVerdePct, meta: 1 },
+    { key: 'avermelhado', label: 'Cacho Avermelhado %', value: quality.cachoAvermelhadoPct, meta: 4 },
+    { key: 'talo', label: 'Cacho Talo Compri. %', value: quality.taloCompridoPct, meta: 3 },
+    { key: 'estrela', label: 'Cacho Estrela %', value: quality.cachoEstrelaPct, meta: 2 },
+  ];
 
   return (
     <div className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
@@ -955,7 +1107,7 @@ function FieldBiBoard({
         </div>
         {!presentationMode && (
           <div className="field-bi-header-actions">
-            <button type="button" className="field-bi-map-btn" onClick={onOpenGeoQuality}>
+            <button type="button" className="field-bi-map-btn" onClick={() => onOpenGeoQuality?.(mapProps, activeMetricKey)}>
               <MapPinned size={17} />
               Qualidade por parcela
             </button>
@@ -1013,34 +1165,50 @@ function FieldBiBoard({
       ) : !isTotalMode ? (
         <>
           <div className="field-bi-kpi-grid">
-            <FieldBiKpiCard loading={loading} label="Cacho Maduro %" value={quality.cachoMaduroPct} meta={85} goodWhen="high" />
-            <FieldBiKpiCard loading={loading} label="Cacho passado %" value={quality.cachoPassadoPct} meta={10} />
-            <FieldBiKpiCard loading={loading} label="Cacho verde %" value={quality.cachoVerdePct} meta={1} />
-            <FieldBiKpiCard loading={loading} label="Cacho Avermelhado %" value={quality.cachoAvermelhadoPct} meta={4} />
-            <FieldBiKpiCard loading={loading} label="Cacho Talo Compri. %" value={quality.taloCompridoPct} meta={3} />
-            <FieldBiKpiCard loading={loading} label="Cacho Estrela %" value={quality.cachoEstrelaPct} meta={2} />
+            {kpiCards.map(({ key, ...card }) => (
+              <FieldBiKpiCard
+                key={key}
+                loading={loading}
+                active={activeMetricKey === key}
+                onClick={() => setActiveMetricKey(key)}
+                {...card}
+              />
+            ))}
           </div>
 
           <div className="field-bi-main-grid">
-            <FieldBiFarmChart rows={model.farmRows} loading={loading} />
+            <FieldBiFarmChart
+              rows={model.farmRows}
+              loading={loading}
+              activeMetricKey={activeMetricKey}
+              onSelectMetric={setActiveMetricKey}
+            />
             <FieldBiWeekChart
               rows={model.weekRows}
               monthRows={model.monthRows}
               mode={qualityPeriodMode}
               onModeChange={setQualityPeriodMode}
               loading={loading}
+              activeMetricKey={activeMetricKey}
+              onSelectMetric={setActiveMetricKey}
             />
             <FieldBiRightColumn
               evaluatorRows={model.evaluatorRows}
               mapProps={mapProps}
               loading={loading}
               onOpenGeoQuality={onOpenGeoQuality}
+              activeMetricKey={activeMetricKey}
+              selectedFiscalLabel={selectedFiscalLabel}
+              selectedDayKey={selectedDayKey}
+              selectedDayLabel={selectedDayRow?.label || ''}
+              onSelectFiscal={(row) => setSelectedFiscalLabel((current) => (current === row.label ? '' : row.label))}
             />
             <DailyBunchBarChart
               rows={dailyBunchRows}
               selectedDayKey={selectedDayKey}
               onSelectDay={(key) => setSelectedDayKey((current) => (current === key ? '' : key))}
               loading={loading}
+              activeMetricKey={activeMetricKey}
             />
           </div>
         </>
@@ -1066,7 +1234,7 @@ function PresentationOverlay(props) {
   );
 }
 
-function FieldGeoQualityOverlay({ mapProps, periodText, updateText, latestCollectionText, onClose }) {
+function FieldGeoQualityOverlay({ mapProps, periodText, updateText, latestCollectionText, initialMetricId = 'nota', onClose }) {
   return createPortal(
     <div className="field-map-overlay" role="dialog" aria-modal="true" aria-label="Qualidade por parcela no mapa">
       <button type="button" className="presentation-close-btn field-bi-close-btn" onClick={onClose} title="Fechar mapa" aria-label="Fechar mapa">
@@ -1100,7 +1268,7 @@ function FieldGeoQualityOverlay({ mapProps, periodText, updateText, latestCollec
               {...mapProps}
               areaFilter="corte"
               initialOperation="corte"
-              initialMetricId="nota"
+              initialMetricId={initialMetricId}
             />
           </Suspense>
         </div>
@@ -1113,6 +1281,8 @@ function FieldGeoQualityOverlay({ mapProps, periodText, updateText, latestCollec
 export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, setDateFrom, setDateTo, searchTerm, lastSyncTime, onResetFilters, onClearFilter }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
   const [geoQualityOpen, setGeoQualityOpen] = useState(false);
+  const [geoQualityMapProps, setGeoQualityMapProps] = useState(null);
+  const [geoQualityInitialMetricId, setGeoQualityInitialMetricId] = useState('nota');
   const [boardMode, setBoardMode] = useState('meeting');
   const [totalSection, setTotalSection] = useState('qualidade');
   const {
@@ -1239,8 +1409,16 @@ export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter,
     }
   };
 
-  const openGeoQuality = () => setGeoQualityOpen(true);
-  const closeGeoQuality = () => setGeoQualityOpen(false);
+  const openGeoQuality = (nextMapProps, metricKey = 'nota') => {
+    setGeoQualityMapProps(nextMapProps || null);
+    setGeoQualityInitialMetricId(metricKey === 'nota' ? 'nota' : mapMetricIdForFieldSeries(metricKey));
+    setGeoQualityOpen(true);
+  };
+  const closeGeoQuality = () => {
+    setGeoQualityOpen(false);
+    setGeoQualityMapProps(null);
+    setGeoQualityInitialMetricId('nota');
+  };
 
   return (
     <div className="fade-in page-shell field-bi-page">
@@ -1253,10 +1431,11 @@ export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter,
 
       {geoQualityOpen && (
         <FieldGeoQualityOverlay
-          mapProps={mapProps}
+          mapProps={geoQualityMapProps || mapProps}
           periodText={periodText}
           updateText={updateText}
           latestCollectionText={latestCollectionText}
+          initialMetricId={geoQualityInitialMetricId}
           onClose={closeGeoQuality}
         />
       )}

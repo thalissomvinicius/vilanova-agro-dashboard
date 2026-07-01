@@ -46,6 +46,7 @@ const RISK_METRICS = [
   { id: 'passado', label: 'Cacho passado %', unit: '%', goodWhen: 'low', meta: 10 },
   { id: 'avermelhado', label: 'Cacho avermelhado %', unit: '%', goodWhen: 'low', meta: 4 },
   { id: 'talo', label: 'Talo comprido %', unit: '%', goodWhen: 'low', meta: 3 },
+  { id: 'estrela', label: 'Cacho estrela %', unit: '%', goodWhen: 'low', meta: 2 },
 ];
 
 const MAP_OPERATION_MODES = [
@@ -54,7 +55,7 @@ const MAP_OPERATION_MODES = [
     label: 'Corte',
     areaFilter: 'corte',
     defaultMetric: 'perda_corte',
-    metrics: ['nota', 'perda_corte', 'maduro', 'verde', 'passado', 'avermelhado', 'talo', 'mal_posicionado'],
+    metrics: ['nota', 'perda_corte', 'maduro', 'verde', 'passado', 'avermelhado', 'talo', 'estrela', 'mal_posicionado'],
   },
   {
     id: 'carreamento',
@@ -103,7 +104,7 @@ const RISK_COLORS = {
   neutral: '#CBD5E1',
 };
 
-const CORTE_METRIC_IDS = new Set(['perda_corte', 'maduro', 'verde', 'passado', 'avermelhado', 'talo']);
+const CORTE_METRIC_IDS = new Set(['perda_corte', 'maduro', 'verde', 'passado', 'avermelhado', 'talo', 'estrela']);
 const CARREAMENTO_METRIC_IDS = new Set(['nao_carreado']);
 const PODA_METRIC_IDS = new Set([
   'poda_planta_sem_podar',
@@ -686,6 +687,9 @@ function metricValue(metric, totals, areaHa, operation) {
     case 'talo':
       if (!hasCortePlantBase(totals)) return null;
       return Number(totals.taloCompridoRate || 0);
+    case 'estrela':
+      if (!hasCorteBunchBase(totals)) return null;
+      return percentOf(totals.cachoEstrela, totals.cachosObservados);
     default:
       return 0;
   }

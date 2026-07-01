@@ -527,7 +527,7 @@ export function buildQualidadeOperacional(records, balanceData = null) {
     
     // Novas agregações para o painel estilo Power BI
     const fiscalLabel = record.fiscal && record.fiscal !== '--' ? record.fiscal : 'Sem fiscal';
-    pushBucket(byFiscal, shortLabel(fiscalLabel), record, loss);
+    pushBucket(byFiscal, fiscalLabel, record, loss);
     pushBucket(byWeek, weekKey(record), record, loss);
     
     const dKey = `${dayKey(record)} - ${record.farm || 'Sem fazenda'} - ${record.parcel || 'Sem parcela'}`;

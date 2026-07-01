@@ -2256,6 +2256,11 @@ button.field-bi-kpi-danger.is-active {
   color: var(--status-danger);
 }
 
+.field-bi-farm-score-metric.is-active {
+  border-color: color-mix(in srgb, var(--metric-color) 62%, var(--border-color));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--metric-color) 12%, transparent);
+}
+
 .field-bi-farm-panel {
   grid-area: farm;
   min-height: 158px;
@@ -2286,14 +2291,59 @@ button.field-bi-kpi-danger.is-active {
 }
 
 .field-bi-legend span,
+.field-bi-legend button,
 .field-daily-legend span {
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 
-.field-bi-legend span {
+.field-bi-legend span,
+.field-bi-legend button {
   white-space: nowrap;
+}
+
+.field-bi-legend button {
+  min-height: 20px;
+  padding: 2px 6px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.field-bi-legend button.active,
+.field-bi-legend button:hover {
+  border-color: rgba(13, 91, 52, 0.28);
+  background: rgba(13, 91, 52, 0.07);
+  color: var(--green-institutional);
+}
+
+.field-bi-active-context {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.field-bi-active-context span {
+  color: var(--green-institutional);
+  font-weight: 950;
+}
+
+.field-bi-daily-subtitle {
+  display: block;
+  margin-top: -3px;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-align: center;
 }
 
 .field-bi-legend i,
