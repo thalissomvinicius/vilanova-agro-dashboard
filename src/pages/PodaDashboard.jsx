@@ -801,13 +801,13 @@ function PodaTargetLineChart({
   const isMultiSeries = selectedSeries.length > 1;
   const chartHeight = Number(chartHeightOverride) || (compact ? 216 : 244);
   const padding = compact
-    ? { top: 24, right: 34, bottom: 46, left: 44 }
-    : { top: 30, right: 40, bottom: 50, left: 50 };
+    ? { top: 24, right: 34, bottom: 56, left: 44 }
+    : { top: 30, right: 40, bottom: 60, left: 50 };
   const columnWidth = Number(columnWidthOverride) || (compact ? 76 : 88);
   const width = Math.max(minWidth, padding.left + padding.right + Math.max(visibleRows.length - 1, 1) * columnWidth + 54);
   const graphHeight = chartHeight - padding.top - padding.bottom;
   const graphWidth = width - padding.left - padding.right;
-  const axisLabelY = chartHeight - (compact ? 18 : 20);
+  const axisLabelY = Math.min(chartHeight - (compact ? 24 : 26), padding.top + graphHeight + (compact ? 22 : 24));
   const valuesBySeries = selectedSeries.map((item) => ({
     series: item,
     values: visibleRows.map((row, index) => {

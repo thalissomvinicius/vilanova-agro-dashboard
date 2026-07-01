@@ -2490,6 +2490,7 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
   min-height: 0;
   padding-top: 2px;
   padding-bottom: 12px;
+  overflow-y: visible;
 }
 
 .field-bi-evolution-panel .field-bi-week-chart {
@@ -4117,7 +4118,12 @@ body.field-map-active {
 }
 
 .field-bi-presentation-overlay .field-bi-evolution-panel .field-bi-week-chart {
-  min-height: 166px;
+  min-height: 174px;
+}
+
+.field-bi-presentation-overlay .field-bi-evolution-panel .field-bi-week-scroll {
+  padding-bottom: 16px;
+  overflow-y: visible;
 }
 
 .field-bi-presentation-overlay .field-bi-map-panel {
