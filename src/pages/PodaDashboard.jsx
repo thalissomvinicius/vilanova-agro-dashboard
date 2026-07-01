@@ -1750,8 +1750,9 @@ function FieldBiBoard({
         filename: createExportFileName('vna-cqo-poda', periodText),
         pixelRatio: presentationMode ? 3 : 2.5,
       });
-    } catch {
-      window.alert('Nao consegui gerar a imagem em alta resolucao agora. Tente novamente depois que o mapa terminar de carregar.');
+    } catch (error) {
+      console.error('Falha ao gerar imagem HD do CQO Poda:', error);
+      window.alert('Nao consegui gerar a imagem em alta resolucao agora. Atualize a pagina e tente novamente; se persistir, me envie o erro do console.');
     } finally {
       setImageExporting(false);
     }
