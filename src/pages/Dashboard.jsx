@@ -417,6 +417,85 @@ function dailyMetricBase(row, metricKey) {
     : Math.max(row.base || 0, 0);
 }
 
+function fieldMetricQuantityFromTotals(totals, metricKey) {
+  if (!totals) return 0;
+  if (metricKey === 'maduro') return totals.cachoMaduro || 0;
+  if (metricKey === 'passado') return totals.cachoPassado || 0;
+  if (metricKey === 'verde') return totals.cachoVerde || 0;
+  if (metricKey === 'avermelhado') return totals.cachoAvermelhado || 0;
+  if (metricKey === 'talo') return totals.taloComprido || 0;
+  if (metricKey === 'estrela') return totals.cachoEstrela || 0;
+  return 0;
+}
+
+function fieldMetricBaseFromTotals(totals, metricKey) {
+  if (!totals) return 0;
+  if (metricKey === 'talo') return totals.cortePlantasObservadas || totals.plantasObservadas || 0;
+  return totals.cachosObservados || 0;
+}
+
+function parcelSummaryTitle(summary) {
+  const record = summary?.records?.[0];
+  const props = summary?.props || {};
+  const farm = record?.farm || props.farmName || props.fazenda || props.FAZENDA || 'Fazenda';
+  const parcel = summary?.shapeParcel || record?.parcel || props.parcela || props.PARCELA || '--';
+  return `${farm} / ${parcel}`;
+}
+
+function parcelSummaryPeriod(summary) {
+  const first = formatDateBr(summary?.firstDate) || summary?.firstDate || '';
+  const last = formatDateBr(summary?.lastDate) || summary?.lastDate || '';
+  if (first && last && first !== last) return `${first} a ${last}`;
+  return first || last || '--';
+}
+
+function FieldBiSelectedParcelSummary({ summary, activeMetricKey, onClear }) {
+  const activeSeries = fieldBiSeriesByKey(activeMetricKey);
+
+  if (!summary) {
+    return (
+      <div className="field-bi-selected-parcel is-empty">
+        <div className="field-bi-selected-parcel-main">
+          <span>Parcela</span>
+          <strong>Clique em uma parcela no mapa</strong>
+          <small>O resumo da coleta aparece aqui sem cobrir o fiscal.</small>
+        </div>
+      </div>
+    );
+  }
+
+  const totals = summary.metricTotals || summary.totals || {};
+  const quantity = fieldMetricQuantityFromTotals(totals, activeMetricKey);
+  const base = fieldMetricBaseFromTotals(totals, activeMetricKey);
+  const fallbackValue = safePct(quantity, base);
+  const value = Number.isFinite(Number(summary.value)) ? Number(summary.value) : fallbackValue;
+  const recordsCount = Array.isArray(summary.records) ? summary.records.length : 0;
+  const areaHa = Number(summary.areaHa || 0);
+
+  return (
+    <div
+      className="field-bi-selected-parcel"
+      style={{ '--parcel-accent': summary.color || activeSeries.color }}
+    >
+      <div className="field-bi-selected-parcel-main">
+        <span>Parcela selecionada</span>
+        <strong>{parcelSummaryTitle(summary)}</strong>
+        <small>{parcelSummaryPeriod(summary)}</small>
+      </div>
+      <div className="field-bi-selected-parcel-metrics">
+        <span><b>{formatPercent(value, 1)}</b>{activeSeries.label}</span>
+        <span><b>{formatNumber(quantity)}</b>encontrado</span>
+        <span><b>{formatNumber(base)}</b>avaliado</span>
+        <span><b>{formatNumber(recordsCount)}</b>coleta(s)</span>
+        <span><b>{areaHa ? formatNumber(areaHa, 1) : '-'}</b>ha</span>
+      </div>
+      <button type="button" onClick={onClear} aria-label="Limpar parcela selecionada">
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
 function seriesIsInTarget(series, value) {
   const numeric = Number(value || 0);
   const target = Number(series.target || 0);
@@ -688,6 +767,7 @@ function FieldBiInlineCorteMap({
   selectedDayKey = '',
   selectedDayLabel = '',
 }) {
+  const [selectedParcelSummary, setSelectedParcelSummary] = useState(null);
   const activeSeries = fieldBiSeriesByKey(activeMetricKey);
   const selectedIsoDate = dateKeyToIso(selectedDayKey);
   const focusedMapProps = {
@@ -707,6 +787,10 @@ function FieldBiInlineCorteMap({
     focusedMapProps.dateTo || 'end',
   ].join('-');
 
+  useEffect(() => {
+    setSelectedParcelSummary(null);
+  }, [mapKey]);
+
   return (
     <section className="field-bi-panel field-bi-map-panel field-bi-corte-map-panel">
       <div className="field-bi-map-head">
@@ -725,6 +809,11 @@ function FieldBiInlineCorteMap({
           </button>
         ) : null}
       </div>
+      <FieldBiSelectedParcelSummary
+        summary={selectedParcelSummary}
+        activeMetricKey={activeMetricKey}
+        onClear={() => setSelectedParcelSummary(null)}
+      />
       <div className="field-bi-inline-map-frame field-bi-corte-inline-map-frame">
         {loading ? (
           <div className="field-map-suspense">
@@ -748,6 +837,7 @@ function FieldBiInlineCorteMap({
               areaFilter="corte"
               initialOperation="corte"
               initialMetricId={mapMetricIdForFieldSeries(activeMetricKey)}
+              onParcelSelect={setSelectedParcelSummary}
             />
           </Suspense>
         )}
