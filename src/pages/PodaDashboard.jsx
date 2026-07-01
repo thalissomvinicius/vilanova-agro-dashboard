@@ -1955,7 +1955,7 @@ function FieldBiBoard({
               series={selectedSeries}
               mode={evolutionMode}
               onModeChange={setEvolutionMode}
-              chartHeight={presentationMode ? 126 : null}
+              chartHeight={presentationMode ? 136 : null}
             />
             <MemoFieldBiMapPanel
               mapProps={focusedMapProps}
