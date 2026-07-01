@@ -2514,6 +2514,11 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
   font-size: 8.5px;
   font-weight: 800;
   letter-spacing: 0;
+  paint-order: stroke;
+  pointer-events: none;
+  stroke: rgba(255, 255, 255, 0.96);
+  stroke-linejoin: round;
+  stroke-width: 3px;
 }
 
 .field-target-line {
