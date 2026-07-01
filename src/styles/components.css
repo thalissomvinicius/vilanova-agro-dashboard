@@ -2070,7 +2070,8 @@ button.field-bi-kpi-danger.is-active {
 
 .field-bi-main-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 30%) minmax(360px, 1fr) minmax(300px, 37%);
+  grid-template-columns: minmax(300px, 31%) minmax(360px, 1fr) minmax(390px, 37%);
+  grid-template-rows: minmax(236px, 0.82fr) minmax(286px, 1fr);
   grid-template-areas:
     "farm evolution map"
     "daily daily map";
@@ -2144,82 +2145,114 @@ button.field-bi-kpi-danger.is-active {
   grid-area: farm;
 }
 
-.field-bi-farm-chart {
+.field-bi-week-panel {
+  grid-area: evolution;
+}
+
+.field-bi-farm-score-list {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   margin-top: 7px;
 }
 
-.field-bi-farm-row {
+.field-bi-farm-score-row {
   display: grid;
-  grid-template-columns: minmax(90px, 0.42fr) minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
+  grid-template-columns: minmax(82px, 0.32fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 7px;
+  padding: 5px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fff, rgba(248, 250, 252, 0.76));
 }
 
-.field-bi-farm-row strong {
+.field-bi-farm-score-name {
   min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+}
+
+.field-bi-farm-score-name strong {
   color: var(--text-primary);
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 950;
   line-height: 1.06;
   text-transform: uppercase;
   overflow-wrap: anywhere;
 }
 
-.field-bi-farm-bars {
+.field-bi-farm-score-name span {
+  color: var(--text-muted);
+  font-size: 0.52rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.field-bi-farm-score-metrics {
+  min-width: 0;
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
-  min-width: 0;
 }
 
-.field-bi-farm-bar-line {
-  position: relative;
+.field-bi-farm-score-metric {
+  min-width: 0;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 47px;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "label value"
+    "bar bar";
   align-items: center;
-  gap: 5px;
-  min-width: 0;
+  gap: 3px 5px;
+  padding: 4px 5px;
+  border: 1px solid color-mix(in srgb, var(--metric-color) 23%, var(--border-color));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--metric-color) 6%, #fff);
 }
 
-.field-bi-farm-bar-line em {
+.field-bi-farm-score-metric span {
+  grid-area: label;
+  min-width: 0;
+  color: var(--metric-color);
   font-size: 0.54rem;
-  font-style: normal;
   font-weight: 950;
   line-height: 1;
   white-space: nowrap;
 }
 
-.field-bi-farm-bar-line span {
-  display: block;
-  height: 8px;
-  min-width: 2px;
-  border-radius: 999px;
-  background: var(--metric-color, var(--green-institutional));
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
-}
-
-.field-bi-farm-bar-line span.is-in-target {
-  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.12);
-}
-
-.field-bi-farm-bar-line span.is-out-target {
-  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.12);
-}
-
-.field-bi-farm-bar-line small {
+.field-bi-farm-score-metric strong {
+  grid-area: value;
   color: var(--text-primary);
-  font-size: 0.56rem;
+  font-size: 0.58rem;
   font-weight: 950;
+  line-height: 1;
   text-align: right;
   white-space: nowrap;
 }
 
-.field-bi-farm-bar-line small.is-in-target {
+.field-bi-farm-score-metric i {
+  grid-area: bar;
+  height: 5px;
+  display: block;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.82);
+}
+
+.field-bi-farm-score-metric i b {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: var(--metric-color);
+}
+
+.field-bi-farm-score-metric.is-in-target strong {
   color: var(--green-institutional);
 }
 
-.field-bi-farm-bar-line small.is-out-target {
+.field-bi-farm-score-metric.is-out-target strong {
   color: var(--status-danger);
 }
 
@@ -3069,18 +3102,18 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 10px;
+  grid-template-rows: minmax(112px, auto) minmax(0, 1fr);
+  gap: 8px;
 }
 
 .field-bi-evaluators-minimal {
   min-height: 0;
-  max-height: 164px;
+  max-height: 134px;
   overflow: hidden;
 }
 
 .field-bi-evaluators-minimal .field-bi-evaluator-card {
-  padding: 6px 8px;
+  padding: 5px 7px;
 }
 
 .field-bi-evaluators-minimal .field-bi-evaluator-card div {
@@ -3089,12 +3122,12 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 
 .field-bi-evaluators-minimal .field-bi-evaluator-card span,
 .field-bi-evaluators-minimal .field-bi-evaluator-card b {
-  font-size: 0.64rem;
+  font-size: 0.58rem;
 }
 
 .field-bi-evaluators-minimal .field-bi-evaluator-card > small {
-  margin-top: 4px;
-  font-size: 0.56rem;
+  margin-top: 3px;
+  font-size: 0.52rem;
 }
 
 .field-bi-evaluator-head {
@@ -3248,13 +3281,14 @@ button.field-bi-evaluator-danger.is-active {
 
 .field-bi-corte-map-panel {
   grid-area: auto;
-  grid-template-rows: auto minmax(188px, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 7px;
-  min-height: 300px;
+  min-height: 0;
+  height: 100%;
 }
 
 .field-bi-corte-inline-map-frame {
-  min-height: 188px;
+  min-height: 0;
 }
 
 .field-bi-corte-map-legend {
@@ -4243,7 +4277,17 @@ body.field-map-active {
 }
 
 .presentation-overlay .field-bi-main-grid {
-  flex: initial;
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-rows: minmax(214px, 0.72fr) minmax(270px, 1fr);
+}
+
+.presentation-overlay .field-bi-right-column,
+.presentation-overlay .field-bi-farm-legacy-panel,
+.presentation-overlay .field-bi-week-panel,
+.presentation-overlay .field-bi-corte-map-panel,
+.presentation-overlay .field-bi-daily-panel {
+  min-height: 0;
 }
 
 .field-bi-presentation-overlay .presentation-scroll {

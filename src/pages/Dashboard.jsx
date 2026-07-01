@@ -423,25 +423,29 @@ function FieldBiFarmChart({ rows, loading = false }) {
       {loading ? (
         <div className="skeleton-chart" style={{ height: 180 }} />
       ) : (
-        <div className="field-bi-farm-chart">
+        <div className="field-bi-farm-score-list">
           {visibleRows.map((row) => {
             const values = qualityValuesFromRow(row);
             return (
-              <div className="field-bi-farm-row" key={row.label}>
-                <strong>{row.label}</strong>
-                <div className="field-bi-farm-bars">
+              <div className="field-bi-farm-score-row" key={row.label}>
+                <div className="field-bi-farm-score-name">
+                  <strong>{row.label}</strong>
+                  <span>{formatNumber(row.recordsCount)} coleta(s)</span>
+                </div>
+                <div className="field-bi-farm-score-metrics">
                   {BI_SERIES.map((item) => {
                     const value = values[item.key];
                     const inTarget = seriesIsInTarget(item, value);
                     return (
-                      <div className="field-bi-farm-bar-line" key={item.key}>
-                        <em style={{ color: item.color }}>{item.label}</em>
-                        <span
-                          style={{ width: `${Math.min(value, 100)}%`, background: item.color }}
-                          className={inTarget ? 'is-in-target' : 'is-out-target'}
-                          title={`${row.label} - ${item.fullLabel}: ${formatPercent(value)} | Meta ${item.goodWhen === 'high' ? '>=' : '<='} ${formatPercent(item.target)}`}
-                        />
-                        <small className={inTarget ? 'is-in-target' : 'is-out-target'}>{formatPercent(value, 1)} {inTarget ? '✓' : '!'}</small>
+                      <div
+                        className={`field-bi-farm-score-metric ${inTarget ? 'is-in-target' : 'is-out-target'}`}
+                        key={item.key}
+                        style={{ '--metric-color': item.color }}
+                        title={`${row.label} - ${item.fullLabel}: ${formatPercent(value)} | Meta ${item.goodWhen === 'high' ? '>=' : '<='} ${formatPercent(item.target)}`}
+                      >
+                        <span>{item.label}</span>
+                        <strong>{formatPercent(value, 1)} {inTarget ? '✓' : '!'}</strong>
+                        <i><b style={{ width: `${Math.min(value, 100)}%` }} /></i>
                       </div>
                     );
                   })}
@@ -452,7 +456,6 @@ function FieldBiFarmChart({ rows, loading = false }) {
           {!visibleRows.length && <div className="empty-panel smart-empty-panel"><strong>Sem dados de fazenda</strong><span>Troque o mês, ano ou fazenda para localizar coletas já sincronizadas.</span></div>}
         </div>
       )}
-      <div className="field-bi-axis"><span>0%</span><span>50%</span><span>100%</span></div>
     </section>
   );
 }
@@ -469,7 +472,7 @@ function FieldBiWeekChart({ rows, monthRows = [], mode = 'week', onModeChange, l
   const title = mode === 'month' ? 'Qualidade por mês' : 'Qualidade por semana';
 
   return (
-    <section className="field-bi-panel">
+    <section className="field-bi-panel field-bi-week-panel">
       <div className="field-bi-panel-head">
         <h3>{title}</h3>
         <div className="field-bi-chart-toggle" role="group" aria-label="Alternar qualidade por semana ou mês">
@@ -560,7 +563,7 @@ function FiscalQualityCards({ rows, loading = false }) {
       };
     })
     .sort((a, b) => b.risk - a.risk || b.recordsCount - a.recordsCount)
-    .slice(0, 4);
+    .slice(0, 2);
 
   return (
     <section className="field-bi-panel field-bi-evaluators field-bi-evaluators-minimal">
@@ -1033,14 +1036,13 @@ function FieldBiBoard({
               loading={loading}
               onOpenGeoQuality={onOpenGeoQuality}
             />
+            <DailyBunchBarChart
+              rows={dailyBunchRows}
+              selectedDayKey={selectedDayKey}
+              onSelectDay={(key) => setSelectedDayKey((current) => (current === key ? '' : key))}
+              loading={loading}
+            />
           </div>
-
-          <DailyBunchBarChart
-            rows={dailyBunchRows}
-            selectedDayKey={selectedDayKey}
-            onSelectDay={(key) => setSelectedDayKey((current) => (current === key ? '' : key))}
-            loading={loading}
-          />
         </>
       ) : (
         <FieldTotalDataPanel model={model} selectedSection={totalSection} loading={loading} />
