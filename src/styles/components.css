@@ -2304,6 +2304,43 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
   overflow: visible;
 }
 
+.field-poda-line-panel .field-bi-week-chart {
+  min-height: 0;
+}
+
+.field-line-chart-track {
+  width: max-content;
+  min-width: 100%;
+}
+
+.field-line-axis-row {
+  position: relative;
+  height: 16px;
+  min-width: 100%;
+  margin-top: -3px;
+}
+
+.field-line-axis-tick {
+  position: absolute;
+  top: 0;
+  color: var(--text-muted);
+  font-size: 8.5px;
+  font-weight: 850;
+  line-height: 1;
+  pointer-events: none;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.95), 0 -1px 0 rgba(255, 255, 255, 0.95);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.field-line-axis-tick.is-start {
+  transform: translateX(0);
+}
+
+.field-line-axis-tick.is-end {
+  transform: translateX(-100%);
+}
+
 .field-line-chart-head {
   display: flex;
   align-items: flex-start;
@@ -2497,7 +2534,16 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 }
 
 .field-bi-evolution-panel .field-bi-week-chart {
-  min-height: 192px;
+  min-height: 0;
+}
+
+.field-bi-evolution-panel .field-line-axis-row {
+  height: 14px;
+  margin-top: -5px;
+}
+
+.field-bi-evolution-panel .field-line-axis-tick {
+  font-size: 8px;
 }
 
 .field-bi-evolution-panel .field-line-single-bars {
@@ -3590,7 +3636,12 @@ button.field-bi-evaluator-danger.is-active {
 }
 
 .field-bi-daily-panel .field-bi-week-chart {
-  min-height: 188px;
+  min-height: 0;
+}
+
+.field-bi-daily-panel .field-line-axis-row {
+  height: 17px;
+  margin-top: -2px;
 }
 
 .field-bi-daily-panel .chart-axis-text {
@@ -4126,7 +4177,7 @@ body.field-map-active {
 }
 
 .field-bi-presentation-overlay .field-bi-evolution-panel .field-bi-week-chart {
-  min-height: 160px;
+  min-height: 0;
 }
 
 .field-bi-presentation-overlay .field-bi-evolution-panel .field-bi-week-scroll {
@@ -4163,7 +4214,7 @@ body.field-map-active {
 }
 
 .field-bi-presentation-overlay .field-bi-daily-panel .field-bi-week-chart {
-  min-height: 194px;
+  min-height: 0;
 }
 
 .field-bi-presentation-overlay,

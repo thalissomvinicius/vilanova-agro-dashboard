@@ -85,8 +85,11 @@ function safePct(num, den) {
 }
 
 function weekNumberLabel(label) {
-  const match = String(label || '').match(/S?(\d{1,2})/i);
-  return match ? String(Number(match[1])) : label;
+  const text = String(label || '');
+  const match = text.match(/S?(\d{1,2}).*?(\d{4})?/i);
+  if (!match) return label;
+  const week = `S${Number(match[1])}`;
+  return match[2] ? `${week}/${String(match[2]).slice(-2)}` : week;
 }
 
 function localDateKey(date) {
@@ -801,13 +804,12 @@ function PodaTargetLineChart({
   const isMultiSeries = selectedSeries.length > 1;
   const chartHeight = Number(chartHeightOverride) || (compact ? 216 : 244);
   const padding = compact
-    ? { top: 24, right: 34, bottom: 28, left: 44 }
-    : { top: 30, right: 40, bottom: 32, left: 50 };
+    ? { top: 24, right: 34, bottom: 18, left: 44 }
+    : { top: 30, right: 40, bottom: 20, left: 50 };
   const columnWidth = Number(columnWidthOverride) || (compact ? 76 : 88);
   const width = Math.max(minWidth, padding.left + padding.right + Math.max(visibleRows.length - 1, 1) * columnWidth + 54);
   const graphHeight = chartHeight - padding.top - padding.bottom;
   const graphWidth = width - padding.left - padding.right;
-  const axisLabelY = padding.top + graphHeight - (compact ? 24 : 10);
   const valuesBySeries = selectedSeries.map((item) => ({
     series: item,
     values: visibleRows.map((row, index) => {
@@ -839,6 +841,23 @@ function PodaTargetLineChart({
     if (visibleRows.length <= 1) return padding.left + graphWidth / 2;
     return padding.left + (index / (visibleRows.length - 1)) * graphWidth;
   };
+  const axisLabelStep = Math.max(Number(axisLabelEvery) || 1, 1);
+  const axisTicks = visibleRows.map((row, index) => {
+    const shouldShowLabel = index === 0 || index === visibleRows.length - 1 || index % axisLabelStep === 0;
+    if (!shouldShowLabel) return null;
+    const anchor = index === 0 ? 'start' : index === visibleRows.length - 1 ? 'end' : 'middle';
+    const x = index === 0
+      ? Math.max(xFor(index), padding.left + 2)
+      : index === visibleRows.length - 1
+        ? Math.min(xFor(index), width - padding.right - 2)
+        : xFor(index);
+    return {
+      key: rowKey(row, index),
+      label: labelForRow(row),
+      x,
+      anchor,
+    };
+  }).filter(Boolean);
   const pointGroups = valuesBySeries.map((group) => {
     const points = group.values.map((item, index) => ({
       ...item,
@@ -906,122 +925,112 @@ function PodaTargetLineChart({
       ) : (
         <div className="field-bi-week-scroll" onWheel={handleHorizontalWheel}>
           {hasPoints ? (
-            <svg className="field-bi-week-chart" viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight}>
-              <rect
-                x={padding.left}
-                y={warningBandY}
-                width={graphWidth}
-                height={Math.max(greenBandY - warningBandY, 0)}
-                className="field-target-band field-target-band-warning"
-              />
-              <rect
-                x={padding.left}
-                y={greenBandY}
-                width={graphWidth}
-                height={Math.max(padding.top + graphHeight - greenBandY, 0)}
-                className="field-target-band field-target-band-ok"
-              />
-              <rect
-                x={padding.left}
-                y={padding.top}
-                width={graphWidth}
-                height={Math.max(warningBandY - padding.top, 0)}
-                className="field-target-band field-target-band-critical"
-              />
-              {gridValues.map((gridValue) => {
-                const y = yFor(gridValue);
-                return (
-                  <g key={gridValue}>
-                    <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} className="chart-grid-line" />
-                    <text x={padding.left - 8} y={y + 4} textAnchor="end" className="chart-axis-text">
-                      {formatPercent(gridValue, gridValue >= 10 ? 0 : 1)}
-                    </text>
+            <div className="field-line-chart-track" style={{ width }}>
+              <svg className="field-bi-week-chart" viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight}>
+                <rect
+                  x={padding.left}
+                  y={warningBandY}
+                  width={graphWidth}
+                  height={Math.max(greenBandY - warningBandY, 0)}
+                  className="field-target-band field-target-band-warning"
+                />
+                <rect
+                  x={padding.left}
+                  y={greenBandY}
+                  width={graphWidth}
+                  height={Math.max(padding.top + graphHeight - greenBandY, 0)}
+                  className="field-target-band field-target-band-ok"
+                />
+                <rect
+                  x={padding.left}
+                  y={padding.top}
+                  width={graphWidth}
+                  height={Math.max(warningBandY - padding.top, 0)}
+                  className="field-target-band field-target-band-critical"
+                />
+                {gridValues.map((gridValue) => {
+                  const y = yFor(gridValue);
+                  return (
+                    <g key={gridValue}>
+                      <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} className="chart-grid-line" />
+                      <text x={padding.left - 8} y={y + 4} textAnchor="end" className="chart-axis-text">
+                        {formatPercent(gridValue, gridValue >= 10 ? 0 : 1)}
+                      </text>
+                    </g>
+                  );
+                })}
+                {targetLines.map((targetLine, index) => (
+                  <g key={`target-${targetLine.key}`}>
+                    <line
+                      x1={padding.left}
+                      x2={width - padding.right}
+                      y1={targetLine.y}
+                      y2={targetLine.y}
+                      className="field-target-line"
+                      style={{ stroke: targetLine.color, opacity: isMultiSeries ? 0.45 : 0.95 }}
+                    />
+                    {(!isMultiSeries || index === targetLines.length - 1) ? (
+                      <text x={width - padding.right - 4} y={targetLine.y - 7} textAnchor="end" className="field-target-label" style={{ fill: targetLine.color }}>
+                        Meta {formatPercent(targetLine.target)}
+                      </text>
+                    ) : null}
                   </g>
-                );
-              })}
-              {targetLines.map((targetLine, index) => (
-                <g key={`target-${targetLine.key}`}>
-                  <line
-                    x1={padding.left}
-                    x2={width - padding.right}
-                    y1={targetLine.y}
-                    y2={targetLine.y}
-                    className="field-target-line"
-                    style={{ stroke: targetLine.color, opacity: isMultiSeries ? 0.45 : 0.95 }}
-                  />
-                  {(!isMultiSeries || index === targetLines.length - 1) ? (
-                    <text x={width - padding.right - 4} y={targetLine.y - 7} textAnchor="end" className="field-target-label" style={{ fill: targetLine.color }}>
-                      Meta {formatPercent(targetLine.target)}
-                    </text>
-                  ) : null}
-                </g>
-              ))}
-              {pointGroups.map((group) => (
-                <g key={`line-${group.series.key}`}>
-                  {!isMultiSeries && group.areaPath ? <path d={group.areaPath} fill={group.series.color} className="field-line-area" /> : null}
-                  {group.linePath ? <path d={group.linePath} stroke={group.series.color} className="field-line-path" /> : null}
-                  {group.points.map((point) => {
-                    const overTarget = point.value > Number(group.series.target || 0);
-                    return (
-                      <g key={point.key}>
-                        {!isMultiSeries ? <line x1={point.x} x2={point.x} y1={padding.top + graphHeight} y2={padding.top + graphHeight + 5} className="chart-grid-line" /> : null}
-                        <circle
-                          cx={point.x}
-                          cy={point.y}
-                          r={isMultiSeries ? 3 : 4}
-                          className={`field-line-point ${overTarget ? 'is-over-target' : 'is-under-target'} ${point.clipped ? 'is-clipped' : ''}`.trim()}
-                          style={{ fill: group.series.color }}
-                        >
-                          <title>{seriesPointTooltip(point, group.series)}</title>
-                        </circle>
-                        {point.clipped ? (
-                          <text
-                            x={point.x}
-                            y={point.y - 12}
-                            textAnchor="middle"
-                            className="field-line-value is-over-target is-clipped-label"
+                ))}
+                {pointGroups.map((group) => (
+                  <g key={`line-${group.series.key}`}>
+                    {!isMultiSeries && group.areaPath ? <path d={group.areaPath} fill={group.series.color} className="field-line-area" /> : null}
+                    {group.linePath ? <path d={group.linePath} stroke={group.series.color} className="field-line-path" /> : null}
+                    {group.points.map((point) => {
+                      const overTarget = point.value > Number(group.series.target || 0);
+                      return (
+                        <g key={point.key}>
+                          {!isMultiSeries ? <line x1={point.x} x2={point.x} y1={padding.top + graphHeight} y2={padding.top + graphHeight + 5} className="chart-grid-line" /> : null}
+                          <circle
+                            cx={point.x}
+                            cy={point.y}
+                            r={isMultiSeries ? 3 : 4}
+                            className={`field-line-point ${overTarget ? 'is-over-target' : 'is-under-target'} ${point.clipped ? 'is-clipped' : ''}`.trim()}
+                            style={{ fill: group.series.color }}
                           >
-                            {formatPercent(point.value, 1)}
-                          </text>
-                        ) : !isMultiSeries ? (
-                          <text
-                            x={point.x}
-                            y={point.y - 11}
-                            textAnchor="middle"
-                            className={`field-line-value ${overTarget ? 'is-over-target' : ''}`}
-                          >
-                            {formatPercent(point.value, 1)}
-                          </text>
-                        ) : null}
-                      </g>
-                    );
-                  })}
-                </g>
-              ))}
-              {visibleRows.map((row, index) => {
-                const shouldShowLabel = index === 0
-                  || index === visibleRows.length - 1
-                  || index % Math.max(Number(axisLabelEvery) || 1, 1) === 0;
-                const tickAnchor = index === 0 ? 'start' : index === visibleRows.length - 1 ? 'end' : 'middle';
-                const tickX = index === 0
-                  ? Math.max(xFor(index), padding.left + 2)
-                  : index === visibleRows.length - 1
-                    ? Math.min(xFor(index), width - padding.right - 2)
-                    : xFor(index);
-                return shouldShowLabel ? (
-                  <text
-                    key={`axis-${rowKey(row, index)}`}
-                    x={tickX}
-                    y={axisLabelY}
-                    textAnchor={tickAnchor}
-                    dominantBaseline="middle"
-                    className="chart-axis-text field-chart-axis-label"
+                            <title>{seriesPointTooltip(point, group.series)}</title>
+                          </circle>
+                          {point.clipped ? (
+                            <text
+                              x={point.x}
+                              y={point.y - 12}
+                              textAnchor="middle"
+                              className="field-line-value is-over-target is-clipped-label"
+                            >
+                              {formatPercent(point.value, 1)}
+                            </text>
+                          ) : !isMultiSeries ? (
+                            <text
+                              x={point.x}
+                              y={point.y - 11}
+                              textAnchor="middle"
+                              className={`field-line-value ${overTarget ? 'is-over-target' : ''}`}
+                            >
+                              {formatPercent(point.value, 1)}
+                            </text>
+                          ) : null}
+                        </g>
+                      );
+                    })}
+                  </g>
+                ))}
+              </svg>
+              <div className="field-line-axis-row" style={{ width }} aria-hidden="true">
+                {axisTicks.map((tick) => (
+                  <span
+                    key={`axis-${tick.key}`}
+                    className={`field-line-axis-tick is-${tick.anchor}`}
+                    style={{ left: tick.x }}
                   >
-                    {labelForRow(row)}
-                  </text>
-                ) : null;
-              })}
-            </svg>
+                    {tick.label}
+                  </span>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="empty-panel smart-empty-panel"><strong>{emptyTitle}</strong><span>{emptyMessage}</span></div>
           )}
@@ -1945,7 +1954,7 @@ function FieldBiBoard({
               series={selectedSeries}
               mode={evolutionMode}
               onModeChange={setEvolutionMode}
-              chartHeight={presentationMode ? 160 : null}
+              chartHeight={presentationMode ? 136 : null}
             />
             <MemoFieldBiMapPanel
               mapProps={focusedMapProps}
@@ -1960,7 +1969,7 @@ function FieldBiBoard({
               rows={focusedDailyRows}
               loading={loading}
               series={selectedSeries}
-              chartHeight={presentationMode ? 204 : 188}
+              chartHeight={presentationMode ? 190 : 188}
             />
           </div>
         </>
