@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import ActiveFilterSummary from '../components/ui/ActiveFilterSummary';
 import StatusBanner from '../components/ui/StatusBanner';
-import { parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
+import { normalizeCqoFarmId, parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
 import { buildQualidadeOperacional } from '../utils/qualidadeOperacionalData';
 
 const LeafletMap = lazy(() => import('../components/LeafletMap'));
@@ -1274,8 +1274,9 @@ function FieldBiBoard({
     return displayDailyBunchRows.filter((row) => row[periodRowKey] === selectedPeriodKey);
   }, [displayDailyBunchRows, periodRowKey, selectedPeriodKey]);
   const displayQuality = selectedFarmLabel ? displayModel.quality : quality;
+  const selectedFarmId = selectedFarmLabel ? normalizeCqoFarmId(selectedFarmLabel) : '';
   const displayMapProps = selectedFarmLabel
-    ? { ...mapProps, farmFilter: selectedFarmLabel }
+    ? { ...mapProps, farmFilter: selectedFarmId }
     : mapProps;
   const selectedDayRow = selectedDayKey
     ? periodFilteredDailyRows.find((row) => row.sortKey === selectedDayKey)
