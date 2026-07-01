@@ -2098,6 +2098,131 @@ button.field-bi-kpi-danger.is-active {
   line-height: 1.15;
 }
 
+.field-bi-panel-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin: -2px 0 6px;
+}
+
+.field-bi-panel-head h3 {
+  margin: 0;
+  text-align: left;
+}
+
+.field-bi-chart-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.94);
+}
+
+.field-bi-chart-toggle button {
+  min-height: 25px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.field-bi-chart-toggle button.active {
+  background: var(--green-institutional);
+  color: var(--white);
+  box-shadow: 0 5px 12px rgba(13, 91, 52, 0.18);
+}
+
+.field-bi-farm-legacy-panel {
+  grid-area: farm;
+}
+
+.field-bi-farm-chart {
+  display: grid;
+  gap: 8px;
+  margin-top: 7px;
+}
+
+.field-bi-farm-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.42fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.field-bi-farm-row strong {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 950;
+  line-height: 1.06;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.field-bi-farm-bars {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.field-bi-farm-bar-line {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 47px;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.field-bi-farm-bar-line em {
+  font-size: 0.54rem;
+  font-style: normal;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.field-bi-farm-bar-line span {
+  display: block;
+  height: 8px;
+  min-width: 2px;
+  border-radius: 999px;
+  background: var(--metric-color, var(--green-institutional));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.field-bi-farm-bar-line span.is-in-target {
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.12);
+}
+
+.field-bi-farm-bar-line span.is-out-target {
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.12);
+}
+
+.field-bi-farm-bar-line small {
+  color: var(--text-primary);
+  font-size: 0.56rem;
+  font-weight: 950;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.field-bi-farm-bar-line small.is-in-target {
+  color: var(--green-institutional);
+}
+
+.field-bi-farm-bar-line small.is-out-target {
+  color: var(--status-danger);
+}
+
 .field-bi-farm-panel {
   grid-area: farm;
   min-height: 158px;
@@ -2939,6 +3064,39 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
   padding: 8px 10px;
 }
 
+.field-bi-right-column {
+  grid-area: map;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+}
+
+.field-bi-evaluators-minimal {
+  min-height: 0;
+  max-height: 164px;
+  overflow: hidden;
+}
+
+.field-bi-evaluators-minimal .field-bi-evaluator-card {
+  padding: 6px 8px;
+}
+
+.field-bi-evaluators-minimal .field-bi-evaluator-card div {
+  gap: 6px;
+}
+
+.field-bi-evaluators-minimal .field-bi-evaluator-card span,
+.field-bi-evaluators-minimal .field-bi-evaluator-card b {
+  font-size: 0.64rem;
+}
+
+.field-bi-evaluators-minimal .field-bi-evaluator-card > small {
+  margin-top: 4px;
+  font-size: 0.56rem;
+}
+
 .field-bi-evaluator-head {
   display: flex;
   align-items: baseline;
@@ -3086,6 +3244,21 @@ button.field-bi-evaluator-danger.is-active {
   grid-template-rows: auto auto minmax(214px, 1fr) auto;
   gap: 8px;
   padding: 10px;
+}
+
+.field-bi-corte-map-panel {
+  grid-area: auto;
+  grid-template-rows: auto minmax(188px, 1fr) auto;
+  gap: 7px;
+  min-height: 300px;
+}
+
+.field-bi-corte-inline-map-frame {
+  min-height: 188px;
+}
+
+.field-bi-corte-map-legend {
+  min-height: 42px;
 }
 
 .field-bi-map-head {
@@ -3598,6 +3771,50 @@ button.field-bi-evaluator-danger.is-active {
   min-height: 220px;
   margin-top: 0;
   padding: 8px 10px;
+}
+
+.field-bi-day-focus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 8px;
+  margin: 6px 0 4px;
+  padding: 6px 8px;
+  border: 1px solid rgba(13, 91, 52, 0.14);
+  border-radius: 8px;
+  background: rgba(13, 91, 52, 0.05);
+  color: var(--text-secondary);
+  font-size: 0.62rem;
+  font-weight: 850;
+}
+
+.field-bi-day-focus strong {
+  color: var(--green-institutional);
+  font-size: 0.68rem;
+  font-weight: 950;
+}
+
+.field-bi-day-focus span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.field-bi-day-focus i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+}
+
+.field-bi-day-group {
+  cursor: pointer;
+}
+
+.field-bi-day-highlight {
+  fill: rgba(13, 91, 52, 0.06);
+  stroke: rgba(13, 91, 52, 0.32);
+  stroke-width: 1;
 }
 
 .field-bi-daily-panel .field-line-chart-head {

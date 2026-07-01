@@ -605,6 +605,10 @@ export function buildQualidadeOperacional(records, balanceData = null) {
     .map(formatQualityRow)
     .sort((a, b) => b.recordsCount - a.recordsCount);
 
+  const qualityMonthRows = Array.from(byMonth.values())
+    .map(formatQualityRow)
+    .sort((a, b) => String(a.label).localeCompare(String(b.label)));
+
   const weekRows = Array.from(byWeek.values())
     .map(formatQualityRow)
     .sort((a, b) => String(a.label).localeCompare(String(b.label)));
@@ -672,6 +676,7 @@ export function buildQualidadeOperacional(records, balanceData = null) {
     farmRows,
     parcelaRows,
     evaluatorRows,
+    monthRows: qualityMonthRows,
     weekRows,
     dayRows,
   };
