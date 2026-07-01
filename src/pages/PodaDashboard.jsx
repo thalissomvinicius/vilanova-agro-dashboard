@@ -938,6 +938,7 @@ function PodaTargetLineChart({
                   width={graphWidth}
                   height={Math.max(greenBandY - warningBandY, 0)}
                   className="field-target-band field-target-band-warning"
+                  fill="rgba(242, 140, 0, 0.06)"
                 />
                 <rect
                   x={padding.left}
@@ -945,6 +946,7 @@ function PodaTargetLineChart({
                   width={graphWidth}
                   height={Math.max(padding.top + graphHeight - greenBandY, 0)}
                   className="field-target-band field-target-band-ok"
+                  fill="rgba(34, 197, 94, 0.07)"
                 />
                 <rect
                   x={padding.left}
@@ -952,6 +954,7 @@ function PodaTargetLineChart({
                   width={graphWidth}
                   height={Math.max(warningBandY - padding.top, 0)}
                   className="field-target-band field-target-band-critical"
+                  fill="rgba(239, 68, 68, 0.035)"
                 />
                 {gridValues.map((gridValue) => {
                   const y = yFor(gridValue);
@@ -983,8 +986,18 @@ function PodaTargetLineChart({
                 ))}
                 {pointGroups.map((group) => (
                   <g key={`line-${group.series.key}`}>
-                    {!isMultiSeries && group.areaPath ? <path d={group.areaPath} fill={group.series.color} className="field-line-area" /> : null}
-                    {group.linePath ? <path d={group.linePath} stroke={group.series.color} className="field-line-path" /> : null}
+                    {!isMultiSeries && group.areaPath ? <path d={group.areaPath} fill={group.series.color} opacity="0.08" className="field-line-area" /> : null}
+                    {group.linePath ? (
+                      <path
+                        d={group.linePath}
+                        fill="none"
+                        stroke={group.series.color}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.55"
+                        className="field-line-path"
+                      />
+                    ) : null}
                     {group.points.map((point) => {
                       const overTarget = point.value > Number(group.series.target || 0);
                       return (
