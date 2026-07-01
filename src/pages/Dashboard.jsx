@@ -575,6 +575,7 @@ function FieldBiFarmChart({ rows, loading = false, activeMetricKey = 'maduro', o
         <div className="field-bi-farm-score-list">
           {visibleRows.map((row) => {
             const values = qualityValuesFromRow(row);
+            const rowRecordsCount = row.records?.length || row.recordsCount || 0;
             const matureValue = values.maduro || 0;
             const matureInTarget = seriesIsInTarget(mainSeries, matureValue);
             const alertItems = BI_SERIES
@@ -595,7 +596,7 @@ function FieldBiFarmChart({ rows, loading = false, activeMetricKey = 'maduro', o
               <div className="field-bi-farm-score-row" key={row.label}>
                 <div className="field-bi-farm-score-name">
                   <strong>{row.label}</strong>
-                  <span>{formatNumber(row.recordsCount)} coleta(s)</span>
+                  <span>{formatNumber(rowRecordsCount)} coleta(s)</span>
                 </div>
                 <div className="field-bi-farm-executive">
                   <button
@@ -922,13 +923,15 @@ function FieldBiRightColumn({
 
 function DailyBunchBarChart({ rows, selectedDayKey = '', onSelectDay, loading = false, activeMetricKey = 'maduro' }) {
   const series = BI_SERIES;
-  const visibleRows = rows.slice(-12);
+  const visibleRows = rows;
   const chartHeight = 236;
   const padding = { top: 18, right: 18, bottom: 32, left: 46 };
-  const dayWidth = 96;
-  const width = Math.max(880, padding.left + padding.right + visibleRows.length * dayWidth);
+  const width = 1000;
+  const plotWidth = width - padding.left - padding.right;
+  const dayWidth = plotWidth / Math.max(visibleRows.length, 1);
   const graphHeight = chartHeight - padding.top - padding.bottom;
-  const barWidth = 62;
+  const barWidth = Math.max(3, Math.min(62, dayWidth * 0.66));
+  const labelStep = Math.max(1, Math.ceil(visibleRows.length / 14));
   const selectedRow = selectedDayKey ? visibleRows.find((row) => row.sortKey === selectedDayKey) : null;
   const activeSeries = fieldBiSeriesByKey(activeMetricKey);
 
@@ -968,7 +971,7 @@ function DailyBunchBarChart({ rows, selectedDayKey = '', onSelectDay, loading = 
       ) : (
         <div className="field-daily-chart-scroll">
           {visibleRows.length ? (
-            <svg className="field-daily-chart-svg" viewBox={`0 0 ${width} ${chartHeight}`} width={width} height={chartHeight}>
+            <svg className="field-daily-chart-svg" viewBox={`0 0 ${width} ${chartHeight}`} width="100%" height={chartHeight}>
               {[0, 0.5, 1].map((ratio) => {
                 const y = padding.top + graphHeight * (1 - ratio);
                 return (
@@ -982,7 +985,10 @@ function DailyBunchBarChart({ rows, selectedDayKey = '', onSelectDay, loading = 
               })}
 
               {visibleRows.map((row, rowIndex) => {
-                const groupX = padding.left + rowIndex * dayWidth + (dayWidth - barWidth) / 2;
+                const groupCenterX = padding.left + (rowIndex * dayWidth) + (dayWidth / 2);
+                const groupX = groupCenterX - (barWidth / 2);
+                const highlightWidth = Math.max(barWidth + 6, Math.min(dayWidth * 0.86, 28));
+                const showLabel = rowIndex === 0 || rowIndex === visibleRows.length - 1 || rowIndex % labelStep === 0;
                 const total = series.reduce((sum, item) => sum + Number(row[item.key] || 0), 0);
                 let stackedHeight = 0;
                 const isSelected = selectedDayKey === row.sortKey;
@@ -994,9 +1000,9 @@ function DailyBunchBarChart({ rows, selectedDayKey = '', onSelectDay, loading = 
                   >
                     {isSelected ? (
                       <rect
-                        x={groupX - 9}
+                        x={groupCenterX - (highlightWidth / 2)}
                         y={padding.top - 8}
-                        width={barWidth + 18}
+                        width={highlightWidth}
                         height={graphHeight + 22}
                         rx="8"
                         className="field-bi-day-highlight"
@@ -1022,9 +1028,11 @@ function DailyBunchBarChart({ rows, selectedDayKey = '', onSelectDay, loading = 
                         </rect>
                       );
                     })}
-                    <text x={groupX + barWidth / 2} y={chartHeight - 12} textAnchor="middle" className="chart-axis-text">
-                      {row.label}
-                    </text>
+                    {showLabel ? (
+                      <text x={groupCenterX} y={chartHeight - 12} textAnchor="middle" className="chart-axis-text">
+                        {row.label}
+                      </text>
+                    ) : null}
                   </g>
                 );
               })}

@@ -4182,6 +4182,16 @@ button.field-bi-evaluator-danger.is-active {
   font-size: 0.66rem;
 }
 
+.field-bi-daily-panel .field-daily-chart-scroll {
+  overflow: hidden;
+  padding: 0;
+}
+
+.field-bi-daily-panel .field-daily-chart-svg {
+  width: 100%;
+  min-height: 0;
+}
+
 .field-bi-daily-panel .field-bi-week-scroll {
   overflow-x: auto;
   overflow-y: hidden;
