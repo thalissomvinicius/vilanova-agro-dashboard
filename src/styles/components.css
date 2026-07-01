@@ -1548,6 +1548,51 @@ body.presentation-active {
   box-shadow: var(--shadow-sm);
 }
 
+.field-bi-export-btn {
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 8px;
+  padding: 0 14px;
+  background: var(--white);
+  color: var(--green-institutional);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  white-space: nowrap;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+}
+
+.field-bi-export-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.field-bi-export-btn:disabled {
+  cursor: wait;
+  opacity: 0.78;
+}
+
+.field-bi-export-spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(13, 91, 52, 0.2);
+  border-top-color: var(--green-institutional);
+  border-radius: 999px;
+  animation: field-export-spin 0.72s linear infinite;
+}
+
+@keyframes field-export-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .field-bi-control-bar {
   min-height: 42px;
   display: flex;
@@ -14018,6 +14063,7 @@ body.field-map-active {
     justify-content: stretch;
   }
 
+  .field-bi-export-btn,
   .field-bi-map-btn,
   .field-bi-present-btn {
     flex: 1;
