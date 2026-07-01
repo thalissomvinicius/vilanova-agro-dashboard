@@ -917,6 +917,7 @@ function DailyBunchBarChart({ rows, selectedDayKey = '', onSelectDay, loading = 
   const dayWidth = plotWidth / Math.max(visibleRows.length, 1);
   const graphHeight = chartHeight - padding.top - padding.bottom;
   const barWidth = Math.max(3, Math.min(62, dayWidth * 0.66));
+  const dayLabelFontSize = Math.max(5.2, Math.min(8.5, dayWidth * 0.24));
   const selectedRow = selectedDayKey ? visibleRows.find((row) => row.sortKey === selectedDayKey) : null;
   const activeSeries = fieldBiSeriesByKey(activeMetricKey);
 
@@ -1012,11 +1013,15 @@ function DailyBunchBarChart({ rows, selectedDayKey = '', onSelectDay, loading = 
                         </rect>
                       );
                     })}
-                    <g transform={`translate(${groupCenterX} ${chartHeight - 10}) rotate(-42)`}>
-                      <text textAnchor="end" className="chart-axis-text field-bi-day-axis-label">
-                        {row.label}
-                      </text>
-                    </g>
+                    <text
+                      x={groupCenterX}
+                      y={chartHeight - 14}
+                      textAnchor="middle"
+                      className="chart-axis-text field-bi-day-axis-label"
+                      style={{ fontSize: `${dayLabelFontSize}px` }}
+                    >
+                      {row.label}
+                    </text>
                   </g>
                 );
               })}
