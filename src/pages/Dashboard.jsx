@@ -564,7 +564,6 @@ function FieldBiLegend({ activeKey = '', onSelect }) {
 
 function FieldBiFarmChart({ rows, loading = false, activeMetricKey = 'maduro', onSelectMetric }) {
   const visibleRows = rows.slice(0, 5);
-  const mainSeries = fieldBiSeriesByKey('maduro');
 
   return (
     <section className="field-bi-panel field-bi-farm-legacy-panel">
@@ -572,63 +571,50 @@ function FieldBiFarmChart({ rows, loading = false, activeMetricKey = 'maduro', o
       {loading ? (
         <div className="skeleton-chart" style={{ height: 180 }} />
       ) : (
-        <div className="field-bi-farm-score-list">
+        <div className="field-bi-farm-matrix">
+          <div className="field-bi-farm-matrix-head">
+            <span>Fazenda</span>
+            {BI_SERIES.map((item) => (
+              <button
+                type="button"
+                key={item.key}
+                className={activeMetricKey === item.key ? 'is-active' : ''}
+                style={{ '--metric-color': item.color }}
+                onClick={() => onSelectMetric?.(item.key)}
+                aria-pressed={activeMetricKey === item.key}
+                title={item.fullLabel}
+              >
+                {item.label.replace(' %', '')}
+              </button>
+            ))}
+          </div>
           {visibleRows.map((row) => {
             const values = qualityValuesFromRow(row);
             const rowRecordsCount = row.records?.length || row.recordsCount || 0;
-            const matureValue = values.maduro || 0;
-            const matureInTarget = seriesIsInTarget(mainSeries, matureValue);
-            const alertItems = BI_SERIES
-              .filter((item) => item.key !== 'maduro')
-              .map((item) => {
-                const value = values[item.key] || 0;
-                return {
-                  ...item,
-                  value,
-                  inTarget: seriesIsInTarget(item, value),
-                };
-              })
-              .filter((item) => !item.inTarget)
-              .sort((a, b) => Math.abs((b.value || 0) - b.target) - Math.abs((a.value || 0) - a.target));
-            const visibleAlerts = alertItems.slice(0, 3);
-            const okCount = BI_SERIES.length - alertItems.length;
             return (
-              <div className="field-bi-farm-score-row" key={row.label}>
+              <div className="field-bi-farm-matrix-row" key={row.label}>
                 <div className="field-bi-farm-score-name">
                   <strong>{row.label}</strong>
                   <span>{formatNumber(rowRecordsCount)} coleta(s)</span>
                 </div>
-                <div className="field-bi-farm-executive">
-                  <button
-                    type="button"
-                    className={`field-bi-farm-main-metric ${matureInTarget ? 'is-in-target' : 'is-out-target'} ${activeMetricKey === 'maduro' ? 'is-active' : ''}`.trim()}
-                    onClick={() => onSelectMetric?.('maduro')}
-                    aria-pressed={activeMetricKey === 'maduro'}
-                    title={`${row.label} - ${mainSeries.fullLabel}: ${formatPercent(matureValue)} | Meta >= ${formatPercent(mainSeries.target)}`}
-                  >
-                    <span>CM</span>
-                    <strong>{formatPercent(matureValue, 1)} {matureInTarget ? '✓' : '!'}</strong>
-                    <i><b style={{ width: `${Math.min(matureValue, 100)}%` }} /></i>
-                  </button>
-                  <div className="field-bi-farm-alerts" aria-label={`Alertas de ${row.label}`}>
-                    {visibleAlerts.length ? visibleAlerts.map((item) => (
-                      <button
-                        type="button"
-                        key={item.key}
-                        className={`field-bi-farm-alert ${activeMetricKey === item.key ? 'is-active' : ''}`.trim()}
-                        style={{ '--metric-color': item.color }}
-                        onClick={() => onSelectMetric?.(item.key)}
-                        aria-pressed={activeMetricKey === item.key}
-                        title={`${row.label} - ${item.fullLabel}: ${formatPercent(item.value)} | Meta <= ${formatPercent(item.target)}`}
-                      >
-                        <span>{item.label}</span>
-                        <strong>{formatPercent(item.value, 1)}!</strong>
-                      </button>
-                    )) : (
-                      <span className="field-bi-farm-all-ok">{okCount}/{BI_SERIES.length} na meta</span>
-                    )}
-                  </div>
-                </div>
+                {BI_SERIES.map((item) => {
+                  const value = values[item.key] || 0;
+                  const inTarget = seriesIsInTarget(item, value);
+                  return (
+                    <button
+                      type="button"
+                      key={item.key}
+                      className={`field-bi-farm-matrix-cell ${inTarget ? 'is-in-target' : 'is-out-target'} ${activeMetricKey === item.key ? 'is-active' : ''}`.trim()}
+                      style={{ '--metric-color': item.color }}
+                      onClick={() => onSelectMetric?.(item.key)}
+                      aria-pressed={activeMetricKey === item.key}
+                      title={`${row.label} - ${item.fullLabel}: ${formatPercent(value)} | Meta ${item.goodWhen === 'high' ? '>=' : '<='} ${formatPercent(item.target)}`}
+                    >
+                      <strong>{formatPercent(value, 1)}</strong>
+                      <span>{inTarget ? '✓' : '!'}</span>
+                    </button>
+                  );
+                })}
               </div>
             );
           })}
@@ -925,13 +911,12 @@ function DailyBunchBarChart({ rows, selectedDayKey = '', onSelectDay, loading = 
   const series = BI_SERIES;
   const visibleRows = rows;
   const chartHeight = 236;
-  const padding = { top: 18, right: 18, bottom: 32, left: 46 };
+  const padding = { top: 18, right: 18, bottom: 42, left: 46 };
   const width = 1000;
   const plotWidth = width - padding.left - padding.right;
   const dayWidth = plotWidth / Math.max(visibleRows.length, 1);
   const graphHeight = chartHeight - padding.top - padding.bottom;
   const barWidth = Math.max(3, Math.min(62, dayWidth * 0.66));
-  const labelStep = Math.max(1, Math.ceil(visibleRows.length / 14));
   const selectedRow = selectedDayKey ? visibleRows.find((row) => row.sortKey === selectedDayKey) : null;
   const activeSeries = fieldBiSeriesByKey(activeMetricKey);
 
@@ -988,7 +973,6 @@ function DailyBunchBarChart({ rows, selectedDayKey = '', onSelectDay, loading = 
                 const groupCenterX = padding.left + (rowIndex * dayWidth) + (dayWidth / 2);
                 const groupX = groupCenterX - (barWidth / 2);
                 const highlightWidth = Math.max(barWidth + 6, Math.min(dayWidth * 0.86, 28));
-                const showLabel = rowIndex === 0 || rowIndex === visibleRows.length - 1 || rowIndex % labelStep === 0;
                 const total = series.reduce((sum, item) => sum + Number(row[item.key] || 0), 0);
                 let stackedHeight = 0;
                 const isSelected = selectedDayKey === row.sortKey;
@@ -1028,11 +1012,11 @@ function DailyBunchBarChart({ rows, selectedDayKey = '', onSelectDay, loading = 
                         </rect>
                       );
                     })}
-                    {showLabel ? (
-                      <text x={groupCenterX} y={chartHeight - 12} textAnchor="middle" className="chart-axis-text">
+                    <g transform={`translate(${groupCenterX} ${chartHeight - 10}) rotate(-42)`}>
+                      <text textAnchor="end" className="chart-axis-text field-bi-day-axis-label">
                         {row.label}
                       </text>
-                    ) : null}
+                    </g>
                   </g>
                 );
               })}

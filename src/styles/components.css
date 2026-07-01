@@ -2152,6 +2152,139 @@ button.field-bi-kpi-danger.is-active {
   margin-bottom: 5px;
 }
 
+.field-bi-farm-matrix {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 5px;
+  overflow: hidden;
+}
+
+.field-bi-farm-matrix-head,
+.field-bi-farm-matrix-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(84px, 0.92fr) repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.field-bi-farm-matrix-head {
+  align-items: center;
+  min-height: 21px;
+}
+
+.field-bi-farm-matrix-head span,
+.field-bi-farm-matrix-head button {
+  min-width: 0;
+  height: 21px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(248, 250, 252, 0.92);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.53rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.field-bi-farm-matrix-head span {
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  text-transform: uppercase;
+}
+
+.field-bi-farm-matrix-head button {
+  cursor: pointer;
+  color: var(--metric-color);
+}
+
+.field-bi-farm-matrix-head button.is-active {
+  background: color-mix(in srgb, var(--metric-color) 13%, #fff);
+  box-shadow: inset 0 -2px 0 var(--metric-color);
+}
+
+.field-bi-farm-matrix-row {
+  min-height: 0;
+  align-items: stretch;
+  padding: 4px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fff, rgba(248, 250, 252, 0.76));
+}
+
+.field-bi-farm-matrix-cell {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 4px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-left: 3px solid var(--metric-color);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.82);
+  font: inherit;
+  cursor: pointer;
+}
+
+.field-bi-farm-matrix-cell strong {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 0.61rem;
+  font-weight: 950;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-bi-farm-matrix-cell span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.field-bi-farm-matrix-cell.is-in-target {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.22);
+  border-left-color: var(--metric-color);
+}
+
+.field-bi-farm-matrix-cell.is-in-target span {
+  background: var(--green-institutional);
+}
+
+.field-bi-farm-matrix-cell.is-out-target {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.22);
+  border-left-color: var(--status-danger);
+}
+
+.field-bi-farm-matrix-cell.is-out-target strong {
+  color: var(--status-danger);
+}
+
+.field-bi-farm-matrix-cell.is-out-target span {
+  background: var(--status-danger);
+}
+
+.field-bi-farm-matrix-cell.is-active {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--metric-color) 16%, transparent);
+  border-color: color-mix(in srgb, var(--metric-color) 52%, var(--border-color));
+}
+
 .field-bi-week-panel {
   grid-area: evolution;
 }
@@ -4223,6 +4356,11 @@ button.field-bi-evaluator-danger.is-active {
 
 .field-bi-daily-panel .chart-axis-text {
   font-size: 9px;
+}
+
+.field-bi-daily-panel .field-bi-day-axis-label {
+  font-size: 8px;
+  font-weight: 850;
 }
 
 .field-total-panel {
