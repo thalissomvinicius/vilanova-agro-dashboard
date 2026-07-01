@@ -1944,7 +1944,7 @@ function FieldBiBoard({
               series={selectedSeries}
               mode={evolutionMode}
               onModeChange={setEvolutionMode}
-              chartHeight={presentationMode ? 174 : null}
+              chartHeight={presentationMode ? 160 : null}
             />
             <MemoFieldBiMapPanel
               mapProps={focusedMapProps}
@@ -1959,7 +1959,7 @@ function FieldBiBoard({
               rows={focusedDailyRows}
               loading={loading}
               series={selectedSeries}
-              chartHeight={presentationMode ? 214 : 188}
+              chartHeight={presentationMode ? 204 : 188}
             />
           </div>
         </>

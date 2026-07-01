@@ -2490,7 +2490,6 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
   min-height: 0;
   padding-top: 2px;
   padding-bottom: 12px;
-  overflow-y: visible;
 }
 
 .field-bi-evolution-panel .field-bi-week-chart {
@@ -4118,16 +4117,16 @@ body.field-map-active {
 }
 
 .field-bi-presentation-overlay .field-bi-evolution-panel .field-bi-week-chart {
-  min-height: 174px;
+  min-height: 160px;
 }
 
 .field-bi-presentation-overlay .field-bi-evolution-panel .field-bi-week-scroll {
-  padding-bottom: 16px;
-  overflow-y: visible;
+  padding-bottom: 4px;
+  overflow-y: hidden;
 }
 
 .field-bi-presentation-overlay .field-bi-map-panel {
-  grid-template-rows: auto auto minmax(260px, 1fr) auto;
+  grid-template-rows: auto auto minmax(236px, 1fr) auto;
   gap: 6px;
   padding: 8px;
 }
@@ -4155,7 +4154,13 @@ body.field-map-active {
 }
 
 .field-bi-presentation-overlay .field-bi-daily-panel .field-bi-week-chart {
-  min-height: 200px;
+  min-height: 194px;
+}
+
+.field-bi-presentation-overlay,
+.field-bi-presentation-overlay .presentation-scroll,
+.field-bi-presentation-overlay .field-bi-board.is-presentation {
+  overflow-y: hidden;
 }
 
 .field-bi-close-btn {
