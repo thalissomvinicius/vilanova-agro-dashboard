@@ -2217,6 +2217,12 @@ button.field-bi-kpi-danger.is-active {
   background: linear-gradient(180deg, #fff, rgba(248, 250, 252, 0.76));
 }
 
+.field-bi-farm-matrix-row.is-farm-active {
+  border-color: rgba(13, 91, 52, 0.42);
+  background: linear-gradient(180deg, rgba(240, 253, 244, 0.96), #fff);
+  box-shadow: inset 3px 0 0 var(--green-institutional);
+}
+
 .field-bi-farm-matrix-cell {
   min-width: 0;
   min-height: 0;
@@ -2317,6 +2323,17 @@ button.field-bi-kpi-danger.is-active {
   display: grid;
   align-content: center;
   gap: 2px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+button.field-bi-farm-score-name:hover strong,
+button.field-bi-farm-score-name[aria-pressed="true"] strong {
+  color: var(--green-institutional);
 }
 
 .field-bi-farm-score-name strong {
@@ -2784,6 +2801,26 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
   display: block;
   min-height: 220px;
   overflow: visible;
+}
+
+.field-bi-week-group {
+  cursor: pointer;
+}
+
+.field-bi-week-group .chart-bar,
+.field-bi-week-group text {
+  transition: opacity 0.16s ease, filter 0.16s ease;
+}
+
+.field-bi-week-group:hover .chart-bar,
+.field-bi-week-group.is-selected .chart-bar {
+  filter: drop-shadow(0 4px 8px rgba(15, 23, 42, 0.18));
+}
+
+.field-bi-week-highlight {
+  fill: rgba(13, 91, 52, 0.08);
+  stroke: rgba(13, 91, 52, 0.32);
+  stroke-width: 1;
 }
 
 .field-poda-line-panel .field-bi-week-chart {

@@ -102,6 +102,21 @@ function localDateKey(date) {
   ].join('-');
 }
 
+function monthBucketKey(date) {
+  if (!date || Number.isNaN(date.getTime())) return 'Sem mês';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function weekBucketKey(date) {
+  if (!date || Number.isNaN(date.getTime())) return 'Sem semana';
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `S${String(weekNo).padStart(2, '0')} (${d.getUTCFullYear()})`;
+}
+
 function resolveRecordDate(record) {
   const candidates = [
     record.raw?.data_avaliacao,
@@ -297,6 +312,8 @@ function buildDailyBunchRows(records) {
         buckets.set(sortKey, {
           sortKey,
           label,
+          weekKey: date ? weekBucketKey(date) : 'Sem semana',
+          monthKey: date ? monthBucketKey(date) : 'Sem mês',
           recordsCount: 0,
           maduro: 0,
           passado: 0,
@@ -562,7 +579,14 @@ function FieldBiLegend({ activeKey = '', onSelect }) {
   );
 }
 
-function FieldBiFarmChart({ rows, loading = false, activeMetricKey = 'maduro', onSelectMetric }) {
+function FieldBiFarmChart({
+  rows,
+  loading = false,
+  activeMetricKey = 'maduro',
+  onSelectMetric,
+  selectedFarmLabel = '',
+  onSelectFarm,
+}) {
   const visibleRows = rows.slice(0, 5);
 
   return (
@@ -591,12 +615,19 @@ function FieldBiFarmChart({ rows, loading = false, activeMetricKey = 'maduro', o
           {visibleRows.map((row) => {
             const values = qualityValuesFromRow(row);
             const rowRecordsCount = row.records?.length || row.recordsCount || 0;
+            const farmActive = selectedFarmLabel === row.label;
             return (
-              <div className="field-bi-farm-matrix-row" key={row.label}>
-                <div className="field-bi-farm-score-name">
+              <div className={`field-bi-farm-matrix-row ${farmActive ? 'is-farm-active' : ''}`} key={row.label}>
+                <button
+                  type="button"
+                  className="field-bi-farm-score-name"
+                  onClick={() => onSelectFarm?.(row.label)}
+                  aria-pressed={farmActive}
+                  title={`${farmActive ? 'Remover filtro da fazenda' : 'Filtrar somente'} ${row.label}`}
+                >
                   <strong>{row.label}</strong>
                   <span>{formatNumber(rowRecordsCount)} coleta(s)</span>
-                </div>
+                </button>
                 {BI_SERIES.map((item) => {
                   const value = values[item.key] || 0;
                   const inTarget = seriesIsInTarget(item, value);
@@ -625,7 +656,17 @@ function FieldBiFarmChart({ rows, loading = false, activeMetricKey = 'maduro', o
   );
 }
 
-function FieldBiWeekChart({ rows, monthRows = [], mode = 'week', onModeChange, loading = false, activeMetricKey = 'maduro', onSelectMetric }) {
+function FieldBiWeekChart({
+  rows,
+  monthRows = [],
+  mode = 'week',
+  onModeChange,
+  loading = false,
+  activeMetricKey = 'maduro',
+  onSelectMetric,
+  selectedPeriodKey = '',
+  onSelectPeriod,
+}) {
   const sourceRows = mode === 'month' ? monthRows : rows;
   const visibleRows = sourceRows.slice(mode === 'month' ? -10 : -8);
   const chartHeight = 232;
@@ -669,9 +710,24 @@ function FieldBiWeekChart({ rows, monthRows = [], mode = 'week', onModeChange, l
               {visibleRows.map((row, rowIndex) => {
                 const values = qualityValuesFromRow(row);
                 const groupX = padding.left + rowIndex * weekWidth + (weekWidth - barWidth) / 2;
+                const isSelected = selectedPeriodKey === row.label;
                 let stackedHeight = 0;
                 return (
-                  <g key={row.label}>
+                  <g
+                    key={row.label}
+                    className={`field-bi-week-group ${isSelected ? 'is-selected' : ''}`.trim()}
+                    onClick={() => onSelectPeriod?.(row.label)}
+                  >
+                    {isSelected ? (
+                      <rect
+                        x={groupX - 7}
+                        y={padding.top - 10}
+                        width={barWidth + 14}
+                        height={graphHeight + 28}
+                        rx="8"
+                        className="field-bi-week-highlight"
+                      />
+                    ) : null}
                     {BI_SERIES.map((item) => {
                       const pct = Math.max(0, Math.min(values[item.key], 100));
                       const segmentHeight = (pct / 100) * graphHeight;
@@ -1196,16 +1252,82 @@ function FieldBiBoard({
   const [selectedDayKey, setSelectedDayKey] = useState('');
   const [activeMetricKey, setActiveMetricKey] = useState('maduro');
   const [selectedFiscalLabel, setSelectedFiscalLabel] = useState('');
+  const [selectedFarmLabel, setSelectedFarmLabel] = useState('');
+  const [selectedPeriodKey, setSelectedPeriodKey] = useState('');
+  const visibleRecords = useMemo(() => {
+    const source = model.records || [];
+    if (!selectedFarmLabel) return source;
+    return source.filter((record) => record.farm === selectedFarmLabel);
+  }, [model.records, selectedFarmLabel]);
+  const displayModel = useMemo(
+    () => (selectedFarmLabel ? buildQualidadeOperacional(visibleRecords) : model),
+    [model, selectedFarmLabel, visibleRecords]
+  );
+  const displayDailyBunchRows = useMemo(
+    () => (selectedFarmLabel ? buildDailyBunchRows(visibleRecords) : dailyBunchRows),
+    [dailyBunchRows, selectedFarmLabel, visibleRecords]
+  );
+  const displayPeriodRows = qualityPeriodMode === 'month' ? displayModel.monthRows : displayModel.weekRows;
+  const periodRowKey = qualityPeriodMode === 'month' ? 'monthKey' : 'weekKey';
+  const periodFilteredDailyRows = useMemo(() => {
+    if (!selectedPeriodKey) return displayDailyBunchRows;
+    return displayDailyBunchRows.filter((row) => row[periodRowKey] === selectedPeriodKey);
+  }, [displayDailyBunchRows, periodRowKey, selectedPeriodKey]);
+  const displayQuality = selectedFarmLabel ? displayModel.quality : quality;
+  const displayMapProps = selectedFarmLabel
+    ? { ...mapProps, farmFilter: selectedFarmLabel }
+    : mapProps;
   const selectedDayRow = selectedDayKey
-    ? dailyBunchRows.find((row) => row.sortKey === selectedDayKey)
+    ? periodFilteredDailyRows.find((row) => row.sortKey === selectedDayKey)
     : null;
+  const handleMetricSelect = (key) => {
+    setActiveMetricKey((current) => (current === key ? '' : key));
+  };
+  const handleFarmSelect = (label) => {
+    setSelectedFarmLabel((current) => (current === label ? '' : label));
+    setSelectedFiscalLabel('');
+    setSelectedDayKey('');
+    setSelectedPeriodKey('');
+  };
+  const handlePeriodSelect = (label) => {
+    setSelectedPeriodKey((current) => (current === label ? '' : label));
+    setSelectedDayKey('');
+  };
+
+  useEffect(() => {
+    if (!selectedFarmLabel) return;
+    if (!model.farmRows.some((row) => row.label === selectedFarmLabel)) {
+      setSelectedFarmLabel('');
+    }
+  }, [model.farmRows, selectedFarmLabel]);
+
+  useEffect(() => {
+    setSelectedPeriodKey('');
+    setSelectedDayKey('');
+  }, [qualityPeriodMode]);
+
+  useEffect(() => {
+    if (!selectedPeriodKey) return;
+    if (!displayPeriodRows.some((row) => row.label === selectedPeriodKey)) {
+      setSelectedPeriodKey('');
+      setSelectedDayKey('');
+    }
+  }, [displayPeriodRows, selectedPeriodKey]);
+
+  useEffect(() => {
+    if (!selectedDayKey) return;
+    if (!periodFilteredDailyRows.some((row) => row.sortKey === selectedDayKey)) {
+      setSelectedDayKey('');
+    }
+  }, [periodFilteredDailyRows, selectedDayKey]);
+
   const kpiCards = [
-    { key: 'maduro', label: 'Cacho Maduro %', value: quality.cachoMaduroPct, meta: 85, goodWhen: 'high' },
-    { key: 'passado', label: 'Cacho passado %', value: quality.cachoPassadoPct, meta: 10 },
-    { key: 'verde', label: 'Cacho verde %', value: quality.cachoVerdePct, meta: 1 },
-    { key: 'avermelhado', label: 'Cacho Avermelhado %', value: quality.cachoAvermelhadoPct, meta: 4 },
-    { key: 'talo', label: 'Cacho Talo Compri. %', value: quality.taloCompridoPct, meta: 3 },
-    { key: 'estrela', label: 'Cacho Estrela %', value: quality.cachoEstrelaPct, meta: 2 },
+    { key: 'maduro', label: 'Cacho Maduro %', value: displayQuality.cachoMaduroPct, meta: 85, goodWhen: 'high' },
+    { key: 'passado', label: 'Cacho passado %', value: displayQuality.cachoPassadoPct, meta: 10 },
+    { key: 'verde', label: 'Cacho verde %', value: displayQuality.cachoVerdePct, meta: 1 },
+    { key: 'avermelhado', label: 'Cacho Avermelhado %', value: displayQuality.cachoAvermelhadoPct, meta: 4 },
+    { key: 'talo', label: 'Cacho Talo Compri. %', value: displayQuality.taloCompridoPct, meta: 3 },
+    { key: 'estrela', label: 'Cacho Estrela %', value: displayQuality.cachoEstrelaPct, meta: 2 },
   ];
 
   return (
@@ -1223,7 +1345,7 @@ function FieldBiBoard({
         </div>
         {!presentationMode && (
           <div className="field-bi-header-actions">
-            <button type="button" className="field-bi-map-btn" onClick={() => onOpenGeoQuality?.(mapProps, activeMetricKey)}>
+            <button type="button" className="field-bi-map-btn" onClick={() => onOpenGeoQuality?.(displayMapProps, activeMetricKey)}>
               <MapPinned size={17} />
               Qualidade por parcela
             </button>
@@ -1286,7 +1408,7 @@ function FieldBiBoard({
                 key={key}
                 loading={loading}
                 active={activeMetricKey === key}
-                onClick={() => setActiveMetricKey(key)}
+                onClick={() => handleMetricSelect(key)}
                 {...card}
               />
             ))}
@@ -1294,23 +1416,27 @@ function FieldBiBoard({
 
           <div className="field-bi-main-grid">
             <FieldBiFarmChart
-              rows={model.farmRows}
+              rows={displayModel.farmRows}
               loading={loading}
               activeMetricKey={activeMetricKey}
-              onSelectMetric={setActiveMetricKey}
+              onSelectMetric={handleMetricSelect}
+              selectedFarmLabel={selectedFarmLabel}
+              onSelectFarm={handleFarmSelect}
             />
             <FieldBiWeekChart
-              rows={model.weekRows}
-              monthRows={model.monthRows}
+              rows={displayModel.weekRows}
+              monthRows={displayModel.monthRows}
               mode={qualityPeriodMode}
               onModeChange={setQualityPeriodMode}
               loading={loading}
               activeMetricKey={activeMetricKey}
-              onSelectMetric={setActiveMetricKey}
+              onSelectMetric={handleMetricSelect}
+              selectedPeriodKey={selectedPeriodKey}
+              onSelectPeriod={handlePeriodSelect}
             />
             <FieldBiRightColumn
-              evaluatorRows={model.evaluatorRows}
-              mapProps={mapProps}
+              evaluatorRows={displayModel.evaluatorRows}
+              mapProps={displayMapProps}
               loading={loading}
               onOpenGeoQuality={onOpenGeoQuality}
               activeMetricKey={activeMetricKey}
@@ -1320,7 +1446,7 @@ function FieldBiBoard({
               onSelectFiscal={(row) => setSelectedFiscalLabel((current) => (current === row.label ? '' : row.label))}
             />
             <DailyBunchBarChart
-              rows={dailyBunchRows}
+              rows={periodFilteredDailyRows}
               selectedDayKey={selectedDayKey}
               onSelectDay={(key) => setSelectedDayKey((current) => (current === key ? '' : key))}
               loading={loading}
