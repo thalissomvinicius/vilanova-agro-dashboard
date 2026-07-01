@@ -2144,7 +2144,7 @@ button.field-bi-kpi-danger.is-active {
 .field-bi-farm-legacy-panel {
   grid-area: farm;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   align-content: stretch;
 }
 
@@ -2169,10 +2169,10 @@ button.field-bi-kpi-danger.is-active {
 .field-bi-farm-score-row {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(76px, 0.27fr) minmax(0, 1fr);
+  grid-template-columns: minmax(88px, 0.28fr) minmax(0, 1fr);
   align-items: stretch;
-  gap: 5px;
-  padding: 4px;
+  gap: 7px;
+  padding: 6px;
   border: 1px solid rgba(226, 232, 240, 0.92);
   border-radius: 8px;
   background: linear-gradient(180deg, #fff, rgba(248, 250, 252, 0.76));
@@ -2187,7 +2187,7 @@ button.field-bi-kpi-danger.is-active {
 
 .field-bi-farm-score-name strong {
   color: var(--text-primary);
-  font-size: 0.63rem;
+  font-size: 0.68rem;
   font-weight: 950;
   line-height: 1.06;
   text-transform: uppercase;
@@ -2196,9 +2196,137 @@ button.field-bi-kpi-danger.is-active {
 
 .field-bi-farm-score-name span {
   color: var(--text-muted);
-  font-size: 0.48rem;
+  font-size: 0.52rem;
   font-weight: 850;
   line-height: 1;
+}
+
+.field-bi-farm-executive {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(128px, 0.54fr) minmax(0, 1fr);
+  gap: 6px;
+}
+
+.field-bi-farm-main-metric,
+.field-bi-farm-alert {
+  min-width: 0;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.86);
+  font: inherit;
+  cursor: pointer;
+}
+
+.field-bi-farm-main-metric {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "label value"
+    "bar bar";
+  align-items: center;
+  gap: 3px 6px;
+  padding: 6px 7px;
+}
+
+.field-bi-farm-main-metric span {
+  grid-area: label;
+  color: var(--orange-institutional);
+  font-size: 0.66rem;
+  font-weight: 950;
+}
+
+.field-bi-farm-main-metric strong {
+  grid-area: value;
+  color: var(--green-institutional);
+  font-size: 0.86rem;
+  font-weight: 950;
+  line-height: 1;
+  text-align: right;
+}
+
+.field-bi-farm-main-metric i {
+  grid-area: bar;
+  height: 7px;
+  display: block;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.9);
+}
+
+.field-bi-farm-main-metric i b {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: var(--orange-institutional);
+}
+
+.field-bi-farm-main-metric.is-out-target {
+  border-color: rgba(239, 68, 68, 0.28);
+  background: rgba(254, 242, 242, 0.82);
+}
+
+.field-bi-farm-main-metric.is-out-target strong {
+  color: var(--status-danger);
+}
+
+.field-bi-farm-main-metric.is-active,
+.field-bi-farm-alert.is-active {
+  box-shadow: 0 0 0 2px rgba(13, 91, 52, 0.12);
+  border-color: rgba(13, 91, 52, 0.28);
+}
+
+.field-bi-farm-alerts {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.field-bi-farm-alert {
+  min-height: 0;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  padding: 5px 6px;
+  border-color: color-mix(in srgb, var(--metric-color) 38%, var(--border-color));
+  background: color-mix(in srgb, var(--metric-color) 9%, #fff);
+  text-align: left;
+}
+
+.field-bi-farm-alert span {
+  min-width: 0;
+  color: var(--metric-color);
+  font-size: 0.56rem;
+  font-weight: 950;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-bi-farm-alert strong {
+  color: var(--status-danger);
+  font-size: 0.74rem;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.field-bi-farm-all-ok {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  grid-column: 1 / -1;
+  padding: 0 8px;
+  border: 1px solid rgba(34, 197, 94, 0.22);
+  border-radius: 8px;
+  background: rgba(34, 197, 94, 0.08);
+  color: var(--green-institutional);
+  font-size: 0.68rem;
+  font-weight: 950;
 }
 
 .field-bi-farm-score-metrics {
@@ -3164,7 +3292,7 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: minmax(124px, 136px) minmax(0, 1fr);
+  grid-template-rows: minmax(168px, 186px) minmax(0, 1fr);
   gap: 8px;
   isolation: isolate;
 }
