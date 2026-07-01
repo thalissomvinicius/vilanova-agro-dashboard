@@ -3960,14 +3960,15 @@ body.field-map-active {
   height: calc(100dvh - 20px);
   min-height: calc(100dvh - 20px);
   max-height: calc(100dvh - 20px);
-  padding: 12px 14px;
+  padding: 8px 10px;
   overflow: hidden;
 }
 
 .field-bi-presentation-overlay .field-bi-main-grid {
   flex: 1 1 auto;
   min-height: 0;
-  grid-template-rows: minmax(230px, 0.84fr) minmax(286px, 1.16fr);
+  grid-template-rows: minmax(190px, 0.82fr) minmax(236px, 1.18fr);
+  gap: 8px;
 }
 
 .field-bi-presentation-overlay .field-bi-map-panel,
@@ -3980,7 +3981,29 @@ body.field-map-active {
 }
 
 .presentation-overlay .field-bi-header {
-  min-height: 70px;
+  min-height: 58px;
+  padding: 7px 13px;
+  grid-template-columns: 146px minmax(0, 1fr) auto;
+  gap: 12px;
+}
+
+.presentation-overlay .field-bi-logo {
+  width: 128px;
+  height: 38px;
+}
+
+.presentation-overlay .field-bi-title-block {
+  gap: 4px;
+}
+
+.presentation-overlay .field-bi-header h2 {
+  font-size: clamp(1.45rem, 2.35vw, 2rem);
+  line-height: 0.98;
+}
+
+.presentation-overlay .field-bi-meta-line {
+  gap: 5px 10px;
+  font-size: 0.72rem;
 }
 
 .presentation-overlay .field-bi-control-bar {
@@ -3988,13 +4011,13 @@ body.field-map-active {
 }
 
 .field-bi-presentation-filters {
-  min-height: 38px;
+  min-height: 30px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  margin: 7px 0 8px;
-  padding: 6px 8px;
+  gap: 6px;
+  margin: 5px 0 6px;
+  padding: 4px 6px;
   border: 1px solid rgba(148, 163, 184, 0.26);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.9);
@@ -4002,12 +4025,12 @@ body.field-map-active {
 }
 
 .field-bi-presentation-filters label {
-  min-width: 148px;
+  min-width: 132px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 7px;
-  padding: 0 8px;
+  gap: 6px;
+  padding: 0 7px;
   border: 1px solid rgba(226, 232, 240, 0.92);
   border-radius: 7px;
   background: rgba(248, 250, 252, 0.92);
@@ -4015,7 +4038,7 @@ body.field-map-active {
 
 .field-bi-presentation-filters span {
   color: var(--text-muted);
-  font-size: 0.62rem;
+  font-size: 0.56rem;
   font-weight: 950;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -4026,26 +4049,107 @@ body.field-map-active {
 .field-bi-presentation-filters input {
   width: 100%;
   min-width: 0;
-  height: 28px;
+  height: 24px;
   border: 0;
   outline: 0;
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 900;
 }
 
 .field-bi-presentation-filters label:first-child {
-  min-width: 168px;
+  min-width: 148px;
 }
 
 .presentation-overlay .field-bi-kpi {
-  min-height: 86px;
+  min-height: 74px;
+  padding: 6px 8px 8px;
+}
+
+.presentation-overlay .field-bi-kpi-grid {
+  gap: 7px;
+  margin-top: 6px;
+  margin-bottom: 7px;
+}
+
+.presentation-overlay .field-bi-kpi span {
+  font-size: 0.76rem;
+}
+
+.presentation-overlay .field-bi-kpi strong {
+  font-size: clamp(1.34rem, 2.05vw, 1.9rem);
+}
+
+.presentation-overlay .field-bi-kpi small {
+  margin-top: 3px;
+  font-size: 0.68rem;
+}
+
+.presentation-overlay .field-line-metric-selector {
+  gap: 5px;
+  margin: -1px 0 7px;
+  padding: 5px;
+}
+
+.presentation-overlay .field-line-metric-selector button {
+  min-height: 27px;
+  padding: 4px 8px;
+  font-size: 0.65rem;
 }
 
 .presentation-overlay .field-bi-panel {
-  min-height: 202px;
+  padding: 7px;
+}
+
+.presentation-overlay .field-bi-panel {
+  min-height: 0;
+}
+
+.field-bi-presentation-overlay .field-bi-evolution-panel {
+  padding: 8px 9px;
+  gap: 5px;
+}
+
+.field-bi-presentation-overlay .field-bi-evolution-panel .field-daily-legend {
+  max-height: 28px;
+}
+
+.field-bi-presentation-overlay .field-bi-evolution-panel .field-bi-week-chart {
+  min-height: 166px;
+}
+
+.field-bi-presentation-overlay .field-bi-map-panel {
+  grid-template-rows: auto auto minmax(260px, 1fr) auto;
+  gap: 6px;
+  padding: 8px;
+}
+
+.field-bi-presentation-overlay .field-bi-map-signals div {
+  min-height: 38px;
+  padding: 5px 6px;
+}
+
+.field-bi-presentation-overlay .field-bi-map-signals strong {
+  font-size: 0.9rem;
+}
+
+.field-bi-presentation-overlay .field-bi-daily-panel {
+  padding: 7px 9px;
+}
+
+.field-bi-presentation-overlay .field-bi-daily-panel .field-line-chart-head h3 {
+  font-size: 1rem;
+}
+
+.field-bi-presentation-overlay .field-bi-daily-panel .field-daily-legend {
+  margin-top: 2px;
+  font-size: 0.62rem;
+}
+
+.field-bi-presentation-overlay .field-bi-daily-panel .field-bi-week-chart {
+  min-height: 200px;
 }
 
 .field-bi-close-btn {

@@ -1037,6 +1037,7 @@ function FieldBiEvolutionChart({
   series = BI_SERIES[1],
   mode = 'week',
   onModeChange,
+  chartHeight = null,
 }) {
   const selectedSeries = Array.isArray(series) ? series : [series];
   const chartLabel = selectedSeries.length > 1 ? 'todos os indicadores' : selectedSeries[0]?.fullLabel;
@@ -1062,6 +1063,7 @@ function FieldBiEvolutionChart({
       maxRows={isMonth ? 12 : 10}
       minWidth={560}
       compact
+      chartHeightOverride={chartHeight}
       className="field-bi-evolution-panel"
     />
   );
@@ -1942,6 +1944,7 @@ function FieldBiBoard({
               series={selectedSeries}
               mode={evolutionMode}
               onModeChange={setEvolutionMode}
+              chartHeight={presentationMode ? 174 : null}
             />
             <MemoFieldBiMapPanel
               mapProps={focusedMapProps}
@@ -1956,7 +1959,7 @@ function FieldBiBoard({
               rows={focusedDailyRows}
               loading={loading}
               series={selectedSeries}
-              chartHeight={presentationMode ? 252 : 188}
+              chartHeight={presentationMode ? 214 : 188}
             />
           </div>
         </>
