@@ -2489,7 +2489,11 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 .field-bi-evolution-panel .field-bi-week-scroll {
   min-height: 0;
   padding-top: 2px;
-  padding-bottom: 12px;
+  padding-bottom: 6px;
+}
+
+.field-bi-evolution-panel .field-bi-week-scroll::-webkit-scrollbar {
+  height: 5px;
 }
 
 .field-bi-evolution-panel .field-bi-week-chart {

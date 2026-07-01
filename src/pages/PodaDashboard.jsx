@@ -807,7 +807,7 @@ function PodaTargetLineChart({
   const width = Math.max(minWidth, padding.left + padding.right + Math.max(visibleRows.length - 1, 1) * columnWidth + 54);
   const graphHeight = chartHeight - padding.top - padding.bottom;
   const graphWidth = width - padding.left - padding.right;
-  const axisLabelY = padding.top + graphHeight - (compact ? 8 : 10);
+  const axisLabelY = padding.top + graphHeight - (compact ? 24 : 10);
   const valuesBySeries = selectedSeries.map((item) => ({
     series: item,
     values: visibleRows.map((row, index) => {
