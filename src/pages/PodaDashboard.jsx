@@ -380,10 +380,10 @@ const TOTAL_SECTION_OPTIONS = [
 ];
 
 const BI_SERIES = [
-  { key: 'maduro', sourceKey: 'cachoMaduroPct', label: 'PSP %', fullLabel: 'Planta sem podar %', color: 'var(--orange-institutional)', target: 1 },
-  { key: 'passado', sourceKey: 'cachoPassadoPct', label: 'CE %', fullLabel: 'Cacho exposto %', color: 'var(--text-primary)', target: 2 },
+  { key: 'maduro', sourceKey: 'cachoMaduroPct', label: 'PSP %', fullLabel: 'Planta sem podar %', color: 'var(--orange-institutional)', target: 0 },
+  { key: 'passado', sourceKey: 'cachoPassadoPct', label: 'CE %', fullLabel: 'Cacho exposto %', color: 'var(--text-primary)', target: 1 },
   { key: 'verde', sourceKey: 'cachoVerdePct', label: 'PMC %', fullLabel: 'Poda meia coroa %', color: 'var(--green-institutional)', target: 2 },
-  { key: 'avermelhado', sourceKey: 'cachoAvermelhadoPct', label: 'CP %', fullLabel: 'Cacho podre %', color: 'var(--status-danger)', target: 1 },
+  { key: 'avermelhado', sourceKey: 'cachoAvermelhadoPct', label: 'CP %', fullLabel: 'Cacho podre %', color: 'var(--status-danger)', target: 2 },
   { key: 'estrela', sourceKey: 'taloCompridoPct', label: 'PM 1:1 %', fullLabel: 'Poda maior 1:1 %', color: '#7C3AED', target: 2 },
   { key: 'talo', sourceKey: 'cachoEstrelaPct', label: 'BG %', fullLabel: 'Bico de gaita %', color: '#2563EB', target: 2 },
 ];
@@ -598,7 +598,9 @@ function parcelLabel(record) {
 
 function signalToneFor(value, target) {
   const numeric = Number(value || 0);
-  const meta = Math.max(Number(target || 0), 0.01);
+  const rawMeta = Number(target || 0);
+  if (rawMeta <= 0) return numeric <= 0 ? 'ok' : 'critical';
+  const meta = rawMeta;
   if (numeric <= meta) return 'ok';
   if (numeric <= meta * MAP_ATTENTION_MULTIPLIER) return 'warning';
   return 'critical';
@@ -1425,12 +1427,12 @@ function buildTotalMetricGroups(model) {
       id: 'qualidade',
       title: 'Indicadores de qualidade da poda',
       cards: [
-        { label: 'Planta sem podar', value: formatPercent(quality.cachoMaduroPct), detail: `${formatNumber(totals.plantaSemPodar)} plantas`, tone: quality.cachoMaduroPct > 1 ? 'danger' : 'success' },
-        { label: 'Cacho exposto', value: formatPercent(quality.cachoPassadoPct), detail: `${formatNumber(totals.cachoExposto)} ocorrências`, tone: quality.cachoPassadoPct > 2 ? 'danger' : 'neutral' },
-        { label: 'Poda meia coroa', value: formatPercent(quality.cachoVerdePct), detail: `${formatNumber(totals.podaMeiaCoroa)} ocorrências`, tone: quality.cachoVerdePct > 2 ? 'warning' : 'neutral' },
-        { label: 'Cacho podre', value: formatPercent(quality.cachoAvermelhadoPct), detail: `${formatNumber(totals.cachoPodrePlanta)} ocorrências`, tone: quality.cachoAvermelhadoPct > 1 ? 'danger' : 'neutral' },
-        { label: 'Poda maior 1:1', value: formatPercent(quality.taloCompridoPct), detail: `${formatNumber(totals.podaMaiorUmParaUm)} ocorrências`, tone: quality.taloCompridoPct > 2 ? 'warning' : 'neutral' },
-        { label: 'Bico de gaita', value: formatPercent(quality.cachoEstrelaPct), detail: `${formatNumber(totals.bicoGaita)} ocorrências`, tone: quality.cachoEstrelaPct > 2 ? 'warning' : 'neutral' },
+        { label: 'Planta sem podar', value: formatPercent(quality.cachoMaduroPct), detail: `${formatNumber(totals.plantaSemPodar)} plantas`, tone: qualityTone(quality.cachoMaduroPct, BI_SERIES[0].target).tone === 'green' ? 'success' : 'danger' },
+        { label: 'Cacho exposto', value: formatPercent(quality.cachoPassadoPct), detail: `${formatNumber(totals.cachoExposto)} ocorrências`, tone: qualityTone(quality.cachoPassadoPct, BI_SERIES[1].target).tone === 'green' ? 'neutral' : 'danger' },
+        { label: 'Poda meia coroa', value: formatPercent(quality.cachoVerdePct), detail: `${formatNumber(totals.podaMeiaCoroa)} ocorrências`, tone: qualityTone(quality.cachoVerdePct, BI_SERIES[2].target).tone === 'green' ? 'neutral' : 'warning' },
+        { label: 'Cacho podre', value: formatPercent(quality.cachoAvermelhadoPct), detail: `${formatNumber(totals.cachoPodrePlanta)} ocorrências`, tone: qualityTone(quality.cachoAvermelhadoPct, BI_SERIES[3].target).tone === 'green' ? 'neutral' : 'danger' },
+        { label: 'Poda maior 1:1', value: formatPercent(quality.taloCompridoPct), detail: `${formatNumber(totals.podaMaiorUmParaUm)} ocorrências`, tone: qualityTone(quality.taloCompridoPct, BI_SERIES[4].target).tone === 'green' ? 'neutral' : 'warning' },
+        { label: 'Bico de gaita', value: formatPercent(quality.cachoEstrelaPct), detail: `${formatNumber(totals.bicoGaita)} ocorrências`, tone: qualityTone(quality.cachoEstrelaPct, BI_SERIES[5].target).tone === 'green' ? 'neutral' : 'warning' },
         { label: 'Folha mamando', value: formatPercent(quality.cachoInfermoPct), detail: `${formatNumber(totals.folhaMamando)} ocorrências`, tone: 'warning' },
         { label: 'Palha mal empilhada', value: formatPercent(quality.buchaPct), detail: `${formatNumber(totals.palhaMalEmpilhada)} ocorrências`, tone: 'warning' },
       ],
@@ -1917,12 +1919,12 @@ function FieldBiBoard({
       ) : !isTotalMode ? (
         <>
           <div className="field-bi-kpi-grid">
-            <FieldBiKpiCard loading={loading} label="Planta sem podar %" value={focusedQuality.cachoMaduroPct} meta={1} active={selectedLineKey === 'maduro'} onClick={() => setSelectedLineKey('maduro')} />
-            <FieldBiKpiCard loading={loading} label="Cacho exposto %" value={focusedQuality.cachoPassadoPct} meta={2} active={selectedLineKey === 'passado'} onClick={() => setSelectedLineKey('passado')} />
-            <FieldBiKpiCard loading={loading} label="Poda meia coroa %" value={focusedQuality.cachoVerdePct} meta={2} active={selectedLineKey === 'verde'} onClick={() => setSelectedLineKey('verde')} />
-            <FieldBiKpiCard loading={loading} label="Cacho podre %" value={focusedQuality.cachoAvermelhadoPct} meta={1} active={selectedLineKey === 'avermelhado'} onClick={() => setSelectedLineKey('avermelhado')} />
-            <FieldBiKpiCard loading={loading} label="Poda maior 1:1 %" value={focusedQuality.taloCompridoPct} meta={2} active={selectedLineKey === 'estrela'} onClick={() => setSelectedLineKey('estrela')} />
-            <FieldBiKpiCard loading={loading} label="Bico de gaita %" value={focusedQuality.cachoEstrelaPct} meta={2} active={selectedLineKey === 'talo'} onClick={() => setSelectedLineKey('talo')} />
+            <FieldBiKpiCard loading={loading} label="Planta sem podar %" value={focusedQuality.cachoMaduroPct} meta={BI_SERIES[0].target} active={selectedLineKey === 'maduro'} onClick={() => setSelectedLineKey('maduro')} />
+            <FieldBiKpiCard loading={loading} label="Cacho exposto %" value={focusedQuality.cachoPassadoPct} meta={BI_SERIES[1].target} active={selectedLineKey === 'passado'} onClick={() => setSelectedLineKey('passado')} />
+            <FieldBiKpiCard loading={loading} label="Poda meia coroa %" value={focusedQuality.cachoVerdePct} meta={BI_SERIES[2].target} active={selectedLineKey === 'verde'} onClick={() => setSelectedLineKey('verde')} />
+            <FieldBiKpiCard loading={loading} label="Cacho podre %" value={focusedQuality.cachoAvermelhadoPct} meta={BI_SERIES[3].target} active={selectedLineKey === 'avermelhado'} onClick={() => setSelectedLineKey('avermelhado')} />
+            <FieldBiKpiCard loading={loading} label="Poda maior 1:1 %" value={focusedQuality.taloCompridoPct} meta={BI_SERIES[4].target} active={selectedLineKey === 'estrela'} onClick={() => setSelectedLineKey('estrela')} />
+            <FieldBiKpiCard loading={loading} label="Bico de gaita %" value={focusedQuality.cachoEstrelaPct} meta={BI_SERIES[5].target} active={selectedLineKey === 'talo'} onClick={() => setSelectedLineKey('talo')} />
           </div>
 
           <MemoPodaLineMetricSelector

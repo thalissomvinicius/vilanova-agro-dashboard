@@ -2110,12 +2110,12 @@ function PodaBiBoard({
       ) : !isTotalMode ? (
         <>
           <div className="field-bi-kpi-grid">
-            <PodaBiKpiCard loading={loading} label="Planta sem podar %" value={totals.plantaSemPodarRate} meta={1} />
-            <PodaBiKpiCard loading={loading} label="Cacho exposto %" value={totals.cachoExpostoRate} meta={2} />
+            <PodaBiKpiCard loading={loading} label="Planta sem podar %" value={totals.plantaSemPodarRate} meta={0} />
+            <PodaBiKpiCard loading={loading} label="Cacho exposto %" value={totals.cachoExpostoRate} meta={1} />
             <PodaBiKpiCard loading={loading} label="Poda meia coroa %" value={totals.podaMeiaCoroaRate} meta={2} />
             <PodaBiKpiCard loading={loading} label="Poda maior 1:1 %" value={totals.podaMaiorUmParaUmRate} meta={2} />
             <PodaBiKpiCard loading={loading} label="Bico de gaita %" value={totals.bicoGaitaRate} meta={2} />
-            <PodaBiKpiCard loading={loading} label="Cacho podre %" value={totals.cachoPodrePlantaRate} meta={1} />
+            <PodaBiKpiCard loading={loading} label="Cacho podre %" value={totals.cachoPodrePlantaRate} meta={2} />
           </div>
 
           <div className="field-bi-main-grid">

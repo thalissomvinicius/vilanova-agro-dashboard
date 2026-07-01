@@ -33,12 +33,12 @@ const RISK_METRICS = [
   { id: 'perda_corte', label: 'Perda corte %', unit: '%', goodWhen: 'low', meta: 1 },
   { id: 'nao_carreado', label: 'Não carreado %', unit: '%', goodWhen: 'low', meta: 0.4 },
   { id: 'mal_posicionado', label: 'Mal posicionado %', unit: '%', goodWhen: 'low', meta: 5 },
-  { id: 'poda_planta_sem_podar', label: 'Planta sem podar %', unit: '%', goodWhen: 'low', meta: 1 },
-  { id: 'poda_cacho_exposto', label: 'Cacho exposto %', unit: '%', goodWhen: 'low', meta: 2 },
+  { id: 'poda_planta_sem_podar', label: 'Planta sem podar %', unit: '%', goodWhen: 'low', meta: 0 },
+  { id: 'poda_cacho_exposto', label: 'Cacho exposto %', unit: '%', goodWhen: 'low', meta: 1 },
   { id: 'poda_meia_coroa', label: 'Poda meia coroa %', unit: '%', goodWhen: 'low', meta: 2 },
   { id: 'poda_maior_1_1', label: 'Poda > 1:1 %', unit: '%', goodWhen: 'low', meta: 2 },
   { id: 'poda_bico_gaita', label: 'Bico de gaita %', unit: '%', goodWhen: 'low', meta: 2 },
-  { id: 'poda_cacho_podre', label: 'Cacho podre %', unit: '%', goodWhen: 'low', meta: 1 },
+  { id: 'poda_cacho_podre', label: 'Cacho podre %', unit: '%', goodWhen: 'low', meta: 2 },
   { id: 'poda_folha_mamando', label: 'Folha mamando %', unit: '%', goodWhen: 'low', meta: 2 },
   { id: 'poda_palha_mal_empilhada', label: 'Palha mal empilhada %', unit: '%', goodWhen: 'low', meta: 2 },
   { id: 'maduro', label: 'Cacho maduro %', unit: '%', goodWhen: 'high', meta: 85 },
@@ -701,6 +701,10 @@ function metricColor(metric, value, hasData) {
   }
 
   const numeric = Number(value);
+  if (metric.goodWhen === 'low' && Number(metric.meta || 0) <= 0) {
+    return numeric <= 0 ? RISK_COLORS.good : RISK_COLORS.critical;
+  }
+
   if (metric.goodWhen === 'high') {
     if (numeric >= metric.meta) return RISK_COLORS.good;
     if (numeric >= metric.meta * 0.88) return RISK_COLORS.attention;
