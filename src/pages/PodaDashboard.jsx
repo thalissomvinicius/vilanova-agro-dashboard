@@ -86,10 +86,11 @@ function safePct(num, den) {
 
 function weekNumberLabel(label) {
   const text = String(label || '');
-  const match = text.match(/S?(\d{1,2}).*?(\d{4})?/i);
-  if (!match) return label;
-  const week = `S${Number(match[1])}`;
-  return match[2] ? `${week}/${String(match[2]).slice(-2)}` : week;
+  const weekMatch = text.match(/(?:S|Semana\s*)?(\d{1,2})/i);
+  if (!weekMatch) return label;
+  const yearMatch = text.match(/(19\d{2}|20\d{2})/);
+  const week = `S${Number(weekMatch[1])}`;
+  return yearMatch ? `${week}/${yearMatch[1].slice(-2)}` : week;
 }
 
 function localDateKey(date) {
@@ -1954,7 +1955,7 @@ function FieldBiBoard({
               series={selectedSeries}
               mode={evolutionMode}
               onModeChange={setEvolutionMode}
-              chartHeight={presentationMode ? 136 : null}
+              chartHeight={presentationMode ? 126 : null}
             />
             <MemoFieldBiMapPanel
               mapProps={focusedMapProps}

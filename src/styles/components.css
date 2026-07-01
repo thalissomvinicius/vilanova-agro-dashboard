@@ -2538,12 +2538,20 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 }
 
 .field-bi-evolution-panel .field-line-axis-row {
-  height: 14px;
-  margin-top: -5px;
+  height: 18px;
+  margin-top: -2px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.34);
 }
 
 .field-bi-evolution-panel .field-line-axis-tick {
+  top: 3px;
+  padding: 1px 4px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--text-primary);
   font-size: 8px;
+  font-weight: 900;
 }
 
 .field-bi-evolution-panel .field-line-single-bars {
