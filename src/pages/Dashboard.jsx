@@ -1,10 +1,9 @@
-import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   CalendarDays,
   Database,
-  Download,
   FileSpreadsheet,
   Filter,
   Maximize2,
@@ -18,7 +17,6 @@ import {
 import ActiveFilterSummary from '../components/ui/ActiveFilterSummary';
 import StatusBanner from '../components/ui/StatusBanner';
 import { normalizeCqoFarmId, parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
-import { createExportFileName, downloadElementAsPng, EXPORT_IMAGE_IGNORE_CLASS } from '../utils/exportImage';
 import { buildQualidadeOperacional } from '../utils/qualidadeOperacionalData';
 
 const LeafletMap = lazy(() => import('../components/LeafletMap'));
@@ -1251,14 +1249,12 @@ function FieldBiBoard({
   presentationMode = false,
 }) {
   const isTotalMode = !presentationMode && boardMode === 'total';
-  const boardRef = useRef(null);
   const [qualityPeriodMode, setQualityPeriodMode] = useState('week');
   const [selectedDayKey, setSelectedDayKey] = useState('');
   const [activeMetricKey, setActiveMetricKey] = useState('maduro');
   const [selectedFiscalLabel, setSelectedFiscalLabel] = useState('');
   const [selectedFarmLabel, setSelectedFarmLabel] = useState('');
   const [selectedPeriodKey, setSelectedPeriodKey] = useState('');
-  const [imageExporting, setImageExporting] = useState(false);
   const visibleRecords = useMemo(() => {
     const source = model.records || [];
     if (!selectedFarmLabel) return source;
@@ -1299,22 +1295,6 @@ function FieldBiBoard({
     setSelectedPeriodKey((current) => (current === label ? '' : label));
     setSelectedDayKey('');
   };
-  const handleExportImage = async () => {
-    if (!boardRef.current || imageExporting) return;
-    setImageExporting(true);
-    try {
-      await downloadElementAsPng(boardRef.current, {
-        filename: createExportFileName('vna-cqo-corte', periodText),
-        pixelRatio: presentationMode ? 3 : 2.5,
-      });
-    } catch (error) {
-      console.error('Falha ao gerar imagem HD do CQO Corte:', error);
-      window.alert('Nao consegui gerar a imagem em alta resolucao agora. Atualize a pagina e tente novamente; se persistir, me envie o erro do console.');
-    } finally {
-      setImageExporting(false);
-    }
-  };
-
   useEffect(() => {
     if (!selectedFarmLabel) return undefined;
     if (!model.farmRows.some((row) => row.label === selectedFarmLabel)) {
@@ -1363,7 +1343,7 @@ function FieldBiBoard({
   ];
 
   return (
-    <div ref={boardRef} className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
+    <div className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
       <div className="field-bi-header">
         <img src="/logo.png" alt="Vila Nova Agroindustrial" className="field-bi-logo" />
         <div className="field-bi-title-block">
@@ -1375,13 +1355,8 @@ function FieldBiBoard({
             <span><CalendarDays size={14} />Última coleta: {latestCollectionText}</span>
           </div>
         </div>
-        <div className={`field-bi-header-actions ${EXPORT_IMAGE_IGNORE_CLASS}`}>
-          <button type="button" className="field-bi-export-btn" onClick={handleExportImage} disabled={imageExporting}>
-            {imageExporting ? <span className="field-bi-export-spinner" aria-hidden="true" /> : <Download size={17} />}
-            {imageExporting ? 'Gerando...' : 'Imagem HD'}
-          </button>
-          {!presentationMode && (
-            <>
+        {!presentationMode && (
+          <div className="field-bi-header-actions">
             <button type="button" className="field-bi-map-btn" onClick={() => onOpenGeoQuality?.(displayMapProps, activeMetricKey)}>
               <MapPinned size={17} />
               Qualidade por parcela
@@ -1391,9 +1366,8 @@ function FieldBiBoard({
               Apresentar
               <Maximize2 size={15} />
             </button>
-            </>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {!presentationMode ? (

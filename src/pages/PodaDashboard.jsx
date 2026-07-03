@@ -1,11 +1,10 @@
 /* eslint-disable no-unused-vars -- a tela de poda mantém variantes de apresentação antigas para alternância rápida durante a reunião. */
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   CalendarDays,
   Database,
-  Download,
   FileSpreadsheet,
   Filter,
   Maximize2,
@@ -19,7 +18,6 @@ import {
 import ActiveFilterSummary from '../components/ui/ActiveFilterSummary';
 import StatusBanner from '../components/ui/StatusBanner';
 import { aggregateRecords, CQO_FARMS, LOCAL_DEMO_MODE, parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
-import { createExportFileName, downloadElementAsPng, EXPORT_IMAGE_IGNORE_CLASS } from '../utils/exportImage';
 import { buildPodaOperacional } from '../utils/podaOperacionalData';
 import { buildPodaDemoRecords } from '../utils/podaDemoData';
 
@@ -1651,13 +1649,11 @@ function FieldBiBoard({
   presentationMode = false,
 }) {
   const isTotalMode = !presentationMode && boardMode === 'total';
-  const boardRef = useRef(null);
   const [selectedLineKey, setSelectedLineKey] = useState('all');
   const [selectedFiscalLabel, setSelectedFiscalLabel] = useState('');
   const [selectedFarmLabel, setSelectedFarmLabel] = useState('');
   const [evolutionMode, setEvolutionMode] = useState('week');
   const [viewReady, setViewReady] = useState(false);
-  const [imageExporting, setImageExporting] = useState(false);
   const [mapLoadingState, setMapLoadingState] = useState({
     loading: true,
     progress: 12,
@@ -1755,22 +1751,6 @@ function FieldBiBoard({
     onOpenGeoQuality?.(focusedMapProps);
   }, [focusedMapProps, onOpenGeoQuality]);
 
-  const handleExportImage = useCallback(async () => {
-    if (!boardRef.current || imageExporting) return;
-    setImageExporting(true);
-    try {
-      await downloadElementAsPng(boardRef.current, {
-        filename: createExportFileName('vna-cqo-poda', periodText),
-        pixelRatio: presentationMode ? 3 : 2.5,
-      });
-    } catch (error) {
-      console.error('Falha ao gerar imagem HD do CQO Poda:', error);
-      window.alert('Nao consegui gerar a imagem em alta resolucao agora. Atualize a pagina e tente novamente; se persistir, me envie o erro do console.');
-    } finally {
-      setImageExporting(false);
-    }
-  }, [imageExporting, periodText, presentationMode]);
-
   const viewSignature = useMemo(() => [
     boardMode,
     selectedLineKey,
@@ -1835,7 +1815,7 @@ function FieldBiBoard({
       : 'Preparando visualização';
 
   return (
-    <div ref={boardRef} className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
+    <div className={`field-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
       {showBoardLoading ? (
         <div className="field-bi-ready-overlay" role="status" aria-live="polite">
           <div className="field-bi-ready-card">
@@ -1859,19 +1839,15 @@ function FieldBiBoard({
             <span><CalendarDays size={14} />Última coleta: {latestCollectionText}</span>
           </div>
         </div>
-        <div className={`field-bi-header-actions ${EXPORT_IMAGE_IGNORE_CLASS}`}>
-          <button type="button" className="field-bi-export-btn" onClick={handleExportImage} disabled={imageExporting}>
-            {imageExporting ? <span className="field-bi-export-spinner" aria-hidden="true" /> : <Download size={17} />}
-            {imageExporting ? 'Gerando...' : 'Imagem HD'}
-          </button>
-          {!presentationMode && (
+        {!presentationMode && (
+        <div className="field-bi-header-actions">
             <button type="button" className="field-bi-present-btn" onClick={onPresent}>
               <MonitorPlay size={18} />
               Apresentar
               <Maximize2 size={15} />
             </button>
-          )}
         </div>
+        )}
       </div>
 
       {presentationMode ? (

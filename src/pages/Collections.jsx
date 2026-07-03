@@ -38,6 +38,19 @@ function formatNumber(value, digits = 0) {
   }).format(Number(value || 0));
 }
 
+function TableSelectionCheckbox({ checked, indeterminate = false, ...props }) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      ref={(node) => {
+        if (node) node.indeterminate = indeterminate;
+      }}
+      {...props}
+    />
+  );
+}
+
 function isLocalOnlyPhotoUrl(url) {
   return /^(file|content):\/\//i.test(String(url || ''));
 }
@@ -154,9 +167,12 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   const [searchFicha, setSearchFicha] = useState('');
   const [reviewOverrides, setReviewOverrides] = useState({});
   const [deletedRecords, setDeletedRecords] = useState(new Set());
+  const [selectedRecordIds, setSelectedRecordIds] = useState(new Set());
   const [isReviewing, setIsReviewing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isBulkWorking, setIsBulkWorking] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
+  const [bulkDeleteCandidate, setBulkDeleteCandidate] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const canReviewResponses = canUseDashboardAction(user, 'review_response');
   const canDeleteResponses = canUseDashboardAction(user, 'delete_response');
@@ -185,6 +201,19 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     return String(record.id || '').toLowerCase().includes(term) || 
            String(record.formId || '').toLowerCase().includes(term);
   });
+
+  const selectableRecords = useMemo(
+    () => filteredRecords.filter((record) => record.source !== 'excel'),
+    [filteredRecords]
+  );
+  const selectedRecords = useMemo(
+    () => selectableRecords.filter((record) => selectedRecordIds.has(record.id)),
+    [selectableRecords, selectedRecordIds]
+  );
+  const allVisibleSelected = selectableRecords.length > 0
+    && selectableRecords.every((record) => selectedRecordIds.has(record.id));
+  const someVisibleSelected = selectableRecords.some((record) => selectedRecordIds.has(record.id));
+  const bulkActionsDisabled = isBulkWorking || isReviewing || isDeleting || selectedRecords.length === 0;
 
   const collectionStats = useMemo(() => {
     const gpsEligible = filteredRecords.filter((record) => record.gpsApplicable !== false).length;
@@ -223,6 +252,29 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     setFeedback({ title, message, tone });
   };
 
+  const toggleRecordSelection = (record) => {
+    if (!record || record.source === 'excel' || isBulkWorking) return;
+    setSelectedRecordIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(record.id)) next.delete(record.id);
+      else next.add(record.id);
+      return next;
+    });
+  };
+
+  const toggleAllVisibleSelection = () => {
+    if (!selectableRecords.length || isBulkWorking) return;
+    setSelectedRecordIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        selectableRecords.forEach((record) => next.delete(record.id));
+      } else {
+        selectableRecords.forEach((record) => next.add(record.id));
+      }
+      return next;
+    });
+  };
+
   const handleReview = async (status) => {
     if (!selectedRecord) return;
     if (!canReviewResponses) {
@@ -257,6 +309,65 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     } finally {
       setIsReviewing(false);
     }
+  };
+
+  const handleBulkReview = async (status) => {
+    if (!selectedRecords.length) return;
+    if (!canReviewResponses) {
+      showFeedback(
+        'Acesso restrito',
+        'Seu perfil não tem permissão para validar fichas no dashboard.'
+      );
+      return;
+    }
+
+    const label = status === 'aprovado' ? 'Aprovado' : 'Reprovado';
+    setIsBulkWorking(true);
+    setIsReviewing(true);
+
+    const results = await Promise.allSettled(
+      selectedRecords.map((record) => updateResponseReviewStatus(record.id, status, user))
+    );
+    const successIds = selectedRecords
+      .filter((_, index) => results[index]?.status === 'fulfilled')
+      .map((record) => record.id);
+    const failedCount = results.length - successIds.length;
+
+    if (successIds.length) {
+      setReviewOverrides((prev) => {
+        const next = { ...prev };
+        successIds.forEach((id) => {
+          next[id] = label;
+        });
+        return next;
+      });
+      setSelectedRecord((prev) => (prev && successIds.includes(prev.id) ? { ...prev, status: label } : prev));
+      setSelectedRecordIds((prev) => {
+        const next = new Set(prev);
+        successIds.forEach((id) => next.delete(id));
+        return next;
+      });
+      await refreshCqoData().catch((syncError) => {
+        devWarn('Nao foi possivel atualizar o cache global apos validacao em lote:', syncError);
+      });
+    }
+
+    if (failedCount) {
+      showFeedback(
+        'Processo parcialmente concluído',
+        `${formatNumber(successIds.length)} ficha(s) atualizada(s) e ${formatNumber(failedCount)} com erro.`,
+        'danger'
+      );
+    } else {
+      showFeedback(
+        'Validação concluída',
+        `${formatNumber(successIds.length)} ficha(s) marcadas como ${label.toLowerCase()}.`,
+        'success'
+      );
+    }
+
+    setIsReviewing(false);
+    setIsBulkWorking(false);
   };
 
   const handleDelete = () => {
@@ -299,6 +410,68 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
       );
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (!selectedRecords.length) return;
+    if (!canDeleteResponses) {
+      showFeedback(
+        'Acesso restrito',
+        'Seu perfil não tem permissão para excluir fichas no dashboard.'
+      );
+      return;
+    }
+    setBulkDeleteCandidate(selectedRecords);
+  };
+
+  const confirmBulkDelete = async () => {
+    if (!bulkDeleteCandidate?.length) return;
+
+    setIsDeleting(true);
+    setIsBulkWorking(true);
+
+    const results = await Promise.allSettled(
+      bulkDeleteCandidate.map((record) => deleteResponseRecord(record.id, user))
+    );
+    const successIds = bulkDeleteCandidate
+      .filter((_, index) => results[index]?.status === 'fulfilled')
+      .map((record) => record.id);
+    const failedCount = results.length - successIds.length;
+
+    if (successIds.length) {
+      setDeletedRecords((prev) => {
+        const next = new Set(prev);
+        successIds.forEach((id) => next.add(id));
+        return next;
+      });
+      setSelectedRecordIds((prev) => {
+        const next = new Set(prev);
+        successIds.forEach((id) => next.delete(id));
+        return next;
+      });
+      setSelectedRecord((prev) => (prev && successIds.includes(prev.id) ? null : prev));
+      await refreshCqoData().catch((syncError) => {
+        devWarn('Nao foi possivel atualizar o cache global apos exclusao em lote:', syncError);
+      });
+    }
+
+    setBulkDeleteCandidate(null);
+    setIsDeleting(false);
+    setIsBulkWorking(false);
+
+    if (failedCount) {
+      showFeedback(
+        'Exclusão parcialmente concluída',
+        `${formatNumber(successIds.length)} ficha(s) excluída(s) e ${formatNumber(failedCount)} com erro.`,
+        'danger'
+      );
+    } else {
+      showFeedback(
+        'Fichas excluídas',
+        `${formatNumber(successIds.length)} ficha(s) removidas do Supabase.`,
+        'success'
+      );
     }
   };
 
@@ -361,10 +534,65 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
       </div>
 
       <div className="card page-card data-surface-card">
+        <div className="collection-bulk-actions">
+          <div className="collection-bulk-copy">
+            <strong>{formatNumber(selectedRecords.length)} selecionada(s)</strong>
+            <span>Selecione fichas do app para validar ou excluir em lote.</span>
+          </div>
+          <div className="collection-bulk-buttons">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => handleBulkReview('aprovado')}
+              disabled={bulkActionsDisabled || !canReviewResponses}
+              title={canReviewResponses ? 'Aprovar fichas selecionadas' : 'Permissão necessária'}
+            >
+              <ThumbsUp size={14} />
+              Aprovar
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() => handleBulkReview('reprovado')}
+              disabled={bulkActionsDisabled || !canReviewResponses}
+              title={canReviewResponses ? 'Reprovar fichas selecionadas' : 'Permissão necessária'}
+            >
+              <ThumbsDown size={14} />
+              Reprovar
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-outline-danger"
+              onClick={handleBulkDelete}
+              disabled={bulkActionsDisabled || !canDeleteResponses}
+              title={canDeleteResponses ? 'Excluir fichas selecionadas' : 'Permissão necessária'}
+            >
+              <Trash2 size={14} />
+              Excluir
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setSelectedRecordIds(new Set())}
+              disabled={selectedRecordIds.size === 0 || isBulkWorking}
+            >
+              Limpar
+            </button>
+          </div>
+        </div>
         <div className="table-wrapper">
           <table className="custom-table dense-table">
             <thead>
               <tr>
+                <th className="table-selection-cell">
+                  <TableSelectionCheckbox
+                    checked={allVisibleSelected}
+                    indeterminate={!allVisibleSelected && someVisibleSelected}
+                    onChange={toggleAllVisibleSelection}
+                    disabled={!selectableRecords.length || isBulkWorking}
+                    aria-label="Selecionar todas as fichas visíveis do app"
+                  />
+                </th>
                 <th>Ficha</th>
                 <th>Data / Hora</th>
                 <th>Formulário</th>
@@ -382,6 +610,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={`skeleton-${i}`}>
+                    <td><span className="skeleton-text skeleton-sm" /></td>
                     <td><span className="skeleton-text skeleton-sm" /></td>
                     <td>
                       <div className="stack-cell">
@@ -411,10 +640,19 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                   </tr>
                 ))
               ) : filteredRecords.length === 0 ? (
-                <EmptyTableRow colSpan={11} message="Nenhuma coleta encontrada para os filtros atuais." />
+                <EmptyTableRow colSpan={12} message="Nenhuma coleta encontrada para os filtros atuais." />
               ) : (
                 filteredRecords.map((record) => (
-                  <tr key={record.id}>
+                  <tr key={record.id} className={selectedRecordIds.has(record.id) ? 'is-selected-row' : ''}>
+                    <td className="table-selection-cell">
+                      <TableSelectionCheckbox
+                        checked={selectedRecordIds.has(record.id)}
+                        onChange={() => toggleRecordSelection(record)}
+                        disabled={record.source === 'excel' || isBulkWorking}
+                        aria-label={`Selecionar ficha ${record.id}`}
+                        title={record.source === 'excel' ? 'Registros Excel não entram em validação pelo dashboard' : 'Selecionar ficha'}
+                      />
+                    </td>
                     <td className="table-key-cell">#{record.id}</td>
                     <td>
                       <div className="stack-cell">
@@ -761,6 +999,58 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
               >
                 <Trash2 size={14} />
                 {isDeleting ? 'Excluindo...' : 'Excluir ficha'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {bulkDeleteCandidate?.length ? (
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirmar exclusão de fichas selecionadas"
+          onClick={() => (!isDeleting ? setBulkDeleteCandidate(null) : null)}
+        >
+          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                <Trash2 size={18} className="modal-title-icon-danger" />
+                Excluir {formatNumber(bulkDeleteCandidate.length)} ficha(s)
+              </h3>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setBulkDeleteCandidate(null)}
+                disabled={isDeleting}
+                aria-label="Fechar confirmação de exclusão em lote"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p>
+                Esta ação remove permanentemente as fichas selecionadas do Supabase e não pode ser desfeita.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setBulkDeleteCandidate(null)}
+                disabled={isDeleting}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={confirmBulkDelete}
+                disabled={isDeleting}
+              >
+                <Trash2 size={14} />
+                {isDeleting ? 'Excluindo...' : 'Excluir selecionadas'}
               </button>
             </div>
           </div>
