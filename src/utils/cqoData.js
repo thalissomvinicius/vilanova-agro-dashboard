@@ -570,16 +570,21 @@ function statusLabel(status) {
   return 'Pendente';
 }
 
-function formatDateTime(value) {
+function valueHasExplicitTime(value) {
+  return typeof value !== 'string'
+    || /(?:T|\s)\d{2}:\d{2}/.test(value)
+    || /^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}/.test(value);
+}
+
+function formatDateTime(value, timeValue = value) {
   if (!value) return { date: '--', time: '--' };
   const date = parseRecordDateValue(value);
   if (!date || Number.isNaN(date.getTime())) return { date: String(value), time: '--' };
-  const hasTime = typeof value !== 'string'
-    || /(?:T|\s)\d{2}:\d{2}/.test(value)
-    || /^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}/.test(value);
+  const timeDate = parseRecordDateValue(timeValue);
+  const hasTime = timeDate && valueHasExplicitTime(timeValue);
   return {
     date: date.toLocaleDateString('pt-BR'),
-    time: hasTime ? date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--',
+    time: hasTime ? timeDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--',
   };
 }
 
@@ -764,7 +769,10 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
   const gps = findGps(data, type);
   const gpsOccurrences = findGpsOccurrences(data, gpsRows);
   const gpsTrack = findGpsTrack(data, gps, gpsRows);
-  const dateTime = formatDateTime(data.data_avaliacao || row.criado_em);
+  const dateTime = formatDateTime(
+    data.data_avaliacao || row.criado_em,
+    row.criado_em || row.enviado_em || row.recebido_em || data.data_avaliacao
+  );
   const matricula = data.matricula_avaliador || row.usuario_id || '';
   const collaborator = headcount.find((item) => String(item.matricula) === String(matricula));
   const acompanhamento = data.acompanhamento && typeof data.acompanhamento === 'object'
