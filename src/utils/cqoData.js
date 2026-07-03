@@ -234,6 +234,20 @@ export function normalizeText(value) {
     .replace(/^-+|-+$/g, '');
 }
 
+export function isApprovedAnalyticsRecord(record) {
+  if (!record) return false;
+  if (record.source === 'excel') return true;
+
+  const statusCandidates = [
+    record.status,
+    record.raw?.status,
+    record.raw?.status_validacao,
+    record.raw?.situacao,
+  ].map(normalizeText);
+
+  return statusCandidates.includes('aprovado');
+}
+
 export function normalizeCqoFarmId(value) {
   const normalized = normalizeText(value);
   const withoutPrefix = normalized
@@ -1871,9 +1885,10 @@ function isWithinPeriod(record, periodFilter, dateFrom = '', dateTo = '') {
   return true;
 }
 
-export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all', periodFilter = 'month', cycleFilter = 'all', evaluatorFilter = 'all', sourceFilter = 'all', dateFrom = '', dateTo = '', searchTerm = '', statusFilter = 'all' } = {}) {
+export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all', periodFilter = 'month', cycleFilter = 'all', evaluatorFilter = 'all', sourceFilter = 'all', dateFrom = '', dateTo = '', searchTerm = '', statusFilter = 'all', approvedOnly = false } = {}) {
   const search = normalizeText(searchTerm);
   return records.filter((record) => {
+    const approvedOk = !approvedOnly || isApprovedAnalyticsRecord(record);
     const farmOk = farmFilter === 'all' || record.farmId === farmFilter;
     const areaOk = areaFilter === 'all' || record.type === areaFilter;
     const cycleOk = cycleFilter === 'all' || String(record.cycle) === String(cycleFilter);
@@ -1892,7 +1907,7 @@ export function filterRecords(records, { farmFilter = 'all', areaFilter = 'all',
       record.fiscal,
     ].join(' '));
     const searchOk = !search || haystack.includes(search);
-    return farmOk && areaOk && cycleOk && evaluatorOk && sourceOk && statusOk && periodOk && searchOk;
+    return approvedOk && farmOk && areaOk && cycleOk && evaluatorOk && sourceOk && statusOk && periodOk && searchOk;
   });
 }
 
@@ -2240,7 +2255,8 @@ export function buildCharts(records) {
 
 export function useCqoDashboard(filters) {
   const data = useCqoData();
-  const filtered = useMemo(() => filterRecords(data.records, filters), [data.records, filters]);
+  const dashboardFilters = useMemo(() => ({ ...filters, approvedOnly: true }), [filters]);
+  const filtered = useMemo(() => filterRecords(data.records, dashboardFilters), [data.records, dashboardFilters]);
   const totals = useMemo(() => aggregateRecords(filtered), [filtered]);
   const charts = useMemo(() => buildCharts(filtered), [filtered]);
 

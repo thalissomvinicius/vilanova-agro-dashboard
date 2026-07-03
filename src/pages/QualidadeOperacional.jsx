@@ -464,6 +464,7 @@ export default function QualidadeOperacional({
     dateFrom,
     dateTo,
     searchTerm,
+    approvedOnly: true,
   }), [allRecords, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo, searchTerm]);
 
   const model = useMemo(() => buildQualidadeOperacional(filtered), [filtered]);

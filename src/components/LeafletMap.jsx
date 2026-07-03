@@ -1462,6 +1462,7 @@ export default function LeafletMap({
     sourceFilter,
     dateFrom,
     dateTo,
+    approvedOnly: true,
   }), [records, farmFilter, effectiveAreaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo]);
 
   const geoRecords = useMemo(() => filteredRecords.filter((record) => {

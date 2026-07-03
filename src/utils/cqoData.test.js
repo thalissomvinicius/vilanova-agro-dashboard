@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   aggregateRecords,
   filterRecords,
+  isApprovedAnalyticsRecord,
   normalizeResponse,
   normalizeCqoFarmId,
   normalizeText,
@@ -141,6 +142,24 @@ describe('filterRecords', () => {
     });
 
     expect(result.map((item) => item.id)).toEqual(['excel-2024']);
+  });
+
+  it('mantem somente app aprovado e excel consolidado nos filtros analiticos', () => {
+    const aprovado = record({ id: 'app-aprovado', status: 'Aprovado' });
+    const pendente = record({ id: 'app-pendente', status: 'Pendente validação' });
+    const reprovado = record({ id: 'app-reprovado', status: 'Reprovado' });
+    const excel = record({ id: 'excel-importado', source: 'excel', status: 'Pendente' });
+
+    expect(isApprovedAnalyticsRecord(aprovado)).toBe(true);
+    expect(isApprovedAnalyticsRecord(pendente)).toBe(false);
+    expect(isApprovedAnalyticsRecord(excel)).toBe(true);
+
+    const result = filterRecords([aprovado, pendente, reprovado, excel], {
+      periodFilter: 'all',
+      approvedOnly: true,
+    });
+
+    expect(result.map((item) => item.id)).toEqual(['app-aprovado', 'excel-importado']);
   });
 });
 

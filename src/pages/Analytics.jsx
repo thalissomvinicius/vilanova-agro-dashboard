@@ -286,8 +286,7 @@ function formatMonthYear(dateFrom, dateTo) {
   return `${month.charAt(0).toUpperCase()}${month.slice(1)}/${from.getFullYear()}`;
 }
 
-const PODA_PRESENTATION_DEMO_ENABLED = import.meta.env.DEV
-  && String(import.meta.env.VITE_ENABLE_PODA_DEMO || '').toLowerCase() === 'true';
+const PODA_PRESENTATION_DEMO_ENABLED = false;
 
 const PODA_DEMO_SPECS = [
   // === SEMANA 1 (dia 1-7) ===
@@ -2476,7 +2475,17 @@ export default function Analytics({
   const [podaTotalSection, setPodaTotalSection] = useState('qualidade');
   const [podaGeoQualityOpen, setPodaGeoQualityOpen] = useState(false);
 
-  const filtered = filterRecords(allRecords, { farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo });
+  const filtered = filterRecords(allRecords, {
+    farmFilter,
+    areaFilter,
+    periodFilter,
+    cycleFilter,
+    evaluatorFilter,
+    sourceFilter,
+    dateFrom,
+    dateTo,
+    approvedOnly: true,
+  });
   const corteRecords = filtered.filter((r) => r.type === 'corte');
   const carreamentoRecords = filtered.filter((r) => r.type === 'carreamento');
   const podaRealRecords = filtered.filter((r) => r.type === 'poda');
