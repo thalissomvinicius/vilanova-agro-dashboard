@@ -678,7 +678,12 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                     <td>
                       <div className="stack-cell">
                         <strong>{record.farm}</strong>
-                        <span>Parcela {record.parcel} / Ciclo {record.cycle}</span>
+                        <span>
+                          Parcela {record.parcel}
+                          {record.plantingYear ? ` / Ano ${record.plantingYear}` : ''}
+                          {' / '}
+                          Ciclo {record.cycle}
+                        </span>
                       </div>
                     </td>
                     <td>
