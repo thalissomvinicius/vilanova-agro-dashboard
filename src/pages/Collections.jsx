@@ -765,7 +765,11 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                   <div>
                     <span>Local</span>
                     <strong>{selectedRecord.farm}</strong>
-                    <small>Parcela {selectedRecord.parcel} / Ciclo {selectedRecord.cycle}</small>
+                    <small>
+                      Parcela {selectedRecord.parcel}
+                      {selectedRecord.plantingYear ? ` / Ano ${selectedRecord.plantingYear}` : ''}
+                      {` / Ciclo ${selectedRecord.cycle}`}
+                    </small>
                   </div>
                 </div>
                 <div className="detail-item">

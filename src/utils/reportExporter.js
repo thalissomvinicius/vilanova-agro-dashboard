@@ -144,8 +144,8 @@ function htmlFor(record) {
                   <span class="info-value">${escapeHtml(textValue(record.farm))}</span>
                 </td>
                 <td colspan="${colSpanVal}">
-                  <span class="info-label">Parcela</span>
-                  <span class="info-value">${escapeHtml(textValue(record.parcel))}</span>
+                  <span class="info-label">Parcela / Ano</span>
+                  <span class="info-value">${escapeHtml(textValue(record.parcel))}${record.plantingYear ? ` / ${escapeHtml(textValue(record.plantingYear))}` : ''}</span>
                 </td>
                 <td colspan="${colSpanVal + colSpanRemainder}">
                   <span class="info-label">Data e Hora</span>
