@@ -13632,6 +13632,22 @@ body.field-map-active {
   padding: 10px;
 }
 
+.evidence-photo .evidence-file-placeholder {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  text-align: center;
+}
+
+.evidence-file-placeholder a {
+  color: var(--primary-color);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
 .evidence-photo strong {
   color: var(--text-primary);
   font-size: 0.8rem;

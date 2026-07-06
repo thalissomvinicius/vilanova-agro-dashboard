@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   aggregateRecords,
+  attachmentStoragePathCandidates,
   filterRecords,
   isApprovedAnalyticsRecord,
   normalizeResponse,
+  normalizeAttachmentStoragePath,
   normalizeCqoFarmId,
   normalizeText,
   parseRecordDateValue,
@@ -91,6 +93,23 @@ describe('parseRecordDateValue', () => {
     expect(parsed.getFullYear()).toBe(2024);
     expect(parsed.getMonth()).toBe(6);
     expect(parsed.getDate()).toBe(1);
+  });
+});
+
+describe('attachments storage', () => {
+  it('normaliza caminhos do bucket mobile-anexos antes de assinar', () => {
+    expect(normalizeAttachmentStoragePath('mobile-anexos/3102/res_1/foto.jpeg')).toBe('3102/res_1/foto.jpeg');
+    expect(normalizeAttachmentStoragePath('storage/v1/object/sign/mobile-anexos/3102/res_1/foto.jpeg?token=abc')).toBe('3102/res_1/foto.jpeg');
+    expect(normalizeAttachmentStoragePath('inline_json://res_1/campo')).toBe('');
+  });
+
+  it('monta candidato com matricula, resposta e nome do arquivo para anexos antigos', () => {
+    expect(attachmentStoragePathCandidates({
+      resposta_id: 'res_1783014313554_882',
+      usuario_id: '3102',
+      nome_arquivo: '44_85d05947.jpeg',
+      storage_path: 'anexo_pendente://res_1783014313554_882/foto',
+    })).toContain('3102/res_1783014313554_882/44_85d05947.jpeg');
   });
 });
 

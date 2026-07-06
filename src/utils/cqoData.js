@@ -63,6 +63,96 @@ function supabaseStorageOrigin() {
   return url.replace(/\/+$/, '');
 }
 
+function isRenderableAttachmentUrl(value) {
+  return /^(https?:|data:|blob:)/i.test(String(value || '').trim());
+}
+
+function isLocalOrPendingAttachmentPath(value) {
+  return /^(file|content|inline_json|anexo_pendente):\/\//i.test(String(value || '').trim());
+}
+
+export function normalizeAttachmentStoragePath(path) {
+  let raw = String(path || '').trim();
+  if (!raw || isLocalOrPendingAttachmentPath(raw)) return '';
+
+  if (/^https?:/i.test(raw)) {
+    try {
+      raw = decodeURIComponent(new URL(raw).pathname).replace(/^\/+/, '');
+    } catch {
+      return '';
+    }
+  }
+
+  raw = raw
+    .replace(/\\/g, '/')
+    .split('?')[0]
+    .replace(/^\/+/, '');
+
+  const storagePrefixes = [
+    `storage/v1/object/sign/${ATTACHMENT_BUCKET}/`,
+    `storage/v1/object/public/${ATTACHMENT_BUCKET}/`,
+    `storage/v1/object/${ATTACHMENT_BUCKET}/`,
+    `object/sign/${ATTACHMENT_BUCKET}/`,
+    `object/public/${ATTACHMENT_BUCKET}/`,
+    `object/${ATTACHMENT_BUCKET}/`,
+    `${ATTACHMENT_BUCKET}/`,
+  ];
+
+  for (const prefix of storagePrefixes) {
+    if (raw.startsWith(prefix)) {
+      raw = raw.slice(prefix.length);
+      break;
+    }
+  }
+
+  return raw.replace(/^\/+/, '');
+}
+
+export function attachmentStoragePathCandidates(row) {
+  const meta = parseJson(row?.dados_json || row?.metadata || row?.metadados || row?.extra);
+  const responseId = row?.resposta_id || row?.respostaId || meta?.resposta_id || '';
+  const fileName = row?.nome_arquivo || row?.filename || row?.file_name || meta?.nome_arquivo || meta?.fileName || '';
+  const userId = row?.usuario_id || row?.matricula || row?.usuarioId || meta?.usuario_id || meta?.matricula || '';
+  const candidates = [
+    row?.signed_url,
+    row?.url,
+    row?.public_url,
+    row?.storage_url,
+    row?.storage_path,
+    row?.storageUploadPath,
+    row?.storage_upload_path,
+    row?.caminho,
+    row?.path,
+    meta?.signedUrl,
+    meta?.signed_url,
+    meta?.url,
+    meta?.publicUrl,
+    meta?.public_url,
+    meta?.storageUrl,
+    meta?.storage_url,
+    meta?.storagePath,
+    meta?.storage_path,
+  ];
+
+  if (userId && responseId && fileName) {
+    candidates.push(`${userId}/${responseId}/${fileName}`);
+  }
+
+  if (responseId && fileName) {
+    candidates.push(`${responseId}/${fileName}`);
+  }
+
+  const seen = new Set();
+  return candidates
+    .map(normalizeAttachmentStoragePath)
+    .filter(Boolean)
+    .filter((candidate) => {
+      if (seen.has(candidate)) return false;
+      seen.add(candidate);
+      return true;
+    });
+}
+
 function encodeStoragePath(path) {
   return String(path || '')
     .split('/')
@@ -72,10 +162,11 @@ function encodeStoragePath(path) {
 }
 
 async function signAttachmentStoragePath(storagePath) {
-  if (!storagePath || /^(https?:|data:|blob:)/i.test(String(storagePath))) return storagePath || null;
+  if (!storagePath || isRenderableAttachmentUrl(storagePath)) return storagePath || null;
 
   const origin = supabaseStorageOrigin();
-  const encodedPath = encodeStoragePath(storagePath);
+  const normalizedPath = normalizeAttachmentStoragePath(storagePath);
+  const encodedPath = encodeStoragePath(normalizedPath);
   if (!encodedPath) return null;
 
   const response = await fetch(`${origin}/storage/v1/object/sign/${ATTACHMENT_BUCKET}/${encodedPath}`, {
@@ -104,16 +195,34 @@ async function attachSignedStorageUrls(attachmentRows) {
   if (!Array.isArray(attachmentRows) || attachmentRows.length === 0) return [];
 
   return Promise.all(attachmentRows.map(async (row) => {
-    const storagePath = row?.storage_path || row?.caminho || row?.path || null;
-    const hasRenderableUrl = row?.url || row?.public_url || row?.storage_url || row?.signed_url;
-    if (!storagePath || hasRenderableUrl) return row;
+    const renderableUrl = [
+      row?.signed_url,
+      row?.url,
+      row?.public_url,
+      row?.storage_url,
+    ].find(isRenderableAttachmentUrl);
 
-    try {
-      const signedUrl = await signAttachmentStoragePath(storagePath);
-      return signedUrl ? { ...row, signed_url: signedUrl, url: signedUrl } : row;
-    } catch {
-      return row;
+    if (renderableUrl) {
+      return { ...row, signed_url: renderableUrl, url: renderableUrl };
     }
+
+    for (const storagePath of attachmentStoragePathCandidates(row)) {
+      try {
+        const signedUrl = await signAttachmentStoragePath(storagePath);
+        if (signedUrl) {
+          return {
+            ...row,
+            storage_path: storagePath,
+            signed_url: signedUrl,
+            url: signedUrl,
+          };
+        }
+      } catch {
+        // Tenta o proximo candidato; anexos antigos podem ter sido salvos com caminho parcial.
+      }
+    }
+
+    return row;
   }));
 }
 
@@ -451,6 +560,7 @@ function normalizeOccurrencePoint(value, index) {
 
 function normalizeAttachment(row, index) {
   const meta = parseJson(row?.dados_json || row?.metadata || row?.metadados || row?.extra);
+  const rawStoragePath = row?.storage_path || row?.caminho || row?.path || meta?.storagePath || meta?.storage_path || null;
   const gps = parseGps(row?.gps || meta?.gps || {
     latitude: row?.latitude ?? meta?.latitude,
     longitude: row?.longitude ?? meta?.longitude,
@@ -465,7 +575,7 @@ function normalizeAttachment(row, index) {
     mimeType: row?.mime_type || row?.mimetype || row?.tipo_mime || meta?.mimeType || meta?.mime_type || 'image/jpeg',
     base64: row?.base64 || row?.arquivo_base64 || row?.conteudo_base64 || meta?.base64 || null,
     url: row?.url || row?.signed_url || row?.public_url || row?.storage_url || meta?.url || meta?.signedUrl || meta?.publicUrl || null,
-    storagePath: row?.storage_path || row?.caminho || row?.path || meta?.storagePath || meta?.storage_path || null,
+    storagePath: normalizeAttachmentStoragePath(rawStoragePath) || rawStoragePath,
     capturedAt: row?.capturado_em || row?.criado_em || meta?.capturedAt || meta?.capturado_em || null,
     gps,
     raw: row,

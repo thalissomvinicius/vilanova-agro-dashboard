@@ -96,14 +96,10 @@ function extractRawPhotos(raw) {
 
 function uniquePhotos(photos) {
   const seen = new Set();
-  return photos.filter((photo) => {
-    const key = [
-      photo.id,
-      photo.fieldId,
-      photo.url,
-      photo.storagePath,
-      photo.fileName,
-    ].filter(Boolean).join('|');
+  return [...photos]
+    .sort((a, b) => photoPriority(b) - photoPriority(a))
+    .filter((photo) => {
+    const key = photoDedupKey(photo);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -114,6 +110,77 @@ function photoImageSrc(photo) {
   if (photo?.base64) return `data:${photo.mimeType || 'image/jpeg'};base64,${photo.base64}`;
   if (photo?.url && !photo.localOnly && !isLocalOnlyPhotoUrl(photo.url)) return photo.url;
   return '';
+}
+
+function photoPriority(photo) {
+  if (!photo) return 0;
+  if (photo.base64) return 40;
+  if (photo.url && !photo.localOnly && !isLocalOnlyPhotoUrl(photo.url)) return 30;
+  if (photo.storagePath && !isLocalOnlyPhotoUrl(photo.storagePath)) return 20;
+  return 0;
+}
+
+function photoDedupKey(photo) {
+  const capturedAt = photo?.capturedAt ? new Date(photo.capturedAt).getTime() || photo.capturedAt : '';
+  const semanticKey = [
+    photo?.fieldId,
+    photo?.fileName,
+    capturedAt,
+  ].filter(Boolean).join('|');
+
+  if (semanticKey && photo?.fileName) return semanticKey;
+
+  return [
+    photo?.storagePath,
+    photo?.url,
+    photo?.id,
+    photo?.fieldId,
+    photo?.fileName,
+  ].filter(Boolean).join('|') || 'foto-sem-identificador';
+}
+
+function EvidencePhoto({ photo }) {
+  const [failed, setFailed] = useState(false);
+  const src = failed ? '' : photoImageSrc(photo);
+  const canOpenUrl = Boolean(photo?.url && !photo.localOnly && !isLocalOnlyPhotoUrl(photo.url));
+  const placeholderText = photo.localOnly
+    ? 'Foto no app, upload pendente'
+    : failed
+      ? 'Prévia indisponível, abrir arquivo'
+      : 'Arquivo sem prévia';
+
+  return (
+    <div className="evidence-photo">
+      {src ? (
+        <img
+          src={src}
+          alt={photo.fieldId}
+          loading="lazy"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <div className="evidence-file-placeholder">
+          <Download size={18} />
+          <span>{placeholderText}</span>
+          {canOpenUrl ? (
+            <a href={photo.url} target="_blank" rel="noreferrer">
+              Abrir imagem
+            </a>
+          ) : null}
+        </div>
+      )}
+      <div>
+        <strong>{photo.fileName || photo.fieldId}</strong>
+        <span>{photo.capturedAt ? new Date(photo.capturedAt).toLocaleString('pt-BR') : 'Sem data'}</span>
+        <span>
+          {photo.gps
+            ? `${Number(photo.gps.latitude ?? photo.gps.lat).toFixed(6)}, ${Number(photo.gps.longitude ?? photo.gps.lng).toFixed(6)}`
+            : 'Sem GPS'}
+        </span>
+        {photo.storagePath ? <span>{photo.storagePath}</span> : null}
+      </div>
+    </div>
+  );
 }
 
 function lineColumns(record) {
@@ -896,34 +963,12 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                     </div>
                   </div>
                   <div className="evidence-grid">
-                    {selectedPhotos.map((photo) => {
-                      const src = photoImageSrc(photo);
-                      return (
-                      <div className="evidence-photo" key={photo.id || photo.fieldId}>
-                        {src ? (
-                          <img
-                            src={src}
-                            alt={photo.fieldId}
-                          />
-                        ) : (
-                          <div className="evidence-file-placeholder">
-                            <Download size={18} />
-                            <span>{photo.localOnly ? 'Foto no app, upload pendente' : 'Arquivo sem prévia'}</span>
-                          </div>
-                        )}
-                        <div>
-                          <strong>{photo.fileName || photo.fieldId}</strong>
-                          <span>{photo.capturedAt ? new Date(photo.capturedAt).toLocaleString('pt-BR') : 'Sem data'}</span>
-                          <span>
-                            {photo.gps
-                              ? `${Number(photo.gps.latitude ?? photo.gps.lat).toFixed(6)}, ${Number(photo.gps.longitude ?? photo.gps.lng).toFixed(6)}`
-                              : 'Sem GPS'}
-                          </span>
-                          {photo.storagePath ? <span>{photo.storagePath}</span> : null}
-                        </div>
-                      </div>
-                      );
-                    })}
+                    {selectedPhotos.map((photo) => (
+                      <EvidencePhoto
+                        key={photoDedupKey(photo)}
+                        photo={photo}
+                      />
+                    ))}
                   </div>
                 </div>
               ) : null}

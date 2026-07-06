@@ -71,7 +71,10 @@ begin
     into v_attachment_rows
   from (
     select
-      to_jsonb(a)
+      (
+        to_jsonb(a)
+        || jsonb_build_object('usuario_id', r.usuario_id)
+      )
         - 'senha'
         - 'password'
         - 'token'
@@ -83,6 +86,7 @@ begin
         - 'access_token'
         - 'refresh_token' as safe_row
     from public.mobile_anexos a
+    left join public.mobile_respostas r on r.id = a.resposta_id
     limit 10000
   ) row_data;
 
