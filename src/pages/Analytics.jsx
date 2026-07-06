@@ -33,6 +33,7 @@ import {
 import CustomChart from '../components/CustomChart';
 import MetricCard from '../components/ui/MetricCard';
 import PageHeader from '../components/ui/PageHeader';
+import PresentationDataFilters from '../components/ui/PresentationDataFilters';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import StatusBanner from '../components/ui/StatusBanner';
 import { aggregateRecords, buildCharts, filterRecords, useCqoData } from '../utils/cqoData';
@@ -2324,6 +2325,12 @@ function CarreamentoBiBoard({
   onPresent,
   presentationMode = false,
   lastSyncTime,
+  sourceFilter = 'all',
+  setSourceFilter,
+  dateFrom,
+  dateTo,
+  setDateFrom,
+  setDateTo,
 }) {
   const taxaMalPos = totals.plantasObservadas ? (totals.cachoMalPosicionado / totals.plantasObservadas) * 100 : 0;
   const taxaNaoCarreado = totals.plantasObservadas ? (totals.cachoNaoCarreado / totals.plantasObservadas) * 100 : 0;
@@ -2380,6 +2387,18 @@ function CarreamentoBiBoard({
         <span>{fmt(totals.linhas)} linhas</span>
         <span>{farol}</span>
       </div>
+
+      {presentationMode ? (
+        <PresentationDataFilters
+          ariaLabel="Filtros da apresentação CQO Carreamento"
+          sourceFilter={sourceFilter}
+          setSourceFilter={setSourceFilter}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          setDateFrom={setDateFrom}
+          setDateTo={setDateTo}
+        />
+      ) : null}
 
       <div className="carreamento-bi-kpi-grid">
         <CarreamentoBiKpi label="Nota CQO" value={loading ? '--' : fmt(totals.carreamentoScore)} meta="Score do carreamento" tone="green" icon={Gauge} />
@@ -2460,6 +2479,7 @@ export default function Analytics({
   cycleFilter,
   evaluatorFilter,
   sourceFilter = 'all',
+  setSourceFilter,
   dateFrom,
   dateTo,
   setDateFrom,
@@ -2668,6 +2688,12 @@ export default function Analytics({
             periodText={periodText}
             onClose={closeCarreamentoPresentation}
             lastSyncTime={lastSyncTime}
+            sourceFilter={sourceFilter}
+            setSourceFilter={setSourceFilter}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            setDateFrom={setDateFrom}
+            setDateTo={setDateTo}
           />
         )}
 
@@ -2685,6 +2711,12 @@ export default function Analytics({
           periodText={periodText}
           onPresent={openCarreamentoPresentation}
           lastSyncTime={lastSyncTime}
+          sourceFilter={sourceFilter}
+          setSourceFilter={setSourceFilter}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          setDateFrom={setDateFrom}
+          setDateTo={setDateTo}
         />
       </div>
     );
@@ -2768,6 +2800,13 @@ export default function Analytics({
           records={carreamentoRecords}
           periodText={periodText}
           onClose={closeCarreamentoPresentation}
+          lastSyncTime={lastSyncTime}
+          sourceFilter={sourceFilter}
+          setSourceFilter={setSourceFilter}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          setDateFrom={setDateFrom}
+          setDateTo={setDateTo}
         />
       )}
 

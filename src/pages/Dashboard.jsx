@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import ActiveFilterSummary from '../components/ui/ActiveFilterSummary';
+import PresentationDataFilters from '../components/ui/PresentationDataFilters';
 import StatusBanner from '../components/ui/StatusBanner';
 import { normalizeCqoFarmId, parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
 import { buildQualidadeOperacional } from '../utils/qualidadeOperacionalData';
@@ -1231,6 +1232,8 @@ function FieldBiBoard({
   filterState,
   updateText,
   latestCollectionText,
+  sourceFilter = 'all',
+  setSourceFilter,
   dateFrom,
   dateTo,
   setDateFrom,
@@ -1410,6 +1413,18 @@ function FieldBiBoard({
         </div>
       ) : null}
 
+      {presentationMode ? (
+        <PresentationDataFilters
+          ariaLabel="Filtros da apresentação CQO Corte"
+          sourceFilter={sourceFilter}
+          setSourceFilter={setSourceFilter}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          setDateFrom={setDateFrom}
+          setDateTo={setDateTo}
+        />
+      ) : null}
+
       {!loading && recordCount === 0 ? (
         <FieldBiEmptyState diagnostics={diagnostics} onResetFilters={onResetFilters} />
       ) : !isTotalMode ? (
@@ -1532,7 +1547,7 @@ function FieldGeoQualityOverlay({ mapProps, periodText, updateText, latestCollec
   );
 }
 
-export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, setDateFrom, setDateTo, searchTerm, lastSyncTime, onResetFilters, onClearFilter }) {
+export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', setSourceFilter, dateFrom, dateTo, setDateFrom, setDateTo, searchTerm, lastSyncTime, onResetFilters, onClearFilter }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
   const [geoQualityOpen, setGeoQualityOpen] = useState(false);
   const [geoQualityMapProps, setGeoQualityMapProps] = useState(null);
@@ -1607,6 +1622,8 @@ export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter,
     filterState,
     updateText,
     latestCollectionText,
+    sourceFilter,
+    setSourceFilter,
     dateFrom,
     dateTo,
     setDateFrom,

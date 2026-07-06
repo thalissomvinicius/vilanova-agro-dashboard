@@ -775,6 +775,7 @@ export default function App() {
           <Dashboard
             {...commonDashboardProps}
             areaFilter="corte"
+            setSourceFilter={setSourceFilter}
             setDateFrom={applyDateFrom}
             setDateTo={applyDateTo}
           />
@@ -788,8 +789,11 @@ export default function App() {
             cycleFilter={cycleFilter}
             evaluatorFilter={evaluatorFilter}
             sourceFilter={fieldSourceFilter}
+            setSourceFilter={setSourceFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
+            setDateFrom={applyDateFrom}
+            setDateTo={applyDateTo}
             lastSyncTime={lastSyncTime}
           />
         );
@@ -819,6 +823,9 @@ export default function App() {
           <LossesAgricola
             {...commonDashboardProps}
             areaFilter={areaFilter}
+            setSourceFilter={setSourceFilter}
+            setDateFrom={applyDateFrom}
+            setDateTo={applyDateTo}
           />
         );
       case 'cqo-rampa':

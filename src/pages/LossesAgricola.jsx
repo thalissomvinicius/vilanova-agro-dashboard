@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, CalendarDays, Maximize2, MonitorPlay, RefreshCw, X } from 'lucide-react';
 import ActiveFilterSummary from '../components/ui/ActiveFilterSummary';
+import PresentationDataFilters from '../components/ui/PresentationDataFilters';
 import StatusBanner from '../components/ui/StatusBanner';
 import { filterRecords, useCqoData } from '../utils/cqoData';
 import { useBonificacaoData } from '../utils/bonificacaoData';
@@ -258,7 +259,22 @@ function WeeklyLossChart({ rows, fiscalRows, loading }) {
   );
 }
 
-function LossesBoard({ loading, model, periodText, filterState, updateText, onPresent, onClearFilter, presentationMode = false }) {
+function LossesBoard({
+  loading,
+  model,
+  periodText,
+  filterState,
+  updateText,
+  onPresent,
+  onClearFilter,
+  presentationMode = false,
+  sourceFilter = 'all',
+  setSourceFilter,
+  dateFrom,
+  dateTo,
+  setDateFrom,
+  setDateTo,
+}) {
   return (
     <div className={`losses-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
       <div className="losses-bi-header">
@@ -281,6 +297,18 @@ function LossesBoard({ loading, model, periodText, filterState, updateText, onPr
           </button>
         ) : null}
       </div>
+
+      {presentationMode ? (
+        <PresentationDataFilters
+          ariaLabel="Filtros da apresentação de Perdas Agrícola"
+          sourceFilter={sourceFilter}
+          setSourceFilter={setSourceFilter}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          setDateFrom={setDateFrom}
+          setDateTo={setDateTo}
+        />
+      ) : null}
 
       <div className="losses-bi-content">
         <LossesMetricRail model={model} loading={loading} />
@@ -317,8 +345,11 @@ export default function LossesAgricola({
   cycleFilter,
   evaluatorFilter,
   sourceFilter = 'all',
+  setSourceFilter,
   dateFrom,
   dateTo,
+  setDateFrom,
+  setDateTo,
   searchTerm,
   lastSyncTime,
   onClearFilter,
@@ -388,6 +419,12 @@ export default function LossesAgricola({
           filterState={filterState}
           updateText={updateText}
           onClearFilter={onClearFilter}
+          sourceFilter={sourceFilter}
+          setSourceFilter={setSourceFilter}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          setDateFrom={setDateFrom}
+          setDateTo={setDateTo}
           onClose={closePresentation}
         />
       ) : null}
@@ -418,6 +455,12 @@ export default function LossesAgricola({
         updateText={updateText}
         onClearFilter={onClearFilter}
         onPresent={openPresentation}
+        sourceFilter={sourceFilter}
+        setSourceFilter={setSourceFilter}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        setDateFrom={setDateFrom}
+        setDateTo={setDateTo}
       />
     </div>
   );
