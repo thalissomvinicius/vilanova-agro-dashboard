@@ -7,8 +7,10 @@ import {
   Download,
   Eye,
   MapPin,
+  Pencil,
   PlusCircle,
   Rows3,
+  Save,
   Search,
   ThumbsDown,
   ThumbsUp,
@@ -19,7 +21,7 @@ import {
 import EmptyTableRow from '../components/ui/EmptyTableRow';
 import PageHeader from '../components/ui/PageHeader';
 import StatusBanner from '../components/ui/StatusBanner';
-import { canUseDashboardAction, createManualResponse, dashboardErrorMessage, filterRecords, updateResponseReviewStatus, deleteResponseRecord, refreshCqoData, useCqoData } from '../utils/cqoData';
+import { canUseDashboardAction, createManualResponse, dashboardErrorMessage, filterRecords, updateResponseMetadata, updateResponseReviewStatus, deleteResponseRecord, refreshCqoData, useCqoData } from '../utils/cqoData';
 import { devWarn } from '../utils/devLog';
 import { exportDashboardRecord } from '../utils/reportExporter';
 
@@ -544,6 +546,118 @@ function manualInsertErrorMessage(error) {
   return `${friendly} Detalhe: ${detail}`;
 }
 
+function recordEditErrorMessage(error) {
+  const friendly = dashboardErrorMessage(error, 'Confira os campos e tente novamente.');
+  const raw = String(error?.message || error || '').trim();
+  const normalized = raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  if (!raw) return friendly;
+  if (normalized.includes('dashboard_update_response_metadata')
+    || normalized.includes('could not find the function')
+    || normalized.includes('pgrst202')) {
+    return 'A função de edição de ficha não está disponível no Supabase. Rode o arquivo supabase/DASHBOARD_RESPONSE_EDIT_HOTFIX.sql e tente novamente.';
+  }
+
+  const detail = raw
+    .replace(/^Correção de ficha:\s*/i, '')
+    .replace(/^Correcao de ficha:\s*/i, '')
+    .slice(0, 300);
+
+  if (!detail || friendly.includes(detail)) return friendly;
+  return `${friendly} Detalhe: ${detail}`;
+}
+
+function dateInputValue(value, fallback = '') {
+  const raw = String(value || fallback || '').trim();
+  if (!raw || raw === '--') return '';
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const br = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (br) return `${br[3]}-${br[2]}-${br[1]}`;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return [
+    parsed.getFullYear(),
+    String(parsed.getMonth() + 1).padStart(2, '0'),
+    String(parsed.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+function timeInputValue(value, fallback = '') {
+  const raw = String(value || fallback || '').trim();
+  if (!raw || raw === '--') return '';
+  const direct = raw.match(/(?:T|\s)?(\d{2}):(\d{2})/);
+  if (direct) return `${direct[1]}:${direct[2]}`;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`;
+}
+
+function displayDateFromInput(value) {
+  const raw = String(value || '').trim();
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!iso) return raw || '--';
+  return `${iso[3]}/${iso[2]}/${iso[1]}`;
+}
+
+function buildRecordEditDraft(record) {
+  const raw = record?.raw || {};
+  return {
+    data_avaliacao: dateInputValue(raw.data_avaliacao || raw.data_hora_avaliacao, record?.date),
+    hora_avaliacao: timeInputValue(raw.hora_avaliacao || raw.data_hora_avaliacao, record?.time),
+    nome_polo: String(raw.nome_polo || '').trim(),
+    nome_fazenda: String(raw.nome_fazenda || record?.farm || '').trim(),
+    parcela: String(raw.parcela || record?.parcel || '').trim(),
+    ano_plantio: String(raw.ano_plantio || record?.plantingYear || '').trim(),
+    ciclo_mes: String(raw.ciclo_mes || record?.cycle || '').trim(),
+    matricula_avaliador: String(raw.matricula_avaliador || record?.evaluatorMatricula || '').trim(),
+    matricula_avaliador_2: String(raw.matricula_avaliador_2 || '').trim(),
+    fiscal_resp: String(raw.fiscal_resp || '').trim(),
+    fiscal_resp_equipe: String(raw.fiscal_resp_equipe || record?.fiscal || '').trim(),
+    observacao: String(raw.observacao || record?.observation || '').trim(),
+  };
+}
+
+function buildRecordEditPatch(draft) {
+  const date = String(draft.data_avaliacao || '').trim();
+  const time = String(draft.hora_avaliacao || '').trim();
+  return {
+    nome_polo: String(draft.nome_polo || '').trim(),
+    nome_fazenda: String(draft.nome_fazenda || '').trim(),
+    parcela: String(draft.parcela || '').trim(),
+    ano_plantio: String(draft.ano_plantio || '').trim(),
+    ciclo_mes: String(draft.ciclo_mes || '').trim(),
+    data_avaliacao: date,
+    hora_avaliacao: time,
+    data_hora_avaliacao: date && time ? `${date}T${time}:00` : date,
+    matricula_avaliador: String(draft.matricula_avaliador || '').trim(),
+    matricula_avaliador_2: String(draft.matricula_avaliador_2 || '').trim(),
+    fiscal_resp: String(draft.fiscal_resp || '').trim(),
+    fiscal_resp_equipe: String(draft.fiscal_resp_equipe || '').trim(),
+    observacao: String(draft.observacao || '').trim(),
+  };
+}
+
+function applyRecordPatchForDisplay(record, patch) {
+  if (!record) return record;
+  return {
+    ...record,
+    raw: { ...(record.raw || {}), ...patch },
+    date: displayDateFromInput(patch.data_avaliacao) || record.date,
+    time: patch.hora_avaliacao || '--',
+    farm: patch.nome_fazenda || record.farm,
+    parcel: patch.parcela || record.parcel,
+    cycle: patch.ciclo_mes || record.cycle,
+    evaluatorMatricula: patch.matricula_avaliador || record.evaluatorMatricula,
+    fiscal: patch.fiscal_resp_equipe || patch.fiscal_resp || record.fiscal,
+    observation: patch.observacao || '',
+    plantingYear: patch.ano_plantio || '',
+  };
+}
+
 function parseManualNumber(value) {
   if (value === '' || value === null || value === undefined) return 0;
   const normalized = String(value).replace(',', '.').replace(/[^\d.-]/g, '');
@@ -613,8 +727,10 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   const [reviewOverrides, setReviewOverrides] = useState({});
   const [deletedRecords, setDeletedRecords] = useState(new Set());
   const [selectedRecordIds, setSelectedRecordIds] = useState(new Set());
+  const [recordEditDraft, setRecordEditDraft] = useState(null);
   const [isReviewing, setIsReviewing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSavingRecordEdit, setIsSavingRecordEdit] = useState(false);
   const [isBulkWorking, setIsBulkWorking] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [bulkDeleteCandidate, setBulkDeleteCandidate] = useState(null);
@@ -627,6 +743,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   const canReviewResponses = canUseDashboardAction(user, 'review_response');
   const canDeleteResponses = canUseDashboardAction(user, 'delete_response');
   const canCreateManualResponse = canUseDashboardAction(user, 'create_manual_response') || canReviewResponses;
+  const canEditResponses = canReviewResponses;
 
   const displayRecords = records
     .filter(record => !deletedRecords.has(record.id))
@@ -701,6 +818,38 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
 
   const showFeedback = (title, message, tone = 'warning') => {
     setFeedback({ title, message, tone });
+  };
+
+  const openRecordDetails = (record) => {
+    setRecordEditDraft(null);
+    setSelectedRecord(record);
+  };
+
+  const closeRecordDetails = () => {
+    if (isSavingRecordEdit) return;
+    setRecordEditDraft(null);
+    setSelectedRecord(null);
+  };
+
+  const openRecordEditor = () => {
+    if (!selectedRecord || selectedRecord.source === 'excel') return;
+    if (!canEditResponses) {
+      showFeedback(
+        'Acesso restrito',
+        'Seu perfil não tem permissão para corrigir fichas do app no dashboard.'
+      );
+      return;
+    }
+    setRecordEditDraft(buildRecordEditDraft(selectedRecord));
+  };
+
+  const updateRecordEditDraft = (field, value) => {
+    setRecordEditDraft((prev) => ({ ...(prev || {}), [field]: value }));
+  };
+
+  const cancelRecordEdit = () => {
+    if (isSavingRecordEdit) return;
+    setRecordEditDraft(null);
   };
 
   const openManualEntryModal = () => {
@@ -817,6 +966,64 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
       );
     } finally {
       setIsCreatingManual(false);
+    }
+  };
+
+  const handleSaveRecordEdit = async (event) => {
+    event.preventDefault();
+    if (!selectedRecord || !recordEditDraft) return;
+    if (!canEditResponses) {
+      showFeedback(
+        'Acesso restrito',
+        'Seu perfil não tem permissão para corrigir fichas do app no dashboard.'
+      );
+      return;
+    }
+    if (selectedRecord.source === 'excel') {
+      showFeedback(
+        'Registro Excel bloqueado',
+        'Snapshots de Excel são históricos. Corrija a planilha de origem e reimporte.'
+      );
+      return;
+    }
+
+    const requiredFields = [
+      ['data_avaliacao', 'Data'],
+      ['nome_fazenda', 'Fazenda'],
+      ['parcela', 'Parcela'],
+      ['matricula_avaliador', 'Matrícula do avaliador'],
+    ];
+    const missing = requiredFields.find(([field]) => !String(recordEditDraft[field] || '').trim());
+    if (missing) {
+      showFeedback('Campo obrigatório', `Informe: ${missing[1]}.`);
+      return;
+    }
+
+    const patch = buildRecordEditPatch(recordEditDraft);
+    setIsSavingRecordEdit(true);
+    try {
+      await updateResponseMetadata(selectedRecord.id, patch, user);
+      setSelectedRecord((prev) => applyRecordPatchForDisplay(prev, patch));
+      setRecordEditDraft(null);
+      const refreshed = await refreshCqoData().catch((syncError) => {
+        devWarn('Nao foi possivel atualizar o cache global apos correcao de ficha:', syncError);
+        return null;
+      });
+      const refreshedRecord = refreshed?.records?.find((record) => record.id === selectedRecord.id);
+      if (refreshedRecord) setSelectedRecord(refreshedRecord);
+      showFeedback(
+        'Ficha corrigida',
+        'Os dados principais da ficha foram atualizados e registrados na auditoria.',
+        'success'
+      );
+    } catch (editError) {
+      showFeedback(
+        'Não foi possível corrigir a ficha',
+        recordEditErrorMessage(editError),
+        'danger'
+      );
+    } finally {
+      setIsSavingRecordEdit(false);
     }
   };
 
@@ -1309,7 +1516,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                     <td>{formatNumber(record.lines.length)}</td>
                     <td className="table-action-cell">
                       <button
-                        onClick={() => setSelectedRecord(record)}
+                        onClick={() => openRecordDetails(record)}
                         className="btn btn-secondary btn-icon btn-icon-sm"
                         title="Abrir coleta"
                       >
@@ -1327,17 +1534,160 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
       </div>
 
       {selectedRecord && (
-        <div className="modal-overlay" onClick={() => setSelectedRecord(null)}>
+        <div className="modal-overlay" onClick={closeRecordDetails}>
           <div className="modal-content wide-modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <h3>
                 <ClipboardList size={18} className="modal-title-icon-success" />
                 Ficha #{selectedRecord.id}
               </h3>
-              <button className="modal-close" onClick={() => setSelectedRecord(null)}>&times;</button>
+              <button className="modal-close" onClick={closeRecordDetails} disabled={isSavingRecordEdit}>&times;</button>
             </div>
 
             <div className="modal-body">
+              {recordEditDraft ? (
+                <form className="record-edit-panel" onSubmit={handleSaveRecordEdit}>
+                  <div className="record-edit-panel-header">
+                    <div>
+                      <strong>Corrigir dados principais</strong>
+                      <span>Use para ajustar data, ano, fazenda, parcela, ciclo, avaliador e fiscal sem alterar as linhas coletadas.</span>
+                    </div>
+                    <span className="badge badge-info">Edição auditada</span>
+                  </div>
+
+                  <div className="record-edit-grid">
+                    <label className="form-group">
+                      <span className="form-label">Data</span>
+                      <input
+                        className="form-input"
+                        type="date"
+                        value={recordEditDraft.data_avaliacao}
+                        onChange={(event) => updateRecordEditDraft('data_avaliacao', event.target.value)}
+                        required
+                      />
+                    </label>
+                    <label className="form-group">
+                      <span className="form-label">Hora</span>
+                      <input
+                        className="form-input"
+                        type="time"
+                        value={recordEditDraft.hora_avaliacao}
+                        onChange={(event) => updateRecordEditDraft('hora_avaliacao', event.target.value)}
+                      />
+                    </label>
+                    <ManualDatalistField
+                      label="Polo"
+                      value={recordEditDraft.nome_polo}
+                      onChange={(value) => updateRecordEditDraft('nome_polo', value)}
+                      options={MANUAL_POLO_OPTIONS}
+                      listId="edit-polo-options"
+                      placeholder="Selecione ou digite"
+                    />
+                    <ManualDatalistField
+                      label="Fazenda"
+                      value={recordEditDraft.nome_fazenda}
+                      onChange={(value) => updateRecordEditDraft('nome_fazenda', value)}
+                      options={manualOptionSources.farms}
+                      listId="edit-fazenda-options"
+                      required
+                      placeholder="Selecione ou digite"
+                    />
+                    <ManualDatalistField
+                      label="Parcela"
+                      value={recordEditDraft.parcela}
+                      onChange={(value) => updateRecordEditDraft('parcela', value)}
+                      options={recordEditDraft.nome_fazenda && manualOptionSources.parcelsByFarm[recordEditDraft.nome_fazenda]
+                        ? manualOptionSources.parcelsByFarm[recordEditDraft.nome_fazenda]
+                        : manualOptionSources.parcels}
+                      listId="edit-parcela-options"
+                      required
+                      placeholder="Selecione ou digite"
+                    />
+                    <ManualDatalistField
+                      label="Ano do plantio"
+                      value={recordEditDraft.ano_plantio}
+                      onChange={(value) => updateRecordEditDraft('ano_plantio', value)}
+                      options={manualOptionSources.plantingYears}
+                      listId="edit-ano-plantio-options"
+                      inputMode="numeric"
+                      placeholder="Ex.: 2013"
+                    />
+                    <ManualDatalistField
+                      label="Ciclo / mês"
+                      value={recordEditDraft.ciclo_mes}
+                      onChange={(value) => updateRecordEditDraft('ciclo_mes', value)}
+                      options={manualOptionSources.cycles}
+                      listId="edit-ciclo-options"
+                      placeholder="Ex.: 1 ou 06/2026"
+                    />
+                    <ManualDatalistField
+                      label="Matrícula avaliador"
+                      value={recordEditDraft.matricula_avaliador}
+                      onChange={(value) => updateRecordEditDraft('matricula_avaliador', value)}
+                      options={manualOptionSources.evaluators}
+                      listId="edit-avaliador-options"
+                      required
+                      inputMode="numeric"
+                      placeholder="Selecione ou digite"
+                    />
+                    <ManualDatalistField
+                      label="Matrícula avaliador 2"
+                      value={recordEditDraft.matricula_avaliador_2}
+                      onChange={(value) => updateRecordEditDraft('matricula_avaliador_2', value)}
+                      options={manualOptionSources.evaluators}
+                      listId="edit-avaliador-2-options"
+                      inputMode="numeric"
+                      placeholder="Opcional"
+                    />
+                    <ManualDatalistField
+                      label="Fiscal responsável"
+                      value={recordEditDraft.fiscal_resp}
+                      onChange={(value) => updateRecordEditDraft('fiscal_resp', value)}
+                      options={manualOptionSources.fiscalResp}
+                      listId="edit-fiscal-resp-options"
+                      placeholder="Selecione ou digite"
+                    />
+                    <ManualDatalistField
+                      label="Fiscal responsável da equipe"
+                      value={recordEditDraft.fiscal_resp_equipe}
+                      onChange={(value) => updateRecordEditDraft('fiscal_resp_equipe', value)}
+                      options={manualOptionSources.fiscalEquipe}
+                      listId="edit-fiscal-equipe-options"
+                      placeholder="Selecione ou digite"
+                    />
+                    <label className="form-group record-edit-observation">
+                      <span className="form-label">Observação</span>
+                      <textarea
+                        className="form-input"
+                        value={recordEditDraft.observacao}
+                        onChange={(event) => updateRecordEditDraft('observacao', event.target.value)}
+                        rows={2}
+                        placeholder="Observação da ficha"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="record-edit-actions">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={cancelRecordEdit}
+                      disabled={isSavingRecordEdit}
+                    >
+                      Cancelar edição
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={isSavingRecordEdit}
+                    >
+                      <Save size={14} />
+                      {isSavingRecordEdit ? 'Salvando...' : 'Salvar correção'}
+                    </button>
+                  </div>
+                </form>
+              ) : null}
+
               <div className="detail-grid">
                 <div className="detail-item">
                   <User size={16} />
@@ -1503,6 +1853,17 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 <Download size={14} />
                 Excel
               </button>
+              <button
+                onClick={recordEditDraft ? cancelRecordEdit : openRecordEditor}
+                className="btn btn-secondary"
+                disabled={isSavingRecordEdit || selectedRecord.source === 'excel' || !canEditResponses}
+                title={selectedRecord.source === 'excel'
+                  ? 'Registros Excel devem ser corrigidos na planilha de origem'
+                  : canEditResponses ? 'Corrigir dados principais da ficha' : 'Permissão necessária'}
+              >
+                <Pencil size={14} />
+                {recordEditDraft ? 'Fechar edição' : 'Editar'}
+              </button>
               <button onClick={handleDelete} className="btn btn-secondary btn-outline-danger" disabled={isDeleting || selectedRecord.source === 'excel' || !canDeleteResponses} title={canDeleteResponses ? 'Excluir ficha' : 'Permissão necessária'}>
                 <Trash2 size={14} />
                 Excluir
@@ -1515,7 +1876,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 <ThumbsUp size={14} />
                 Aprovar
               </button>
-              <button onClick={() => setSelectedRecord(null)} className="btn btn-primary">
+              <button onClick={closeRecordDetails} className="btn btn-primary" disabled={isSavingRecordEdit}>
                 Fechar auditoria
               </button>
             </div>

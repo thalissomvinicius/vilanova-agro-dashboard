@@ -11802,6 +11802,62 @@ body.field-map-active {
   gap: 14px;
 }
 
+.record-edit-panel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid rgba(13, 91, 52, 0.16);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(13, 91, 52, 0.055), rgba(245, 158, 11, 0.055));
+}
+
+.record-edit-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.record-edit-panel-header div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.record-edit-panel-header strong {
+  color: var(--text-primary);
+  font-size: 0.96rem;
+  font-weight: 900;
+}
+
+.record-edit-panel-header span:not(.badge) {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.record-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.record-edit-grid .form-group {
+  min-width: 0;
+}
+
+.record-edit-observation {
+  grid-column: span 2;
+}
+
+.record-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .manual-close-confirm {
   position: absolute;
   inset: 0;

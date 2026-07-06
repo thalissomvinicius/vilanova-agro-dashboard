@@ -908,9 +908,11 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
   const gps = findGps(data, type);
   const gpsOccurrences = findGpsOccurrences(data, gpsRows);
   const gpsTrack = findGpsTrack(data, gps, gpsRows);
+  const explicitTimeValue = data.data_hora_avaliacao
+    || (data.data_avaliacao && data.hora_avaliacao ? `${data.data_avaliacao}T${data.hora_avaliacao}:00` : '');
   const dateTime = formatDateTime(
-    data.data_avaliacao || row.criado_em,
-    row.criado_em || row.enviado_em || row.recebido_em || data.data_avaliacao
+    data.data_avaliacao || data.data_hora_avaliacao || row.criado_em,
+    explicitTimeValue || row.criado_em || row.enviado_em || row.recebido_em || data.data_avaliacao
   );
   const matricula = data.matricula_avaliador || row.usuario_id || '';
   const collaborator = headcount.find((item) => String(item.matricula) === String(matricula));
@@ -1648,6 +1650,20 @@ export async function deleteResponseRecord(responseId, session = {}) {
       p_response_id: String(responseId),
     },
     'Exclusão de ficha'
+  );
+
+  return payload || [];
+}
+
+export async function updateResponseMetadata(responseId, patch, session = {}) {
+  const payload = await postSupabaseRpc(
+    'dashboard_update_response_metadata',
+    {
+      ...sessionRpcPayload(session),
+      p_response_id: String(responseId),
+      p_patch_json: patch || {},
+    },
+    'Correção de ficha'
   );
 
   return payload || [];
