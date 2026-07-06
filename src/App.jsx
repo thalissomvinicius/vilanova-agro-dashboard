@@ -20,6 +20,7 @@ import {
   refreshCqoData,
   refreshDashboardSession,
   setCqoSessionToken,
+  useCqoData,
 } from './utils/cqoData';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -241,6 +242,93 @@ function PageFallback() {
       <div className="spinner-modern"></div>
       <p>Carregando modulo...</p>
     </div>
+  );
+}
+
+function GlobalDataLoadingOverlay() {
+  const {
+    loading,
+    records = [],
+    mobileRecords = [],
+    excelRecords = [],
+    anexos = [],
+    gpsRows = [],
+    source,
+  } = useCqoData();
+  const [visible, setVisible] = useState(loading);
+  const [progress, setProgress] = useState(loading ? 12 : 0);
+
+  const hasLoadedBase = records.length > 0 || mobileRecords.length > 0 || excelRecords.length > 0;
+  const compact = hasLoadedBase;
+
+  useEffect(() => {
+    let intervalId;
+    let hideTimer;
+
+    if (loading) {
+      const startedAt = Date.now();
+      setVisible(true);
+      setProgress((current) => (current > 8 && current < 96 ? current : 12));
+
+      intervalId = window.setInterval(() => {
+        const elapsed = Date.now() - startedAt;
+        const nextProgress = Math.min(92, 12 + Math.round((elapsed / 7000) * 80));
+        setProgress((current) => Math.max(current, nextProgress));
+      }, 240);
+    } else {
+      setProgress(100);
+      hideTimer = window.setTimeout(() => {
+        setVisible(false);
+        setProgress(0);
+      }, 360);
+    }
+
+    return () => {
+      if (intervalId) window.clearInterval(intervalId);
+      if (hideTimer) window.clearTimeout(hideTimer);
+    };
+  }, [loading]);
+
+  const stageLabel = useMemo(() => {
+    if (!loading) return 'Base pronta';
+    if (progress < 34) return 'Conectando ao Supabase';
+    if (progress < 70) return 'Lendo coletas, GPS e anexos';
+    if (progress < 95) return 'Consolidando indicadores e mapas';
+    return 'Finalizando carregamento';
+  }, [loading, progress]);
+
+  if (!visible) return null;
+
+  return createPortal(
+    <div
+      className={`global-data-loader ${compact ? 'is-compact' : 'is-blocking'}`}
+      role="status"
+      aria-live="polite"
+      aria-label={stageLabel}
+    >
+      <div className="global-data-loader-card">
+        <div className="global-data-loader-head">
+          <img src="/logo.png" alt="" aria-hidden="true" />
+          <div>
+            <span>{compact ? 'Atualizando dashboard' : 'Carregando sistema'}</span>
+            <strong>{stageLabel}</strong>
+          </div>
+          <div className="global-data-loader-spinner" aria-hidden="true" />
+        </div>
+        <div className="global-data-loader-bar" aria-hidden="true">
+          <i style={{ width: `${Math.max(8, Math.min(100, progress))}%` }} />
+        </div>
+        <div className="global-data-loader-meta">
+          <span>{source || 'Banco online'}</span>
+          {hasLoadedBase ? (
+            <span>{records.length} fichas • {gpsRows.length} GPS • {anexos.length} fotos</span>
+          ) : (
+            <span>Primeira leitura da base CQO</span>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -893,6 +981,7 @@ export default function App() {
             commonProps={commonDashboardProps}
           />
         )}
+        <GlobalDataLoadingOverlay />
         <footer className="app-developer-footer">
           <span>Vila Nova Agroindustrial - Dashboard CQO</span>
         </footer>

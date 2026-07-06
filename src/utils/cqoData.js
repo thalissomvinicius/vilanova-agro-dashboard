@@ -1806,6 +1806,30 @@ let activePromise = null;
 let activeDashboardSessionToken = '';
 const listeners = new Set();
 
+function emptyCqoDataState(source = 'Carregando') {
+  return {
+    records: [],
+    mobileRecords: [],
+    excelRecords: [],
+    headcount: [],
+    formularios: [],
+    anexos: [],
+    gpsRows: [],
+    cqoImport: { snapshot: null, podaSnapshots: [], records: 0, corteRows: 0, carreamentoRows: 0, podaRows: 0 },
+    source,
+    error: '',
+  };
+}
+
+function loadingCqoDataState(previousData = null, source = 'Carregando dados do Supabase...') {
+  return {
+    ...(previousData || emptyCqoDataState(source)),
+    loading: true,
+    source,
+    error: '',
+  };
+}
+
 export function clearCqoCache() {
   cachedData = null;
   activePromise = null;
@@ -1823,24 +1847,11 @@ export function getCqoSessionToken() {
 }
 
 export function refreshCqoData() {
-  clearCqoCache();
+  const previousData = cachedData;
+  activePromise = null;
 
-  // Notificar todos os listeners ativos de que estamos recarregando
-  listeners.forEach((listener) =>
-    listener({
-      loading: true,
-      records: [],
-      mobileRecords: [],
-      excelRecords: [],
-      headcount: [],
-      formularios: [],
-      anexos: [],
-      gpsRows: [],
-      cqoImport: { snapshot: null, podaSnapshots: [], records: 0, corteRows: 0, carreamentoRows: 0, podaRows: 0 },
-      source: 'Atualizando...',
-      error: '',
-    })
-  );
+  // Mantem a ultima base visivel enquanto a nova leitura chega do Supabase.
+  listeners.forEach((listener) => listener(loadingCqoDataState(previousData, 'Atualizando dados do Supabase...')));
 
   activePromise = loadSupabaseData()
     .then((data) => {
@@ -1851,7 +1862,13 @@ export function refreshCqoData() {
     })
     .catch((error) => {
       activePromise = null;
-      const failedData = sampleData(error);
+      const failedData = previousData
+        ? {
+            ...previousData,
+            source: 'Última base carregada',
+            error: dashboardErrorMessage(error, 'Não foi possível atualizar os dados agora. Mantivemos a última base carregada.'),
+          }
+        : sampleData(error);
       listeners.forEach((listener) => listener({ ...failedData, loading: false }));
       throw error;
     });
@@ -1863,19 +1880,14 @@ export function useCqoData() {
   const [state, setState] = useState(() => {
     if (cachedData) {
       return {
-        loading: false,
+        loading: Boolean(activePromise),
         ...cachedData,
+        ...(activePromise ? { source: 'Atualizando dados do Supabase...' } : {}),
       };
     }
     return {
       loading: true,
-      records: [],
-      headcount: [],
-      formularios: [],
-      anexos: [],
-      gpsRows: [],
-      source: 'Carregando',
-      error: '',
+      ...emptyCqoDataState('Carregando dados do Supabase...'),
     };
   });
 
