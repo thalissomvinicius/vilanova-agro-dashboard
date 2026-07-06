@@ -215,6 +215,28 @@ describe('normalizeResponse', () => {
     expect(normalized.fiscal).toBe('Luan Souza Ferreira');
   });
 
+  it('mantem lancamento manual como app sem contar GPS', () => {
+    const normalized = normalizeResponse({
+      id: 'manual-1',
+      formulario_id: 'form_cqo_poda',
+      usuario_id: '2170',
+      criado_em: '2026-07-02T12:00:00.000Z',
+      status: 'aprovado',
+      dados_json: {
+        nome_fazenda: 'Vila Nova',
+        data_avaliacao: '2026-07-02',
+        origem_manual_dashboard: true,
+        gps_nao_aplicavel: true,
+        linhas_poda: [{ linha: '1', numero_plantas_linha: 20, cacho_exposto: 1 }],
+      },
+    });
+
+    expect(normalized.source).toBe('app');
+    expect(normalized.sourceLabel).toBe('Manual / Dashboard');
+    expect(normalized.gpsApplicable).toBe(false);
+    expect(normalized.gps).toBeNull();
+  });
+
   it('nao conta palha mal empilhada como cacho observado no corte', () => {
     const normalized = normalizeResponse({
       id: 'res-palha-mal-empilhada',

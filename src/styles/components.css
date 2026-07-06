@@ -11629,6 +11629,92 @@ body.field-map-active {
   gap: 8px;
 }
 
+.manual-entry-open-btn {
+  min-height: 46px;
+  white-space: nowrap;
+}
+
+.manual-entry-modal {
+  max-height: calc(100vh - 40px);
+}
+
+.manual-entry-body {
+  display: grid;
+  gap: 14px;
+}
+
+.manual-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.manual-entry-observation {
+  grid-column: span 2;
+}
+
+.manual-entry-lines-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(13, 91, 52, 0.12);
+  border-radius: 8px;
+  background: rgba(13, 91, 52, 0.04);
+}
+
+.manual-entry-lines-header div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.manual-entry-lines-header strong {
+  color: var(--text-primary);
+  font-weight: 900;
+}
+
+.manual-entry-lines-header span {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.manual-entry-lines {
+  max-height: 280px;
+}
+
+.manual-entry-table th,
+.manual-entry-table td {
+  min-width: 96px;
+}
+
+.manual-entry-table th:first-child,
+.manual-entry-table td:first-child {
+  min-width: 72px;
+}
+
+.manual-line-input {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 7px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.manual-line-input:focus {
+  border-color: var(--green-institutional);
+  box-shadow: 0 0 0 3px rgba(13, 91, 52, 0.12);
+  outline: 0;
+}
+
 .gps-hero {
   gap: 18px;
 }

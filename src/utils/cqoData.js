@@ -921,9 +921,11 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
     || row.source === 'cqo_import_snapshots'
     || row.source === 'cqo_poda_import_snapshots'
     || String(row.formulario_id || '').startsWith('excel_');
-  const effectiveGps = isExcelSource ? null : (gpsOccurrences[0] || gpsTrack[0] || gps || null);
-  const effectiveGpsTrack = isExcelSource ? [] : gpsTrack;
-  const effectiveGpsOccurrences = isExcelSource ? [] : gpsOccurrences;
+  const isManualDashboardSource = Boolean(data.origem_manual_dashboard || data.gps_nao_aplicavel);
+  const gpsApplicable = !isExcelSource && !isManualDashboardSource;
+  const effectiveGps = gpsApplicable ? (gpsOccurrences[0] || gpsTrack[0] || gps || null) : null;
+  const effectiveGpsTrack = gpsApplicable ? gpsTrack : [];
+  const effectiveGpsOccurrences = gpsApplicable ? gpsOccurrences : [];
 
   const base = {
     id: row.id,
@@ -938,7 +940,7 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
     date: dateTime.date,
     time: dateTime.time,
     source: isExcelSource ? 'excel' : 'app',
-    sourceLabel: isExcelSource ? 'Excel / Supabase' : 'App / Supabase',
+    sourceLabel: isExcelSource ? 'Excel / Supabase' : isManualDashboardSource ? 'Manual / Dashboard' : 'App / Supabase',
     farm: data.nome_fazenda || 'Sem fazenda',
     farmId: normalizeCqoFarmId(data.nome_fazenda || 'sem-fazenda'),
     parcel: data.parcela || '--',
@@ -952,8 +954,12 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
     gps: effectiveGps,
     gpsTrack: effectiveGpsTrack,
     gpsOccurrences: effectiveGpsOccurrences,
-    gpsApplicable: !isExcelSource,
-    gpsUnavailableReason: isExcelSource ? 'Registro historico do Excel sem GPS.' : '',
+    gpsApplicable,
+    gpsUnavailableReason: isExcelSource
+      ? 'Registro historico do Excel sem GPS.'
+      : isManualDashboardSource
+        ? 'Lancamento manual sem GPS.'
+        : '',
     attachments: attachmentRows,
     raw: data,
     lines,
@@ -1642,6 +1648,21 @@ export async function deleteResponseRecord(responseId, session = {}) {
       p_response_id: String(responseId),
     },
     'Exclusão de ficha'
+  );
+
+  return payload || [];
+}
+
+export async function createManualResponse({ formularioId, dados, status = 'aprovado', session = {} }) {
+  const payload = await postSupabaseRpc(
+    'dashboard_create_manual_response',
+    {
+      ...sessionRpcPayload(session),
+      p_formulario_id: String(formularioId || '').trim(),
+      p_dados_json: dados || {},
+      p_status: String(status || 'aprovado').trim(),
+    },
+    'Lancamento manual de ficha'
   );
 
   return payload || [];

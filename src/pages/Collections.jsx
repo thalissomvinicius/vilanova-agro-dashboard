@@ -7,6 +7,7 @@ import {
   Download,
   Eye,
   MapPin,
+  PlusCircle,
   Rows3,
   Search,
   ThumbsDown,
@@ -18,7 +19,7 @@ import {
 import EmptyTableRow from '../components/ui/EmptyTableRow';
 import PageHeader from '../components/ui/PageHeader';
 import StatusBanner from '../components/ui/StatusBanner';
-import { canUseDashboardAction, dashboardErrorMessage, filterRecords, updateResponseReviewStatus, deleteResponseRecord, refreshCqoData, useCqoData } from '../utils/cqoData';
+import { canUseDashboardAction, createManualResponse, dashboardErrorMessage, filterRecords, updateResponseReviewStatus, deleteResponseRecord, refreshCqoData, useCqoData } from '../utils/cqoData';
 import { devWarn } from '../utils/devLog';
 import { exportDashboardRecord } from '../utils/reportExporter';
 
@@ -227,6 +228,126 @@ function lineColumns(record) {
   ];
 }
 
+const MANUAL_FORM_OPTIONS = [
+  { id: 'form_cqo_corte', label: 'CQO Corte', type: 'corte', lineKey: 'linhas_corte' },
+  { id: 'form_cqo_carreamento_fruto_solto', label: 'CQO Carreamento e Fruto Solto', type: 'carreamento', lineKey: 'linhas_carreamento' },
+  { id: 'form_cqo_poda', label: 'CQO Poda', type: 'poda', lineKey: 'linhas_poda' },
+];
+
+const MANUAL_FORM_BY_ID = MANUAL_FORM_OPTIONS.reduce((acc, form) => {
+  acc[form.id] = form;
+  return acc;
+}, {});
+
+const MANUAL_LINE_FIELDS = {
+  corte: [
+    ['linha', 'Linha', 'text'],
+    ['numero_plantas_linha', 'Plantas', 'number'],
+    ['numero_cachos_observados_papel', 'Cachos obs.', 'number'],
+    ['cacho_esquecido_ciclo', 'Esquecido', 'number'],
+    ['cacho_verde', 'Verde', 'number'],
+    ['cacho_maduro', 'Maduro', 'number'],
+    ['cacho_passado', 'Passado', 'number'],
+    ['cacho_infermo', 'Infermo', 'number'],
+    ['bucha', 'Bucha', 'number'],
+    ['folha_mamando', 'F. mamando', 'number'],
+    ['cacho_talo_comprido', 'Talo comp.', 'number'],
+    ['folha_cortada_indevida', 'F. cortada', 'number'],
+    ['cacho_mal_posicionado', 'Palha M.E.', 'number'],
+    ['cacho_estrela', 'Estrela', 'number'],
+    ['cacho_brocado', 'Brocado', 'number'],
+    ['cacho_avermelhado', 'Avermelhado', 'number'],
+  ],
+  carreamento: [
+    ['linha', 'Linha', 'text'],
+    ['numero_plantas_linha', 'Plantas', 'number'],
+    ['cacho_nao_carreado', 'Não carreado', 'number'],
+    ['cacho_mal_posicionado', 'Mal posicionado', 'number'],
+    ['peso_medio', 'Peso médio', 'number'],
+  ],
+  poda: [
+    ['linha', 'Linha', 'text'],
+    ['numero_plantas_linha', 'Plantas', 'number'],
+    ['planta_sem_podar', 'Sem podar', 'number'],
+    ['cacho_exposto', 'Cacho exposto', 'number'],
+    ['poda_meia_coroa', 'Meia coroa', 'number'],
+    ['folha_mamando', 'Folha mamando', 'number'],
+    ['poda_maior_1_1', 'Poda > 1:1', 'number'],
+    ['bico_gaita', 'Bico gaita', 'number'],
+    ['cacho_podre_planta', 'Cacho podre', 'number'],
+    ['palha_mal_empilhada', 'Palha M.E.', 'number'],
+  ],
+};
+
+function todayInputValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function emptyManualMeta(formularioId = 'form_cqo_corte', user = {}) {
+  return {
+    formularioId,
+    status: 'aprovado',
+    data_avaliacao: todayInputValue(),
+    hora_avaliacao: '',
+    nome_fazenda: '',
+    parcela: '',
+    ano_plantio: '',
+    ciclo_mes: '',
+    matricula_avaliador: user?.matricula || '',
+    fiscal_resp_equipe: '',
+    observacao: '',
+  };
+}
+
+function emptyManualLine(formularioId = 'form_cqo_corte', index = 0) {
+  const form = MANUAL_FORM_BY_ID[formularioId] || MANUAL_FORM_OPTIONS[0];
+  return (MANUAL_LINE_FIELDS[form.type] || []).reduce((acc, [key, , type]) => {
+    acc[key] = key === 'linha' ? String(index + 1) : type === 'number' ? '0' : '';
+    return acc;
+  }, {});
+}
+
+function parseManualNumber(value) {
+  if (value === '' || value === null || value === undefined) return 0;
+  const normalized = String(value).replace(',', '.').replace(/[^\d.-]/g, '');
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function buildManualPayload(meta, lines) {
+  const form = MANUAL_FORM_BY_ID[meta.formularioId] || MANUAL_FORM_OPTIONS[0];
+  const lineFields = MANUAL_LINE_FIELDS[form.type] || [];
+  const cleanedLines = lines.map((line, index) => lineFields.reduce((acc, [key, , type]) => {
+    if (type === 'number') {
+      acc[key] = parseManualNumber(line[key]);
+    } else {
+      acc[key] = String(line[key] || '').trim() || String(index + 1);
+    }
+    return acc;
+  }, {}));
+  const dataHora = meta.data_avaliacao && meta.hora_avaliacao
+    ? `${meta.data_avaliacao}T${meta.hora_avaliacao}:00`
+    : meta.data_avaliacao;
+
+  return {
+    nome_fazenda: String(meta.nome_fazenda || '').trim(),
+    parcela: String(meta.parcela || '').trim(),
+    ano_plantio: String(meta.ano_plantio || '').trim(),
+    ciclo_mes: String(meta.ciclo_mes || '').trim(),
+    data_avaliacao: meta.data_avaliacao,
+    hora_avaliacao: meta.hora_avaliacao,
+    data_hora_avaliacao: dataHora,
+    matricula_avaliador: String(meta.matricula_avaliador || '').trim(),
+    fiscal_resp_equipe: String(meta.fiscal_resp_equipe || '').trim(),
+    observacao: String(meta.observacao || '').trim(),
+    acompanhamento: { teve: 'nao', matricula: '', nome: '' },
+    origem_manual_dashboard: true,
+    origem_manual_tipo: 'papel',
+    gps_nao_aplicavel: true,
+    [form.lineKey]: cleanedLines,
+  };
+}
+
 export default function Collections({ farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter = 'all', dateFrom, dateTo, searchTerm, user }) {
   const { loading, records, source, error } = useCqoData();
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -241,8 +362,13 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [bulkDeleteCandidate, setBulkDeleteCandidate] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [manualMeta, setManualMeta] = useState(() => emptyManualMeta('form_cqo_corte', user));
+  const [manualLines, setManualLines] = useState(() => [emptyManualLine('form_cqo_corte', 0)]);
+  const [isCreatingManual, setIsCreatingManual] = useState(false);
   const canReviewResponses = canUseDashboardAction(user, 'review_response');
   const canDeleteResponses = canUseDashboardAction(user, 'delete_response');
+  const canCreateManualResponse = canUseDashboardAction(user, 'create_manual_response') || canReviewResponses;
 
   const displayRecords = records
     .filter(record => !deletedRecords.has(record.id))
@@ -317,6 +443,104 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
 
   const showFeedback = (title, message, tone = 'warning') => {
     setFeedback({ title, message, tone });
+  };
+
+  const openManualEntryModal = () => {
+    if (!canCreateManualResponse) {
+      showFeedback(
+        'Acesso restrito',
+        'Seu perfil não tem permissão para lançar fichas manuais no dashboard.'
+      );
+      return;
+    }
+    const formularioId = manualMeta.formularioId || 'form_cqo_corte';
+    setManualMeta(emptyManualMeta(formularioId, user));
+    setManualLines([emptyManualLine(formularioId, 0)]);
+    setManualModalOpen(true);
+  };
+
+  const closeManualEntryModal = () => {
+    if (isCreatingManual) return;
+    setManualModalOpen(false);
+  };
+
+  const handleManualFormChange = (event) => {
+    const formularioId = event.target.value;
+    setManualMeta(emptyManualMeta(formularioId, user));
+    setManualLines([emptyManualLine(formularioId, 0)]);
+  };
+
+  const updateManualMeta = (field, value) => {
+    setManualMeta((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const updateManualLine = (index, field, value) => {
+    setManualLines((prev) => prev.map((line, lineIndex) => (
+      lineIndex === index ? { ...line, [field]: value } : line
+    )));
+  };
+
+  const addManualLine = () => {
+    setManualLines((prev) => [...prev, emptyManualLine(manualMeta.formularioId, prev.length)]);
+  };
+
+  const removeManualLine = (index) => {
+    setManualLines((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, lineIndex) => lineIndex !== index);
+    });
+  };
+
+  const handleCreateManualResponse = async (event) => {
+    event.preventDefault();
+    if (!canCreateManualResponse) {
+      showFeedback(
+        'Acesso restrito',
+        'Seu perfil não tem permissão para lançar fichas manuais no dashboard.'
+      );
+      return;
+    }
+
+    const requiredFields = [
+      ['data_avaliacao', 'Data da avaliação'],
+      ['nome_fazenda', 'Fazenda'],
+      ['parcela', 'Parcela'],
+      ['matricula_avaliador', 'Matrícula do avaliador'],
+    ];
+    const missing = requiredFields.find(([field]) => !String(manualMeta[field] || '').trim());
+    if (missing) {
+      showFeedback('Campo obrigatório', `Informe: ${missing[1]}.`);
+      return;
+    }
+
+    const payload = buildManualPayload(manualMeta, manualLines);
+    setIsCreatingManual(true);
+    try {
+      const created = await createManualResponse({
+        formularioId: manualMeta.formularioId,
+        dados: payload,
+        status: manualMeta.status,
+        session: user,
+      });
+      const createdId = Array.isArray(created) ? created[0]?.id : created?.id;
+      await refreshCqoData().catch((syncError) => {
+        devWarn('Nao foi possivel atualizar o cache global apos lancamento manual:', syncError);
+      });
+      setManualModalOpen(false);
+      showFeedback(
+        'Ficha manual inserida',
+        `${createdId ? `Ficha #${createdId} criada. ` : ''}Ela entrou como fonte APP/manual e GPS não aplicável.`,
+        'success'
+      );
+    } catch (manualError) {
+      showFeedback(
+        'Não foi possível inserir a ficha manual',
+        dashboardErrorMessage(manualError, 'Confira os campos e tente novamente.'),
+        'danger'
+      );
+    } finally {
+      setIsCreatingManual(false);
+    }
   };
 
   const toggleRecordSelection = (record) => {
@@ -542,6 +766,9 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     }
   };
 
+  const currentManualForm = MANUAL_FORM_BY_ID[manualMeta.formularioId] || MANUAL_FORM_OPTIONS[0];
+  const currentManualLineFields = MANUAL_LINE_FIELDS[currentManualForm.type] || [];
+
   return (
     <>
       <div className="fade-in page-shell collection-page">
@@ -590,6 +817,16 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
             <span>Fonte</span>
             <strong>{sourceLabel}</strong>
           </div>
+          <button
+            type="button"
+            className="btn btn-primary manual-entry-open-btn"
+            onClick={openManualEntryModal}
+            disabled={!canCreateManualResponse}
+            title={canCreateManualResponse ? 'Inserir ficha preenchida em papel' : 'Permissão necessária'}
+          >
+            <PlusCircle size={16} />
+            Inserir manual
+          </button>
       </div>
 
       {error ? <StatusBanner tone="danger">{error}</StatusBanner> : null}
@@ -763,8 +1000,8 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                       <span className={`badge ${statusBadge(record.status)}`}>{record.status}</span>
                     </td>
                     <td>
-                      {record.source === 'excel' ? (
-                        <span className="muted-cell">Excel sem GPS</span>
+                      {record.gpsApplicable === false ? (
+                        <span className="muted-cell">{record.gpsUnavailableReason || 'Sem GPS aplicável'}</span>
                       ) : record.gps ? (
                         <span className="gps-chip">
                           <MapPin size={12} />
@@ -893,13 +1130,13 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 <div>
                   <span className="footer-label">GPS</span>
                   <strong>
-                    {selectedRecord.source === 'excel'
+                    {selectedRecord.gpsApplicable === false
                       ? 'Não se aplica'
                       : selectedRecord.gps?.label || 'Não capturado'}
                   </strong>
                   <small>
-                    {selectedRecord.source === 'excel'
-                      ? 'Registro histórico do Excel não possui GPS'
+                    {selectedRecord.gpsApplicable === false
+                      ? selectedRecord.gpsUnavailableReason || 'Registro sem GPS aplicável'
                       : selectedRecord.gpsOccurrences?.length
                       ? `${selectedRecord.gpsOccurrences.length} ocorrencia(s) georreferenciada(s)`
                       : `${selectedRecord.gpsTrack?.length || 0} ponto(s) de trilha`}
@@ -1006,6 +1243,231 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
           </div>
         </div>
       )}
+
+      {manualModalOpen ? (
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Inserir ficha manual"
+          onClick={closeManualEntryModal}
+        >
+          <form
+            className="modal-content wide-modal manual-entry-modal"
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={handleCreateManualResponse}
+          >
+            <div className="modal-header">
+              <h3>
+                <PlusCircle size={18} className="modal-title-icon-success" />
+                Inserir ficha manual
+              </h3>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={closeManualEntryModal}
+                disabled={isCreatingManual}
+                aria-label="Fechar lançamento manual"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="modal-body manual-entry-body">
+              <StatusBanner tone="info" className="status-banner-compact">
+                O lançamento entra como fonte APP/manual, sem GPS e sem fotos. Use para digitar fichas preenchidas em papel.
+              </StatusBanner>
+
+              <div className="manual-entry-grid">
+                <label className="form-group">
+                  <span className="form-label">Formulário</span>
+                  <select
+                    className="form-input"
+                    value={manualMeta.formularioId}
+                    onChange={handleManualFormChange}
+                  >
+                    {MANUAL_FORM_OPTIONS.map((form) => (
+                      <option key={form.id} value={form.id}>{form.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-group">
+                  <span className="form-label">Status inicial</span>
+                  <select
+                    className="form-input"
+                    value={manualMeta.status}
+                    onChange={(event) => updateManualMeta('status', event.target.value)}
+                  >
+                    <option value="aprovado">Aprovado</option>
+                    <option value="pendente_validacao">Pendente validação</option>
+                  </select>
+                </label>
+                <label className="form-group">
+                  <span className="form-label">Data</span>
+                  <input
+                    className="form-input"
+                    type="date"
+                    value={manualMeta.data_avaliacao}
+                    onChange={(event) => updateManualMeta('data_avaliacao', event.target.value)}
+                    required
+                  />
+                </label>
+                <label className="form-group">
+                  <span className="form-label">Hora</span>
+                  <input
+                    className="form-input"
+                    type="time"
+                    value={manualMeta.hora_avaliacao}
+                    onChange={(event) => updateManualMeta('hora_avaliacao', event.target.value)}
+                  />
+                </label>
+                <label className="form-group">
+                  <span className="form-label">Fazenda</span>
+                  <input
+                    className="form-input"
+                    value={manualMeta.nome_fazenda}
+                    onChange={(event) => updateManualMeta('nome_fazenda', event.target.value)}
+                    placeholder="Ex.: Vila Nova"
+                    required
+                  />
+                </label>
+                <label className="form-group">
+                  <span className="form-label">Parcela</span>
+                  <input
+                    className="form-input"
+                    value={manualMeta.parcela}
+                    onChange={(event) => updateManualMeta('parcela', event.target.value)}
+                    placeholder="Ex.: D-09"
+                    required
+                  />
+                </label>
+                <label className="form-group">
+                  <span className="form-label">Ano do plantio</span>
+                  <input
+                    className="form-input"
+                    inputMode="numeric"
+                    value={manualMeta.ano_plantio}
+                    onChange={(event) => updateManualMeta('ano_plantio', event.target.value)}
+                    placeholder="Ex.: 2012"
+                  />
+                </label>
+                <label className="form-group">
+                  <span className="form-label">Ciclo / mês</span>
+                  <input
+                    className="form-input"
+                    value={manualMeta.ciclo_mes}
+                    onChange={(event) => updateManualMeta('ciclo_mes', event.target.value)}
+                    placeholder="Ex.: 2 ou 06/2026"
+                  />
+                </label>
+                <label className="form-group">
+                  <span className="form-label">Matrícula avaliador</span>
+                  <input
+                    className="form-input"
+                    inputMode="numeric"
+                    value={manualMeta.matricula_avaliador}
+                    onChange={(event) => updateManualMeta('matricula_avaliador', event.target.value)}
+                    required
+                  />
+                </label>
+                <label className="form-group">
+                  <span className="form-label">Fiscal responsável da equipe</span>
+                  <input
+                    className="form-input"
+                    value={manualMeta.fiscal_resp_equipe}
+                    onChange={(event) => updateManualMeta('fiscal_resp_equipe', event.target.value)}
+                    placeholder="Nome do fiscal"
+                  />
+                </label>
+                <label className="form-group manual-entry-observation">
+                  <span className="form-label">Observação</span>
+                  <textarea
+                    className="form-input"
+                    value={manualMeta.observacao}
+                    onChange={(event) => updateManualMeta('observacao', event.target.value)}
+                    rows={2}
+                    placeholder="Observação registrada no papel"
+                  />
+                </label>
+              </div>
+
+              <div className="manual-entry-lines-header">
+                <div>
+                  <strong>Linhas avaliadas</strong>
+                  <span>{currentManualForm.label} - digite os valores exatamente como vieram no papel.</span>
+                </div>
+                <button type="button" className="btn btn-secondary" onClick={addManualLine}>
+                  <PlusCircle size={14} />
+                  Adicionar linha
+                </button>
+              </div>
+
+              <div className="manual-entry-lines table-wrapper">
+                <table className="custom-table dense-table manual-entry-table">
+                  <thead>
+                    <tr>
+                      {currentManualLineFields.map(([key, label]) => (
+                        <th key={key}>{label}</th>
+                      ))}
+                      <th className="table-action-cell">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {manualLines.map((line, index) => (
+                      <tr key={`manual-line-${index}`}>
+                        {currentManualLineFields.map(([key, label, type]) => (
+                          <td key={key}>
+                            <input
+                              className="manual-line-input"
+                              aria-label={`${label} linha ${index + 1}`}
+                              type={type === 'number' ? 'number' : 'text'}
+                              inputMode={type === 'number' ? 'decimal' : 'text'}
+                              min={type === 'number' ? '0' : undefined}
+                              step={type === 'number' ? 'any' : undefined}
+                              value={line[key] ?? ''}
+                              onChange={(event) => updateManualLine(index, key, event.target.value)}
+                            />
+                          </td>
+                        ))}
+                        <td className="table-action-cell">
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-icon btn-icon-sm"
+                            onClick={() => removeManualLine(index)}
+                            disabled={manualLines.length <= 1}
+                            title="Remover linha"
+                          >
+                            <X size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={closeManualEntryModal}
+                disabled={isCreatingManual}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={isCreatingManual}
+              >
+                <PlusCircle size={14} />
+                {isCreatingManual ? 'Inserindo...' : 'Inserir ficha'}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
 
       {deleteCandidate ? (
         <div
