@@ -161,6 +161,24 @@ function encodeStoragePath(path) {
     .join('/');
 }
 
+export function resolveSupabaseStorageSignedUrl(origin, signedUrl) {
+  const baseUrl = String(origin || '').replace(/\/+$/, '');
+  const rawUrl = String(signedUrl || '').trim();
+  if (!rawUrl) return null;
+  if (/^https?:/i.test(rawUrl)) return rawUrl;
+
+  const relativeUrl = rawUrl.replace(/^\/+/, '');
+  if (relativeUrl.startsWith('storage/v1/')) {
+    return `${baseUrl}/${relativeUrl}`;
+  }
+
+  if (relativeUrl.startsWith('object/')) {
+    return `${baseUrl}/storage/v1/${relativeUrl}`;
+  }
+
+  return `${baseUrl}/storage/v1/${relativeUrl}`;
+}
+
 async function signAttachmentStoragePath(storagePath) {
   if (!storagePath || isRenderableAttachmentUrl(storagePath)) return storagePath || null;
 
@@ -185,10 +203,7 @@ async function signAttachmentStoragePath(storagePath) {
 
   const payload = await response.json();
   const signedUrl = payload?.signedURL || payload?.signedUrl || payload?.url || '';
-  if (!signedUrl) return null;
-  if (/^https?:/i.test(signedUrl)) return signedUrl;
-  if (signedUrl.startsWith('/')) return `${origin}${signedUrl}`;
-  return `${origin}/${signedUrl.replace(/^\/+/, '')}`;
+  return resolveSupabaseStorageSignedUrl(origin, signedUrl);
 }
 
 async function attachSignedStorageUrls(attachmentRows) {

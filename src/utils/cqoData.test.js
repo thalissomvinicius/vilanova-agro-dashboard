@@ -9,6 +9,7 @@ import {
   normalizeCqoFarmId,
   normalizeText,
   parseRecordDateValue,
+  resolveSupabaseStorageSignedUrl,
 } from './cqoData';
 import { buildQualidadeOperacional } from './qualidadeOperacionalData';
 import { buildPodaDemoRecords } from './podaDemoData';
@@ -110,6 +111,18 @@ describe('attachments storage', () => {
       nome_arquivo: '44_85d05947.jpeg',
       storage_path: 'anexo_pendente://res_1783014313554_882/foto',
     })).toContain('3102/res_1783014313554_882/44_85d05947.jpeg');
+  });
+
+  it('monta URL assinada com o prefixo storage/v1 retornado pelo Supabase', () => {
+    expect(resolveSupabaseStorageSignedUrl(
+      'https://demo.supabase.co',
+      '/object/sign/mobile-anexos/3102/res_1/foto.jpeg?token=abc'
+    )).toBe('https://demo.supabase.co/storage/v1/object/sign/mobile-anexos/3102/res_1/foto.jpeg?token=abc');
+
+    expect(resolveSupabaseStorageSignedUrl(
+      'https://demo.supabase.co/',
+      '/storage/v1/object/sign/mobile-anexos/3102/res_1/foto.jpeg?token=abc'
+    )).toBe('https://demo.supabase.co/storage/v1/object/sign/mobile-anexos/3102/res_1/foto.jpeg?token=abc');
   });
 });
 
