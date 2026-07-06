@@ -11649,6 +11649,28 @@ body.field-map-active {
   gap: 12px;
 }
 
+.manual-entry-grid .form-group {
+  min-width: 0;
+}
+
+.manual-choice-input {
+  padding-right: 34px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 2px),
+    calc(100% - 12px) calc(50% - 2px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
+.manual-choice-input:focus {
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--orange-institutional) 50%),
+    linear-gradient(135deg, var(--orange-institutional) 50%, transparent 50%);
+}
+
 .manual-entry-observation {
   grid-column: span 2;
 }

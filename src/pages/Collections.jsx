@@ -268,9 +268,28 @@ const MANUAL_FORM_BY_ID = MANUAL_FORM_OPTIONS.reduce((acc, form) => {
   return acc;
 }, {});
 
+const MANUAL_POLO_OPTIONS = ['Tomé-Açu', 'Tome-Acu'];
+const MANUAL_FARM_OPTIONS = ['FÉ EM DEUS', 'NOVA CONCEIÇÃO', 'VILA NOVA'];
+const MANUAL_FISCAL_RESP_OPTIONS = ['1938 - DANIEL SOUZA COSTA'];
+const MANUAL_FISCAL_EQUIPE_OPTIONS = [
+  '2833 - ANTONIO BARBOSA FERREIRA',
+  '1790 - DANILSON OLIVEIRA MOREIRA',
+  '2950 - FRANCISCO DAS CHAGAS PEREIRA SANTOS',
+  '2844 - JOAO GABRIEL PEREIRA BEZERRA',
+  '384 - RAIMUNDO NONATO DOS SANTOS FURTADO JUNIOR',
+  '2146 - RENEY NERES DA COSTA',
+  '2084 - RONALD DA SILVA PONTES',
+  '1155 - VALDINEI GOMES SANCHES',
+  '2179 - JOAO BATISTA SANTOS DE OLIVEIRA',
+  '2487 - ANTONIO CARLOS PEREIRA SOARES',
+  '2798 - MAISES ALBUQUERQUE DE ANDRADE',
+  '2963 - VALCIONE DA CONCEICAO',
+];
+
 const MANUAL_LINE_FIELDS = {
   corte: [
     ['linha', 'Linha', 'text'],
+    ['matricula_colaborador', 'Mat. colab.', 'text'],
     ['numero_plantas_linha', 'Plantas', 'number'],
     ['numero_cachos_observados_papel', 'Cachos obs.', 'number'],
     ['cacho_esquecido_ciclo', 'Esquecido', 'number'],
@@ -292,7 +311,6 @@ const MANUAL_LINE_FIELDS = {
     ['numero_plantas_linha', 'Plantas', 'number'],
     ['cacho_nao_carreado', 'Não carreado', 'number'],
     ['cacho_mal_posicionado', 'Mal posicionado', 'number'],
-    ['peso_medio', 'Peso médio', 'number'],
   ],
   poda: [
     ['linha', 'Linha', 'text'],
@@ -312,17 +330,160 @@ function todayInputValue() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function uniqueTextOptions(values) {
+  const seen = new Set();
+  return values
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+    .filter((value) => {
+      const key = value.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+}
+
+function optionValue(option) {
+  return typeof option === 'object' && option !== null ? option.value : option;
+}
+
+function optionLabel(option) {
+  return typeof option === 'object' && option !== null ? option.label : '';
+}
+
+function uniqueObjectOptions(options) {
+  const seen = new Set();
+  return options
+    .map((option) => {
+      if (typeof option === 'object' && option !== null) {
+        return {
+          value: String(option.value || '').trim(),
+          label: String(option.label || '').trim(),
+        };
+      }
+      return { value: String(option || '').trim(), label: '' };
+    })
+    .filter((option) => option.value)
+    .filter((option) => {
+      const key = option.value.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => a.value.localeCompare(b.value, 'pt-BR', { numeric: true }));
+}
+
+function buildManualOptionSources(records = []) {
+  const parcelsByFarm = {};
+  const evaluatorOptions = [];
+  const fiscalEquipeOptions = [...MANUAL_FISCAL_EQUIPE_OPTIONS];
+  const fiscalRespOptions = [...MANUAL_FISCAL_RESP_OPTIONS];
+
+  records.forEach((record) => {
+    const farm = String(record?.farm || record?.raw?.nome_fazenda || '').trim();
+    const parcel = String(record?.parcel || record?.raw?.parcela || '').trim();
+    if (farm && parcel) {
+      if (!parcelsByFarm[farm]) parcelsByFarm[farm] = [];
+      parcelsByFarm[farm].push(parcel);
+    }
+
+    const evaluatorMatricula = String(record?.evaluatorMatricula || record?.raw?.matricula_avaliador || '').trim();
+    const evaluatorName = String(record?.evaluator || '').trim();
+    if (evaluatorMatricula) {
+      evaluatorOptions.push({
+        value: evaluatorMatricula,
+        label: evaluatorName && evaluatorName !== evaluatorMatricula ? evaluatorName : '',
+      });
+    }
+
+    const evaluator2 = String(record?.raw?.matricula_avaliador_2 || '').trim();
+    if (evaluator2) evaluatorOptions.push({ value: evaluator2, label: '' });
+
+    const fiscalEquipe = String(record?.raw?.fiscal_resp_equipe || record?.fiscal || '').trim();
+    if (fiscalEquipe && fiscalEquipe !== '--') fiscalEquipeOptions.push(fiscalEquipe);
+
+    const fiscalResp = String(record?.raw?.fiscal_resp || '').trim();
+    if (fiscalResp && fiscalResp !== '--') fiscalRespOptions.push(fiscalResp);
+  });
+
+  const normalizedParcelsByFarm = Object.fromEntries(
+    Object.entries(parcelsByFarm).map(([farm, parcels]) => [farm, uniqueTextOptions(parcels)])
+  );
+
+  return {
+    farms: uniqueTextOptions([...MANUAL_FARM_OPTIONS, ...records.map((record) => record?.farm)]),
+    parcels: uniqueTextOptions(records.map((record) => record?.parcel)),
+    parcelsByFarm: normalizedParcelsByFarm,
+    cycles: uniqueTextOptions(records.map((record) => record?.cycle).filter((value) => value && value !== '--')),
+    plantingYears: uniqueTextOptions(records.map((record) => record?.plantingYear || record?.raw?.ano_plantio)),
+    evaluators: uniqueObjectOptions(evaluatorOptions),
+    fiscalResp: uniqueTextOptions(fiscalRespOptions),
+    fiscalEquipe: uniqueTextOptions(fiscalEquipeOptions),
+  };
+}
+
+function ManualDatalistField({
+  label,
+  value,
+  onChange,
+  options = [],
+  listId,
+  required = false,
+  type = 'text',
+  inputMode,
+  placeholder = '',
+  className = '',
+}) {
+  return (
+    <label className={`form-group ${className}`.trim()}>
+      <span className="form-label">{label}</span>
+      <input
+        className="form-input manual-choice-input"
+        type={type}
+        inputMode={inputMode}
+        list={listId}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        required={required}
+      />
+      <datalist id={listId}>
+        {options.map((option) => {
+          const valueText = optionValue(option);
+          return (
+            <option
+              key={`${listId}-${valueText}`}
+              value={valueText}
+              label={optionLabel(option)}
+            />
+          );
+        })}
+      </datalist>
+    </label>
+  );
+}
+
 function emptyManualMeta(formularioId = 'form_cqo_corte', user = {}) {
   return {
     formularioId,
     status: 'aprovado',
+    nome_polo: 'Tomé-Açu',
     data_avaliacao: todayInputValue(),
     hora_avaliacao: '',
     nome_fazenda: '',
     parcela: '',
     ano_plantio: '',
     ciclo_mes: '',
+    densidade: '',
+    total_plantas_parcela: '',
+    total_cachos_carreados: '',
+    variedade: '',
+    empresa_tipo: 'VILA NOVA',
+    empresa_outra: '',
     matricula_avaliador: user?.matricula || '',
+    matricula_avaliador_2: '',
+    fiscal_resp: '',
     fiscal_resp_equipe: '',
     observacao: '',
   };
@@ -357,8 +518,8 @@ function buildManualPayload(meta, lines) {
   const dataHora = meta.data_avaliacao && meta.hora_avaliacao
     ? `${meta.data_avaliacao}T${meta.hora_avaliacao}:00`
     : meta.data_avaliacao;
-
   return {
+    nome_polo: String(meta.nome_polo || '').trim(),
     nome_fazenda: String(meta.nome_fazenda || '').trim(),
     parcela: String(meta.parcela || '').trim(),
     ano_plantio: String(meta.ano_plantio || '').trim(),
@@ -367,12 +528,32 @@ function buildManualPayload(meta, lines) {
     hora_avaliacao: meta.hora_avaliacao,
     data_hora_avaliacao: dataHora,
     matricula_avaliador: String(meta.matricula_avaliador || '').trim(),
+    matricula_avaliador_2: String(meta.matricula_avaliador_2 || '').trim(),
+    fiscal_resp: String(meta.fiscal_resp || '').trim(),
     fiscal_resp_equipe: String(meta.fiscal_resp_equipe || '').trim(),
     observacao: String(meta.observacao || '').trim(),
     acompanhamento: { teve: 'nao', matricula: '', nome: '' },
     origem_manual_dashboard: true,
     origem_manual_tipo: 'papel',
     gps_nao_aplicavel: true,
+    ...(form.type === 'carreamento'
+      ? {
+          densidade: parseManualNumber(meta.densidade),
+          total_plantas_parcela: parseManualNumber(meta.total_plantas_parcela),
+          total_cachos_carreados: parseManualNumber(meta.total_cachos_carreados),
+          variedade: String(meta.variedade || '').trim(),
+        }
+      : {}),
+    ...(form.type === 'poda'
+      ? {
+          atividade: 'PODA',
+          empresa_tipo: String(meta.empresa_tipo || '').trim(),
+          empresa_outra: String(meta.empresa_outra || '').trim(),
+          empresa: meta.empresa_tipo === 'OUTRA'
+            ? String(meta.empresa_outra || '').trim()
+            : 'VILA NOVA',
+        }
+      : {}),
     [form.lineKey]: cleanedLines,
   };
 }
@@ -500,7 +681,11 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   };
 
   const updateManualMeta = (field, value) => {
-    setManualMeta((prev) => ({ ...prev, [field]: value }));
+    setManualMeta((prev) => ({
+      ...prev,
+      [field]: value,
+      ...(field === 'empresa_tipo' && value !== 'OUTRA' ? { empresa_outra: '' } : {}),
+    }));
   };
 
   const updateManualLine = (index, field, value) => {
@@ -531,11 +716,20 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     }
 
     const requiredFields = [
+      ['nome_polo', 'Polo'],
       ['data_avaliacao', 'Data da avaliação'],
       ['nome_fazenda', 'Fazenda'],
       ['parcela', 'Parcela'],
       ['matricula_avaliador', 'Matrícula do avaliador'],
+      ['fiscal_resp', 'Fiscal responsável'],
+      ['fiscal_resp_equipe', 'Fiscal responsável da equipe'],
     ];
+    if (currentManualForm.type !== 'carreamento') {
+      requiredFields.push(['ano_plantio', 'Ano do plantio']);
+    }
+    if (currentManualForm.type === 'poda' && manualMeta.empresa_tipo === 'OUTRA') {
+      requiredFields.push(['empresa_outra', 'Nome da empresa']);
+    }
     const missing = requiredFields.find(([field]) => !String(manualMeta[field] || '').trim());
     if (missing) {
       showFeedback('Campo obrigatório', `Informe: ${missing[1]}.`);
@@ -797,6 +991,15 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
 
   const currentManualForm = MANUAL_FORM_BY_ID[manualMeta.formularioId] || MANUAL_FORM_OPTIONS[0];
   const currentManualLineFields = MANUAL_LINE_FIELDS[currentManualForm.type] || [];
+  const manualOptionSources = useMemo(
+    () => buildManualOptionSources(records),
+    [records]
+  );
+  const currentManualParcelOptions = manualMeta.nome_fazenda && manualOptionSources.parcelsByFarm[manualMeta.nome_fazenda]
+    ? manualOptionSources.parcelsByFarm[manualMeta.nome_fazenda]
+    : manualOptionSources.parcels;
+  const isManualCarreamento = currentManualForm.type === 'carreamento';
+  const isManualPoda = currentManualForm.type === 'poda';
 
   return (
     <>
@@ -1324,6 +1527,15 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                     <option value="pendente_validacao">Pendente validação</option>
                   </select>
                 </label>
+                <ManualDatalistField
+                  label="Polo"
+                  value={manualMeta.nome_polo}
+                  onChange={(value) => updateManualMeta('nome_polo', value)}
+                  options={MANUAL_POLO_OPTIONS}
+                  listId="manual-polo-options"
+                  required
+                  placeholder="Selecione ou digite o polo"
+                />
                 <label className="form-group">
                   <span className="form-label">Data</span>
                   <input
@@ -1343,64 +1555,146 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                     onChange={(event) => updateManualMeta('hora_avaliacao', event.target.value)}
                   />
                 </label>
-                <label className="form-group">
-                  <span className="form-label">Fazenda</span>
-                  <input
-                    className="form-input"
-                    value={manualMeta.nome_fazenda}
-                    onChange={(event) => updateManualMeta('nome_fazenda', event.target.value)}
-                    placeholder="Ex.: Vila Nova"
-                    required
-                  />
-                </label>
-                <label className="form-group">
-                  <span className="form-label">Parcela</span>
-                  <input
-                    className="form-input"
-                    value={manualMeta.parcela}
-                    onChange={(event) => updateManualMeta('parcela', event.target.value)}
-                    placeholder="Ex.: D-09"
-                    required
-                  />
-                </label>
-                <label className="form-group">
-                  <span className="form-label">Ano do plantio</span>
-                  <input
-                    className="form-input"
-                    inputMode="numeric"
-                    value={manualMeta.ano_plantio}
-                    onChange={(event) => updateManualMeta('ano_plantio', event.target.value)}
-                    placeholder="Ex.: 2012"
-                  />
-                </label>
-                <label className="form-group">
-                  <span className="form-label">Ciclo / mês</span>
-                  <input
-                    className="form-input"
-                    value={manualMeta.ciclo_mes}
-                    onChange={(event) => updateManualMeta('ciclo_mes', event.target.value)}
-                    placeholder="Ex.: 2 ou 06/2026"
-                  />
-                </label>
-                <label className="form-group">
-                  <span className="form-label">Matrícula avaliador</span>
-                  <input
-                    className="form-input"
-                    inputMode="numeric"
-                    value={manualMeta.matricula_avaliador}
-                    onChange={(event) => updateManualMeta('matricula_avaliador', event.target.value)}
-                    required
-                  />
-                </label>
-                <label className="form-group">
-                  <span className="form-label">Fiscal responsável da equipe</span>
-                  <input
-                    className="form-input"
-                    value={manualMeta.fiscal_resp_equipe}
-                    onChange={(event) => updateManualMeta('fiscal_resp_equipe', event.target.value)}
-                    placeholder="Nome do fiscal"
-                  />
-                </label>
+                <ManualDatalistField
+                  label="Fazenda"
+                  value={manualMeta.nome_fazenda}
+                  onChange={(value) => updateManualMeta('nome_fazenda', value)}
+                  options={manualOptionSources.farms}
+                  listId="manual-fazenda-options"
+                  required
+                  placeholder="Selecione ou digite a fazenda"
+                />
+                <ManualDatalistField
+                  label="Parcela"
+                  value={manualMeta.parcela}
+                  onChange={(value) => updateManualMeta('parcela', value)}
+                  options={currentManualParcelOptions}
+                  listId="manual-parcela-options"
+                  required
+                  placeholder="Selecione ou digite a parcela"
+                />
+                <ManualDatalistField
+                  label="Ano do plantio"
+                  value={manualMeta.ano_plantio}
+                  onChange={(value) => updateManualMeta('ano_plantio', value)}
+                  options={manualOptionSources.plantingYears}
+                  listId="manual-ano-plantio-options"
+                  required={!isManualCarreamento}
+                  inputMode="numeric"
+                  placeholder="Ex.: 2012"
+                />
+                <ManualDatalistField
+                  label="Ciclo / mês"
+                  value={manualMeta.ciclo_mes}
+                  onChange={(value) => updateManualMeta('ciclo_mes', value)}
+                  options={manualOptionSources.cycles}
+                  listId="manual-ciclo-options"
+                  inputMode="numeric"
+                  placeholder="Ex.: 2 ou 06/2026"
+                />
+                {isManualCarreamento ? (
+                  <>
+                    <ManualDatalistField
+                      label="Densidade"
+                      value={manualMeta.densidade}
+                      onChange={(value) => updateManualMeta('densidade', value)}
+                      options={['143', '160']}
+                      listId="manual-densidade-options"
+                      inputMode="decimal"
+                      placeholder="Ex.: 160"
+                    />
+                    <ManualDatalistField
+                      label="Total plantas parcela"
+                      value={manualMeta.total_plantas_parcela}
+                      onChange={(value) => updateManualMeta('total_plantas_parcela', value)}
+                      options={[]}
+                      listId="manual-total-plantas-options"
+                      inputMode="decimal"
+                      placeholder="Ex.: 5067"
+                    />
+                    <ManualDatalistField
+                      label="Total cachos carreados"
+                      value={manualMeta.total_cachos_carreados}
+                      onChange={(value) => updateManualMeta('total_cachos_carreados', value)}
+                      options={[]}
+                      listId="manual-total-cachos-options"
+                      inputMode="decimal"
+                      placeholder="Ex.: 120"
+                    />
+                    <ManualDatalistField
+                      label="Variedade"
+                      value={manualMeta.variedade}
+                      onChange={(value) => updateManualMeta('variedade', value)}
+                      options={['Híbrido', 'Guineensis']}
+                      listId="manual-variedade-options"
+                      placeholder="Digite a variedade"
+                    />
+                  </>
+                ) : null}
+                {isManualPoda ? (
+                  <>
+                    <label className="form-group">
+                      <span className="form-label">Empresa</span>
+                      <select
+                        className="form-input"
+                        value={manualMeta.empresa_tipo}
+                        onChange={(event) => updateManualMeta('empresa_tipo', event.target.value)}
+                        required
+                      >
+                        <option value="VILA NOVA">VILA NOVA</option>
+                        <option value="OUTRA">OUTRA</option>
+                      </select>
+                    </label>
+                    {manualMeta.empresa_tipo === 'OUTRA' ? (
+                      <ManualDatalistField
+                        label="Nome da empresa"
+                        value={manualMeta.empresa_outra}
+                        onChange={(value) => updateManualMeta('empresa_outra', value)}
+                        options={[]}
+                        listId="manual-empresa-outra-options"
+                        required
+                        placeholder="Digite a empresa"
+                      />
+                    ) : null}
+                  </>
+                ) : null}
+                <ManualDatalistField
+                  label="Matrícula avaliador"
+                  value={manualMeta.matricula_avaliador}
+                  onChange={(value) => updateManualMeta('matricula_avaliador', value)}
+                  options={manualOptionSources.evaluators}
+                  listId="manual-avaliador-options"
+                  required
+                  inputMode="numeric"
+                  placeholder="Selecione ou digite"
+                />
+                <ManualDatalistField
+                  label="Matrícula avaliador 2"
+                  value={manualMeta.matricula_avaliador_2}
+                  onChange={(value) => updateManualMeta('matricula_avaliador_2', value)}
+                  options={manualOptionSources.evaluators}
+                  listId="manual-avaliador-2-options"
+                  inputMode="numeric"
+                  placeholder="Opcional"
+                />
+                <ManualDatalistField
+                  label="Fiscal responsável"
+                  value={manualMeta.fiscal_resp}
+                  onChange={(value) => updateManualMeta('fiscal_resp', value)}
+                  options={manualOptionSources.fiscalResp}
+                  listId="manual-fiscal-resp-options"
+                  required
+                  placeholder="Selecione ou digite"
+                />
+                <ManualDatalistField
+                  label="Fiscal responsável da equipe"
+                  value={manualMeta.fiscal_resp_equipe}
+                  onChange={(value) => updateManualMeta('fiscal_resp_equipe', value)}
+                  options={manualOptionSources.fiscalEquipe}
+                  listId="manual-fiscal-equipe-options"
+                  required
+                  placeholder="Selecione ou digite"
+                />
                 <label className="form-group manual-entry-observation">
                   <span className="form-label">Observação</span>
                   <textarea
