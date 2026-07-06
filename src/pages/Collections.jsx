@@ -157,6 +157,7 @@ function EvidencePhoto({ photo }) {
           src={src}
           alt={photo.fieldId}
           loading="lazy"
+          decoding="async"
           onError={() => setFailed(true)}
         />
       ) : (
@@ -181,6 +182,34 @@ function EvidencePhoto({ photo }) {
         {photo.storagePath ? <span>{photo.storagePath}</span> : null}
       </div>
     </div>
+  );
+}
+
+function EvidencePhotoGrid({ photos }) {
+  const [expanded, setExpanded] = useState(false);
+  const visiblePhotos = expanded ? photos : photos.slice(0, 8);
+  const hiddenCount = Math.max(0, photos.length - visiblePhotos.length);
+
+  return (
+    <>
+      <div className="evidence-grid">
+        {visiblePhotos.map((photo) => (
+          <EvidencePhoto
+            key={photoDedupKey(photo)}
+            photo={photo}
+          />
+        ))}
+      </div>
+      {hiddenCount > 0 ? (
+        <button
+          type="button"
+          className="btn btn-secondary evidence-load-more"
+          onClick={() => setExpanded(true)}
+        >
+          Carregar mais {hiddenCount} foto(s)
+        </button>
+      ) : null}
+    </>
   );
 }
 
@@ -1199,14 +1228,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                       <span className="card-subtitle">Evidências enviadas pelo app com coordenadas da captura.</span>
                     </div>
                   </div>
-                  <div className="evidence-grid">
-                    {selectedPhotos.map((photo) => (
-                      <EvidencePhoto
-                        key={photoDedupKey(photo)}
-                        photo={photo}
-                      />
-                    ))}
-                  </div>
+                  <EvidencePhotoGrid photos={selectedPhotos} />
                 </div>
               ) : null}
             </div>

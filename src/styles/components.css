@@ -13684,6 +13684,11 @@ body.field-map-active {
   gap: 12px;
 }
 
+.evidence-load-more {
+  margin: 12px auto 0;
+  min-width: 220px;
+}
+
 .evidence-photo {
   border: 1px solid var(--border-color);
   border-radius: 8px;
