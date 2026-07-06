@@ -497,6 +497,53 @@ function emptyManualLine(formularioId = 'form_cqo_corte', index = 0) {
   }, {});
 }
 
+function manualComparableValue(value) {
+  return String(value ?? '').trim();
+}
+
+function hasManualDraftChanges(meta, lines, user = {}) {
+  const form = MANUAL_FORM_BY_ID[meta.formularioId] || MANUAL_FORM_OPTIONS[0];
+  const lineFields = MANUAL_LINE_FIELDS[form.type] || [];
+  const initialMeta = emptyManualMeta(meta.formularioId, user);
+  const metaChanged = Object.keys(initialMeta).some((key) => (
+    manualComparableValue(meta[key]) !== manualComparableValue(initialMeta[key])
+  ));
+
+  if (metaChanged || lines.length !== 1) return true;
+
+  const initialLine = emptyManualLine(meta.formularioId, 0);
+  return lineFields.some(([key]) => (
+    manualComparableValue(lines[0]?.[key]) !== manualComparableValue(initialLine[key])
+  ));
+}
+
+function manualInsertErrorMessage(error) {
+  const friendly = dashboardErrorMessage(error, 'Confira os campos e tente novamente.');
+  const raw = String(error?.message || error || '').trim();
+  const normalized = raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  if (!raw) return friendly;
+  if (normalized.includes('dashboard_create_manual_response')
+    || normalized.includes('could not find the function')
+    || normalized.includes('pgrst202')) {
+    return 'A função de lançamento manual não está disponível no Supabase. Rode o arquivo supabase/DASHBOARD_MANUAL_RESPONSE_HOTFIX.sql e tente novamente.';
+  }
+  if (normalized.includes('create_manual_response') && normalized.includes('sem permissao')) {
+    return 'Seu perfil não tem permissão para lançar ficha manual. Libere a permissão create_manual_response para sua matrícula.';
+  }
+
+  const detail = raw
+    .replace(/^Lancamento manual de ficha:\s*/i, '')
+    .replace(/^Lançamento manual de ficha:\s*/i, '')
+    .slice(0, 300);
+
+  if (!detail || friendly.includes(detail)) return friendly;
+  return `${friendly} Detalhe: ${detail}`;
+}
+
 function parseManualNumber(value) {
   if (value === '' || value === null || value === undefined) return 0;
   const normalized = String(value).replace(',', '.').replace(/[^\d.-]/g, '');
@@ -576,6 +623,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   const [manualMeta, setManualMeta] = useState(() => emptyManualMeta('form_cqo_corte', user));
   const [manualLines, setManualLines] = useState(() => [emptyManualLine('form_cqo_corte', 0)]);
   const [isCreatingManual, setIsCreatingManual] = useState(false);
+  const [manualCloseConfirmOpen, setManualCloseConfirmOpen] = useState(false);
   const canReviewResponses = canUseDashboardAction(user, 'review_response');
   const canDeleteResponses = canUseDashboardAction(user, 'delete_response');
   const canCreateManualResponse = canUseDashboardAction(user, 'create_manual_response') || canReviewResponses;
@@ -666,11 +714,17 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     const formularioId = manualMeta.formularioId || 'form_cqo_corte';
     setManualMeta(emptyManualMeta(formularioId, user));
     setManualLines([emptyManualLine(formularioId, 0)]);
+    setManualCloseConfirmOpen(false);
     setManualModalOpen(true);
   };
 
-  const closeManualEntryModal = () => {
+  const closeManualEntryModal = ({ force = false } = {}) => {
     if (isCreatingManual) return;
+    if (!force && hasManualDraftChanges(manualMeta, manualLines, user)) {
+      setManualCloseConfirmOpen(true);
+      return;
+    }
+    setManualCloseConfirmOpen(false);
     setManualModalOpen(false);
   };
 
@@ -749,7 +803,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
       await refreshCqoData().catch((syncError) => {
         devWarn('Nao foi possivel atualizar o cache global apos lancamento manual:', syncError);
       });
-      setManualModalOpen(false);
+      closeManualEntryModal({ force: true });
       showFeedback(
         'Ficha manual inserida',
         `${createdId ? `Ficha #${createdId} criada. ` : ''}Ela entrou como fonte APP/manual e GPS não aplicável.`,
@@ -758,7 +812,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     } catch (manualError) {
       showFeedback(
         'Não foi possível inserir a ficha manual',
-        dashboardErrorMessage(manualError, 'Confira os campos e tente novamente.'),
+        manualInsertErrorMessage(manualError),
         'danger'
       );
     } finally {
@@ -1475,7 +1529,6 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
           role="dialog"
           aria-modal="true"
           aria-label="Inserir ficha manual"
-          onClick={closeManualEntryModal}
         >
           <form
             className="modal-content wide-modal manual-entry-modal"
@@ -1497,6 +1550,38 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 <X size={18} />
               </button>
             </div>
+
+            {manualCloseConfirmOpen ? (
+              <div
+                className="manual-close-confirm"
+                role="alertdialog"
+                aria-modal="true"
+                aria-label="Descartar lançamento manual"
+              >
+                <div className="manual-close-confirm-card">
+                  <div>
+                    <strong>Descartar lançamento?</strong>
+                    <span>Os dados digitados nesta ficha ainda não foram inseridos.</span>
+                  </div>
+                  <div className="manual-close-confirm-actions">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setManualCloseConfirmOpen(false)}
+                    >
+                      Continuar digitando
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={() => closeManualEntryModal({ force: true })}
+                    >
+                      Descartar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             <div className="modal-body manual-entry-body">
               <StatusBanner tone="info" className="status-banner-compact">

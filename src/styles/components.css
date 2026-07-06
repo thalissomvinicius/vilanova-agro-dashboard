@@ -11793,12 +11793,60 @@ body.field-map-active {
 }
 
 .manual-entry-modal {
+  position: relative;
   max-height: calc(100vh - 40px);
 }
 
 .manual-entry-body {
   display: grid;
   gap: 14px;
+}
+
+.manual-close-confirm {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  border-radius: inherit;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(3px);
+}
+
+.manual-close-confirm-card {
+  width: min(480px, 100%);
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  border-radius: 12px;
+  background: var(--bg-card);
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.22);
+}
+
+.manual-close-confirm-card div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.manual-close-confirm-card strong {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.manual-close-confirm-card span {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.manual-close-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .manual-entry-grid {
