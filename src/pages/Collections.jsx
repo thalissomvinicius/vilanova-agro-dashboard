@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   Calendar,
@@ -740,10 +740,37 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   const [manualLines, setManualLines] = useState(() => [emptyManualLine('form_cqo_corte', 0)]);
   const [isCreatingManual, setIsCreatingManual] = useState(false);
   const [manualCloseConfirmOpen, setManualCloseConfirmOpen] = useState(false);
+  const manualMetaRef = useRef(manualMeta);
+  const manualLinesContainerRef = useRef(null);
+  const manualFirstInputRefs = useRef([]);
+  const pendingManualLineFocusRef = useRef(null);
   const canReviewResponses = canUseDashboardAction(user, 'review_response');
   const canDeleteResponses = canUseDashboardAction(user, 'delete_response');
   const canCreateManualResponse = canUseDashboardAction(user, 'create_manual_response') || canReviewResponses;
   const canEditResponses = canReviewResponses;
+
+  useEffect(() => {
+    manualMetaRef.current = manualMeta;
+  }, [manualMeta]);
+
+  useEffect(() => {
+    const focusIndex = pendingManualLineFocusRef.current;
+    if (focusIndex === null || focusIndex === undefined) return undefined;
+    pendingManualLineFocusRef.current = null;
+
+    const raf = window.requestAnimationFrame(() => {
+      const container = manualLinesContainerRef.current;
+      if (container) {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth',
+        });
+      }
+      manualFirstInputRefs.current[focusIndex]?.focus({ preventScroll: true });
+    });
+
+    return () => window.cancelAnimationFrame(raf);
+  }, [manualLines.length]);
 
   const displayRecords = records
     .filter(record => !deletedRecords.has(record.id))
@@ -898,7 +925,14 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   };
 
   const addManualLine = () => {
-    setManualLines((prev) => [...prev, emptyManualLine(manualMeta.formularioId, prev.length)]);
+    setManualLines((prev) => {
+      const nextIndex = prev.length;
+      pendingManualLineFocusRef.current = nextIndex;
+      return [
+        ...prev,
+        emptyManualLine(manualMetaRef.current?.formularioId || 'form_cqo_corte', nextIndex),
+      ];
+    });
   };
 
   const removeManualLine = (index) => {
@@ -2156,15 +2190,15 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
               <div className="manual-entry-lines-header">
                 <div>
                   <strong>Linhas avaliadas</strong>
-                  <span>{currentManualForm.label} - digite os valores exatamente como vieram no papel.</span>
+                  <span>{manualLines.length} linha(s) adicionada(s) · {currentManualForm.label} · digite os valores exatamente como vieram no papel.</span>
                 </div>
-                <button type="button" className="btn btn-secondary" onClick={addManualLine}>
+                <button type="button" className="btn btn-primary" onClick={addManualLine}>
                   <PlusCircle size={14} />
                   Adicionar linha
                 </button>
               </div>
 
-              <div className="manual-entry-lines table-wrapper">
+              <div className="manual-entry-lines table-wrapper" ref={manualLinesContainerRef}>
                 <table className="custom-table dense-table manual-entry-table">
                   <thead>
                     <tr>
@@ -2188,6 +2222,9 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                               step={type === 'number' ? 'any' : undefined}
                               value={line[key] ?? ''}
                               onChange={(event) => updateManualLine(index, key, event.target.value)}
+                              ref={key === 'linha' ? (node) => {
+                                manualFirstInputRefs.current[index] = node;
+                              } : undefined}
                             />
                           </td>
                         ))}
