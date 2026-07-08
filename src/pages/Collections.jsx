@@ -1920,7 +1920,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
 
       {manualModalOpen ? (
         <div
-          className="modal-overlay"
+          className="modal-overlay manual-entry-overlay"
           role="dialog"
           aria-modal="true"
           aria-label="Inserir ficha manual"
