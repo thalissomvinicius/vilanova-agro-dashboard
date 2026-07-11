@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   aggregateRecords,
+  attachmentThumbnailPathCandidates,
   attachmentStoragePathCandidates,
   filterRecords,
   isApprovedAnalyticsRecord,
@@ -111,6 +112,12 @@ describe('attachments storage', () => {
       nome_arquivo: '44_85d05947.jpeg',
       storage_path: 'anexo_pendente://res_1783014313554_882/foto',
     })).toContain('3102/res_1783014313554_882/44_85d05947.jpeg');
+  });
+
+  it('normaliza candidatos de miniatura dos anexos do app', () => {
+    expect(attachmentThumbnailPathCandidates({
+      thumbnail_storage_path: 'mobile-anexos/3102/res_1/thumbs/foto_thumb.jpg',
+    })).toEqual(['3102/res_1/thumbs/foto_thumb.jpg']);
   });
 
   it('monta URL assinada com o prefixo storage/v1 retornado pelo Supabase', () => {

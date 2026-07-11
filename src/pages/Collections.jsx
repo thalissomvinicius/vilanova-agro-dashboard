@@ -71,7 +71,25 @@ function extractRawPhotos(raw) {
     if (typeof value !== 'object') return;
 
     const url = value.url || value.signed_url || value.public_url || value.storage_url || value.uri || null;
-    const hasPhotoPayload = Boolean(value.base64 || url || value.storage_path || value.storagePath);
+    const thumbnailUrl = value.thumbnailUrl
+      || value.thumbnail_url
+      || value.thumbnail_signed_url
+      || value.thumbUrl
+      || value.thumb_url
+      || null;
+    const thumbnailStoragePath = value.thumbnailStoragePath
+      || value.thumbnail_storage_path
+      || value.thumbStoragePath
+      || value.thumb_storage_path
+      || null;
+    const hasPhotoPayload = Boolean(
+      value.base64
+      || url
+      || thumbnailUrl
+      || value.storage_path
+      || value.storagePath
+      || thumbnailStoragePath
+    );
     const mimeType = value.mimeType || value.tipo_mime || value.mime_type || 'image/jpeg';
 
     if (hasPhotoPayload && /^image\//i.test(mimeType)) {
@@ -83,8 +101,12 @@ function extractRawPhotos(raw) {
         mimeType,
         base64: value.base64 || null,
         url,
+        thumbnailUrl,
         localOnly: isLocalOnlyPhotoUrl(url),
         storagePath: value.storage_path || value.storagePath || null,
+        thumbnailStoragePath,
+        sizeBytes: value.tamanho_bytes || value.sizeBytes || value.size || null,
+        thumbnailSizeBytes: value.thumbnail_tamanho_bytes || value.thumbnailSizeBytes || null,
         capturedAt: value.capturedAt || value.capturado_em || value.criado_em || null,
         gps: value.gps || null,
       });
@@ -109,7 +131,10 @@ function uniquePhotos(photos) {
   });
 }
 
-function photoImageSrc(photo) {
+function photoImageSrc(photo, options = {}) {
+  if (!options.skipThumbnail && photo?.thumbnailUrl && !isLocalOnlyPhotoUrl(photo.thumbnailUrl)) {
+    return photo.thumbnailUrl;
+  }
   if (photo?.base64) return `data:${photo.mimeType || 'image/jpeg'};base64,${photo.base64}`;
   if (photo?.url && !photo.localOnly && !isLocalOnlyPhotoUrl(photo.url)) return photo.url;
   return '';
@@ -118,7 +143,9 @@ function photoImageSrc(photo) {
 function photoPriority(photo) {
   if (!photo) return 0;
   if (photo.base64) return 40;
+  if (photo.thumbnailUrl && !isLocalOnlyPhotoUrl(photo.thumbnailUrl)) return 35;
   if (photo.url && !photo.localOnly && !isLocalOnlyPhotoUrl(photo.url)) return 30;
+  if (photo.thumbnailStoragePath && !isLocalOnlyPhotoUrl(photo.thumbnailStoragePath)) return 25;
   if (photo.storagePath && !isLocalOnlyPhotoUrl(photo.storagePath)) return 20;
   return 0;
 }
@@ -135,7 +162,9 @@ function photoDedupKey(photo) {
 
   return [
     photo?.storagePath,
+    photo?.thumbnailStoragePath,
     photo?.url,
+    photo?.thumbnailUrl,
     photo?.id,
     photo?.fieldId,
     photo?.fileName,
@@ -144,8 +173,12 @@ function photoDedupKey(photo) {
 
 function EvidencePhoto({ photo }) {
   const [failed, setFailed] = useState(false);
-  const src = failed ? '' : photoImageSrc(photo);
-  const canOpenUrl = Boolean(photo?.url && !photo.localOnly && !isLocalOnlyPhotoUrl(photo.url));
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
+  const previewSrc = photoImageSrc(photo, { skipThumbnail: thumbnailFailed });
+  const src = failed ? '' : previewSrc;
+  const canOpenUrl = Boolean(
+    photo?.url && !photo.localOnly && !isLocalOnlyPhotoUrl(photo.url)
+  );
   const placeholderText = photo.localOnly
     ? 'Foto no app, upload pendente'
     : failed
@@ -160,7 +193,13 @@ function EvidencePhoto({ photo }) {
           alt={photo.fieldId}
           loading="lazy"
           decoding="async"
-          onError={() => setFailed(true)}
+          onError={() => {
+            if (!thumbnailFailed && photo?.thumbnailUrl) {
+              setThumbnailFailed(true);
+              return;
+            }
+            setFailed(true);
+          }}
         />
       ) : (
         <div className="evidence-file-placeholder">

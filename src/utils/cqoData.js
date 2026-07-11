@@ -156,6 +156,46 @@ export function attachmentStoragePathCandidates(row) {
     });
 }
 
+export function attachmentThumbnailPathCandidates(row) {
+  const meta = parseJson(row?.dados_json || row?.metadata || row?.metadados || row?.extra);
+  const candidates = [
+    row?.thumbnail_signed_url,
+    row?.thumbnail_url,
+    row?.thumbnail_public_url,
+    row?.thumbnail_storage_url,
+    row?.thumbnail_storage_path,
+    row?.thumb_signed_url,
+    row?.thumb_url,
+    row?.thumb_public_url,
+    row?.thumb_storage_url,
+    row?.thumb_storage_path,
+    meta?.thumbnailSignedUrl,
+    meta?.thumbnail_signed_url,
+    meta?.thumbnailUrl,
+    meta?.thumbnail_url,
+    meta?.thumbnailPublicUrl,
+    meta?.thumbnail_public_url,
+    meta?.thumbnailStorageUrl,
+    meta?.thumbnail_storage_url,
+    meta?.thumbnailStoragePath,
+    meta?.thumbnail_storage_path,
+    meta?.thumbUrl,
+    meta?.thumb_url,
+    meta?.thumbStoragePath,
+    meta?.thumb_storage_path,
+  ];
+
+  const seen = new Set();
+  return candidates
+    .map(normalizeAttachmentStoragePath)
+    .filter(Boolean)
+    .filter((candidate) => {
+      if (seen.has(candidate)) return false;
+      seen.add(candidate);
+      return true;
+    });
+}
+
 function encodeStoragePath(path) {
   return String(path || '')
     .split('/')
@@ -247,6 +287,22 @@ async function attachSignedStorageUrls(attachmentRows) {
 
   return mapWithConcurrency(attachmentRows, ATTACHMENT_SIGN_CONCURRENCY, async (row) => {
     const storageCandidates = attachmentStoragePathCandidates(row);
+    const thumbnailCandidates = attachmentThumbnailPathCandidates(row);
+    let thumbnailUrl = null;
+    let thumbnailPath = '';
+
+    for (const thumbPath of thumbnailCandidates) {
+      try {
+        const signedThumbUrl = await signAttachmentStoragePath(thumbPath);
+        if (signedThumbUrl) {
+          thumbnailUrl = signedThumbUrl;
+          thumbnailPath = thumbPath;
+          break;
+        }
+      } catch {
+        // Miniaturas podem nao existir em coletas antigas; a foto completa ainda sera tentada.
+      }
+    }
 
     for (const storagePath of storageCandidates) {
       try {
@@ -257,6 +313,9 @@ async function attachSignedStorageUrls(attachmentRows) {
             storage_path: storagePath,
             signed_url: signedUrl,
             url: signedUrl,
+            thumbnail_storage_path: thumbnailPath || row?.thumbnail_storage_path,
+            thumbnail_signed_url: thumbnailUrl || row?.thumbnail_signed_url,
+            thumbnail_url: thumbnailUrl || row?.thumbnail_url,
           };
         }
       } catch {
@@ -272,10 +331,22 @@ async function attachSignedStorageUrls(attachmentRows) {
     ].find(isRenderableAttachmentUrl);
 
     if (renderableUrl) {
-      return { ...row, signed_url: renderableUrl, url: renderableUrl };
+      return {
+        ...row,
+        signed_url: renderableUrl,
+        url: renderableUrl,
+        thumbnail_storage_path: thumbnailPath || row?.thumbnail_storage_path,
+        thumbnail_signed_url: thumbnailUrl || row?.thumbnail_signed_url,
+        thumbnail_url: thumbnailUrl || row?.thumbnail_url,
+      };
     }
 
-    return row;
+    return {
+      ...row,
+      thumbnail_storage_path: thumbnailPath || row?.thumbnail_storage_path,
+      thumbnail_signed_url: thumbnailUrl || row?.thumbnail_signed_url,
+      thumbnail_url: thumbnailUrl || row?.thumbnail_url,
+    };
   });
 }
 
@@ -614,6 +685,13 @@ function normalizeOccurrencePoint(value, index) {
 function normalizeAttachment(row, index) {
   const meta = parseJson(row?.dados_json || row?.metadata || row?.metadados || row?.extra);
   const rawStoragePath = row?.storage_path || row?.caminho || row?.path || meta?.storagePath || meta?.storage_path || null;
+  const rawThumbnailPath = row?.thumbnail_storage_path
+    || row?.thumb_storage_path
+    || meta?.thumbnailStoragePath
+    || meta?.thumbnail_storage_path
+    || meta?.thumbStoragePath
+    || meta?.thumb_storage_path
+    || null;
   const gps = parseGps(row?.gps || meta?.gps || {
     latitude: row?.latitude ?? meta?.latitude,
     longitude: row?.longitude ?? meta?.longitude,
@@ -628,7 +706,23 @@ function normalizeAttachment(row, index) {
     mimeType: row?.mime_type || row?.mimetype || row?.tipo_mime || meta?.mimeType || meta?.mime_type || 'image/jpeg',
     base64: row?.base64 || row?.arquivo_base64 || row?.conteudo_base64 || meta?.base64 || null,
     url: row?.url || row?.signed_url || row?.public_url || row?.storage_url || meta?.url || meta?.signedUrl || meta?.publicUrl || null,
+    thumbnailUrl: row?.thumbnail_url
+      || row?.thumbnail_signed_url
+      || row?.thumbnail_public_url
+      || row?.thumb_url
+      || row?.thumb_signed_url
+      || meta?.thumbnailUrl
+      || meta?.thumbnail_url
+      || meta?.thumbnailSignedUrl
+      || meta?.thumbUrl
+      || meta?.thumb_url
+      || null,
     storagePath: normalizeAttachmentStoragePath(rawStoragePath) || rawStoragePath,
+    thumbnailStoragePath: normalizeAttachmentStoragePath(rawThumbnailPath) || rawThumbnailPath,
+    sizeBytes: row?.tamanho_bytes || meta?.tamanho_bytes || meta?.size || null,
+    thumbnailSizeBytes: row?.thumbnail_tamanho_bytes || meta?.thumbnail_tamanho_bytes || meta?.thumbnailSizeBytes || null,
+    originalSizeBytes: row?.original_tamanho_bytes || meta?.original_tamanho_bytes || meta?.originalSizeBytes || null,
+    optimized: Boolean(row?.otimizado || row?.optimized || meta?.otimizado || meta?.optimized),
     capturedAt: row?.capturado_em || row?.criado_em || meta?.capturedAt || meta?.capturado_em || null,
     gps,
     raw: row,
