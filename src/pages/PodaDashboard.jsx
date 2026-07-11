@@ -18,6 +18,7 @@ import {
 import ActiveFilterSummary from '../components/ui/ActiveFilterSummary';
 import StatusBanner from '../components/ui/StatusBanner';
 import { aggregateRecords, CQO_FARMS, LOCAL_DEMO_MODE, parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
+import { useFarmParcelsGeoJson } from '../utils/geoData';
 import { buildPodaOperacional } from '../utils/podaOperacionalData';
 import { buildPodaDemoRecords } from '../utils/podaDemoData';
 
@@ -1169,7 +1170,7 @@ function FieldBiMapPanel({
   ), [activeSeries, summarySeries]);
   const isAllSummary = activeSummarySeries.length > 1;
   const [selectedParcelState, setSelectedParcelState] = useState({ mapKey: '', summary: null });
-  const [parcelGeoJson, setParcelGeoJson] = useState(null);
+  const { data: parcelGeoJson } = useFarmParcelsGeoJson();
   const mapMetricId = mapMetricIdForSeries(activeSeries);
   const farmFilterKey = mapProps?.farmFilter || 'all';
   const filteredParcelFeatures = useMemo(() => (
@@ -1224,25 +1225,6 @@ function FieldBiMapPanel({
   const handleParcelSelect = useCallback((summary) => {
     setSelectedParcelState({ mapKey, summary });
   }, [mapKey]);
-
-  useEffect(() => {
-    let mounted = true;
-    fetch('/data/farm-parcels.geojson')
-      .then((response) => {
-        if (!response.ok) throw new Error('Mapa de parcelas indisponível.');
-        return response.json();
-      })
-      .then((geojson) => {
-        if (mounted) setParcelGeoJson(geojson);
-      })
-      .catch(() => {
-        if (mounted) setParcelGeoJson(null);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   return (
     <section className="field-bi-panel field-bi-map-panel">

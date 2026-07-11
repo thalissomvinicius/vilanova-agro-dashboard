@@ -772,14 +772,35 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     return () => window.cancelAnimationFrame(raf);
   }, [manualLines.length]);
 
-  const displayRecords = records
-    .filter(record => !deletedRecords.has(record.id))
-    .map((record) => ({
-      ...record,
-      status: reviewOverrides[record.id] || record.status,
-    }));
+  const displayRecords = useMemo(() => (
+    records
+      .filter(record => !deletedRecords.has(record.id))
+      .map((record) => ({
+        ...record,
+        status: reviewOverrides[record.id] || record.status,
+      }))
+  ), [records, deletedRecords, reviewOverrides]);
 
-  const filteredRecords = filterRecords(displayRecords, {
+  const filteredRecords = useMemo(() => (
+    filterRecords(displayRecords, {
+      farmFilter,
+      areaFilter,
+      searchTerm,
+      evaluatorFilter,
+      sourceFilter,
+      statusFilter,
+      periodFilter,
+      cycleFilter,
+      dateFrom,
+      dateTo,
+    }).filter((record) => {
+      if (!searchFicha) return true;
+      const term = searchFicha.toLowerCase();
+      return String(record.id || '').toLowerCase().includes(term)
+        || String(record.formId || '').toLowerCase().includes(term);
+    })
+  ), [
+    displayRecords,
     farmFilter,
     areaFilter,
     searchTerm,
@@ -790,12 +811,8 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     cycleFilter,
     dateFrom,
     dateTo,
-  }).filter((record) => {
-    if (!searchFicha) return true;
-    const term = searchFicha.toLowerCase();
-    return String(record.id || '').toLowerCase().includes(term) || 
-           String(record.formId || '').toLowerCase().includes(term);
-  });
+    searchFicha,
+  ]);
 
   const selectableRecords = useMemo(
     () => filteredRecords.filter((record) => record.source !== 'excel'),

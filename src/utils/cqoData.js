@@ -4,6 +4,9 @@ const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || '').trim();
 const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
 const ATTACHMENT_BUCKET = 'mobile-anexos';
 const ATTACHMENT_SIGN_EXPIRES_SECONDS = 6 * 60 * 60;
+const ATTACHMENT_SIGN_CACHE_MARGIN_SECONDS = 5 * 60;
+const ATTACHMENT_SIGN_CONCURRENCY = 6;
+const attachmentSignedUrlCache = new Map();
 
 export const SUPABASE_CONFIG = {
   url: SUPABASE_URL,
@@ -187,6 +190,11 @@ async function signAttachmentStoragePath(storagePath) {
   const encodedPath = encodeStoragePath(normalizedPath);
   if (!encodedPath) return null;
 
+  const cached = attachmentSignedUrlCache.get(normalizedPath);
+  if (cached?.url && cached.expiresAt > Date.now()) {
+    return cached.url;
+  }
+
   const response = await fetch(`${origin}/storage/v1/object/sign/${ATTACHMENT_BUCKET}/${encodedPath}`, {
     method: 'POST',
     headers: supabaseHeaders({
@@ -203,25 +211,44 @@ async function signAttachmentStoragePath(storagePath) {
 
   const payload = await response.json();
   const signedUrl = payload?.signedURL || payload?.signedUrl || payload?.url || '';
-  return resolveSupabaseStorageSignedUrl(origin, signedUrl);
+  const resolvedUrl = resolveSupabaseStorageSignedUrl(origin, signedUrl);
+
+  if (resolvedUrl) {
+    attachmentSignedUrlCache.set(normalizedPath, {
+      url: resolvedUrl,
+      expiresAt: Date.now() + Math.max(
+        60_000,
+        (ATTACHMENT_SIGN_EXPIRES_SECONDS - ATTACHMENT_SIGN_CACHE_MARGIN_SECONDS) * 1000
+      ),
+    });
+  }
+
+  return resolvedUrl;
+}
+
+async function mapWithConcurrency(items, limit, mapper) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(Math.max(1, limit), items.length);
+
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await mapper(items[currentIndex], currentIndex);
+    }
+  }));
+
+  return results;
 }
 
 async function attachSignedStorageUrls(attachmentRows) {
   if (!Array.isArray(attachmentRows) || attachmentRows.length === 0) return [];
 
-  return Promise.all(attachmentRows.map(async (row) => {
-    const renderableUrl = [
-      row?.signed_url,
-      row?.url,
-      row?.public_url,
-      row?.storage_url,
-    ].find(isRenderableAttachmentUrl);
+  return mapWithConcurrency(attachmentRows, ATTACHMENT_SIGN_CONCURRENCY, async (row) => {
+    const storageCandidates = attachmentStoragePathCandidates(row);
 
-    if (renderableUrl) {
-      return { ...row, signed_url: renderableUrl, url: renderableUrl };
-    }
-
-    for (const storagePath of attachmentStoragePathCandidates(row)) {
+    for (const storagePath of storageCandidates) {
       try {
         const signedUrl = await signAttachmentStoragePath(storagePath);
         if (signedUrl) {
@@ -237,8 +264,19 @@ async function attachSignedStorageUrls(attachmentRows) {
       }
     }
 
+    const renderableUrl = [
+      row?.signed_url,
+      row?.url,
+      row?.public_url,
+      row?.storage_url,
+    ].find(isRenderableAttachmentUrl);
+
+    if (renderableUrl) {
+      return { ...row, signed_url: renderableUrl, url: renderableUrl };
+    }
+
     return row;
-  }));
+  });
 }
 
 async function supabaseResponseError(response, context) {

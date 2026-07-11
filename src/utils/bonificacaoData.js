@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { callDashboardRpc, getCqoSessionToken } from './cqoData';
 
+let localBonificacaoSnapshot = null;
+let localBonificacaoSnapshotPromise = null;
+
 export const BONIFICACAO_SOURCE = {
   workbook: 'Base Qualidade CFF.xlsx',
   workbookUpdatedAt: '2026-06-16',
@@ -78,6 +81,24 @@ function fallbackData() {
       fornecedores: [],
     },
   };
+}
+
+function fetchLocalBonificacaoSnapshot() {
+  if (localBonificacaoSnapshot) return Promise.resolve(localBonificacaoSnapshot);
+  if (localBonificacaoSnapshotPromise) return localBonificacaoSnapshotPromise;
+
+  localBonificacaoSnapshotPromise = fetch('/bonificacaoSnapshot.json', { cache: 'force-cache' })
+    .then((response) => (response.ok ? response.json() : null))
+    .then((json) => {
+      localBonificacaoSnapshot = json;
+      return json;
+    })
+    .catch((error) => {
+      localBonificacaoSnapshotPromise = null;
+      throw error;
+    });
+
+  return localBonificacaoSnapshotPromise;
 }
 
 function parseJson(value) {
@@ -204,8 +225,7 @@ export function useBonificacaoData() {
           return null;
         }
 
-        return fetch('/bonificacaoSnapshot.json')
-          .then((response) => (response.ok ? response.json() : null))
+        return fetchLocalBonificacaoSnapshot()
           .then((json) => {
             if (mounted && json) {
               setState(normalizeSnapshot(json));
@@ -213,8 +233,7 @@ export function useBonificacaoData() {
           });
       })
       .catch(() => (
-        fetch('/bonificacaoSnapshot.json')
-          .then((response) => (response.ok ? response.json() : null))
+        fetchLocalBonificacaoSnapshot()
           .then((json) => {
             if (mounted && json) {
               setState(normalizeSnapshot(json));

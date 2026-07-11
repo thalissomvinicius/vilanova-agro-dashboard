@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { ArrowLeft, Layers, Map as MapIcon, Route, Satellite } from 'lucide-react';
 import { FARMS } from '../utils/mockData';
 import { filterRecords, useCqoData, aggregateRecords } from '../utils/cqoData';
+import { useFarmParcelsGeoJson } from '../utils/geoData';
 
 function getScoreColor(score) {
   if (score >= 90) return '#22C55E';
@@ -1424,6 +1425,8 @@ export default function LeafletMap({
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const layerGroupRef = useRef(null);
+  const tileLayerRef = useRef(null);
+  const tileLayerKeyRef = useRef('');
   const initialMode = MAP_OPERATION_MODES.find((mode) => mode.id === initialOperation) || MAP_OPERATION_MODES.find((mode) => mode.id === 'perdas');
   const initialMetric = initialMetricId && initialMode.metrics.includes(initialMetricId)
     ? initialMetricId
@@ -1434,8 +1437,7 @@ export default function LeafletMap({
   const [summaryOperation, setSummaryOperation] = useState(initialMode.id === 'perdas' ? 'all' : initialMode.id);
   const [riskMetricId, setRiskMetricId] = useState(initialMetric);
   const [selectedParcelKey, setSelectedParcelKey] = useState(null);
-  const [parcelGeoJson, setParcelGeoJson] = useState(null);
-  const [parcelGeoStatus, setParcelGeoStatus] = useState('loading');
+  const { data: parcelGeoJson, status: parcelGeoStatus } = useFarmParcelsGeoJson();
   const [mapRenderState, setMapRenderState] = useState({
     loading: true,
     progress: 10,
@@ -1720,32 +1722,9 @@ export default function LeafletMap({
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
         layerGroupRef.current = null;
+        tileLayerRef.current = null;
+        tileLayerKeyRef.current = '';
       }
-    };
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    fetch('/data/farm-parcels.geojson')
-      .then((response) => {
-        if (!response.ok) throw new Error('Mapa de parcelas indisponível.');
-        return response.json();
-      })
-      .then((geojson) => {
-        if (mounted) {
-          setParcelGeoJson(geojson);
-          setParcelGeoStatus('ready');
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          setParcelGeoJson(null);
-          setParcelGeoStatus('fallback');
-        }
-      });
-
-    return () => {
-      mounted = false;
     };
   }, []);
 
@@ -1774,11 +1753,6 @@ export default function LeafletMap({
       });
 
       layers.clearLayers();
-      map.eachLayer((layer) => {
-        if (layer instanceof L.TileLayer) {
-          map.removeLayer(layer);
-        }
-      });
 
       let tileUrl = theme === 'dark'
         ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
@@ -1806,7 +1780,14 @@ export default function LeafletMap({
         };
       }
 
-      L.tileLayer(tileUrl, tileOptions).addTo(map);
+      const tileLayerKey = `${theme}:${baseLayer}:${tileUrl}`;
+      if (!tileLayerRef.current || tileLayerKeyRef.current !== tileLayerKey) {
+        if (tileLayerRef.current) {
+          map.removeLayer(tileLayerRef.current);
+        }
+        tileLayerRef.current = L.tileLayer(tileUrl, tileOptions).addTo(map);
+        tileLayerKeyRef.current = tileLayerKey;
+      }
 
       const farmLayerBounds = [];
       const evaluatedLayerBounds = [];

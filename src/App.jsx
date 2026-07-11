@@ -264,11 +264,14 @@ function GlobalDataLoadingOverlay() {
   useEffect(() => {
     let intervalId;
     let hideTimer;
+    let stateTimer;
 
     if (loading) {
       const startedAt = Date.now();
-      setVisible(true);
-      setProgress((current) => (current > 8 && current < 96 ? current : 12));
+      stateTimer = window.setTimeout(() => {
+        setVisible(true);
+        setProgress((current) => (current > 8 && current < 96 ? current : 12));
+      }, 0);
 
       intervalId = window.setInterval(() => {
         const elapsed = Date.now() - startedAt;
@@ -276,7 +279,9 @@ function GlobalDataLoadingOverlay() {
         setProgress((current) => Math.max(current, nextProgress));
       }, 240);
     } else {
-      setProgress(100);
+      stateTimer = window.setTimeout(() => {
+        setProgress(100);
+      }, 0);
       hideTimer = window.setTimeout(() => {
         setVisible(false);
         setProgress(0);
@@ -286,6 +291,7 @@ function GlobalDataLoadingOverlay() {
     return () => {
       if (intervalId) window.clearInterval(intervalId);
       if (hideTimer) window.clearTimeout(hideTimer);
+      if (stateTimer) window.clearTimeout(stateTimer);
     };
   }, [loading]);
 
