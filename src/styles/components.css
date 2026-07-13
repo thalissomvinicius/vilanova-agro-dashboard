@@ -2713,12 +2713,12 @@ button.field-bi-farm-score-name[aria-pressed="true"] strong {
 .field-bi-farm-panel {
   grid-area: farm;
   min-height: 158px;
-  padding: 7px;
+  padding: 9px;
 }
 
 .field-bi-farm-panel h3 {
-  margin-bottom: 4px;
-  font-size: clamp(0.95rem, 1.16vw, 1.12rem);
+  margin-bottom: 5px;
+  font-size: clamp(1.05rem, 1.22vw, 1.2rem);
 }
 
 .field-bi-legend,
@@ -2804,19 +2804,19 @@ button.field-bi-farm-score-name[aria-pressed="true"] strong {
 }
 
 .field-bi-farm-note {
-  margin: -3px 0 4px;
+  margin: -2px 0 7px;
   color: var(--text-secondary);
   text-align: center;
-  font-size: 0.58rem;
-  font-weight: 650;
-  line-height: 1.15;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .field-bi-farm-table {
   display: grid;
-  gap: 4px;
-  margin-top: 5px;
-  padding: 4px;
+  gap: 5px;
+  margin-top: 2px;
+  padding: 5px;
   border: 1px solid rgba(226, 232, 240, 0.92);
   border-radius: 8px;
   background: linear-gradient(180deg, var(--white), rgba(248, 250, 252, 0.72));
@@ -2825,14 +2825,14 @@ button.field-bi-farm-score-name[aria-pressed="true"] strong {
 .field-bi-farm-table-head,
 .field-bi-farm-table-row {
   display: grid;
-  grid-template-columns: minmax(72px, 0.98fr) repeat(6, minmax(45px, 0.68fr));
+  grid-template-columns: minmax(82px, 1.08fr) repeat(6, minmax(45px, 0.68fr));
   align-items: center;
   gap: 4px;
 }
 
 button.field-bi-farm-table-row {
   width: 100%;
-  padding: 3px;
+  padding: 4px;
   border: 1px solid rgba(226, 232, 240, 0.68);
   border-radius: 7px;
   background: transparent;
@@ -2862,7 +2862,7 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 .field-bi-farm-table-head span {
   color: var(--text-secondary);
   text-align: center;
-  font-size: 0.56rem;
+  font-size: 0.64rem;
   font-weight: 950;
   line-height: 1;
   white-space: nowrap;
@@ -2873,23 +2873,37 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 }
 
 .field-bi-farm-name {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
   color: var(--text-secondary);
-  font-size: 0.58rem;
-  font-weight: 900;
-  line-height: 1.08;
   text-align: left;
+}
+
+.field-bi-farm-name strong {
+  color: inherit;
+  font-size: 0.72rem;
+  font-weight: 950;
+  line-height: 1.08;
   text-transform: uppercase;
   overflow-wrap: anywhere;
 }
 
+.field-bi-farm-name small {
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  font-weight: 750;
+  line-height: 1;
+}
+
 .field-bi-farm-cell {
   min-width: 0;
-  min-height: 30px;
+  min-height: 36px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 2px;
-  padding: 4px 4px;
+  padding: 5px 4px;
   border: 1px solid color-mix(in srgb, var(--metric-color) 28%, var(--border-color));
   border-radius: 7px;
   background: color-mix(in srgb, var(--metric-color) 9%, var(--white));
@@ -2898,7 +2912,7 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 
 .field-bi-farm-cell b {
   min-width: 0;
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   font-weight: 950;
   line-height: 1;
   text-align: center;
@@ -2906,13 +2920,13 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 }
 
 .field-bi-farm-cell em {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  font-size: 0.54rem;
+  font-size: 0.6rem;
   font-style: normal;
   font-weight: 950;
   line-height: 1;
@@ -3198,6 +3212,137 @@ button.field-bi-farm-table-row.is-active .field-bi-farm-name {
 .field-bi-evolution-panel .field-daily-legend i {
   width: 7px;
   height: 7px;
+}
+
+.field-multi-trend-overview {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: minmax(70px, 1fr);
+  gap: 6px;
+  align-content: stretch;
+}
+
+.field-multi-trend-card {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 28px auto;
+  gap: 2px;
+  padding: 6px 7px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fff, rgba(248, 250, 252, 0.76));
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.035);
+}
+
+.field-multi-trend-card.is-warning {
+  border-color: rgba(242, 140, 0, 0.38);
+  background: linear-gradient(180deg, rgba(255, 247, 237, 0.88), #fff);
+}
+
+.field-multi-trend-card.is-critical {
+  border-color: rgba(239, 68, 68, 0.34);
+  background: linear-gradient(180deg, rgba(254, 242, 242, 0.9), #fff);
+}
+
+.field-multi-trend-card header {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 5px;
+}
+
+.field-multi-trend-card header span {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  overflow: visible;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 850;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.field-multi-trend-card header span i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+
+.field-multi-trend-card header strong {
+  flex: 0 0 auto;
+  color: var(--green-institutional);
+  font-size: 0.84rem;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.field-multi-trend-card.is-warning header strong {
+  color: var(--orange-institutional);
+}
+
+.field-multi-trend-card.is-critical header strong {
+  color: var(--status-danger);
+}
+
+.field-multi-trend-card header em {
+  font-style: normal;
+}
+
+.field-multi-trend-card svg {
+  width: 100%;
+  height: 28px;
+  display: block;
+  overflow: visible;
+}
+
+.field-multi-trend-target {
+  stroke: var(--orange-institutional);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  opacity: 0.72;
+}
+
+.field-multi-trend-path {
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.field-multi-trend-card svg circle {
+  stroke: #fff;
+  stroke-width: 1.4;
+}
+
+.field-multi-trend-card footer {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 0.56rem;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.field-multi-trend-card footer span:last-child {
+  text-align: right;
+}
+
+.field-multi-trend-card footer b {
+  color: var(--text-secondary);
+  font-size: 0.58rem;
+  font-weight: 900;
+  white-space: nowrap;
 }
 
 .field-bi-evolution-panel .field-bi-week-scroll {

@@ -692,16 +692,6 @@ function mapMetricIdForSeries(series) {
   return MAP_METRIC_BY_SERIES[series?.key] || 'poda_cacho_exposto';
 }
 
-function FieldBiLegend() {
-  return (
-    <div className="field-bi-legend">
-      {BI_SERIES.map((item) => (
-        <span key={item.key} title={item.fullLabel}><i style={{ background: item.color }} />{item.label}</span>
-      ))}
-    </div>
-  );
-}
-
 function FieldBiFarmChart({ rows, loading = false, selectedLabel = '', onSelect }) {
   const visibleRows = rows.slice(0, 5);
 
@@ -709,7 +699,6 @@ function FieldBiFarmChart({ rows, loading = false, selectedLabel = '', onSelect 
     <section className="field-bi-panel field-bi-farm-panel">
       <h3>Qualidade por Fazenda</h3>
       <p className="field-bi-farm-note">Percentual consolidado: ocorrências da fazenda / base amostrada da fazenda.</p>
-      <FieldBiLegend />
       {loading ? (
         <div className="skeleton-chart" style={{ height: 180 }} />
       ) : (
@@ -717,7 +706,7 @@ function FieldBiFarmChart({ rows, loading = false, selectedLabel = '', onSelect 
           <div className="field-bi-farm-table-head">
             <span>Fazenda</span>
             {BI_SERIES.map((item) => (
-              <span key={item.key} style={{ color: item.color }}>{item.label}</span>
+              <span key={item.key} title={item.fullLabel} style={{ color: item.color }}>{item.label}</span>
             ))}
           </div>
           {visibleRows.map((row) => {
@@ -731,7 +720,10 @@ function FieldBiFarmChart({ rows, loading = false, selectedLabel = '', onSelect 
                 onClick={() => onSelect?.(row)}
                 aria-pressed={active}
               >
-                <strong className="field-bi-farm-name">{row.label}</strong>
+                <span className="field-bi-farm-name">
+                  <strong>{row.label}</strong>
+                  <small>{formatNumber(row.recordsCount || 0)} coleta(s)</small>
+                </span>
                 {BI_SERIES.map((item) => {
                   const value = values[item.key];
                   const insideTarget = Number(value || 0) <= Number(item.target || 0);
@@ -782,6 +774,72 @@ function PodaLineMetricSelector({ selectedKey, activeSeries, onSelect }) {
 
 const MemoPodaLineMetricSelector = React.memo(PodaLineMetricSelector);
 
+function PodaMultiTrendOverview({ rows, groups }) {
+  return (
+    <div className="field-multi-trend-overview" aria-label="Tendência comparativa dos indicadores">
+      {groups.map((group) => {
+        const { series, values } = group;
+        const latest = values[values.length - 1] || { value: 0, quantity: 0, label: '--' };
+        const first = values[0] || latest;
+        const target = Number(series.target || 0);
+        const maxValue = Math.max(
+          ...values.map((item) => Number(item.value || 0)),
+          target * MAP_ATTENTION_MULTIPLIER,
+          1
+        );
+        const chartWidth = 180;
+        const chartHeight = 34;
+        const chartPadding = 4;
+        const usableWidth = chartWidth - chartPadding * 2;
+        const usableHeight = chartHeight - chartPadding * 2;
+        const xFor = (index) => values.length <= 1
+          ? chartWidth / 2
+          : chartPadding + (index / (values.length - 1)) * usableWidth;
+        const yFor = (value) => chartPadding + usableHeight - (Math.max(0, Number(value || 0)) / maxValue) * usableHeight;
+        const points = values.map((item, index) => `${xFor(index)},${yFor(item.value)}`).join(' ');
+        const targetY = yFor(target);
+        const tone = signalToneFor(latest.value, target);
+        const statusText = tone === 'ok' ? 'Dentro da meta' : tone === 'warning' ? 'Atenção' : 'Fora da meta';
+
+        return (
+          <article
+            className={`field-multi-trend-card is-${tone}`}
+            key={series.key}
+            title={`${series.fullLabel}: ${formatPercent(latest.value)} | Meta ${formatPercent(target)} | ${formatNumber(latest.quantity)} ocorrência(s)`}
+          >
+            <header>
+              <span><i style={{ background: series.color }} />{series.fullLabel.replace(' %', '')}</span>
+              <strong>{formatPercent(latest.value, 1)} <em>{tone === 'ok' ? '✓' : '!'}</em></strong>
+            </header>
+            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label={`${series.fullLabel}: ${statusText}`}>
+              <line x1={chartPadding} x2={chartWidth - chartPadding} y1={targetY} y2={targetY} className="field-multi-trend-target" />
+              {values.length === 1 ? (
+                <line
+                  x1={chartPadding}
+                  x2={chartWidth - chartPadding}
+                  y1={yFor(latest.value)}
+                  y2={yFor(latest.value)}
+                  className="field-multi-trend-path"
+                  style={{ stroke: series.color }}
+                />
+              ) : (
+                <polyline points={points} className="field-multi-trend-path" style={{ stroke: series.color }} />
+              )}
+              <circle cx={xFor(values.length - 1)} cy={yFor(latest.value)} r="3" style={{ fill: series.color }} />
+            </svg>
+            <footer>
+              <span>{first.label}</span>
+              <b>{formatNumber(latest.quantity)} ocorr.</b>
+              <span>{latest.label}</span>
+            </footer>
+          </article>
+        );
+      })}
+      {!rows.length ? <div className="empty-panel">Sem períodos para comparar.</div> : null}
+    </div>
+  );
+}
+
 function PodaTargetLineChart({
   rows,
   loading = false,
@@ -806,6 +864,7 @@ function PodaTargetLineChart({
   const normalizedSeries = (Array.isArray(series) ? series : [series]).filter(Boolean);
   const selectedSeries = normalizedSeries.length ? normalizedSeries : [BI_SERIES[1]];
   const isMultiSeries = selectedSeries.length > 1;
+  const showMultiOverview = compact && isMultiSeries;
   const chartHeight = Number(chartHeightOverride) || (compact ? 216 : 244);
   const padding = compact
     ? { top: 24, right: 34, bottom: 18, left: 44 }
@@ -918,14 +977,18 @@ function PodaTargetLineChart({
           </div>
         </div>
       </div>
-      <div className="field-daily-legend">
-        {selectedSeries.map((item) => (
-          <span key={item.key} title={item.fullLabel}><i style={{ background: item.color }} />{compact ? item.label : item.fullLabel}</span>
-        ))}
-        <span><i className="field-target-dot" />{isMultiSeries ? 'Linhas de meta' : 'Linha da meta'}</span>
-      </div>
+      {!showMultiOverview ? (
+        <div className="field-daily-legend">
+          {selectedSeries.map((item) => (
+            <span key={item.key} title={item.fullLabel}><i style={{ background: item.color }} />{compact ? item.label : item.fullLabel}</span>
+          ))}
+          <span><i className="field-target-dot" />{isMultiSeries ? 'Linhas de meta' : 'Linha da meta'}</span>
+        </div>
+      ) : null}
       {loading ? (
         <div className="skeleton-chart" style={{ height: chartHeight }} />
+      ) : showMultiOverview ? (
+        <PodaMultiTrendOverview rows={visibleRows} groups={valuesBySeries} />
       ) : (
         <div className="field-bi-week-scroll" onWheel={handleHorizontalWheel}>
           {hasPoints ? (
