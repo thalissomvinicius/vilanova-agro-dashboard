@@ -7,10 +7,6 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-.env
-.env.*
-!.env.example
-
 node_modules
 dist
 dist-ssr
@@ -28,11 +24,4 @@ dist-ssr
 *.sw?
 
 .vercel
-
-# Local operational scratch/output
-scratch/
-push-worktree/
-excel_dump*.txt
-vite-*.log
-vite-*.err.log
-*.pbix
+.env*
