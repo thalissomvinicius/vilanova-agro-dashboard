@@ -734,7 +734,7 @@ function FieldBiFarmChart({ rows, loading = false, selectedLabel = '', onSelect 
                       title={`${row.label} - ${item.fullLabel}: ${formatPercent(value)} | Meta <= ${formatPercent(item.target)}`}
                       style={{ '--metric-color': item.color }}
                     >
-                      <b>{formatPercent(value, 1)}</b>
+                      <b>{formatPercent(value, 2)}</b>
                       <em>{insideTarget ? '✓' : '!'}</em>
                     </span>
                   );
