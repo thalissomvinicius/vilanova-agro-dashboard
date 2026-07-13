@@ -21,7 +21,7 @@ import {
 import EmptyTableRow from '../components/ui/EmptyTableRow';
 import PageHeader from '../components/ui/PageHeader';
 import StatusBanner from '../components/ui/StatusBanner';
-import { canUseDashboardAction, createManualResponse, dashboardErrorMessage, filterRecords, updateResponseMetadata, updateResponseReviewStatus, deleteResponseRecord, refreshCqoData, useCqoData } from '../utils/cqoData';
+import { canUseDashboardAction, createManualResponse, dashboardErrorMessage, filterRecords, updateResponseMetadata, updateResponseReviewStatus, deleteResponseRecord, refreshAttachmentStorageSignedUrl, refreshCqoData, useCqoData } from '../utils/cqoData';
 import { devWarn } from '../utils/devLog';
 import { exportDashboardRecord } from '../utils/reportExporter';
 
@@ -172,18 +172,75 @@ function photoDedupKey(photo) {
 }
 
 function EvidencePhoto({ photo }) {
-  const [failed, setFailed] = useState(false);
-  const [thumbnailFailed, setThumbnailFailed] = useState(false);
-  const previewSrc = photoImageSrc(photo, { skipThumbnail: thumbnailFailed });
+  const [failedSrc, setFailedSrc] = useState('');
+  const [failedThumbnailUrl, setFailedThumbnailUrl] = useState('');
+  const [recovery, setRecovery] = useState({
+    storagePath: '',
+    url: '',
+    attempted: false,
+    loading: false,
+  });
+  const thumbnailFailed = Boolean(
+    photo?.thumbnailUrl && failedThumbnailUrl === photo.thumbnailUrl
+  );
+  const recoveryMatchesPhoto = recovery.storagePath === photo?.storagePath;
+  const recoveryUrl = recoveryMatchesPhoto ? recovery.url : '';
+  const recovering = recoveryMatchesPhoto && recovery.loading;
+  const recoveryAttempted = recoveryMatchesPhoto && recovery.attempted;
+  const previewSrc = recoveryUrl || photoImageSrc(photo, { skipThumbnail: thumbnailFailed });
+  const failed = Boolean(previewSrc && failedSrc === previewSrc);
   const src = failed ? '' : previewSrc;
+  const openUrl = recoveryUrl || photo?.url;
   const canOpenUrl = Boolean(
-    photo?.url && !photo.localOnly && !isLocalOnlyPhotoUrl(photo.url)
+    openUrl && !photo.localOnly && !isLocalOnlyPhotoUrl(openUrl)
   );
   const placeholderText = photo.localOnly
     ? 'Foto no app, upload pendente'
+    : recovering
+      ? 'Renovando acesso à imagem...'
     : failed
       ? 'Prévia indisponível, abrir arquivo'
       : 'Arquivo sem prévia';
+
+  const handlePreviewError = async () => {
+    if (!thumbnailFailed && photo?.thumbnailUrl && !recoveryUrl) {
+      setFailedThumbnailUrl(photo.thumbnailUrl);
+      return;
+    }
+
+    if (!recoveryAttempted && photo?.storagePath) {
+      setRecovery({
+        storagePath: photo.storagePath,
+        url: '',
+        attempted: true,
+        loading: true,
+      });
+
+      try {
+        const freshUrl = await refreshAttachmentStorageSignedUrl(photo.storagePath);
+        if (freshUrl) {
+          setRecovery({
+            storagePath: photo.storagePath,
+            url: freshUrl,
+            attempted: true,
+            loading: false,
+          });
+          return;
+        }
+      } catch (error) {
+        devWarn('Nao foi possivel renovar a URL da evidencia:', error);
+      }
+
+      setRecovery({
+        storagePath: photo.storagePath,
+        url: '',
+        attempted: true,
+        loading: false,
+      });
+    }
+
+    setFailedSrc(previewSrc);
+  };
 
   return (
     <div className="evidence-photo">
@@ -193,20 +250,15 @@ function EvidencePhoto({ photo }) {
           alt={photo.fieldId}
           loading="lazy"
           decoding="async"
-          onError={() => {
-            if (!thumbnailFailed && photo?.thumbnailUrl) {
-              setThumbnailFailed(true);
-              return;
-            }
-            setFailed(true);
-          }}
+          referrerPolicy="no-referrer"
+          onError={handlePreviewError}
         />
       ) : (
         <div className="evidence-file-placeholder">
           <Download size={18} />
           <span>{placeholderText}</span>
           {canOpenUrl ? (
-            <a href={photo.url} target="_blank" rel="noreferrer">
+            <a href={openUrl} target="_blank" rel="noreferrer">
               Abrir imagem
             </a>
           ) : null}

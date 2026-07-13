@@ -266,6 +266,14 @@ async function signAttachmentStoragePath(storagePath) {
   return resolvedUrl;
 }
 
+export async function refreshAttachmentStorageSignedUrl(storagePath) {
+  const normalizedPath = normalizeAttachmentStoragePath(storagePath);
+  if (!normalizedPath) return null;
+
+  attachmentSignedUrlCache.delete(normalizedPath);
+  return signAttachmentStoragePath(normalizedPath);
+}
+
 async function mapWithConcurrency(items, limit, mapper) {
   const results = new Array(items.length);
   let nextIndex = 0;

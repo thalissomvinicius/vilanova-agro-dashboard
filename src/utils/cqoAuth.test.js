@@ -32,6 +32,24 @@ afterEach(() => {
   vi.resetModules();
 });
 
+describe('refreshAttachmentStorageSignedUrl', () => {
+  it('renova a assinatura do arquivo original no bucket privado', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okJson({
+      signedURL: '/object/sign/mobile-anexos/3102/res_1/foto.jpeg?token=novo',
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { refreshAttachmentStorageSignedUrl } = await loadAuthModule();
+    const url = await refreshAttachmentStorageSignedUrl('mobile-anexos/3102/res_1/foto.jpeg');
+
+    expect(url).toBe('https://example.supabase.co/storage/v1/object/sign/mobile-anexos/3102/res_1/foto.jpeg?token=novo');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://example.supabase.co/storage/v1/object/sign/mobile-anexos/3102/res_1/foto.jpeg',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+});
+
 describe('authenticateDashboardUser', () => {
   it('usa RPC e nao retorna a senha do headcount', async () => {
     const fetchMock = vi.fn().mockResolvedValue(okJson([{
