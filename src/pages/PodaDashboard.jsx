@@ -526,6 +526,50 @@ function collectionDateLabel(record) {
   return `${dateText}${timeText}`;
 }
 
+function collectionSourceLabel(record) {
+  if (record?.source === 'app') return 'App';
+  if (record?.source === 'excel') return 'Excel';
+  return record?.sourceLabel || record?.source || 'Fonte N/D';
+}
+
+function parcelCollectionSummary(records = []) {
+  const sourceCounts = new Map();
+  const dateMap = new Map();
+
+  records.forEach((record) => {
+    const source = collectionSourceLabel(record);
+    sourceCounts.set(source, (sourceCounts.get(source) || 0) + 1);
+
+    const dateLabel = collectionDateLabel(record);
+    const time = resolveRecordDate(record)?.getTime?.() || 0;
+    if (!dateMap.has(dateLabel)) {
+      dateMap.set(dateLabel, { label: dateLabel, time, count: 0 });
+    }
+    dateMap.get(dateLabel).count += 1;
+  });
+
+  const dates = Array.from(dateMap.values())
+    .sort((a, b) => a.time - b.time || String(a.label).localeCompare(String(b.label)));
+  const visibleDates = dates.slice(0, 3).map((item) => (
+    item.count > 1 ? `${item.label} (${item.count}x)` : item.label
+  ));
+  const extraDates = Math.max(dates.length - visibleDates.length, 0);
+  const sourceBadges = Array.from(sourceCounts.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([label, count]) => ({ label, count }));
+
+  return {
+    dateText: visibleDates.length
+      ? `${visibleDates.join(', ')}${extraDates ? ` +${extraDates}` : ''}`
+      : 'Sem data',
+    fullDateText: dates.map((item) => (
+      item.count > 1 ? `${item.label} (${item.count} coletas)` : item.label
+    )).join(', '),
+    sourceBadges,
+    mixedSources: sourceBadges.length > 1,
+  };
+}
+
 function collectionGpsLabel(record) {
   if (!record?.gpsApplicable) return 'N/A';
   const points = (record?.gpsOccurrences?.length || 0) + (record?.gpsTrack?.length || 0);
@@ -1255,12 +1299,9 @@ function FieldBiMapPanel({
     mapProps?.dateTo || 'end',
   ].join('-');
   const selectedParcelSummary = selectedParcelState.mapKey === mapKey ? selectedParcelState.summary : null;
-  const selectedParcelDateRange = useMemo(() => {
+  const selectedParcelCollection = useMemo(() => {
     if (!selectedParcelSummary) return '';
-    const firstDate = formatDateBr(selectedParcelSummary.firstDate) || selectedParcelSummary.firstDate || '';
-    const lastDate = formatDateBr(selectedParcelSummary.lastDate) || selectedParcelSummary.lastDate || '';
-    if (firstDate && lastDate && firstDate !== lastDate) return `${firstDate} a ${lastDate}`;
-    return firstDate || lastDate || 'Sem data';
+    return parcelCollectionSummary(selectedParcelSummary.records || []);
   }, [selectedParcelSummary]);
   const selectedParcelTone = useMemo(() => {
     if (!selectedParcelSummary) return '';
@@ -1295,8 +1336,9 @@ function FieldBiMapPanel({
         <div>
           <h3>Mapa das parcelas</h3>
           <span>
-            Semáforo por {activeSeries.fullLabel.toLowerCase()}
-            {isAllSummary ? ' · resumo de todos os indicadores' : ''}
+            {isAllSummary
+              ? `Cor do mapa: ${activeSeries.fullLabel.toLowerCase()} · indicador mais crítico no filtro atual`
+              : `Semáforo por ${activeSeries.fullLabel.toLowerCase()}`}
           </span>
         </div>
         {onOpenGeoQuality ? (
@@ -1312,7 +1354,20 @@ function FieldBiMapPanel({
           <div className="field-bi-map-parcel-id">
             <span>Parcela</span>
             <strong>{selectedParcelSummary.props?.farmName || selectedParcelSummary.props?.farmId || 'Fazenda'} / {selectedParcelSummary.shapeParcel || '--'}</strong>
-            <small>{formatNumber(selectedParcelSummary.records?.length || 0)} coleta(s) · {selectedParcelDateRange}</small>
+            <small
+              className="field-bi-map-parcel-summary"
+              title={selectedParcelCollection.fullDateText || selectedParcelCollection.dateText || ''}
+            >
+              {formatNumber(selectedParcelSummary.records?.length || 0)} coleta(s) · {selectedParcelCollection.dateText}
+            </small>
+            {selectedParcelCollection.sourceBadges?.length ? (
+              <div className="field-bi-map-parcel-source-row" aria-label="Origem das coletas desta parcela">
+                {selectedParcelCollection.sourceBadges.map((item) => (
+                  <b key={item.label}>{item.label} {formatNumber(item.count)}</b>
+                ))}
+                {selectedParcelCollection.mixedSources ? <b className="is-warning">App + Excel no cálculo</b> : null}
+              </div>
+            ) : null}
           </div>
           <div className="field-bi-map-parcel-metrics">
             {selectedParcelMetrics.map((metric) => (
