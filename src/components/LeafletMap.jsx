@@ -4,6 +4,12 @@ import { ArrowLeft, Layers, Map as MapIcon, Route, Satellite } from 'lucide-reac
 import { FARMS } from '../utils/mockData';
 import { filterRecords, useCqoData, aggregateRecords } from '../utils/cqoData';
 import { useFarmParcelsGeoJson } from '../utils/geoData';
+import {
+  cqoRecordMatchesInventoryParcel,
+  inventoryRecordForCqoRecord,
+  inventoryRecordForShape,
+  useInventoryData,
+} from '../utils/inventoryData';
 
 function getScoreColor(score) {
   if (score >= 90) return '#22C55E';
@@ -310,10 +316,13 @@ function parcelHeatKey(farmId, parcel) {
   return `${farmId || 'default'}|${normalizeParcelCode(parcel)}`;
 }
 
-function parcelRecordMatches(record, props, shapeParcel) {
-  return reviewState(record) === 'approved'
-    && normalizeParcelCode(record.parcel) === normalizeParcelCode(shapeParcel)
-    && record.farmId === props.farmId;
+function parcelRecordMatches(record, props, shapeParcel, inventoryRecords = []) {
+  if (reviewState(record) !== 'approved' || record.farmId !== props.farmId) return false;
+
+  const inventoryRecord = inventoryRecordForShape(inventoryRecords, props);
+  if (inventoryRecord) return cqoRecordMatchesInventoryParcel(record, inventoryRecord);
+
+  return normalizeParcelCode(record.parcel) === normalizeParcelCode(shapeParcel);
 }
 
 function numericProp(value) {
@@ -764,11 +773,13 @@ function sortDateTexts(values) {
     .sort((a, b) => dateOrderValue(a) - dateOrderValue(b));
 }
 
-function buildParcelSummary({ feature, records, heatSummary, metric, operation }) {
+function buildParcelSummary({ feature, records, inventoryRecords, heatSummary, metric, operation }) {
   const props = feature?.properties || {};
-  const shapeParcel = shapeParcelCode(props);
-  const parcelRecords = shapeParcel
-    ? records.filter((record) => parcelRecordMatches(record, props, shapeParcel))
+  const sourceShapeParcel = shapeParcelCode(props);
+  const inventoryRecord = inventoryRecordForShape(inventoryRecords, props);
+  const shapeParcel = inventoryRecord?.parcel || sourceShapeParcel;
+  const parcelRecords = sourceShapeParcel
+    ? records.filter((record) => parcelRecordMatches(record, props, sourceShapeParcel, inventoryRecords))
     : [];
   const totals = parcelRecords.length ? aggregateRecords(parcelRecords) : null;
   const metricTotals = aggregateForMetric(parcelRecords, metric, operation);
@@ -781,7 +792,7 @@ function buildParcelSummary({ feature, records, heatSummary, metric, operation }
   const lastDate = parcelRecords.map((record) => record.date).filter(Boolean).sort().slice(-1)[0] || '';
 
   return {
-    key: parcelHeatKey(props.farmId, shapeParcel),
+    key: parcelHeatKey(props.farmId, sourceShapeParcel),
     feature,
     props,
     shapeParcel,
@@ -1444,6 +1455,7 @@ export default function LeafletMap({
     label: 'Preparando mapa',
   });
   const { records, loading: recordsLoading } = useCqoData();
+  const { records: inventoryRecords } = useInventoryData();
   const selectedOperation = useMemo(() => activeOperationMode(mapOperation), [mapOperation]);
   const metricOptions = useMemo(() => (
     RISK_METRICS.filter((metric) => selectedOperation.metrics.includes(metric.id))
@@ -1539,11 +1551,13 @@ export default function LeafletMap({
     const summaries = new globalThis.Map();
 
     occurrencePoints.forEach((point) => {
-      const key = parcelHeatKey(point.record.farmId, point.record.parcel);
+      const inventoryRecord = inventoryRecordForCqoRecord(inventoryRecords, point.record);
+      const operationalParcel = inventoryRecord?.parcel || point.record.parcel;
+      const key = parcelHeatKey(point.record.farmId, operationalParcel);
       const current = summaries.get(key) || {
         farmId: point.record.farmId,
         farm: point.record.farm,
-        parcel: point.record.parcel,
+        parcel: operationalParcel,
         points: 0,
         uniqueCoords: new Set(),
         lines: new Set(),
@@ -1559,21 +1573,24 @@ export default function LeafletMap({
     });
 
     return summaries;
-  }, [occurrencePoints]);
+  }, [inventoryRecords, occurrencePoints]);
 
   const parcelSummaries = useMemo(() => (
     filteredParcelFeatures
       .map((feature) => buildParcelSummary({
         feature,
         records: filteredRecords,
-        heatSummary: heatByParcel.get(parcelHeatKey(
-          feature?.properties?.farmId,
-          shapeParcelCode(feature?.properties || {})
-        )),
+        inventoryRecords,
+        heatSummary: (() => {
+          const props = feature?.properties || {};
+          const inventoryRecord = inventoryRecordForShape(inventoryRecords, props);
+          return heatByParcel.get(parcelHeatKey(props.farmId, inventoryRecord?.parcel))
+            || heatByParcel.get(parcelHeatKey(props.farmId, shapeParcelCode(props)));
+        })(),
         metric: selectedRiskMetric,
         operation: selectedOperation,
       }))
-  ), [filteredParcelFeatures, filteredRecords, heatByParcel, selectedRiskMetric, selectedOperation]);
+  ), [filteredParcelFeatures, filteredRecords, inventoryRecords, heatByParcel, selectedRiskMetric, selectedOperation]);
 
   const parcelSummaryByKey = useMemo(() => {
     const map = new globalThis.Map();

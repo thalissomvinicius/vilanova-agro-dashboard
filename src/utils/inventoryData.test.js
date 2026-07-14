@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateInventory, filterInventory } from './inventoryData';
+import {
+  aggregateInventory,
+  cqoRecordMatchesInventoryParcel,
+  filterInventory,
+  inventoryRecordForShape,
+  inventoryRecordForCqoRecord,
+  normalizeInventoryRecord,
+} from './inventoryData';
 
 const records = [
   {
@@ -70,5 +77,61 @@ describe('aggregateInventory', () => {
     expect(summary.years).toEqual(['2025', '2026']);
     expect(summary.byFarm).toHaveLength(2);
     expect(summary.byYear.map((item) => item.label)).toEqual(['2025', '2026']);
+  });
+});
+
+describe('normalizeInventoryRecord', () => {
+  it('preserva parcela gerada, ano e ids dos shapes do Supabase', () => {
+    const normalized = normalizeInventoryRecord({
+      id: 'inventory-1',
+      nome_fazenda: 'FÉ EM DEUS',
+      parcela: 'G14.2',
+      parcela_base: 'G14',
+      ano_plantio: 2014,
+      sequencia_plantio: 2,
+      quantidade_anos_parcela: 2,
+      shap_ids: ['173'],
+      plantas: 1988,
+      area_ha: 12.425,
+    });
+
+    expect(normalized.farmId).toBe('fe-em-deus');
+    expect(normalized.parcel).toBe('G14.2');
+    expect(normalized.parcelBase).toBe('G14');
+    expect(normalized.year).toBe(2014);
+    expect(normalized.sequence).toBe(2);
+    expect(normalized.yearsCount).toBe(2);
+    expect(normalized.shapeIds).toEqual(['173']);
+  });
+
+  it('liga o plantio correto ao OBJECTID do shape e rejeita o outro ano', () => {
+    const inventory = [
+      normalizeInventoryRecord({
+        nome_fazenda: 'FÉ EM DEUS',
+        parcela: 'G14.1',
+        parcela_base: 'G14',
+        ano_plantio: 2013,
+        quantidade_anos_parcela: 2,
+        shap_ids: ['20'],
+      }),
+      normalizeInventoryRecord({
+        nome_fazenda: 'FÉ EM DEUS',
+        parcela: 'G14.2',
+        parcela_base: 'G14',
+        ano_plantio: 2014,
+        quantidade_anos_parcela: 2,
+        shap_ids: ['173'],
+      }),
+    ];
+    const selected = inventoryRecordForShape(inventory, { farmId: 'fe-em-deus', OBJECTID: 173 });
+
+    expect(selected.parcel).toBe('G14.2');
+    expect(cqoRecordMatchesInventoryParcel({ parcel: 'G14.2', plantingYear: 2014 }, selected)).toBe(true);
+    expect(cqoRecordMatchesInventoryParcel({ parcel: 'G14', plantingYear: 2013 }, selected)).toBe(false);
+    expect(inventoryRecordForCqoRecord(inventory, {
+      farmId: 'fe-em-deus',
+      parcel: 'G14',
+      plantingYear: 2013,
+    })?.parcel).toBe('G14.1');
   });
 });
