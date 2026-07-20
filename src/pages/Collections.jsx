@@ -24,6 +24,14 @@ import StatusBanner from '../components/ui/StatusBanner';
 import { canUseDashboardAction, createManualResponse, dashboardErrorMessage, filterRecords, updateResponseMetadata, updateResponseReviewStatus, deleteResponseRecord, refreshAttachmentStorageSignedUrl, refreshCqoData, useCqoData } from '../utils/cqoData';
 import { devWarn } from '../utils/devLog';
 import { exportDashboardRecord } from '../utils/reportExporter';
+import {
+  evidencePhotoLabel,
+  extractRawPhotos,
+  isLocalOnlyPhotoUrl,
+  photoDedupKey,
+  photoImageCandidates,
+  uniquePhotos,
+} from '../utils/cqoPhotos';
 
 function statusBadge(status) {
   if (status === 'Aprovado') return 'badge-success';
@@ -54,142 +62,20 @@ function TableSelectionCheckbox({ checked, indeterminate = false, ...props }) {
   );
 }
 
-function isLocalOnlyPhotoUrl(url) {
-  return /^(file|content):\/\//i.test(String(url || ''));
-}
-
-function extractRawPhotos(raw) {
-  const photos = [];
-  const visit = (value, path = []) => {
-    if (!value) return;
-
-    if (Array.isArray(value)) {
-      value.forEach((item, index) => visit(item, [...path, String(index + 1)]));
-      return;
-    }
-
-    if (typeof value !== 'object') return;
-
-    const url = value.url || value.signed_url || value.public_url || value.storage_url || value.uri || null;
-    const thumbnailUrl = value.thumbnailUrl
-      || value.thumbnail_url
-      || value.thumbnail_signed_url
-      || value.thumbUrl
-      || value.thumb_url
-      || null;
-    const thumbnailStoragePath = value.thumbnailStoragePath
-      || value.thumbnail_storage_path
-      || value.thumbStoragePath
-      || value.thumb_storage_path
-      || null;
-    const hasPhotoPayload = Boolean(
-      value.base64
-      || url
-      || thumbnailUrl
-      || value.storage_path
-      || value.storagePath
-      || thumbnailStoragePath
-    );
-    const mimeType = value.mimeType || value.tipo_mime || value.mime_type || 'image/jpeg';
-
-    if (hasPhotoPayload && /^image\//i.test(mimeType)) {
-      const fieldId = value.campo_id || value.fieldId || path.filter(Boolean).join('.') || `foto_${photos.length + 1}`;
-      photos.push({
-        id: `${fieldId}_${photos.length + 1}`,
-        fieldId,
-        fileName: value.nome_arquivo || value.fileName || fieldId,
-        mimeType,
-        base64: value.base64 || null,
-        url,
-        thumbnailUrl,
-        localOnly: isLocalOnlyPhotoUrl(url),
-        storagePath: value.storage_path || value.storagePath || null,
-        thumbnailStoragePath,
-        sizeBytes: value.tamanho_bytes || value.sizeBytes || value.size || null,
-        thumbnailSizeBytes: value.thumbnail_tamanho_bytes || value.thumbnailSizeBytes || null,
-        capturedAt: value.capturedAt || value.capturado_em || value.criado_em || null,
-        gps: value.gps || null,
-      });
-    }
-
-    Object.entries(value).forEach(([key, child]) => visit(child, [...path, key]));
-  };
-
-  visit(raw);
-  return photos;
-}
-
-function uniquePhotos(photos) {
-  const seen = new Set();
-  return [...photos]
-    .sort((a, b) => photoPriority(b) - photoPriority(a))
-    .filter((photo) => {
-    const key = photoDedupKey(photo);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function photoImageSrc(photo, options = {}) {
-  if (!options.skipThumbnail && photo?.thumbnailUrl && !isLocalOnlyPhotoUrl(photo.thumbnailUrl)) {
-    return photo.thumbnailUrl;
-  }
-  if (photo?.base64) return `data:${photo.mimeType || 'image/jpeg'};base64,${photo.base64}`;
-  if (photo?.url && !photo.localOnly && !isLocalOnlyPhotoUrl(photo.url)) return photo.url;
-  return '';
-}
-
-function photoPriority(photo) {
-  if (!photo) return 0;
-  if (photo.base64) return 40;
-  if (photo.thumbnailUrl && !isLocalOnlyPhotoUrl(photo.thumbnailUrl)) return 35;
-  if (photo.url && !photo.localOnly && !isLocalOnlyPhotoUrl(photo.url)) return 30;
-  if (photo.thumbnailStoragePath && !isLocalOnlyPhotoUrl(photo.thumbnailStoragePath)) return 25;
-  if (photo.storagePath && !isLocalOnlyPhotoUrl(photo.storagePath)) return 20;
-  return 0;
-}
-
-function photoDedupKey(photo) {
-  const capturedAt = photo?.capturedAt ? new Date(photo.capturedAt).getTime() || photo.capturedAt : '';
-  const semanticKey = [
-    photo?.fieldId,
-    photo?.fileName,
-    capturedAt,
-  ].filter(Boolean).join('|');
-
-  if (semanticKey && photo?.fileName) return semanticKey;
-
-  return [
-    photo?.storagePath,
-    photo?.thumbnailStoragePath,
-    photo?.url,
-    photo?.thumbnailUrl,
-    photo?.id,
-    photo?.fieldId,
-    photo?.fileName,
-  ].filter(Boolean).join('|') || 'foto-sem-identificador';
-}
-
 function EvidencePhoto({ photo }) {
-  const [failedSrc, setFailedSrc] = useState('');
-  const [failedThumbnailUrl, setFailedThumbnailUrl] = useState('');
+  const [failedSources, setFailedSources] = useState([]);
   const [recovery, setRecovery] = useState({
     storagePath: '',
     url: '',
     attempted: false,
     loading: false,
   });
-  const thumbnailFailed = Boolean(
-    photo?.thumbnailUrl && failedThumbnailUrl === photo.thumbnailUrl
-  );
   const recoveryMatchesPhoto = recovery.storagePath === photo?.storagePath;
   const recoveryUrl = recoveryMatchesPhoto ? recovery.url : '';
   const recovering = recoveryMatchesPhoto && recovery.loading;
   const recoveryAttempted = recoveryMatchesPhoto && recovery.attempted;
-  const previewSrc = recoveryUrl || photoImageSrc(photo, { skipThumbnail: thumbnailFailed });
-  const failed = Boolean(previewSrc && failedSrc === previewSrc);
-  const src = failed ? '' : previewSrc;
+  const src = photoImageCandidates(photo, recoveryUrl)
+    .find((candidate) => !failedSources.includes(candidate)) || '';
   const openUrl = recoveryUrl || photo?.url;
   const canOpenUrl = Boolean(
     openUrl && !photo.localOnly && !isLocalOnlyPhotoUrl(openUrl)
@@ -198,17 +84,15 @@ function EvidencePhoto({ photo }) {
     ? 'Foto no app, upload pendente'
     : recovering
       ? 'Renovando acesso à imagem...'
-    : failed
+    : failedSources.length > 0
       ? 'Prévia indisponível, abrir arquivo'
       : 'Arquivo sem prévia';
 
   const handlePreviewError = async () => {
-    if (!thumbnailFailed && photo?.thumbnailUrl && !recoveryUrl) {
-      setFailedThumbnailUrl(photo.thumbnailUrl);
-      return;
-    }
+    if (src) setFailedSources((current) => (current.includes(src) ? current : [...current, src]));
 
-    if (!recoveryAttempted && photo?.storagePath) {
+    const failedFullImage = src === photo?.url;
+    if (failedFullImage && !recoveryAttempted && photo?.storagePath) {
       setRecovery({
         storagePath: photo.storagePath,
         url: '',
@@ -239,7 +123,6 @@ function EvidencePhoto({ photo }) {
       });
     }
 
-    setFailedSrc(previewSrc);
   };
 
   return (
@@ -265,7 +148,7 @@ function EvidencePhoto({ photo }) {
         </div>
       )}
       <div>
-        <strong>{photo.fileName || photo.fieldId}</strong>
+        <strong>{evidencePhotoLabel(photo)}</strong>
         <span>{photo.capturedAt ? new Date(photo.capturedAt).toLocaleString('pt-BR') : 'Sem data'}</span>
         <span>
           {photo.gps

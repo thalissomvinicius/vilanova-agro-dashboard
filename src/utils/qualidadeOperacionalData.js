@@ -7,8 +7,6 @@ export const QUALITY_LOSS_LIMITS = {
   projectionReductionPct: 20,
 };
 
-const DEFAULT_BUNCH_WEIGHT_KG = 20;
-
 function numberValue(value) {
   if (value === null || value === undefined || value === '') return 0;
   const parsed = Number(String(value).replace('%', '').replace(',', '.'));
@@ -57,6 +55,10 @@ function sumLineKeysWhenPresent(lines, keys) {
 
 function safePct(num, den) {
   return den > 0 ? (num / den) * 100 : 0;
+}
+
+function productionPotentialTon(producedTon, lossTon) {
+  return Math.max(0, Number(producedTon || 0)) + Math.max(0, Number(lossTon || 0));
 }
 
 function normalizeBalanceName(value) {
@@ -175,13 +177,20 @@ function sourceNumber(row, keys) {
 
 function buildBalanceContext(balanceData = {}) {
   const byMonth = new Map();
+  const weightByMonth = new Map();
   const byFarm = new Map();
   const byFarmMonth = new Map();
-  const entradaMonths = Array.isArray(balanceData?.entradaDeCff?.byMonth)
+  const legacyEntradaMonths = Array.isArray(balanceData?.entradaDeCff?.byMonth)
     ? balanceData.entradaDeCff.byMonth
     : [];
+  const productionMonths = Array.isArray(balanceData?.producao?.byMonth)
+    ? balanceData.producao.byMonth
+    : legacyEntradaMonths;
+  const weightMonths = Array.isArray(balanceData?.pesoMedioCacho?.byMonth)
+    ? balanceData.pesoMedioCacho.byMonth
+    : legacyEntradaMonths;
 
-  entradaMonths.forEach((row) => {
+  productionMonths.forEach((row) => {
     const key = normalizeMonthKey(row.monthKey || row.mesKey || row.monthLabel || row.mes || row.data);
     if (!key) return;
 
@@ -199,7 +208,27 @@ function buildBalanceContext(balanceData = {}) {
     });
   });
 
-  const farmRows = [
+  weightMonths.forEach((row) => {
+    const key = normalizeMonthKey(row.monthKey || row.mesKey || row.monthLabel || row.mes || row.data);
+    if (!key) return;
+    const pesoLiquidoKg = sourceNumber(row, ['pesoLiquidoKg', 'peso_liquido_kg', 'Peso Liquido', 'pesoLiquido']);
+    const cachos = sourceNumber(row, ['cachos', 'totalCachos', 'qtdCachos', 'quantidade_cachos']);
+    const averageBunchKg = sourceNumber(row, ['averageBunchKg', 'pesoMedioKg', 'peso_medio_kg'])
+      || (pesoLiquidoKg > 0 && cachos > 0 ? pesoLiquidoKg / cachos : 0);
+    if (averageBunchKg <= 0) return;
+    weightByMonth.set(key, {
+      key,
+      pesoLiquidoKg,
+      cachos,
+      averageBunchKg,
+      complete: row.complete !== false,
+    });
+  });
+
+  const dedicatedFarmRows = Array.isArray(balanceData?.producao?.byFarm)
+    ? balanceData.producao.byFarm
+    : [];
+  const farmRows = dedicatedFarmRows.length ? dedicatedFarmRows : [
     ...(Array.isArray(balanceData?.cqoRampa?.byFarm) ? balanceData.cqoRampa.byFarm : []),
     ...(Array.isArray(balanceData?.cqoRampa?.byProducer) ? balanceData.cqoRampa.byProducer : []),
   ];
@@ -211,7 +240,14 @@ function buildBalanceContext(balanceData = {}) {
     if (producedTon > 0) byFarm.set(farmKey, { producedTon });
   });
 
-  const farmDayRows = [
+  const dedicatedFarmMonthRows = Array.isArray(balanceData?.producao?.byFarmMonth)
+    ? balanceData.producao.byFarmMonth
+    : [];
+  const dedicatedFarmPeriodRows = dedicatedFarmMonthRows.length
+    ? dedicatedFarmMonthRows
+    : (Array.isArray(balanceData?.producao?.byFarmDay) ? balanceData.producao.byFarmDay : []);
+  const farmDayRows = dedicatedFarmPeriodRows.length ? dedicatedFarmPeriodRows : [
+    ...(Array.isArray(balanceData?.cqoRampa?.byFarmMonth) ? balanceData.cqoRampa.byFarmMonth : []),
     ...(Array.isArray(balanceData?.cqoRampa?.byProducerDay) ? balanceData.cqoRampa.byProducerDay : []),
   ];
   farmDayRows.forEach((row) => {
@@ -231,16 +267,17 @@ function buildBalanceContext(balanceData = {}) {
 
   return {
     byMonth,
+    weightByMonth,
     byFarm,
     byFarmMonth,
-    available: byMonth.size > 0 || byFarm.size > 0 || byFarmMonth.size > 0,
+    available: byMonth.size > 0 || weightByMonth.size > 0 || byFarm.size > 0 || byFarmMonth.size > 0,
   };
 }
 
 function resolvePreviousMonthWeightInfo(record, balanceContext) {
   const currentMonth = recordBalanceMonthKey(record);
   const targetMonth = previousMonthKey(currentMonth);
-  const monthInfo = targetMonth ? balanceContext?.byMonth?.get(targetMonth) : null;
+  const monthInfo = targetMonth ? balanceContext?.weightByMonth?.get(targetMonth) : null;
   if (!monthInfo?.averageBunchKg) return null;
 
   return {
@@ -266,7 +303,7 @@ function resolveWeightInfo(record, type, balanceContext) {
   const lineWeight = sumLineKeys(lines, keys);
   if (lineWeight && lines.length) return { value: lineWeight / lines.length, source: 'linhas', monthKey: '' };
 
-  return { value: DEFAULT_BUNCH_WEIGHT_KG, source: 'padrao', monthKey: '' };
+  return { value: 0, source: 'indisponivel', monthKey: '' };
 }
 
 function resolveDirectLossTon(record, type) {
@@ -432,6 +469,94 @@ function computeRecordLoss(record, balanceContext) {
   };
 }
 
+function lossGroupKey(record) {
+  const cycle = record.cycle || record.raw?.ciclo || record.raw?.Ciclo || 'sem-ciclo';
+  return [
+    record.type,
+    normalizeBalanceName(record.farm),
+    normalizeBalanceName(record.parcel),
+    recordBalanceMonthKey(record) || record.id,
+    normalizeBalanceName(cycle),
+  ].join('|');
+}
+
+function consolidateEstimatedLosses(records, balanceContext) {
+  const grouped = new Map();
+  records.forEach((record) => {
+    const key = lossGroupKey(record);
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(record);
+  });
+
+  return Array.from(grouped.values()).map((groupRecords) => {
+    const record = groupRecords[0];
+    if (groupRecords.length === 1) {
+      return { record, records: groupRecords, loss: computeRecordLoss(record, balanceContext) };
+    }
+
+    const directLosses = groupRecords.map((item) => resolveDirectLossTon(item, item.type));
+    if (directLosses.some((value) => value !== null)) {
+      const computed = groupRecords.map((item) => computeRecordLoss(item, balanceContext));
+      return {
+        record,
+        records: groupRecords,
+        loss: computed.reduce((acc, item) => ({
+          corteT: acc.corteT + item.corteT,
+          carreamentoT: acc.carreamentoT + item.carreamentoT,
+          totalT: acc.totalT + item.totalT,
+          producedTon: Math.max(acc.producedTon, item.producedTon),
+          estimatedCachos: acc.estimatedCachos + item.estimatedCachos,
+          weightKg: item.weightKg || acc.weightKg,
+          weightSource: item.weightSource || acc.weightSource,
+          weightMonthKey: item.weightMonthKey || acc.weightMonthKey,
+        }), {
+          corteT: 0,
+          carreamentoT: 0,
+          totalT: 0,
+          producedTon: 0,
+          estimatedCachos: 0,
+          weightKg: 0,
+          weightSource: '',
+          weightMonthKey: '',
+        }),
+      };
+    }
+
+    const type = record.type;
+    const plantasObservadas = groupRecords.reduce(
+      (sum, item) => sum + Number(item.totals?.plantasObservadas || 0),
+      0
+    );
+    const ocorrencias = groupRecords.reduce((sum, item) => sum + Number(
+      type === 'carreamento'
+        ? item.totals?.cachoNaoCarreado || 0
+        : item.totals?.cachoEsquecido || 0
+    ), 0);
+    const plantasAtual = Math.max(...groupRecords.map(resolvePlantsAtual), 0);
+    const estimatedCachos = plantasObservadas > 0
+      ? (ocorrencias / plantasObservadas) * plantasAtual
+      : 0;
+    const weightInfo = resolveWeightInfo(record, type, balanceContext);
+    const lossTon = weightInfo.value > 0 ? (estimatedCachos * weightInfo.value) / 1000 : 0;
+    const producedTon = Math.max(...groupRecords.map(resolveProducedTon), 0);
+
+    return {
+      record,
+      records: groupRecords,
+      loss: {
+        corteT: type === 'corte' ? lossTon : 0,
+        carreamentoT: type === 'carreamento' ? lossTon : 0,
+        totalT: lossTon,
+        producedTon,
+        estimatedCachos,
+        weightKg: weightInfo.value,
+        weightSource: weightInfo.source,
+        weightMonthKey: weightInfo.monthKey,
+      },
+    };
+  });
+}
+
 function createBucket(label) {
   return {
     label,
@@ -443,10 +568,10 @@ function createBucket(label) {
   };
 }
 
-function pushBucket(map, key, record, loss) {
+function pushBucket(map, key, records, loss) {
   if (!map.has(key)) map.set(key, createBucket(key));
   const bucket = map.get(key);
-  bucket.records.push(record);
+  bucket.records.push(...records);
   bucket.corteT += loss.corteT;
   bucket.carreamentoT += loss.carreamentoT;
   bucket.perdasT += loss.totalT;
@@ -461,7 +586,8 @@ export function buildQualidadeOperacional(records, balanceData = null) {
   const carreamentoTotals = aggregateRecords(carreamentoRecords);
   const allTotals = aggregateRecords(records);
 
-  const losses = records.map((record) => ({ record, loss: computeRecordLoss(record, balanceContext) }));
+  const lossRecords = records.filter((record) => record.type === 'corte' || record.type === 'carreamento');
+  const losses = consolidateEstimatedLosses(lossRecords, balanceContext);
   const totals = losses.reduce((acc, item) => {
     acc.corteT += item.loss.corteT;
     acc.carreamentoT += item.loss.carreamentoT;
@@ -506,7 +632,7 @@ export function buildQualidadeOperacional(records, balanceData = null) {
     taloCompridoPct: safePct(corteTotals.taloComprido, qualidadeBase),
   };
 
-  const percentBase = totals.producedTon;
+  const percentBase = productionPotentialTon(totals.producedTon, totals.perdasT);
   const lossRates = {
     cortePct: safePct(totals.corteT, percentBase),
     carreamentoPct: safePct(totals.carreamentoT, percentBase),
@@ -520,29 +646,31 @@ export function buildQualidadeOperacional(records, balanceData = null) {
   const byWeek = new Map();
   const byDay = new Map();
 
-  losses.forEach(({ record, loss }) => {
-    pushBucket(byFarm, record.farm || 'Sem fazenda', record, loss);
-    pushBucket(byMonth, monthKey(record), record, loss);
-    pushBucket(byParcela, record.parcel || 'Sem parcela', record, loss);
+  losses.forEach(({ record, records: groupedRecords, loss }) => {
+    pushBucket(byFarm, record.farm || 'Sem fazenda', groupedRecords, loss);
+    pushBucket(byMonth, monthKey(record), groupedRecords, loss);
+    pushBucket(byParcela, record.parcel || 'Sem parcela', groupedRecords, loss);
     
     // Novas agregações para o painel estilo Power BI
     const fiscalLabel = record.fiscal && record.fiscal !== '--' ? record.fiscal : 'Sem fiscal';
-    pushBucket(byFiscal, fiscalLabel, record, loss);
-    pushBucket(byWeek, weekKey(record), record, loss);
+    pushBucket(byFiscal, fiscalLabel, groupedRecords, loss);
+    pushBucket(byWeek, weekKey(record), groupedRecords, loss);
     
     const dKey = `${dayKey(record)} - ${record.farm || 'Sem fazenda'} - ${record.parcel || 'Sem parcela'}`;
-    pushBucket(byDay, dKey, record, loss);
+    pushBucket(byDay, dKey, groupedRecords, loss);
   });
 
   const farmRows = Array.from(byFarm.values())
     .map((bucket) => {
       const producedTon = bucketProducedTon(bucket, balanceContext, bucket.label);
+      const productionPotential = productionPotentialTon(producedTon, bucket.perdasT);
       return {
         ...bucket,
         producedTon,
-        cortePct: safePct(bucket.corteT, producedTon),
-        carreamentoPct: safePct(bucket.carreamentoT, producedTon),
-        totalPct: safePct(bucket.perdasT, producedTon),
+        productionPotentialTon: productionPotential,
+        cortePct: safePct(bucket.corteT, productionPotential),
+        carreamentoPct: safePct(bucket.carreamentoT, productionPotential),
+        totalPct: safePct(bucket.perdasT, productionPotential),
         qualidade: aggregateRecords(bucket.records),
       };
     })
@@ -552,10 +680,12 @@ export function buildQualidadeOperacional(records, balanceData = null) {
     .sort((a, b) => String(a.label).localeCompare(String(b.label)))
     .map((bucket) => {
       const producedTon = bucketProducedTon(bucket, balanceContext);
+      const productionPotential = productionPotentialTon(producedTon, bucket.perdasT);
       return {
         ...bucket,
         producedTon,
-        totalPct: safePct(bucket.perdasT, producedTon),
+        productionPotentialTon: productionPotential,
+        totalPct: safePct(bucket.perdasT, productionPotential),
       };
     });
 
@@ -582,6 +712,7 @@ export function buildQualidadeOperacional(records, balanceData = null) {
     const agg = aggregateRecords(bucket.records);
     const base = Math.max(agg.cachosObservados, 0);
     const producedTon = bucketProducedTon(bucket, balanceContext);
+    const productionPotential = productionPotentialTon(producedTon, bucket.perdasT);
     return {
       label: bucket.label,
       recordsCount: bucket.records.length,
@@ -596,8 +727,9 @@ export function buildQualidadeOperacional(records, balanceData = null) {
       corteT: bucket.corteT,
       carreamentoT: bucket.carreamentoT,
       producedTon,
-      cortePct: safePct(bucket.corteT, producedTon),
-      carreamentoPct: safePct(bucket.carreamentoT, producedTon),
+      productionPotentialTon: productionPotential,
+      cortePct: safePct(bucket.corteT, productionPotential),
+      carreamentoPct: safePct(bucket.carreamentoT, productionPotential),
     };
   };
 
@@ -622,12 +754,14 @@ export function buildQualidadeOperacional(records, balanceData = null) {
   const monthlyChart = monthRows.map((bucket) => {
     perdasYtd += bucket.perdasT;
     pesoYtd += bucket.producedTon;
+    const potentialYtd = productionPotentialTon(pesoYtd, perdasYtd);
     return {
       label: bucket.label,
-      value: Number(safePct(bucket.perdasT, bucket.producedTon).toFixed(2)),
+      value: Number(safePct(bucket.perdasT, bucket.productionPotentialTon).toFixed(2)),
       perdasT: Number(bucket.perdasT.toFixed(2)),
       perdasYtd: Number(perdasYtd.toFixed(2)),
       pesoYtd: Number(pesoYtd.toFixed(2)),
+      productionPotentialYtd: Number(potentialYtd.toFixed(2)),
     };
   });
 
@@ -651,6 +785,7 @@ export function buildQualidadeOperacional(records, balanceData = null) {
       hasBalanceSource: balanceContext.available,
       hasProductionBase: totals.producedTon > 0,
       productionBaseTon: totals.producedTon,
+      productionPotentialTon: percentBase,
       averageWeightKg: weightTotals.weight ? weightTotals.weightedKg / weightTotals.weight : 0,
       usesPreviousMonthWeight: weightTotals.usesPreviousMonthWeight,
       weightMonthKeys: Array.from(weightTotals.months).sort(),

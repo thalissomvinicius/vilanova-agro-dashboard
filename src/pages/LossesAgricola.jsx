@@ -5,7 +5,7 @@ import ActiveFilterSummary from '../components/ui/ActiveFilterSummary';
 import PresentationDataFilters from '../components/ui/PresentationDataFilters';
 import StatusBanner from '../components/ui/StatusBanner';
 import { filterRecords, useCqoData } from '../utils/cqoData';
-import { useBonificacaoData } from '../utils/bonificacaoData';
+import { useBalancaData } from '../utils/balancaData';
 import { buildQualidadeOperacional, QUALITY_LOSS_LIMITS } from '../utils/qualidadeOperacionalData';
 
 function fmt(value, digits = 0) {
@@ -64,7 +64,8 @@ function LossMetric({ label, value, meta, tone = 'neutral', loading = false }) {
 function LossesMetricRail({ model, loading }) {
   const perdasYtd = model.charts.perdasPctMensal.at(-1)?.perdasYtd || model.totals.perdasT;
   const pesoYtd = model.charts.perdasPctMensal.at(-1)?.pesoYtd || model.totals.producedTon;
-  const perdasPctYtd = pesoYtd > 0 ? (perdasYtd / pesoYtd) * 100 : null;
+  const potentialYtd = pesoYtd + perdasYtd;
+  const perdasPctYtd = potentialYtd > 0 ? (perdasYtd / potentialYtd) * 100 : null;
   const hasBase = model.hasProductionBase;
   const weightMonths = model.balance?.weightMonthKeys?.length
     ? model.balance.weightMonthKeys.join(', ')
@@ -355,8 +356,14 @@ export default function LossesAgricola({
   onClearFilter,
 }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
-  const { loading, error, records: allRecords } = useCqoData();
-  const balanceData = useBonificacaoData();
+  const { loading: cqoLoading, error, records: allRecords } = useCqoData();
+  const {
+    data: balanceData,
+    loading: balanceLoading,
+    error: balanceError,
+    usingLegacyFallback,
+  } = useBalancaData();
+  const loading = cqoLoading || balanceLoading;
   const filtered = useMemo(() => filterRecords(allRecords, {
     farmFilter,
     areaFilter,
@@ -435,6 +442,12 @@ export default function LossesAgricola({
         </StatusBanner>
       ) : null}
 
+      {balanceError && usingLegacyFallback && !loading ? (
+        <StatusBanner icon={AlertTriangle}>
+          A base nova da balança ainda não está publicada. O painel está usando a fonte anterior enquanto a integração é concluída.
+        </StatusBanner>
+      ) : null}
+
       {!model.hasProductionBase && !loading && filtered.length > 0 ? (
         <StatusBanner icon={AlertTriangle}>
           Percentuais dependem da base de produção/balança do período. As toneladas usam perdas do BI quando existirem; senão, cachos estimados x peso médio do mês anterior.
@@ -443,7 +456,7 @@ export default function LossesAgricola({
 
       {model.hasProductionBase && !model.balance?.usesPreviousMonthWeight && !loading && filtered.length > 0 ? (
         <StatusBanner icon={AlertTriangle}>
-          Base de produção carregada, mas o peso médio do mês anterior ainda não foi encontrado para as coletas filtradas. A estimativa usa peso informado no registro ou padrão técnico.
+          Base de produção carregada, mas o peso médio homologado do mês anterior não foi encontrado para as coletas filtradas. As estimativas sem peso permanecem indisponíveis.
         </StatusBanner>
       ) : null}
 

@@ -399,25 +399,12 @@ returns table (
   permissions text[],
   session_expires_at timestamptz
 )
-language plpgsql
+language sql
+stable
 security definer
 set search_path = public, extensions
 as $$
-begin
-  if nullif(trim(coalesce(p_session_token, '')), '') is null then
-    return;
-  end if;
-
-  return query
-  update public.dashboard_sessions s
-  set last_seen_at = now()
-  from public.dashboard_access_users access
-  where s.session_token_hash = encode(digest(trim(p_session_token), 'sha256'), 'hex')
-    and s.revoked_at is null
-    and s.expires_at > now()
-    and access.matricula = s.matricula
-    and access.active = true
-  returning
+  select
     s.matricula,
     s.nome,
     s.departamento,
@@ -426,8 +413,16 @@ begin
     s.status,
     access.role::text,
     access.permissions::text[],
-    s.expires_at;
-end;
+    s.expires_at
+  from public.dashboard_sessions s
+  join public.dashboard_access_users access
+    on access.matricula = s.matricula
+   and access.active = true
+  where nullif(trim(coalesce(p_session_token, '')), '') is not null
+    and s.session_token_hash = encode(digest(trim(p_session_token), 'sha256'), 'hex')
+    and s.revoked_at is null
+    and s.expires_at > now()
+  limit 1;
 $$;
 
 create or replace function public.dashboard_cqo_dataset(
@@ -646,6 +641,11 @@ begin
   );
 end;
 $$;
+
+-- Compatibility for bundles that still request the monolithic CQO payload.
+-- New deployments use dashboard_cqo_dataset_part from
+-- DASHBOARD_CQO_DATASET_SCALING_HOTFIX.sql.
+alter function public.dashboard_cqo_dataset(text) set statement_timeout = '20s';
 
 create or replace function public.dashboard_headcount_snapshot(
   p_session_token text

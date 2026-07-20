@@ -178,7 +178,7 @@ describe('dashboard response mutations', () => {
     );
   });
 
-  it('carrega o dataset CQO por RPC quando ha sessao ativa', async () => {
+  it('carrega o dataset CQO em partes por RPC quando ha sessao ativa', async () => {
     const fetchMock = vi.fn().mockResolvedValue(okJson({
       response_table: 'mobile_respostas',
       mobile_respostas: [],
@@ -195,11 +195,45 @@ describe('dashboard response mutations', () => {
     setCqoSessionToken('session-token');
     const data = await refreshCqoData();
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toBe('https://example.supabase.co/rest/v1/rpc/dashboard_cqo_dataset');
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
-      p_session_token: 'session-token',
-    });
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      'https://example.supabase.co/rest/v1/rpc/dashboard_cqo_response_page',
+      ...Array(4).fill('https://example.supabase.co/rest/v1/rpc/dashboard_cqo_dataset_part'),
+    ]);
+    expect(fetchMock.mock.calls.map(([, options]) => JSON.parse(options.body))).toEqual([
+      { p_session_token: 'session-token', p_offset: 0, p_limit: 40 },
+      { p_session_token: 'session-token', p_part: 'gps' },
+      { p_session_token: 'session-token', p_part: 'metadata' },
+      { p_session_token: 'session-token', p_part: 'cqo_import' },
+      { p_session_token: 'session-token', p_part: 'cqo_poda_import' },
+    ]);
+    expect(data.source).toBe('Banco online');
+  });
+
+  it('usa o dataset legado quando a RPC segmentada ainda nao existe', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(errorJson(404, { code: 'PGRST202', message: 'function not found' }))
+      .mockResolvedValueOnce(errorJson(404, { code: 'PGRST202', message: 'function not found' }))
+      .mockResolvedValueOnce(errorJson(404, { code: 'PGRST202', message: 'function not found' }))
+      .mockResolvedValueOnce(errorJson(404, { code: 'PGRST202', message: 'function not found' }))
+      .mockResolvedValueOnce(errorJson(404, { code: 'PGRST202', message: 'function not found' }))
+      .mockResolvedValueOnce(okJson({
+        mobile_respostas: [],
+        mobile_gps: [],
+        mobile_anexos: [],
+        mobile_formularios: [],
+        headcount_import_snapshots: [],
+        cqo_import_snapshots: [],
+        cqo_poda_import_snapshots: [],
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { refreshCqoData, setCqoSessionToken } = await loadAuthModule();
+    setCqoSessionToken('session-token');
+    const data = await refreshCqoData();
+
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+    expect(fetchMock.mock.calls[5][0]).toBe('https://example.supabase.co/rest/v1/rpc/dashboard_cqo_dataset');
     expect(data.source).toBe('Banco online');
   });
 

@@ -1905,13 +1905,91 @@ function buildSupabaseData({
   };
 }
 
-async function loadSupabaseDataFromRpc(sessionToken) {
+const CQO_DATASET_PARTS = [
+  'gps',
+  'metadata',
+  'cqo_import',
+  'cqo_poda_import',
+];
+const CQO_RESPONSE_PAGE_SIZE = 40;
+
+function isMissingDatasetPartRpc(error) {
+  const message = String(error?.message || error || '').toLowerCase();
+  return error?.status === 404
+    || message.includes('pgrst202')
+    || message.includes('dashboard_cqo_dataset_part') && message.includes('not found');
+}
+
+async function loadSupabaseDatasetParts(sessionToken) {
+  const loadResponsePage = async (offset) => {
+    const payload = await postSupabaseRpc(
+      'dashboard_cqo_response_page',
+      {
+        p_session_token: sessionToken,
+        p_offset: offset,
+        p_limit: CQO_RESPONSE_PAGE_SIZE,
+      },
+      `Leitura do dashboard (respostas ${offset + 1}-${offset + CQO_RESPONSE_PAGE_SIZE})`
+    );
+    return rpcScalarPayload(payload, 'dashboard_cqo_response_page');
+  };
+
+  const firstResponsePagePromise = loadResponsePage(0);
+  const partPayloadsPromise = Promise.all(CQO_DATASET_PARTS.map((part) => postSupabaseRpc(
+    'dashboard_cqo_dataset_part',
+    {
+      p_session_token: sessionToken,
+      p_part: part,
+    },
+    `Leitura do dashboard (${part})`
+  )));
+
+  const [firstResponsePage, payloads] = await Promise.all([
+    firstResponsePagePromise,
+    partPayloadsPromise,
+  ]);
+
+  const firstRows = datasetRows(firstResponsePage, 'mobile_respostas');
+  const totalRows = Math.min(
+    1000,
+    Math.max(Number(firstResponsePage?.total_rows || firstRows.length), firstRows.length)
+  );
+  const remainingOffsets = [];
+  for (let offset = CQO_RESPONSE_PAGE_SIZE; offset < totalRows; offset += CQO_RESPONSE_PAGE_SIZE) {
+    remainingOffsets.push(offset);
+  }
+  const remainingPages = await Promise.all(remainingOffsets.map(loadResponsePage));
+  const responseRows = [firstResponsePage, ...remainingPages]
+    .flatMap((page) => datasetRows(page, 'mobile_respostas'));
+
+  return payloads.reduce((dataset, payload) => ({
+    ...dataset,
+    ...rpcScalarPayload(payload, 'dashboard_cqo_dataset_part'),
+  }), {
+    response_table: firstResponsePage?.response_table || 'mobile_respostas',
+    mobile_respostas: responseRows,
+  });
+}
+
+async function loadLegacySupabaseDataset(sessionToken) {
   const payload = await postSupabaseRpc(
     'dashboard_cqo_dataset',
     { p_session_token: sessionToken },
     'Leitura do dashboard'
   );
-  const dataset = rpcScalarPayload(payload, 'dashboard_cqo_dataset');
+
+  return rpcScalarPayload(payload, 'dashboard_cqo_dataset');
+}
+
+async function loadSupabaseDataFromRpc(sessionToken) {
+  let dataset;
+  try {
+    dataset = await loadSupabaseDatasetParts(sessionToken);
+  } catch (error) {
+    if (!isMissingDatasetPartRpc(error)) throw error;
+    dataset = await loadLegacySupabaseDataset(sessionToken);
+  }
+
   const headcount = normalizeHeadcountSnapshotData(datasetRows(dataset, 'headcount_import_snapshots')[0]).rows;
   const cqoImport = normalizeCqoImportSnapshotData(
     datasetRows(dataset, 'cqo_import_snapshots')[0],

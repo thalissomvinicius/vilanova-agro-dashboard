@@ -14250,8 +14250,10 @@ body.field-map-active {
 .evidence-photo img {
   width: 100%;
   aspect-ratio: 16 / 10;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  background: #F3F6F4;
+  image-rendering: auto;
 }
 
 .evidence-file-placeholder {

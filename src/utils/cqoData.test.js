@@ -436,8 +436,66 @@ describe('buildQualidadeOperacional', () => {
 
     expect(model.totals.corteT).toBeCloseTo(0.3);
     expect(model.totals.producedTon).toBeCloseTo(500);
-    expect(model.lossRates.cortePct).toBeCloseTo(0.06);
+    expect(model.balance.productionPotentialTon).toBeCloseTo(500.3);
+    expect(model.lossRates.cortePct).toBeCloseTo((0.3 / 500.3) * 100);
     expect(model.balance.usesPreviousMonthWeight).toBe(true);
     expect(model.balance.weightMonthKeys).toEqual(['2026-05']);
+  });
+
+  it('consolida amostras repetidas antes de extrapolar a perda', () => {
+    const base = {
+      type: 'corte',
+      farm: 'VILA NOVA',
+      parcel: 'D-09',
+      cycle: '2',
+      fiscal: 'Fiscal A',
+      raw: {
+        data_avaliacao: '2026-06-15',
+        total_plantas_parcela: 1000,
+      },
+      totals: {
+        ...record().totals,
+        plantasObservadas: 100,
+        cachosObservados: 100,
+        cachoEsquecido: 1,
+      },
+    };
+    const balanceData = {
+      pesoMedioCacho: {
+        byMonth: [{ monthKey: '2026-05', averageBunchKg: 10, complete: true }],
+      },
+      producao: {
+        byMonth: [{ monthKey: '2026-06', pesoLiquidoKg: 500000 }],
+      },
+    };
+
+    const model = buildQualidadeOperacional([
+      record({ ...base, id: 'amostra-1' }),
+      record({
+        ...base,
+        id: 'amostra-2',
+        raw: { ...base.raw, data_avaliacao: '2026-06-20' },
+      }),
+    ], balanceData);
+
+    expect(model.totals.estimatedCachos).toBeCloseTo(10);
+    expect(model.totals.corteT).toBeCloseTo(0.1);
+  });
+
+  it('nao inventa peso padrao quando a balanca do mes anterior esta ausente', () => {
+    const corte = record({
+      id: 'corte-sem-peso',
+      raw: { data_avaliacao: '2026-06-15', total_plantas_parcela: 1000 },
+      totals: {
+        ...record().totals,
+        plantasObservadas: 100,
+        cachoEsquecido: 2,
+      },
+    });
+
+    const model = buildQualidadeOperacional([corte]);
+
+    expect(model.totals.corteT).toBe(0);
+    expect(model.balance.averageWeightKg).toBe(0);
   });
 });
