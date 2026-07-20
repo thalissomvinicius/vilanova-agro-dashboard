@@ -697,6 +697,9 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   const { loading, records, source, error } = useCqoData();
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [formTypeFilter, setFormTypeFilter] = useState('all');
+  const [auditDateFrom, setAuditDateFrom] = useState('');
+  const [auditDateTo, setAuditDateTo] = useState('');
   const [searchFicha, setSearchFicha] = useState('');
   const [reviewOverrides, setReviewOverrides] = useState({});
   const [deletedRecords, setDeletedRecords] = useState(new Set());
@@ -755,8 +758,8 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
       }))
   ), [records, deletedRecords, reviewOverrides]);
 
-  const filteredRecords = useMemo(() => (
-    filterRecords(displayRecords, {
+  const filteredRecords = useMemo(() => {
+    const globallyFiltered = filterRecords(displayRecords, {
       farmFilter,
       areaFilter,
       searchTerm,
@@ -767,13 +770,21 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
       cycleFilter,
       dateFrom,
       dateTo,
-    }).filter((record) => {
+    });
+    const locallyFiltered = filterRecords(globallyFiltered, {
+      areaFilter: formTypeFilter,
+      periodFilter: auditDateFrom || auditDateTo ? 'custom' : 'all',
+      dateFrom: auditDateFrom,
+      dateTo: auditDateTo,
+    });
+
+    return locallyFiltered.filter((record) => {
       if (!searchFicha) return true;
       const term = searchFicha.toLowerCase();
       return String(record.id || '').toLowerCase().includes(term)
         || String(record.formId || '').toLowerCase().includes(term);
-    })
-  ), [
+    });
+  }, [
     displayRecords,
     farmFilter,
     areaFilter,
@@ -785,8 +796,29 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     cycleFilter,
     dateFrom,
     dateTo,
+    formTypeFilter,
+    auditDateFrom,
+    auditDateTo,
     searchFicha,
   ]);
+
+  const hasLocalAuditFilters = formTypeFilter !== 'all' || Boolean(auditDateFrom) || Boolean(auditDateTo);
+
+  const handleAuditDateFromChange = (value) => {
+    setAuditDateFrom(value);
+    if (value && auditDateTo && value > auditDateTo) setAuditDateTo(value);
+  };
+
+  const handleAuditDateToChange = (value) => {
+    setAuditDateTo(value);
+    if (value && auditDateFrom && value < auditDateFrom) setAuditDateFrom(value);
+  };
+
+  const clearLocalAuditFilters = () => {
+    setFormTypeFilter('all');
+    setAuditDateFrom('');
+    setAuditDateTo('');
+  };
 
   const selectableRecords = useMemo(
     () => filteredRecords.filter((record) => record.source !== 'excel'),
@@ -1305,7 +1337,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
           </div>
         </PageHeader>
 
-      <div className="operational-filter-bar">
+      <div className="operational-filter-bar collections-filter-bar">
         <div className="table-search operational-search">
             <Search size={16} />
             <input
@@ -1331,20 +1363,63 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
             <option value="Falha">Falha</option>
           </select>
         </label>
-          <div className="source-card compact">
-            <span>Fonte</span>
-            <strong>{sourceLabel}</strong>
-          </div>
-          <button
-            type="button"
-            className="btn btn-primary manual-entry-open-btn"
-            onClick={openManualEntryModal}
-            disabled={!canCreateManualResponse}
-            title={canCreateManualResponse ? 'Inserir ficha preenchida em papel' : 'Permissão necessária'}
+        <label className="operational-select-control collections-form-filter">
+          <span>Formulário</span>
+          <select
+            value={formTypeFilter}
+            onChange={(event) => setFormTypeFilter(event.target.value)}
+            className="header-filter-select"
           >
-            <PlusCircle size={16} />
-            Inserir manual
-          </button>
+            <option value="all">Todos os formulários</option>
+            <option value="corte">CQO Corte</option>
+            <option value="carreamento">CQO Carreamento</option>
+            <option value="poda">CQO Poda</option>
+          </select>
+        </label>
+        <div className="source-card compact">
+          <span>Fonte</span>
+          <strong>{sourceLabel}</strong>
+        </div>
+        <label className="operational-select-control operational-date-control">
+          <span>Data inicial</span>
+          <input
+            type="date"
+            value={auditDateFrom}
+            max={auditDateTo || undefined}
+            onChange={(event) => handleAuditDateFromChange(event.target.value)}
+            aria-label="Filtrar coletas a partir da data"
+          />
+        </label>
+        <label className="operational-select-control operational-date-control">
+          <span>Data final</span>
+          <input
+            type="date"
+            value={auditDateTo}
+            min={auditDateFrom || undefined}
+            onChange={(event) => handleAuditDateToChange(event.target.value)}
+            aria-label="Filtrar coletas até a data"
+          />
+        </label>
+        <button
+          type="button"
+          className="btn btn-secondary collections-clear-filter-btn"
+          onClick={clearLocalAuditFilters}
+          disabled={!hasLocalAuditFilters}
+          title="Limpar formulário e período da auditoria"
+        >
+          <X size={15} />
+          Limpar filtros
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary manual-entry-open-btn"
+          onClick={openManualEntryModal}
+          disabled={!canCreateManualResponse}
+          title={canCreateManualResponse ? 'Inserir ficha preenchida em papel' : 'Permissão necessária'}
+        >
+          <PlusCircle size={16} />
+          Inserir manual
+        </button>
       </div>
 
       {error ? <StatusBanner tone="danger">{error}</StatusBanner> : null}

@@ -11774,6 +11774,46 @@ body.field-map-active {
   box-shadow: var(--shadow-sm);
 }
 
+.collections-filter-bar {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.collections-filter-bar .operational-search {
+  grid-column: span 4;
+}
+
+.collections-filter-bar .operational-select-control {
+  grid-column: span 2;
+}
+
+.collections-filter-bar .collections-form-filter,
+.collections-filter-bar .source-card {
+  grid-column: span 3;
+}
+
+.operational-date-control input {
+  width: 100%;
+  min-width: 0;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.collections-filter-bar .collections-clear-filter-btn {
+  grid-column: span 2;
+  min-height: 46px;
+}
+
+.collections-filter-bar .manual-entry-open-btn {
+  grid-column: span 6;
+}
+
 .inventory-filter-bar {
   grid-template-columns: minmax(160px, 220px) minmax(220px, 1fr) minmax(280px, 360px);
 }
@@ -14838,6 +14878,15 @@ body.field-map-active {
   .operational-filter-bar,
   .inventory-filter-bar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .collections-filter-bar .operational-search,
+  .collections-filter-bar .operational-select-control,
+  .collections-filter-bar .collections-form-filter,
+  .collections-filter-bar .source-card,
+  .collections-filter-bar .collections-clear-filter-btn,
+  .collections-filter-bar .manual-entry-open-btn {
+    grid-column: span 1;
   }
 
   .development-module-list div {
