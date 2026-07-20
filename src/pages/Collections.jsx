@@ -21,7 +21,7 @@ import {
 import EmptyTableRow from '../components/ui/EmptyTableRow';
 import PageHeader from '../components/ui/PageHeader';
 import StatusBanner from '../components/ui/StatusBanner';
-import { canUseDashboardAction, createManualResponse, dashboardErrorMessage, filterRecords, updateResponseMetadata, updateResponseReviewStatus, deleteResponseRecord, refreshAttachmentStorageSignedUrl, refreshCqoData, useCqoData } from '../utils/cqoData';
+import { canUseDashboardAction, createManualResponse, dashboardErrorMessage, filterRecords, getAttachmentStorageSignedUrl, updateResponseMetadata, updateResponseReviewStatus, deleteResponseRecord, refreshAttachmentStorageSignedUrl, refreshCqoData, useCqoData } from '../utils/cqoData';
 import { devWarn } from '../utils/devLog';
 import { exportDashboardRecord } from '../utils/reportExporter';
 import {
@@ -64,65 +64,83 @@ function TableSelectionCheckbox({ checked, indeterminate = false, ...props }) {
 
 function EvidencePhoto({ photo }) {
   const [failedSources, setFailedSources] = useState([]);
-  const [recovery, setRecovery] = useState({
-    storagePath: '',
+  const [preview, setPreview] = useState(() => ({
     url: '',
     attempted: false,
-    loading: false,
-  });
-  const recoveryMatchesPhoto = recovery.storagePath === photo?.storagePath;
-  const recoveryUrl = recoveryMatchesPhoto ? recovery.url : '';
-  const recovering = recoveryMatchesPhoto && recovery.loading;
-  const recoveryAttempted = recoveryMatchesPhoto && recovery.attempted;
-  const src = photoImageCandidates(photo, recoveryUrl)
+    loading: photoImageCandidates(photo).length === 0
+      && Boolean(photo?.thumbnailStoragePath || photo?.storagePath)
+      && !photo?.localOnly,
+  }));
+  const src = photoImageCandidates(photo, preview.url)
     .find((candidate) => !failedSources.includes(candidate)) || '';
-  const openUrl = recoveryUrl || photo?.url;
-  const canOpenUrl = Boolean(
-    openUrl && !photo.localOnly && !isLocalOnlyPhotoUrl(openUrl)
-  );
+  const canResolveRemoteFile = Boolean(photo?.storagePath && !photo?.localOnly);
   const placeholderText = photo.localOnly
     ? 'Foto no app, upload pendente'
-    : recovering
-      ? 'Renovando acesso à imagem...'
-    : failedSources.length > 0
-      ? 'Prévia indisponível, abrir arquivo'
-      : 'Arquivo sem prévia';
+    : preview.loading
+      ? 'Carregando prévia...'
+      : failedSources.length > 0
+        ? 'Prévia indisponível, abrir arquivo'
+        : 'Arquivo sem prévia';
+
+  useEffect(() => {
+    let active = true;
+    const hasInlinePreview = photoImageCandidates(photo).length > 0;
+    const storagePaths = Array.from(new Set([
+      photo?.thumbnailStoragePath,
+      photo?.storagePath,
+    ].filter(Boolean)));
+
+    if (hasInlinePreview || storagePaths.length === 0 || photo?.localOnly) {
+      return () => {
+        active = false;
+      };
+    }
+
+    (async () => {
+      for (const storagePath of storagePaths) {
+        try {
+          const signedUrl = await getAttachmentStorageSignedUrl(storagePath);
+          if (signedUrl && active) {
+            setPreview({ url: signedUrl, attempted: true, loading: false });
+            return;
+          }
+        } catch (error) {
+          devWarn('Nao foi possivel carregar a previa da evidencia:', error);
+        }
+      }
+
+      if (active) setPreview({ url: '', attempted: true, loading: false });
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [photo]);
 
   const handlePreviewError = async () => {
     if (src) setFailedSources((current) => (current.includes(src) ? current : [...current, src]));
+    if (preview.attempted || !canResolveRemoteFile) return;
 
-    const failedFullImage = src === photo?.url;
-    if (failedFullImage && !recoveryAttempted && photo?.storagePath) {
-      setRecovery({
-        storagePath: photo.storagePath,
-        url: '',
-        attempted: true,
-        loading: true,
-      });
-
-      try {
-        const freshUrl = await refreshAttachmentStorageSignedUrl(photo.storagePath);
-        if (freshUrl) {
-          setRecovery({
-            storagePath: photo.storagePath,
-            url: freshUrl,
-            attempted: true,
-            loading: false,
-          });
-          return;
-        }
-      } catch (error) {
-        devWarn('Nao foi possivel renovar a URL da evidencia:', error);
-      }
-
-      setRecovery({
-        storagePath: photo.storagePath,
-        url: '',
-        attempted: true,
-        loading: false,
-      });
+    setPreview({ url: '', attempted: true, loading: true });
+    try {
+      const freshUrl = await refreshAttachmentStorageSignedUrl(photo.storagePath);
+      setPreview({ url: freshUrl || '', attempted: true, loading: false });
+    } catch (error) {
+      devWarn('Nao foi possivel renovar a URL da evidencia:', error);
+      setPreview({ url: '', attempted: true, loading: false });
     }
+  };
 
+  const handleOpenImage = async () => {
+    let targetUrl = photo?.url && !isLocalOnlyPhotoUrl(photo.url) ? photo.url : '';
+    if (canResolveRemoteFile) {
+      try {
+        targetUrl = await getAttachmentStorageSignedUrl(photo.storagePath) || targetUrl;
+      } catch (error) {
+        devWarn('Nao foi possivel abrir a evidencia original:', error);
+      }
+    }
+    if (targetUrl) window.open(targetUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -140,10 +158,10 @@ function EvidencePhoto({ photo }) {
         <div className="evidence-file-placeholder">
           <Download size={18} />
           <span>{placeholderText}</span>
-          {canOpenUrl ? (
-            <a href={openUrl} target="_blank" rel="noreferrer">
+          {canResolveRemoteFile || (photo?.url && !photo?.localOnly) ? (
+            <button type="button" className="evidence-open-link" onClick={handleOpenImage}>
               Abrir imagem
-            </a>
+            </button>
           ) : null}
         </div>
       )}

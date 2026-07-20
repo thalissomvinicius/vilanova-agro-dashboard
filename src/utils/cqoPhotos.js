@@ -184,9 +184,9 @@ export function uniquePhotos(photos) {
 export function photoImageCandidates(photo, recoveryUrl = '') {
   const candidates = [
     recoveryUrl,
+    photo?.thumbnailUrl && !isLocalOnlyPhotoUrl(photo.thumbnailUrl) ? photo.thumbnailUrl : '',
     photo?.url && !photo?.localOnly && !isLocalOnlyPhotoUrl(photo.url) ? photo.url : '',
     photo?.base64 ? `data:${photo.mimeType || 'image/jpeg'};base64,${photo.base64}` : '',
-    photo?.thumbnailUrl && !isLocalOnlyPhotoUrl(photo.thumbnailUrl) ? photo.thumbnailUrl : '',
   ].filter(Boolean);
 
   return Array.from(new Set(candidates));

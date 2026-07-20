@@ -14325,11 +14325,16 @@ body.field-map-active {
   text-align: center;
 }
 
-.evidence-file-placeholder a {
+.evidence-file-placeholder a,
+.evidence-file-placeholder .evidence-open-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--primary-color);
   font-size: 0.72rem;
   font-weight: 900;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .evidence-photo strong {

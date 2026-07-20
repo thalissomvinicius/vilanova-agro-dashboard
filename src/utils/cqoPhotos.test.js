@@ -39,7 +39,7 @@ describe('cqoPhotos', () => {
     });
   });
 
-  it('prioriza a imagem completa e usa a miniatura apenas como fallback', () => {
+  it('prioriza a miniatura para poupar banda e mantem a imagem completa como fallback', () => {
     const photo = {
       url: 'https://example.com/foto-completa.jpeg',
       thumbnailUrl: 'https://example.com/miniatura.jpeg',
@@ -47,8 +47,8 @@ describe('cqoPhotos', () => {
     };
 
     expect(photoImageCandidates(photo)).toEqual([
-      'https://example.com/foto-completa.jpeg',
       'https://example.com/miniatura.jpeg',
+      'https://example.com/foto-completa.jpeg',
     ]);
   });
 

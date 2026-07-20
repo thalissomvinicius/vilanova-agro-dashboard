@@ -201,18 +201,17 @@ describe('dashboard response mutations', () => {
       ...Array(4).fill('https://example.supabase.co/rest/v1/rpc/dashboard_cqo_dataset_part'),
     ]);
     expect(fetchMock.mock.calls.map(([, options]) => JSON.parse(options.body))).toEqual([
-      { p_session_token: 'session-token', p_offset: 0, p_limit: 40 },
-      { p_session_token: 'session-token', p_part: 'gps' },
+      { p_session_token: 'session-token', p_offset: 0, p_limit: 100 },
       { p_session_token: 'session-token', p_part: 'metadata' },
       { p_session_token: 'session-token', p_part: 'cqo_import' },
       { p_session_token: 'session-token', p_part: 'cqo_poda_import' },
+      { p_session_token: 'session-token', p_part: 'gps' },
     ]);
     expect(data.source).toBe('Banco online');
   });
 
   it('usa o dataset legado quando a RPC segmentada ainda nao existe', async () => {
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(errorJson(404, { code: 'PGRST202', message: 'function not found' }))
       .mockResolvedValueOnce(errorJson(404, { code: 'PGRST202', message: 'function not found' }))
       .mockResolvedValueOnce(errorJson(404, { code: 'PGRST202', message: 'function not found' }))
       .mockResolvedValueOnce(errorJson(404, { code: 'PGRST202', message: 'function not found' }))
@@ -232,9 +231,46 @@ describe('dashboard response mutations', () => {
     setCqoSessionToken('session-token');
     const data = await refreshCqoData();
 
-    expect(fetchMock).toHaveBeenCalledTimes(6);
-    expect(fetchMock.mock.calls[5][0]).toBe('https://example.supabase.co/rest/v1/rpc/dashboard_cqo_dataset');
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock.mock.calls[4][0]).toBe('https://example.supabase.co/rest/v1/rpc/dashboard_cqo_dataset');
     expect(data.source).toBe('Banco online');
+  });
+
+  it('nao assina anexos durante a carga global do dashboard', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url, options) => {
+      if (String(url).includes('/storage/v1/object/sign/')) {
+        throw new Error('A carga global nao deve acessar o Storage.');
+      }
+
+      const body = JSON.parse(options.body);
+      if (body.p_part === 'metadata') {
+        return okJson({
+          mobile_anexos: [{
+            id: 'anexo-1',
+            resposta_id: 'res-1',
+            storage_path: '3102/res-1/foto.jpeg',
+          }],
+          mobile_formularios: [],
+          headcount_import_snapshots: [],
+        });
+      }
+
+      return okJson({
+        response_table: 'mobile_respostas',
+        mobile_respostas: [],
+        mobile_gps: [],
+        cqo_import_snapshots: [],
+        cqo_poda_import_snapshots: [],
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { refreshCqoData, setCqoSessionToken } = await loadAuthModule();
+    setCqoSessionToken('session-token');
+    const data = await refreshCqoData();
+
+    expect(data.anexos).toHaveLength(1);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/storage/v1/object/sign/'))).toBe(false);
   });
 
   it('transforma snapshot CQO Excel em registros operacionais filtraveis', async () => {

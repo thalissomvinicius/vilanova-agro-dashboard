@@ -5,8 +5,11 @@ const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '').t
 const ATTACHMENT_BUCKET = 'mobile-anexos';
 const ATTACHMENT_SIGN_EXPIRES_SECONDS = 6 * 60 * 60;
 const ATTACHMENT_SIGN_CACHE_MARGIN_SECONDS = 5 * 60;
-const ATTACHMENT_SIGN_CONCURRENCY = 6;
 const attachmentSignedUrlCache = new Map();
+const CQO_CACHE_DB_NAME = 'vilanova-dashboard-cache';
+const CQO_CACHE_STORE_NAME = 'cqo-data';
+const CQO_CACHE_VERSION = 1;
+const CQO_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export const SUPABASE_CONFIG = {
   url: SUPABASE_URL,
@@ -274,88 +277,8 @@ export async function refreshAttachmentStorageSignedUrl(storagePath) {
   return signAttachmentStoragePath(normalizedPath);
 }
 
-async function mapWithConcurrency(items, limit, mapper) {
-  const results = new Array(items.length);
-  let nextIndex = 0;
-  const workerCount = Math.min(Math.max(1, limit), items.length);
-
-  await Promise.all(Array.from({ length: workerCount }, async () => {
-    while (nextIndex < items.length) {
-      const currentIndex = nextIndex;
-      nextIndex += 1;
-      results[currentIndex] = await mapper(items[currentIndex], currentIndex);
-    }
-  }));
-
-  return results;
-}
-
-async function attachSignedStorageUrls(attachmentRows) {
-  if (!Array.isArray(attachmentRows) || attachmentRows.length === 0) return [];
-
-  return mapWithConcurrency(attachmentRows, ATTACHMENT_SIGN_CONCURRENCY, async (row) => {
-    const storageCandidates = attachmentStoragePathCandidates(row);
-    const thumbnailCandidates = attachmentThumbnailPathCandidates(row);
-    let thumbnailUrl = null;
-    let thumbnailPath = '';
-
-    for (const thumbPath of thumbnailCandidates) {
-      try {
-        const signedThumbUrl = await signAttachmentStoragePath(thumbPath);
-        if (signedThumbUrl) {
-          thumbnailUrl = signedThumbUrl;
-          thumbnailPath = thumbPath;
-          break;
-        }
-      } catch {
-        // Miniaturas podem nao existir em coletas antigas; a foto completa ainda sera tentada.
-      }
-    }
-
-    for (const storagePath of storageCandidates) {
-      try {
-        const signedUrl = await signAttachmentStoragePath(storagePath);
-        if (signedUrl) {
-          return {
-            ...row,
-            storage_path: storagePath,
-            signed_url: signedUrl,
-            url: signedUrl,
-            thumbnail_storage_path: thumbnailPath || row?.thumbnail_storage_path,
-            thumbnail_signed_url: thumbnailUrl || row?.thumbnail_signed_url,
-            thumbnail_url: thumbnailUrl || row?.thumbnail_url,
-          };
-        }
-      } catch {
-        // Tenta o proximo candidato; anexos antigos podem ter sido salvos com caminho parcial.
-      }
-    }
-
-    const renderableUrl = [
-      row?.signed_url,
-      row?.url,
-      row?.public_url,
-      row?.storage_url,
-    ].find(isRenderableAttachmentUrl);
-
-    if (renderableUrl) {
-      return {
-        ...row,
-        signed_url: renderableUrl,
-        url: renderableUrl,
-        thumbnail_storage_path: thumbnailPath || row?.thumbnail_storage_path,
-        thumbnail_signed_url: thumbnailUrl || row?.thumbnail_signed_url,
-        thumbnail_url: thumbnailUrl || row?.thumbnail_url,
-      };
-    }
-
-    return {
-      ...row,
-      thumbnail_storage_path: thumbnailPath || row?.thumbnail_storage_path,
-      thumbnail_signed_url: thumbnailUrl || row?.thumbnail_signed_url,
-      thumbnail_url: thumbnailUrl || row?.thumbnail_url,
-    };
-  });
+export async function getAttachmentStorageSignedUrl(storagePath) {
+  return signAttachmentStoragePath(storagePath);
 }
 
 async function supabaseResponseError(response, context) {
@@ -1905,13 +1828,14 @@ function buildSupabaseData({
   };
 }
 
-const CQO_DATASET_PARTS = [
-  'gps',
+const CQO_CORE_DATASET_PARTS = [
   'metadata',
   'cqo_import',
   'cqo_poda_import',
 ];
-const CQO_RESPONSE_PAGE_SIZE = 40;
+// The database endpoint already caps pages at 100. Using that limit avoids
+// dozens of round trips while preserving the same bounded payload contract.
+const CQO_RESPONSE_PAGE_SIZE = 100;
 
 function isMissingDatasetPartRpc(error) {
   const message = String(error?.message || error || '').toLowerCase();
@@ -1920,7 +1844,7 @@ function isMissingDatasetPartRpc(error) {
     || message.includes('dashboard_cqo_dataset_part') && message.includes('not found');
 }
 
-async function loadSupabaseDatasetParts(sessionToken) {
+async function loadSupabaseDatasetParts(sessionToken, onCoreDataset) {
   const loadResponsePage = async (offset) => {
     const payload = await postSupabaseRpc(
       'dashboard_cqo_response_page',
@@ -1935,7 +1859,7 @@ async function loadSupabaseDatasetParts(sessionToken) {
   };
 
   const firstResponsePagePromise = loadResponsePage(0);
-  const partPayloadsPromise = Promise.all(CQO_DATASET_PARTS.map((part) => postSupabaseRpc(
+  const partPayloadsPromise = Promise.all(CQO_CORE_DATASET_PARTS.map((part) => postSupabaseRpc(
     'dashboard_cqo_dataset_part',
     {
       p_session_token: sessionToken,
@@ -1962,13 +1886,40 @@ async function loadSupabaseDatasetParts(sessionToken) {
   const responseRows = [firstResponsePage, ...remainingPages]
     .flatMap((page) => datasetRows(page, 'mobile_respostas'));
 
-  return payloads.reduce((dataset, payload) => ({
+  const coreDataset = payloads.reduce((dataset, payload) => ({
     ...dataset,
     ...rpcScalarPayload(payload, 'dashboard_cqo_dataset_part'),
   }), {
     response_table: firstResponsePage?.response_table || 'mobile_respostas',
     mobile_respostas: responseRows,
+    mobile_gps: [],
   });
+
+  onCoreDataset?.(coreDataset);
+
+  try {
+    const gpsPayload = await postSupabaseRpc(
+      'dashboard_cqo_dataset_part',
+      {
+        p_session_token: sessionToken,
+        p_part: 'gps',
+      },
+      'Leitura do dashboard (gps)'
+    );
+
+    return {
+      dataset: {
+        ...coreDataset,
+        ...rpcScalarPayload(gpsPayload, 'dashboard_cqo_dataset_part'),
+      },
+      gpsError: '',
+    };
+  } catch (error) {
+    return {
+      dataset: coreDataset,
+      gpsError: dashboardErrorMessage(error, 'Os dados principais foram carregados, mas o GPS ainda não está disponível.'),
+    };
+  }
 }
 
 async function loadLegacySupabaseDataset(sessionToken) {
@@ -1981,35 +1932,53 @@ async function loadLegacySupabaseDataset(sessionToken) {
   return rpcScalarPayload(payload, 'dashboard_cqo_dataset');
 }
 
-async function loadSupabaseDataFromRpc(sessionToken) {
-  let dataset;
-  try {
-    dataset = await loadSupabaseDatasetParts(sessionToken);
-  } catch (error) {
-    if (!isMissingDatasetPartRpc(error)) throw error;
-    dataset = await loadLegacySupabaseDataset(sessionToken);
-  }
-
+function buildDataFromDataset(dataset, extra = {}) {
   const headcount = normalizeHeadcountSnapshotData(datasetRows(dataset, 'headcount_import_snapshots')[0]).rows;
   const cqoImport = normalizeCqoImportSnapshotData(
     datasetRows(dataset, 'cqo_import_snapshots')[0],
     datasetRows(dataset, 'cqo_poda_import_snapshots')
   );
-  const attachmentRows = await attachSignedStorageUrls(datasetRows(dataset, 'mobile_anexos'));
 
-  return buildSupabaseData({
-    responseRows: datasetRows(dataset, 'mobile_respostas'),
-    headcount,
-    gpsRows: datasetRows(dataset, 'mobile_gps'),
-    attachmentRows,
-    formRows: datasetRows(dataset, 'mobile_formularios'),
-    cqoImport,
-    source: 'Banco online',
+  return {
+    ...buildSupabaseData({
+      responseRows: datasetRows(dataset, 'mobile_respostas'),
+      headcount,
+      gpsRows: datasetRows(dataset, 'mobile_gps'),
+      attachmentRows: datasetRows(dataset, 'mobile_anexos'),
+      formRows: datasetRows(dataset, 'mobile_formularios'),
+      cqoImport,
+      source: 'Banco online',
+    }),
+    ...extra,
+  };
+}
+
+async function loadSupabaseDataFromRpc(sessionToken, onCoreData) {
+  let dataset;
+  try {
+    const result = await loadSupabaseDatasetParts(sessionToken, (coreDataset) => {
+      onCoreData?.(buildDataFromDataset(coreDataset, {
+        gpsLoading: true,
+      }));
+    });
+    dataset = result.dataset;
+    return buildDataFromDataset(dataset, {
+      gpsLoading: false,
+      gpsError: result.gpsError,
+    });
+  } catch (error) {
+    if (!isMissingDatasetPartRpc(error)) throw error;
+    dataset = await loadLegacySupabaseDataset(sessionToken);
+  }
+
+  return buildDataFromDataset(dataset, {
+    gpsLoading: false,
+    gpsError: '',
   });
 }
 
-async function loadSupabaseData() {
-  if (!activeDashboardSessionToken) {
+async function loadSupabaseData(sessionToken, onCoreData) {
+  if (!sessionToken) {
     throw new Error('Sessao do dashboard nao configurada para leitura dos dados.');
   }
 
@@ -2017,7 +1986,7 @@ async function loadSupabaseData() {
     return buildLocalDemoData();
   }
 
-  return loadSupabaseDataFromRpc(activeDashboardSessionToken);
+  return loadSupabaseDataFromRpc(sessionToken, onCoreData);
 }
 
 function sampleData(error = '') {
@@ -2038,7 +2007,109 @@ function sampleData(error = '') {
 let cachedData = null;
 let activePromise = null;
 let activeDashboardSessionToken = '';
+let activeDashboardCacheKey = '';
+let loadGeneration = 0;
 const listeners = new Set();
+
+function cacheKeyForSession(sessionToken) {
+  const value = String(sessionToken || '');
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `cqo-v${CQO_CACHE_VERSION}-${(hash >>> 0).toString(16)}`;
+}
+
+function openCqoCacheDatabase() {
+  if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+
+  return new Promise((resolve) => {
+    const request = indexedDB.open(CQO_CACHE_DB_NAME, CQO_CACHE_VERSION);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(CQO_CACHE_STORE_NAME)) {
+        database.createObjectStore(CQO_CACHE_STORE_NAME, { keyPath: 'key' });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => resolve(null);
+    request.onblocked = () => resolve(null);
+  });
+}
+
+async function readPersistentCqoData(cacheKey) {
+  if (!cacheKey) return null;
+  const database = await openCqoCacheDatabase();
+  if (!database) return null;
+
+  return new Promise((resolve) => {
+    const transaction = database.transaction(CQO_CACHE_STORE_NAME, 'readonly');
+    const request = transaction.objectStore(CQO_CACHE_STORE_NAME).get(cacheKey);
+    request.onsuccess = () => {
+      const entry = request.result;
+      const ageMs = Date.now() - Number(entry?.cachedAt || 0);
+      const valid = entry?.data
+        && Array.isArray(entry.data.records)
+        && ageMs >= 0
+        && ageMs <= CQO_CACHE_MAX_AGE_MS;
+      resolve(valid ? { ...entry.data, cacheAgeMs: ageMs } : null);
+    };
+    request.onerror = () => resolve(null);
+    transaction.oncomplete = () => database.close();
+    transaction.onerror = () => database.close();
+  });
+}
+
+async function writePersistentCqoData(cacheKey, data) {
+  if (!cacheKey || !data || typeof indexedDB === 'undefined') return;
+  const database = await openCqoCacheDatabase();
+  if (!database) return;
+
+  await new Promise((resolve) => {
+    const transaction = database.transaction(CQO_CACHE_STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(CQO_CACHE_STORE_NAME);
+    const now = Date.now();
+    store.openCursor().onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (!cursor) return;
+      if (now - Number(cursor.value?.cachedAt || 0) > CQO_CACHE_MAX_AGE_MS) {
+        cursor.delete();
+      }
+      cursor.continue();
+    };
+    store.put({
+      key: cacheKey,
+      cachedAt: now,
+      data: {
+        ...data,
+        error: '',
+        source: 'Banco online',
+        loading: false,
+        refreshing: false,
+      },
+    });
+    transaction.oncomplete = resolve;
+    transaction.onerror = resolve;
+    transaction.onabort = resolve;
+  });
+  database.close();
+}
+
+async function deletePersistentCqoData(cacheKey) {
+  if (!cacheKey || typeof indexedDB === 'undefined') return;
+  const database = await openCqoCacheDatabase();
+  if (!database) return;
+
+  await new Promise((resolve) => {
+    const transaction = database.transaction(CQO_CACHE_STORE_NAME, 'readwrite');
+    transaction.objectStore(CQO_CACHE_STORE_NAME).delete(cacheKey);
+    transaction.oncomplete = resolve;
+    transaction.onerror = resolve;
+    transaction.onabort = resolve;
+  });
+  database.close();
+}
 
 function emptyCqoDataState(source = 'Carregando') {
   return {
@@ -2058,65 +2129,129 @@ function emptyCqoDataState(source = 'Carregando') {
 function loadingCqoDataState(previousData = null, source = 'Carregando dados do Supabase...') {
   return {
     ...(previousData || emptyCqoDataState(source)),
-    loading: true,
+    loading: !previousData,
+    refreshing: Boolean(previousData),
     source,
     error: '',
   };
 }
 
+function publishCqoData(data) {
+  listeners.forEach((listener) => listener(data));
+}
+
 export function clearCqoCache() {
   cachedData = null;
   activePromise = null;
+  loadGeneration += 1;
 }
 
 export function setCqoSessionToken(sessionToken) {
   const nextToken = String(sessionToken || '').trim();
   if (nextToken === activeDashboardSessionToken) return;
+  const previousCacheKey = activeDashboardCacheKey;
   activeDashboardSessionToken = nextToken;
+  activeDashboardCacheKey = nextToken ? cacheKeyForSession(nextToken) : '';
   clearCqoCache();
+  if (!nextToken && previousCacheKey) {
+    deletePersistentCqoData(previousCacheKey).catch(() => {});
+  }
 }
 
 export function getCqoSessionToken() {
   return activeDashboardSessionToken;
 }
 
-export function refreshCqoData() {
-  const previousData = cachedData;
-  activePromise = null;
+function startCqoDataLoad({ hydratePersistentCache = false } = {}) {
+  if (activePromise) return activePromise;
 
-  // Mantem a ultima base visivel enquanto a nova leitura chega do Supabase.
-  listeners.forEach((listener) => listener(loadingCqoDataState(previousData, 'Atualizando dados do Supabase...')));
+  const sessionToken = activeDashboardSessionToken;
+  const cacheKey = activeDashboardCacheKey;
+  const generation = loadGeneration;
 
-  activePromise = loadSupabaseData()
-    .then((data) => {
+  activePromise = (async () => {
+    let previousData = cachedData;
+
+    if (hydratePersistentCache && !previousData) {
+      const persistentData = await readPersistentCqoData(cacheKey);
+      if (generation !== loadGeneration || sessionToken !== activeDashboardSessionToken) return persistentData;
+      if (persistentData) {
+        cachedData = persistentData;
+        previousData = persistentData;
+        publishCqoData({
+          ...persistentData,
+          loading: false,
+          refreshing: true,
+          source: 'Base local pronta · atualizando Supabase...',
+        });
+      }
+    }
+
+    try {
+      const data = await loadSupabaseData(sessionToken, (coreData) => {
+        if (generation !== loadGeneration || sessionToken !== activeDashboardSessionToken) return;
+        cachedData = coreData;
+        previousData = coreData;
+        publishCqoData({
+          ...coreData,
+          loading: false,
+          refreshing: true,
+          gpsLoading: true,
+          source: 'Dados principais prontos · carregando GPS...',
+        });
+      });
+
+      if (generation !== loadGeneration || sessionToken !== activeDashboardSessionToken) return data;
       cachedData = data;
-      activePromise = null;
-      listeners.forEach((listener) => listener({ ...data, loading: false }));
+      publishCqoData({
+        ...data,
+        loading: false,
+        refreshing: false,
+      });
+      writePersistentCqoData(cacheKey, data).catch(() => {});
       return data;
-    })
-    .catch((error) => {
-      activePromise = null;
+    } catch (error) {
+      if (generation !== loadGeneration || sessionToken !== activeDashboardSessionToken) throw error;
       const failedData = previousData
         ? {
             ...previousData,
+            loading: false,
+            refreshing: false,
             source: 'Última base carregada',
             error: dashboardErrorMessage(error, 'Não foi possível atualizar os dados agora. Mantivemos a última base carregada.'),
           }
-        : sampleData(error);
-      listeners.forEach((listener) => listener({ ...failedData, loading: false }));
+        : { ...sampleData(error), loading: false, refreshing: false };
+      cachedData = previousData || null;
+      publishCqoData(failedData);
       throw error;
-    });
+    }
+  })();
+
+  activePromise.then(
+    () => {
+      if (generation === loadGeneration) activePromise = null;
+    },
+    () => {
+      if (generation === loadGeneration) activePromise = null;
+    }
+  );
 
   return activePromise;
+}
+
+export function refreshCqoData() {
+  const previousData = cachedData;
+  publishCqoData(loadingCqoDataState(previousData, 'Atualizando dados do Supabase...'));
+  return startCqoDataLoad();
 }
 
 export function useCqoData() {
   const [state, setState] = useState(() => {
     if (cachedData) {
       return {
-        loading: Boolean(activePromise),
         ...cachedData,
-        ...(activePromise ? { source: 'Atualizando dados do Supabase...' } : {}),
+        loading: false,
+        refreshing: Boolean(activePromise),
       };
     }
     return {
@@ -2128,19 +2263,9 @@ export function useCqoData() {
   useEffect(() => {
     listeners.add(setState);
 
-    // Se o cache não estiver pronto e nenhuma busca estiver ativa, inicia a busca
+    // O cache persistente libera a interface imediatamente e a rede revalida em segundo plano.
     if (!cachedData && !activePromise) {
-      activePromise = loadSupabaseData()
-        .then((data) => {
-          cachedData = data;
-          activePromise = null;
-          listeners.forEach((listener) => listener({ ...data, loading: false }));
-        })
-        .catch((error) => {
-          activePromise = null;
-          const failedData = sampleData(error);
-          listeners.forEach((listener) => listener({ ...failedData, loading: false }));
-        });
+      startCqoDataLoad({ hydratePersistentCache: true }).catch(() => {});
     }
 
     return () => {
