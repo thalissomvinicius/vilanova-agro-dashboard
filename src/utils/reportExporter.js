@@ -70,6 +70,12 @@ function textValue(value) {
   return hasValue(value) ? value : '-';
 }
 
+function fiscalValue(record, field, fallback = '') {
+  return textValue(record?.[field] || record?.raw?.[
+    field === 'fiscalResponsavelEquipe' ? 'fiscal_resp_equipe' : 'fiscal_resp'
+  ] || fallback);
+}
+
 function tableCellValue(row, column) {
   const value = row?.[column];
   if (hasValue(value)) return value;
@@ -166,6 +172,16 @@ function htmlFor(record) {
                   <span class="info-value">${escapeHtml(textValue(record.id))}</span>
                 </td>
               </tr>
+              <tr class="header-info">
+                <td colspan="${Math.floor(columns.length / 2)}">
+                  <span class="info-label">Fiscal responsável</span>
+                  <span class="info-value">${escapeHtml(fiscalValue(record, 'fiscalResponsavel'))}</span>
+                </td>
+                <td colspan="${columns.length - Math.floor(columns.length / 2)}">
+                  <span class="info-label">Fiscal responsável da equipe</span>
+                  <span class="info-value">${escapeHtml(fiscalValue(record, 'fiscalResponsavelEquipe', record.fiscal))}</span>
+                </td>
+              </tr>
               <tr class="spacer-row"><td colspan="${columns.length}"></td></tr>
               <tr>${columns.map((column) => `<th>${escapeHtml(labels[column] || column.replaceAll('_', ' '))}</th>`).join('')}</tr>
             </thead>
@@ -193,6 +209,10 @@ function htmlFor(record) {
   `;
 }
 
+export function buildDashboardRecordReportHtml(record) {
+  return htmlFor(record);
+}
+
 function downloadWebFile(content, filename, mimeType) {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
@@ -206,7 +226,7 @@ function downloadWebFile(content, filename, mimeType) {
 }
 
 export function exportDashboardRecord(record, format) {
-  const html = htmlFor(record);
+  const html = buildDashboardRecordReportHtml(record);
   const name = `${record.type}-${record.id}`;
 
   if (format === 'excel') {

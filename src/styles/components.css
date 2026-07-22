@@ -14169,6 +14169,10 @@ body.field-map-active {
   margin-bottom: 18px;
 }
 
+.collection-detail-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .detail-item {
   display: flex;
   gap: 10px;

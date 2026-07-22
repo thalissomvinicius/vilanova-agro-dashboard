@@ -16,6 +16,7 @@ import {
   ThumbsUp,
   Trash2,
   User,
+  Users,
   X,
 } from 'lucide-react';
 import EmptyTableRow from '../components/ui/EmptyTableRow';
@@ -635,6 +636,8 @@ function buildRecordEditPatch(draft) {
 
 function applyRecordPatchForDisplay(record, patch) {
   if (!record) return record;
+  const fiscalResponsavel = patch.fiscal_resp || '--';
+  const fiscalResponsavelEquipe = patch.fiscal_resp_equipe || '--';
   return {
     ...record,
     raw: { ...(record.raw || {}), ...patch },
@@ -645,6 +648,8 @@ function applyRecordPatchForDisplay(record, patch) {
     cycle: patch.ciclo_mes || record.cycle,
     evaluatorMatricula: patch.matricula_avaliador || record.evaluatorMatricula,
     fiscal: patch.fiscal_resp_equipe || patch.fiscal_resp || record.fiscal,
+    fiscalResponsavel,
+    fiscalResponsavelEquipe,
     observation: patch.observacao || '',
     plantingYear: patch.ano_plantio || '',
   };
@@ -1806,7 +1811,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                 </form>
               ) : null}
 
-              <div className="detail-grid">
+              <div className="detail-grid collection-detail-grid">
                 <div className="detail-item">
                   <User size={16} />
                   <div>
@@ -1844,6 +1849,22 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                       {selectedRecord.lines.length} linha(s) digitada(s)
                       {selectedRecord.type === 'carreamento' && selectedRecord.variety ? ` / ${selectedRecord.variety}` : ''}
                     </small>
+                  </div>
+                </div>
+                <div className="detail-item">
+                  <User size={16} />
+                  <div>
+                    <span>Fiscal responsável</span>
+                    <strong>{selectedRecord.fiscalResponsavel || selectedRecord.raw?.fiscal_resp || 'Não informado'}</strong>
+                    <small>Responsável pela fiscalização da coleta</small>
+                  </div>
+                </div>
+                <div className="detail-item">
+                  <Users size={16} />
+                  <div>
+                    <span>Fiscal responsável da equipe</span>
+                    <strong>{selectedRecord.fiscalResponsavelEquipe || selectedRecord.raw?.fiscal_resp_equipe || 'Não informado'}</strong>
+                    <small>Responsável pela equipe avaliada</small>
                   </div>
                 </div>
               </div>

@@ -803,6 +803,22 @@ function formatObservation(value) {
   return '';
 }
 
+function metadataValue(data, aliases) {
+  const sources = [
+    data,
+    data?.campos_digitados,
+    data?.mapeamento_legado?.campos_digitados,
+  ];
+
+  for (const source of sources) {
+    if (!source || typeof source !== 'object') continue;
+    const value = pickRowValue(source, aliases);
+    if (value !== undefined && value !== null && String(value).trim() !== '') return value;
+  }
+
+  return '';
+}
+
 function duplicateStatusRank(status) {
   const normalized = normalizeText(status);
   if (normalized === 'aprovado' || normalized === 'sincronizado') return 5;
@@ -962,6 +978,26 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
     }
   }
 
+  const fiscalResponsavelRaw = metadataValue(data, [
+    'fiscal_resp',
+    'fiscal_responsavel',
+    'Fiscal Resp',
+    'FiscalResp',
+    'Fiscal Responsavel',
+    'FiscalResponsavel',
+  ]);
+  const fiscalResponsavelEquipeRaw = metadataValue(data, [
+    'fiscal_resp_equipe',
+    'fiscal_responsavel_equipe',
+    'Fiscal Resp Equipe',
+    'FiscalRespEquipe',
+    'Fiscal Responsavel Equipe',
+    'FiscalResponsavelEquipe',
+  ]);
+
+  if (fiscalResponsavelRaw) data.fiscal_resp = fiscalResponsavelRaw;
+  if (fiscalResponsavelEquipeRaw) data.fiscal_resp_equipe = fiscalResponsavelEquipeRaw;
+
   const type = formType(row.formulario_id, data);
   const lines = type === 'poda'
     ? (Array.isArray(data.linhas_poda) ? data.linhas_poda : [])
@@ -992,6 +1028,8 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
   const effectiveGpsTrack = gpsApplicable ? gpsTrack : [];
   const effectiveGpsOccurrences = gpsApplicable ? gpsOccurrences : [];
 
+  const fiscalResponsavel = formatPersonName(data.fiscal_resp) || '--';
+  const fiscalResponsavelEquipe = formatPersonName(data.fiscal_resp_equipe) || '--';
   const base = {
     id: row.id,
     type,
@@ -1013,7 +1051,9 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
     evaluatorMatricula: matricula,
     evaluator: collaborator?.nome || matricula || 'Sem avaliador',
     evaluatorRole: collaborator?.cargo || '',
-    fiscal: formatPersonName(data.fiscal_resp_equipe) || formatPersonName(data.fiscal_resp) || '--',
+    fiscal: fiscalResponsavelEquipe !== '--' ? fiscalResponsavelEquipe : fiscalResponsavel,
+    fiscalResponsavel,
+    fiscalResponsavelEquipe,
     observation: formatObservation(data.observacao),
     acompanhamento,
     gps: effectiveGps,

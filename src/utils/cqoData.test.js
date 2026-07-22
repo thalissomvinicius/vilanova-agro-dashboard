@@ -220,6 +220,32 @@ describe('normalizeResponse', () => {
     });
 
     expect(normalized.fiscal).toBe('Luan Souza Ferreira');
+    expect(normalized.fiscalResponsavel).toBe('Daniel Souza');
+    expect(normalized.fiscalResponsavelEquipe).toBe('Luan Souza Ferreira');
+  });
+
+  it('normaliza os fiscais quando o app envia campos_digitados com nomes legados', () => {
+    const normalized = normalizeResponse({
+      id: 'res-fiscais-legado',
+      formulario_id: 'form_cqo_corte',
+      usuario_id: '2170',
+      criado_em: '2026-07-21T14:25:00.000Z',
+      status: 'pendente_validacao',
+      dados_json: {
+        nome_fazenda: 'Fe em Deus',
+        data_avaliacao: '2026-07-21',
+        campos_digitados: {
+          'Fiscal Resp': '1938 - DANIEL SOUZA COSTA',
+          'Fiscal Resp Equipe': '384 - RAIMUNDO NONATO DOS SANTOS FURTADO JUNIOR',
+        },
+        linhas_corte: [],
+      },
+    });
+
+    expect(normalized.fiscalResponsavel).toBe('1938 - Daniel Souza Costa');
+    expect(normalized.fiscalResponsavelEquipe).toBe('384 - Raimundo Nonato dos Santos Furtado Junior');
+    expect(normalized.raw.fiscal_resp).toBe('1938 - DANIEL SOUZA COSTA');
+    expect(normalized.raw.fiscal_resp_equipe).toBe('384 - RAIMUNDO NONATO DOS SANTOS FURTADO JUNIOR');
   });
 
   it('mantem lancamento manual como app sem contar GPS', () => {
