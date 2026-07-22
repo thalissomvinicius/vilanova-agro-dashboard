@@ -86,10 +86,8 @@ function formatTotal(value) {
   return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(numberValue(value));
 }
 
-function tableRows(lines, columns, targetRows) {
-  const rows = [...(lines || [])].slice(0, targetRows);
-  while (rows.length < targetRows) rows.push({});
-  return rows.map((row) => `
+function tableRows(lines, columns) {
+  return [...(lines || [])].map((row) => `
     <tr>${columns.map((column) => `<td>${escapeHtml(tableCellValue(row, column))}</td>`).join('')}</tr>
   `).join('');
 }
@@ -121,20 +119,23 @@ function htmlFor(record) {
         <meta charset="utf-8" />
         <title>Ficha ${record.id}</title>
         <style>
-          @page { size: A4 ${isCarreamento ? 'portrait' : 'landscape'}; margin: 12mm; }
-          body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10px; color: #1f2937; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          @page { size: A4 ${isCarreamento ? 'portrait' : 'landscape'}; margin: 5mm; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 6.5px; line-height: 1.1; color: #1f2937; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .page { border: none; padding: 0; background: #ffffff; }
-          .title { text-align: left; font-size: 16px; font-weight: 800; padding: 14px 16px; border: none; background: var(--green-institutional, #234F2A); color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; }
-          table { width: 100%; border-collapse: collapse; table-layout: auto; margin: 0 0 16px 0; }
-          th, td { border: 1px solid #e5e7eb; text-align: center; padding: 8px 6px; word-break: break-word; }
-          th { font-weight: 700; background: #f3f4f6; color: #374151; font-size: 9px; text-transform: uppercase; border-bottom: 2px solid #d1d5db; }
-          .header-info td { border: 1px solid #e5e7eb; text-align: left; padding: 10px 14px; background: #f9fafb; vertical-align: top; }
-          .info-label { font-weight: 700; color: #6b7280; font-size: 8px; text-transform: uppercase; display: block; margin-bottom: 4px; letter-spacing: 0.5px; }
-          .info-value { font-weight: 700; color: #111827; font-size: 12px; }
-          .spacer-row td { border: none; height: 16px; background: #ffffff; }
-          .total { text-align: right; font-weight: 800; background: #f3f4f6; color: #111827; padding-right: 12px; text-transform: uppercase; font-size: 9px; }
+          .title { text-align: left; font-size: 10.5px; line-height: 1.15; font-weight: 800; padding: 5px 7px; border: none; background: var(--green-institutional, #234F2A); color: #ffffff; text-transform: uppercase; letter-spacing: 0; }
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0; }
+          thead { display: table-row-group; }
+          tr { break-inside: avoid; page-break-inside: avoid; }
+          th, td { border: 1px solid #e5e7eb; text-align: center; padding: 2px 1.5px; line-height: 1.1; word-break: normal; overflow-wrap: anywhere; }
+          th { font-weight: 700; background: #f3f4f6; color: #374151; font-size: 5.8px; text-transform: uppercase; border-bottom: 1px solid #d1d5db; }
+          .header-info td { border: 1px solid #e5e7eb; text-align: left; padding: 3px 5px; background: #f9fafb; vertical-align: top; }
+          .info-label { font-weight: 700; color: #6b7280; font-size: 5.4px; line-height: 1; text-transform: uppercase; display: block; margin-bottom: 1px; letter-spacing: 0; }
+          .info-value { font-weight: 700; color: #111827; font-size: 7.2px; line-height: 1.1; }
+          .spacer-row td { border: none; height: 3px; padding: 0; background: #ffffff; }
+          .report-summary { break-inside: avoid; page-break-inside: avoid; }
+          .total { text-align: right; font-weight: 800; background: #f3f4f6; color: #111827; padding-right: 3px; text-transform: uppercase; font-size: 6px; }
           .total-val { font-weight: 800; background: #f3f4f6; color: #111827; }
-          .footer td { text-align: left; padding: 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-top: 2px solid #d1d5db; color: #374151; font-size: 11px; }
+          .footer td { text-align: left; padding: 3px 5px; background: #f9fafb; border: 1px solid #e5e7eb; color: #374151; font-size: 6.5px; }
         </style>
       </head>
       <body>
@@ -185,23 +186,23 @@ function htmlFor(record) {
               <tr class="spacer-row"><td colspan="${columns.length}"></td></tr>
               <tr>${columns.map((column) => `<th>${escapeHtml(labels[column] || column.replaceAll('_', ' '))}</th>`).join('')}</tr>
             </thead>
-            <tbody>${tableRows(record.lines, columns, isCarreamento ? 11 : 10)}</tbody>
-            <tfoot>
+            <tbody>${tableRows(record.lines, columns)}</tbody>
+            <tbody class="report-summary">
               <tr>${totals(record.lines, columns)}</tr>
               <tr class="spacer-row"><td colspan="${columns.length}"></td></tr>
               <tr class="footer">
                 <td colspan="${columns.length}">
                   <span class="info-label">Observação / Justificativa</span>
-                  <span class="info-value" style="font-weight: normal; font-size: 11px;">${escapeHtml(record.observation) || 'Nenhuma observação registrada.'}</span>
+                  <span class="info-value" style="font-weight: normal; font-size: 6.5px;">${escapeHtml(record.observation) || 'Nenhuma observação registrada.'}</span>
                 </td>
               </tr>
               <tr class="footer">
                 <td colspan="${columns.length}">
                   <span class="info-label">Sistema</span>
-                  <span class="info-value" style="font-weight: 700; font-size: 11px;">Dashboard CQO Vila Nova</span>
+                  <span class="info-value" style="font-weight: 700; font-size: 6.5px;">Dashboard CQO Vila Nova</span>
                 </td>
               </tr>
-            </tfoot>
+            </tbody>
           </table>
         </div>
       </body>

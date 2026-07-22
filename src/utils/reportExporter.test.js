@@ -24,4 +24,21 @@ describe('buildDashboardRecordReportHtml', () => {
     expect(html).toContain('Fiscal responsável da equipe');
     expect(html).toContain('384 - Raimundo Nonato dos Santos Furtado Junior');
   });
+
+  it('inclui todas as linhas e mantem uma unica soma no fim do relatorio', () => {
+    const lines = Array.from({ length: 16 }, (_, index) => ({
+      linha: index === 15 ? 'LINHA_FINAL_16' : String(index + 1),
+      numero_plantas_linha: 20,
+    }));
+    const html = buildDashboardRecordReportHtml({
+      id: 'res-16-linhas',
+      type: 'corte',
+      lines,
+    });
+
+    expect(html).toContain('LINHA_FINAL_16');
+    expect(html.match(/Total Geral/g)).toHaveLength(1);
+    expect(html).toContain('<tbody class="report-summary">');
+    expect(html).not.toContain('<tfoot>');
+  });
 });
