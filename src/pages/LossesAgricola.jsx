@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, CalendarDays, Maximize2, MonitorPlay, RefreshCw, X } from 'lucide-react';
+import { AlertTriangle, CalendarDays, Maximize2, MonitorPlay, RefreshCw, Scale, X } from 'lucide-react';
 import ActiveFilterSummary from '../components/ui/ActiveFilterSummary';
 import PresentationDataFilters from '../components/ui/PresentationDataFilters';
 import StatusBanner from '../components/ui/StatusBanner';
@@ -58,6 +58,79 @@ function LossMetric({ label, value, meta, tone = 'neutral', loading = false }) {
       <strong className={loading ? 'skeleton-text' : ''}>{loading ? '\u00A0' : value}</strong>
       {meta ? <small>{meta}</small> : null}
     </div>
+  );
+}
+
+function formatTicketDate(value) {
+  if (!value) return '--';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '--';
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(date);
+}
+
+function LiveScaleTicketsPanel({ tickets = [], loading = false, generatedAt = null }) {
+  const visibleTickets = tickets.slice(0, 10);
+
+  return (
+    <section className="card" aria-label="Tickets recentes da balança">
+      <div className="card-header">
+        <div>
+          <div className="card-title">
+            <Scale size={20} className="panel-icon-brand" />
+            Tickets recentes da balança
+          </div>
+          <div className="card-subtitle">
+            Dados consultados em tempo real no SIAGRO/SIECA
+            {generatedAt ? ` · atualizado em ${formatTicketDate(generatedAt)}` : ''}
+          </div>
+        </div>
+        <strong>{loading ? 'Carregando…' : `${tickets.length} ticket(s)`}</strong>
+      </div>
+
+      {!loading && visibleTickets.length ? (
+        <div className="table-wrapper">
+          <table className="custom-table dense-table">
+            <thead>
+              <tr>
+                <th>Ticket</th>
+                <th>Entrada</th>
+                <th>Origem / cliente</th>
+                <th>Produto</th>
+                <th>Placa</th>
+                <th>Peso líquido</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleTickets.map((ticket) => {
+                const firstItem = ticket.items?.[0] || {};
+                return (
+                  <tr key={ticket.sourceTicketId || ticket.ticketCode}>
+                    <td><strong>{ticket.ticketCode || '--'}</strong></td>
+                    <td>{formatTicketDate(ticket.enteredAt)}</td>
+                    <td>{firstItem.origin || ticket.clientName || '--'}</td>
+                    <td>{firstItem.product || '--'}</td>
+                    <td>{ticket.vehiclePlate || '--'}</td>
+                    <td>{ticket.netWeightKg == null ? '--' : `${fmt(ticket.netWeightKg, 0)} kg`}</td>
+                    <td>{ticket.status === 'open' ? 'Aberto' : 'Fechado'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {!loading && !visibleTickets.length ? (
+        <div className="empty-panel smart-empty-panel">
+          <strong>Nenhum ticket recente</strong>
+          <span>A consulta considera, por padrão, os últimos sete dias da balança.</span>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -361,6 +434,9 @@ export default function LossesAgricola({
     data: balanceData,
     loading: balanceLoading,
     error: balanceError,
+    liveTickets,
+    liveTicketsError,
+    liveTicketsMeta,
     usingLegacyFallback,
   } = useBalancaData();
   const loading = cqoLoading || balanceLoading;
@@ -448,6 +524,12 @@ export default function LossesAgricola({
         </StatusBanner>
       ) : null}
 
+      {liveTicketsError && !loading ? (
+        <StatusBanner icon={AlertTriangle}>
+          {liveTicketsError} A base histórica do Supabase continua disponível.
+        </StatusBanner>
+      ) : null}
+
       {!model.hasProductionBase && !loading && filtered.length > 0 ? (
         <StatusBanner icon={AlertTriangle}>
           Percentuais dependem da base de produção/balança do período. As toneladas usam perdas do BI quando existirem; senão, cachos estimados x peso médio do mês anterior.
@@ -459,6 +541,12 @@ export default function LossesAgricola({
           Base de produção carregada, mas o peso médio homologado do mês anterior não foi encontrado para as coletas filtradas. As estimativas sem peso permanecem indisponíveis.
         </StatusBanner>
       ) : null}
+
+      <LiveScaleTicketsPanel
+        tickets={liveTickets}
+        loading={balanceLoading}
+        generatedAt={liveTicketsMeta?.generatedAt}
+      />
 
       <LossesBoard
         loading={loading}
