@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeScaleTicketQuery } from './scale-tickets';
+import { sanitizeScaleTicketQuery } from '../../api/agro/scale-tickets';
 
 describe('sanitizeScaleTicketQuery', () => {
   it('mantem somente filtros permitidos e aplica limite padrao', () => {
