@@ -1,8 +1,10 @@
 import {
+  Bug,
   FileSpreadsheet,
   Gauge,
   Lightbulb,
   LayoutDashboard,
+  Leaf,
   Map,
   RefreshCw,
   Scale,
@@ -81,6 +83,22 @@ export const ROUTE_DEFINITIONS = [
     filterPreset: 'field',
   },
   {
+    id: 'fitossanidade-inventario',
+    path: '/fitossanidade/inventario',
+    label: 'Inventário de campo',
+    icon: Leaf,
+    navGroup: 'fitossanidade',
+    filterPreset: 'none',
+  },
+  {
+    id: 'fitossanidade-armadilhas',
+    path: '/fitossanidade/armadilhas',
+    label: 'Armadilhas RP',
+    icon: Bug,
+    navGroup: 'fitossanidade',
+    filterPreset: 'none',
+  },
+  {
     id: 'desenvolvimento',
     path: '/desenvolvimento',
     label: 'Desenvolvimento',
@@ -123,6 +141,12 @@ export const SIDEBAR_GROUPS = [
     label: 'CQO Campo',
     icon: LayoutDashboard,
     itemIds: ['dashboard', 'cqo-carreamento', 'cqo-poda', 'perdas-agricola'],
+  },
+  {
+    id: 'fitossanidade',
+    label: 'Fitossanidade',
+    icon: Leaf,
+    itemIds: ['fitossanidade-inventario', 'fitossanidade-armadilhas'],
   },
   {
     id: 'main',

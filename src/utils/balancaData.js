@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { callDashboardRpc, getCqoSessionToken } from './cqoData';
 import { useBonificacaoData } from './bonificacaoData';
+import {
+  buildAgroBalanceSnapshot,
+  fetchAgroDataset,
+  mergeAgroBalanceData,
+} from './agroApiData';
 
 function parseJson(value) {
   if (!value) return null;
@@ -65,12 +70,9 @@ export function normalizeScaleTicketPage(payload) {
   };
 }
 
-function liveTicketErrorMessage(error) {
+function errorMessage(error, fallback) {
   const message = String(error?.message || error || '').trim();
-  if (message.includes('HTTP 401') || message.includes('HTTP 403')) {
-    return 'Sua sessão expirou. Entre novamente para consultar os tickets da balança.';
-  }
-  return message || 'Tickets da balança indisponíveis.';
+  return message || fallback;
 }
 
 async function fetchBalancaSnapshot() {
@@ -94,79 +96,136 @@ async function fetchBalancaSnapshot() {
   });
 }
 
-async function fetchLiveScaleTickets() {
-  const sessionToken = getCqoSessionToken();
-  if (!sessionToken) throw new Error('Sessão do dashboard não configurada para a balança.');
-
-  const response = await fetch('/api/agro/scale-tickets?limit=100', {
-    method: 'GET',
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${sessionToken}`,
-    },
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    let detail = '';
-    try {
-      const payload = await response.json();
-      detail = String(payload?.error?.message || '').trim();
-    } catch {
-      // A mensagem HTTP abaixo continua suficiente quando o corpo não é JSON.
-    }
-    throw new Error(`Tickets da balança: HTTP ${response.status}${detail ? ` - ${detail}` : ''}`);
-  }
-
-  return normalizeScaleTicketPage(await response.json());
+function scaleTicketKey(ticket) {
+  return ticket?.sourceTicketId || ticket?.ticketCode || '';
 }
 
-export function useBalancaData() {
+function qualityLossKey(record) {
+  return `${record?.ticketCode || ''}|${record?.measuredAt || record?.recordedAt || ''}`;
+}
+
+function qualityScaleKey(record) {
+  return record?.ticketCode || `${record?.enteredAt || ''}|${record?.origin || ''}`;
+}
+
+export function useBalancaData({ dateFrom = '', dateTo = '' } = {}) {
   const legacyData = useBonificacaoData();
+  const requestKey = `${dateFrom}|${dateTo}`;
   const [state, setState] = useState({
+    requestKey: '',
     data: null,
     loading: true,
     error: '',
     liveTickets: [],
     liveTicketsError: '',
     liveTicketsMeta: null,
+    qualityLosses: [],
+    qualityScaleTickets: [],
+    agroIntegrationError: '',
+    usingSqlProduction: false,
   });
 
   useEffect(() => {
     let mounted = true;
+    const controller = new AbortController();
+    const sessionToken = getCqoSessionToken();
 
-    Promise.allSettled([fetchBalancaSnapshot(), fetchLiveScaleTickets()])
-      .then(([snapshotResult, ticketsResult]) => {
-        if (!mounted) return;
+    const common = {
+      sessionToken,
+      dateFrom,
+      dateTo,
+      signal: controller.signal,
+    };
+    const requests = [
+      fetchBalancaSnapshot(),
+      fetchAgroDataset('/api/agro/scale-tickets', {
+        ...common,
+        limit: 100,
+        maxPages: 1,
+        latestWindowOnly: true,
+        keyForRecord: scaleTicketKey,
+      }),
+      fetchAgroDataset('/api/agro/quality-losses', {
+        ...common,
+        keyForRecord: qualityLossKey,
+      }),
+      fetchAgroDataset('/api/agro/quality-scale-tickets', {
+        ...common,
+        keyForRecord: qualityScaleKey,
+      }),
+    ];
 
-        setState({
-          data: snapshotResult.status === 'fulfilled' ? snapshotResult.value : null,
-          loading: false,
-          error: snapshotResult.status === 'rejected'
-            ? (snapshotResult.reason instanceof Error
-                ? snapshotResult.reason.message
-                : 'Base da balança indisponível.')
-            : '',
-          liveTickets: ticketsResult.status === 'fulfilled' ? ticketsResult.value.tickets : [],
-          liveTicketsError: ticketsResult.status === 'rejected'
-            ? liveTicketErrorMessage(ticketsResult.reason)
-            : '',
-          liveTicketsMeta: ticketsResult.status === 'fulfilled' ? ticketsResult.value : null,
-        });
+    Promise.allSettled(requests).then(([
+      snapshotResult,
+      ticketsResult,
+      qualityLossesResult,
+      qualityScaleResult,
+    ]) => {
+      if (!mounted) return;
+
+      const snapshotData = snapshotResult.status === 'fulfilled' ? snapshotResult.value : null;
+      const qualityLosses = qualityLossesResult.status === 'fulfilled'
+        ? qualityLossesResult.value.records
+        : [];
+      const qualityScaleTickets = qualityScaleResult.status === 'fulfilled'
+        ? qualityScaleResult.value.records
+        : [];
+      const sqlData = buildAgroBalanceSnapshot({
+        qualityScaleTickets,
+        qualityLosses,
+        generatedAt: qualityScaleResult.status === 'fulfilled'
+          ? qualityScaleResult.value.generatedAt
+          : null,
       });
+      const data = mergeAgroBalanceData(sqlData, snapshotData);
+      const integrationErrors = [
+        qualityLossesResult.status === 'rejected'
+          ? errorMessage(qualityLossesResult.reason, 'Análises de qualidade indisponíveis.')
+          : '',
+        qualityScaleResult.status === 'rejected'
+          ? errorMessage(qualityScaleResult.reason, 'Pesagens de qualidade indisponíveis.')
+          : '',
+      ].filter(Boolean);
+
+      setState({
+        requestKey,
+        data,
+        loading: false,
+        error: !data
+          ? errorMessage(
+              snapshotResult.status === 'rejected' ? snapshotResult.reason : null,
+              'Base da balança indisponível.'
+            )
+          : '',
+        liveTickets: ticketsResult.status === 'fulfilled' ? ticketsResult.value.records : [],
+        liveTicketsError: ticketsResult.status === 'rejected'
+          ? errorMessage(ticketsResult.reason, 'Tickets da balança indisponíveis.')
+          : '',
+        liveTicketsMeta: ticketsResult.status === 'fulfilled' ? ticketsResult.value : null,
+        qualityLosses,
+        qualityScaleTickets,
+        agroIntegrationError: integrationErrors.join(' '),
+        usingSqlProduction: sqlData.available,
+      });
+    });
 
     return () => {
       mounted = false;
+      controller.abort();
     };
-  }, []);
+  }, [dateFrom, dateTo, requestKey]);
 
   return {
     data: state.data || legacyData,
-    loading: state.loading,
+    loading: state.loading || state.requestKey !== requestKey,
     error: state.error,
     liveTickets: state.liveTickets,
     liveTicketsError: state.liveTicketsError,
     liveTicketsMeta: state.liveTicketsMeta,
+    qualityLosses: state.qualityLosses,
+    qualityScaleTickets: state.qualityScaleTickets,
+    agroIntegrationError: state.agroIntegrationError,
+    usingSqlProduction: state.usingSqlProduction,
     usingLegacyFallback: !state.data,
   };
 }

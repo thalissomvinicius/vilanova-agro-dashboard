@@ -437,8 +437,9 @@ export default function LossesAgricola({
     liveTickets,
     liveTicketsError,
     liveTicketsMeta,
+    agroIntegrationError,
     usingLegacyFallback,
-  } = useBalancaData();
+  } = useBalancaData({ dateFrom, dateTo });
   const loading = cqoLoading || balanceLoading;
   const filtered = useMemo(() => filterRecords(allRecords, {
     farmFilter,
@@ -527,6 +528,12 @@ export default function LossesAgricola({
       {liveTicketsError && !loading ? (
         <StatusBanner icon={AlertTriangle}>
           {liveTicketsError} A base histórica do Supabase continua disponível.
+        </StatusBanner>
+      ) : null}
+
+      {agroIntegrationError && !loading ? (
+        <StatusBanner icon={AlertTriangle}>
+          Integração SQL parcial: {agroIntegrationError}
         </StatusBanner>
       ) : null}
 

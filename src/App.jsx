@@ -32,6 +32,8 @@ const Collections = lazy(() => import('./pages/Collections'));
 const SyncCenter = lazy(() => import('./pages/SyncCenter'));
 const Collaborators = lazy(() => import('./pages/Collaborators'));
 const Inventory = lazy(() => import('./pages/Inventory'));
+const FitossanidadeInventory = lazy(() => import('./pages/FitossanidadeInventory'));
+const FitossanidadeRhynchophorus = lazy(() => import('./pages/FitossanidadeRhynchophorus'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Development = lazy(() => import('./pages/Development'));
 const LeafletMap = lazy(() => import('./components/LeafletMap'));
@@ -866,6 +868,10 @@ export default function App() {
             searchTerm={searchTerm}
           />
         );
+      case 'fitossanidade-inventario':
+        return <FitossanidadeInventory />;
+      case 'fitossanidade-armadilhas':
+        return <FitossanidadeRhynchophorus />;
       case 'sync':
         return (
           <SyncCenter
