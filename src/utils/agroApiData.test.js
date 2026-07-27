@@ -4,6 +4,9 @@ import {
   buildAgroDateWindows,
   fetchAgroDataset,
   mergeAgroBalanceData,
+  normalizeMonthlyBunchWeights,
+  normalizeProductionSummary,
+  previousMonthStart,
 } from './agroApiData';
 import { buildQualidadeOperacional } from './qualidadeOperacionalData';
 
@@ -25,6 +28,11 @@ describe('buildAgroDateWindows', () => {
 
   it('mantém a consulta padrão da API quando não há data', () => {
     expect(buildAgroDateWindows('', '')).toEqual([{}]);
+  });
+
+  it('inclui o início do mês anterior para buscar o peso aplicável', () => {
+    expect(previousMonthStart('2026-07-15')).toBe('2026-06-01');
+    expect(previousMonthStart('2026-01-01')).toBe('2025-12-01');
   });
 });
 
@@ -63,6 +71,79 @@ describe('fetchAgroDataset', () => {
     expect(result.generatedAt).toBe('2026-07-01T10:01:00.000Z');
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(String(fetchMock.mock.calls[1][0])).toContain('cursor=cursor_2');
+  });
+
+  it('preserva objetos de prontidão e metadados do contrato', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: {
+          status: 'unavailable',
+          reason: 'Fechamento mensal não homologado.',
+        },
+        page: { nextCursor: null },
+        meta: { source: 'AGRO', generatedAt: '2026-07-27T10:00:00.000Z', version: '1.1.0' },
+      }),
+    }));
+
+    const result = await fetchAgroDataset('/api/agro/losses-readiness', {
+      sessionToken: 'a'.repeat(32),
+      dateFrom: '2026-06-01',
+      dateTo: '2026-07-31',
+    });
+
+    expect(result.records).toEqual([
+      expect.objectContaining({ status: 'unavailable' }),
+    ]);
+    expect(result.meta.version).toBe('1.1.0');
+  });
+});
+
+describe('contratos oficiais de perdas', () => {
+  it('aceita somente pesos mensais oficiais e mantém os bloqueados para auditoria', () => {
+    const result = normalizeMonthlyBunchWeights([
+      {
+        monthKey: '2026-05',
+        status: 'available',
+        averageBunchWeightKg: 18.4,
+        officialBunchCount: 1200,
+      },
+      {
+        monthKey: '2026-06',
+        status: 'unavailable',
+        averageBunchWeightKg: 20,
+        reason: 'Competência sem fechamento homologado.',
+      },
+    ]);
+
+    expect(result.byMonth).toEqual([
+      expect.objectContaining({ monthKey: '2026-05', averageBunchKg: 18.4 }),
+    ]);
+    expect(result.competencies).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        monthKey: '2026-06',
+        available: false,
+        reason: 'Competência sem fechamento homologado.',
+      }),
+    ]));
+  });
+
+  it('normaliza produção por mês e fazenda sem somar resumo e parcelas duas vezes', () => {
+    const result = normalizeProductionSummary([
+      { monthKey: '2026-06', netWeightKg: 35_000 },
+      { monthKey: '2026-06', farmName: 'VILA NOVA', netWeightKg: 20_000 },
+      { monthKey: '2026-06', farmName: 'FÉ EM DEUS', netWeightKg: 15_000 },
+      { monthKey: '2026-06', farmName: 'VILA NOVA', parcelName: 'D-09', netWeightKg: 20_000 },
+    ]);
+
+    expect(result.byMonth).toEqual([
+      expect.objectContaining({ monthKey: '2026-06', pesoLiquidoKg: 35_000 }),
+    ]);
+    expect(result.byFarmMonth).toEqual(expect.arrayContaining([
+      expect.objectContaining({ fazenda: 'VILA NOVA', pesoLiquidoKg: 20_000 }),
+      expect.objectContaining({ fazenda: 'FÉ EM DEUS', pesoLiquidoKg: 15_000 }),
+    ]));
   });
 });
 
@@ -105,6 +186,64 @@ describe('buildAgroBalanceSnapshot', () => {
     expect(merged.sourceKind).toBe('balanca-agro-api');
     expect(merged.producao.byMonth[0].pesoT).toBe(35);
     expect(merged.pesoMedioCacho.byMonth[0].averageBunchKg).toBe(18);
+  });
+
+  it('não recupera peso legado quando o contrato oficial declara indisponibilidade', () => {
+    const sqlData = buildAgroBalanceSnapshot({
+      monthlyBunchWeights: [{
+        monthKey: '2026-06',
+        status: 'unavailable',
+        averageBunchWeightKg: 20,
+        reason: 'Sem aprovação mensal.',
+      }],
+      productionSummary: [{
+        monthKey: '2026-07',
+        farmName: 'VILA NOVA',
+        netWeightKg: 500_000,
+      }],
+      lossesReadiness: [{
+        status: 'unavailable',
+        reason: 'Sem aprovação mensal.',
+      }],
+      monthlyWeightsAuthoritative: true,
+      productionSummaryAuthoritative: true,
+      readinessAuthoritative: true,
+    });
+    const merged = mergeAgroBalanceData(sqlData, {
+      pesoMedioCacho: {
+        byMonth: [{ monthKey: '2026-06', averageBunchKg: 20 }],
+      },
+    });
+
+    expect(merged.pesoMedioCacho.byMonth).toEqual([]);
+    expect(merged.metadata.weightSource).toBe('API AGRO: indisponível');
+    expect(merged.producao.byMonth[0].pesoLiquidoKg).toBe(500_000);
+  });
+
+  it('mantém o peso indisponível quando somente a prontidão oficial respondeu', () => {
+    const sqlData = buildAgroBalanceSnapshot({
+      productionSummary: [{
+        monthKey: '2026-07',
+        farmName: 'VILA NOVA',
+        netWeightKg: 500_000,
+      }],
+      lossesReadiness: [{
+        status: 'unavailable',
+        reason: 'Fonte mensal ainda não homologada.',
+      }],
+      monthlyWeightsAuthoritative: false,
+      productionSummaryAuthoritative: true,
+      readinessAuthoritative: true,
+    });
+    const merged = mergeAgroBalanceData(sqlData, {
+      pesoMedioCacho: {
+        byMonth: [{ monthKey: '2026-06', averageBunchKg: 20 }],
+      },
+    });
+
+    expect(merged.pesoMedioCacho.byMonth).toEqual([]);
+    expect(merged.metadata.weightSource).toBe('API AGRO: indisponível');
+    expect(merged.readiness.reason).toBe('Fonte mensal ainda não homologada.');
   });
 
   it('alimenta o cálculo de perdas com a produção SQL sem inventar peso médio', () => {

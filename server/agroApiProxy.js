@@ -7,12 +7,14 @@ const MAX_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
 const UPSTREAM_TIMEOUT_MS = 15_000;
 const ALLOWED_STATUS = new Set(['open', 'closed']);
 const COMMON_QUERY_KEYS = ['from', 'to', 'ticket', 'limit', 'cursor'];
+const MONTH_KEY_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 export class AgroProxyError extends Error {
-  constructor(status, message) {
+  constructor(status, message, code = '') {
     super(message);
     this.name = 'AgroProxyError';
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -140,6 +142,42 @@ export function sanitizeQualityQuery(requestUrl = '') {
   return sanitizeAgroQuery(requestUrl);
 }
 
+export function sanitizeMonthlyDetailQuery(requestUrl = '') {
+  const input = new URL(requestUrl, 'https://dashboard.local');
+  const output = new URLSearchParams();
+
+  assertUniqueParams(input.searchParams);
+  for (const key of input.searchParams.keys()) {
+    if (!['limit', 'cursor'].includes(key)) {
+      throw new AgroProxyError(400, `Parâmetro não permitido: ${key}.`);
+    }
+  }
+
+  const limitInput = String(input.searchParams.get('limit') || '100').trim();
+  if (!/^\d{1,3}$/.test(limitInput)) throw new AgroProxyError(400, 'Limite inválido.');
+  const limit = Number(limitInput);
+  if (limit < 1 || limit > MAX_LIMIT) throw new AgroProxyError(400, 'Limite inválido.');
+  output.set('limit', String(limit));
+
+  const cursor = String(input.searchParams.get('cursor') || '').trim();
+  if (cursor) {
+    if (cursor.length > 512 || !/^[A-Za-z0-9_-]+$/.test(cursor)) {
+      throw new AgroProxyError(400, 'Cursor inválido.');
+    }
+    output.set('cursor', cursor);
+  }
+
+  return output;
+}
+
+export function monthlyBunchWeightTicketsPath(request) {
+  const monthKey = String(request?.query?.monthKey || '').trim();
+  if (!MONTH_KEY_PATTERN.test(monthKey)) {
+    throw new AgroProxyError(400, 'Competência mensal inválida.');
+  }
+  return `/v1/monthly-bunch-weights/${monthKey}/tickets`;
+}
+
 async function validateDashboardSession(sessionToken) {
   const supabaseUrl = requiredEnvironment('VITE_SUPABASE_URL').replace(/\/+$/, '');
   const anonKey = requiredEnvironment('VITE_SUPABASE_ANON_KEY');
@@ -207,9 +245,14 @@ async function fetchAgro(upstreamPath, query) {
 
   if (!response.ok) {
     const upstreamMessage = payload?.error?.message;
+    const upstreamCode = String(payload?.error?.code || '').trim();
+    const status = response.status === 503 || upstreamCode === 'dependency_unavailable'
+      ? 503
+      : 502;
     throw new AgroProxyError(
-      502,
-      upstreamMessage || 'A API AGRO não respondeu corretamente.'
+      status,
+      upstreamMessage || 'A API AGRO não respondeu corretamente.',
+      upstreamCode
     );
   }
   return payload;
@@ -244,7 +287,10 @@ export function createAgroProxyHandler({
       const sessionToken = bearerToken(request);
       const query = sanitizeQuery(request.url);
       await validateDashboardSession(sessionToken);
-      const payload = await fetchAgro(upstreamPath, query);
+      const resolvedUpstreamPath = typeof upstreamPath === 'function'
+        ? upstreamPath(request)
+        : upstreamPath;
+      const payload = await fetchAgro(resolvedUpstreamPath, query);
       sendJson(response, 200, payload);
     } catch (error) {
       const status = error instanceof AgroProxyError ? error.status : 502;
@@ -256,7 +302,13 @@ export function createAgroProxyHandler({
           name: error?.name || 'Error',
         });
       }
-      sendJson(response, status, { error: { message, requestId } });
+      sendJson(response, status, {
+        error: {
+          message,
+          ...(error instanceof AgroProxyError && error.code ? { code: error.code } : {}),
+          requestId,
+        },
+      });
     }
   };
 }

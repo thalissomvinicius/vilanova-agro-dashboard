@@ -640,8 +640,8 @@ function metricValue(metric, totals, areaHa, operation) {
       if (operation?.id === 'poda') return Number(totals.podaScore || 0);
       return Number(totals.generalScore || 0);
     case 'perda_t_ha':
-      if (!(areaHa > 0)) return null;
-      return perHa(totals.lostFrutosTon || 0, areaHa);
+      if (!(areaHa > 0) || !Number.isFinite(totals.lostFrutosTon)) return null;
+      return perHa(totals.lostFrutosTon, areaHa);
     case 'cachos_ha':
       if (!(areaHa > 0)) return null;
       return perHa(totals.lostCachosQty || 0, areaHa);

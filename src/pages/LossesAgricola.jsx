@@ -51,6 +51,12 @@ function updateLabel(lastSyncTime) {
   }).format(new Date());
 }
 
+function readinessExplanation(readiness) {
+  if (!readiness) return '';
+  const reasons = Array.isArray(readiness.reasons) ? readiness.reasons.filter(Boolean) : [];
+  return reasons[0] || readiness.reason || '';
+}
+
 function LossMetric({ label, value, meta, tone = 'neutral', loading = false }) {
   return (
     <div className={`losses-bi-metric losses-bi-metric-${tone}`}>
@@ -454,6 +460,7 @@ export default function LossesAgricola({
     approvedOnly: true,
   }), [allRecords, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo, searchTerm]);
   const model = useMemo(() => buildQualidadeOperacional(filtered, balanceData), [filtered, balanceData]);
+  const readinessDetail = readinessExplanation(model.balance?.readiness);
   const periodText = periodLabel(dateFrom, dateTo);
   const filterState = useMemo(() => ({
     farmFilter,
@@ -539,13 +546,17 @@ export default function LossesAgricola({
 
       {!model.hasProductionBase && !loading && filtered.length > 0 ? (
         <StatusBanner icon={AlertTriangle}>
-          Percentuais dependem da base de produção/balança do período. As toneladas usam perdas do BI quando existirem; senão, cachos estimados x peso médio do mês anterior.
+          A API AGRO não liberou uma base oficial de produção para o recorte.
+          {readinessDetail ? ` ${readinessDetail}` : ''}
+          {' '}Percentuais permanecem N/D; nenhum valor padrão foi aplicado.
         </StatusBanner>
       ) : null}
 
       {model.hasProductionBase && !model.balance?.usesPreviousMonthWeight && !loading && filtered.length > 0 ? (
         <StatusBanner icon={AlertTriangle}>
-          Base de produção carregada, mas o peso médio homologado do mês anterior não foi encontrado para as coletas filtradas. As estimativas sem peso permanecem indisponíveis.
+          Base oficial de produção carregada, mas o peso médio do mês anterior está indisponível ou não homologado.
+          {readinessDetail ? ` ${readinessDetail}` : ''}
+          {' '}As estimativas por cacho permanecem N/D; nenhum peso padrão foi aplicado.
         </StatusBanner>
       ) : null}
 

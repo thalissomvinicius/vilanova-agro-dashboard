@@ -2653,10 +2653,10 @@ export function aggregateRecords(records) {
   if (totals.poda > 0) validScores.push(totals.podaScore);
   totals.generalScore = validScores.length ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : 100;
 
-  // Estimativa de Perdas (Volume de Frutos e Óleo de Palma)
+  // A massa perdida depende do peso mensal oficial da balança.
   totals.lostCachosQty = totals.cachoEsquecido + totals.cachoNaoCarreado;
-  totals.lostFrutosTon = (totals.lostCachosQty * 20) / 1000; // 20kg por cacho
-  totals.lostOilTon = totals.lostFrutosTon * 0.20; // 20% de rendimento de CPO
+  totals.lostFrutosTon = null;
+  totals.lostOilTon = null;
 
   return totals;
 }
@@ -2783,7 +2783,9 @@ export function buildCharts(records) {
   const ytdLossData = Array.from(byWeek.entries())
     .sort(([a], [b]) => Number(a.replace(/\D+/g, '')) - Number(b.replace(/\D+/g, '')))
     .map(([label, recs]) => {
-      accumulatedLoss += getLossTon(recs);
+      const lossTon = getLossTon(recs);
+      if (!Number.isFinite(lossTon)) return { label, value: null };
+      accumulatedLoss += lossTon;
       return { label, value: Number(accumulatedLoss.toFixed(2)) };
     });
 

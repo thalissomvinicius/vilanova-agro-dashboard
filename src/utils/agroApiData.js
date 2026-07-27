@@ -91,6 +91,7 @@ async function fetchAgroWindow({
   let cursor = '';
   let generatedAt = null;
   let source = 'AGRO';
+  let meta = {};
   let pageCount = 0;
   const seenCursors = new Set();
 
@@ -105,10 +106,13 @@ async function fetchAgroWindow({
     if (cursor) query.set('cursor', cursor);
 
     const payload = await requestAgroPage(endpoint, query, sessionToken, signal);
-    const pageRecords = Array.isArray(payload?.data) ? payload.data : [];
+    const pageRecords = Array.isArray(payload?.data)
+      ? payload.data
+      : (payload?.data && typeof payload.data === 'object' ? [payload.data] : []);
     records.push(...pageRecords);
     generatedAt = payload?.meta?.generatedAt || generatedAt;
     source = payload?.meta?.source || source;
+    meta = { ...meta, ...(payload?.meta || {}) };
     pageCount += 1;
 
     const nextCursor = String(payload?.page?.nextCursor || '').trim();
@@ -122,7 +126,7 @@ async function fetchAgroWindow({
     }
   } while (pageCount < maxPages);
 
-  return { records, generatedAt, source, pageCount };
+  return { records, generatedAt, source, meta, pageCount };
 }
 
 function uniqueRecords(records, keyForRecord) {
@@ -151,7 +155,14 @@ export async function fetchAgroDataset(endpoint, {
   const allWindows = buildAgroDateWindows(dateFrom, dateTo);
   const windows = latestWindowOnly ? allWindows.slice(-1) : allWindows;
   if (!windows.length) {
-    return { records: [], generatedAt: null, source: 'AGRO', pageCount: 0, windowCount: 0 };
+    return {
+      records: [],
+      generatedAt: null,
+      source: 'AGRO',
+      meta: {},
+      pageCount: 0,
+      windowCount: 0,
+    };
   }
 
   const results = [];
@@ -188,15 +199,26 @@ export async function fetchAgroDataset(endpoint, {
     records,
     generatedAt,
     source: results.find((result) => result.source)?.source || 'AGRO',
+    meta: results.reduce((merged, result) => ({ ...merged, ...(result.meta || {}) }), {}),
     pageCount: results.reduce((sum, result) => sum + result.pageCount, 0),
     windowCount: windows.length,
   };
 }
 
-function monthKey(value) {
+export function normalizeAgroMonthKey(value) {
+  const direct = String(value || '').trim().match(/^(\d{4})-(0[1-9]|1[0-2])$/);
+  if (direct) return direct[0];
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+export function previousMonthStart(value) {
+  const parsed = parseDateOnly(value);
+  if (!parsed) return '';
+  return new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth() - 1, 1))
+    .toISOString()
+    .slice(0, 10);
 }
 
 function normalizedText(value) {
@@ -214,9 +236,374 @@ function addWeight(map, key, pesoLiquidoKg) {
   map.set(key, (map.get(key) || 0) + pesoLiquidoKg);
 }
 
+function firstValue(record, keys) {
+  for (const key of keys) {
+    const value = record?.[key];
+    if (value !== null && value !== undefined && value !== '') return value;
+  }
+  return null;
+}
+
+function firstNumber(record, keys) {
+  const value = firstValue(record, keys);
+  if (value === null) return 0;
+  const normalized = typeof value === 'string'
+    ? value.replace(/\s/g, '').replace(/\.(?=\d{3}(?:\D|$))/g, '').replace(',', '.')
+    : value;
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function firstBoolean(record, keys) {
+  const value = firstValue(record, keys);
+  if (value === null) return null;
+  if (typeof value === 'boolean') return value;
+  const normalized = String(value).trim().toLowerCase();
+  if (['true', '1', 'yes', 'sim'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'não', 'nao'].includes(normalized)) return false;
+  return null;
+}
+
+function nestedRows(records, keys) {
+  const rows = [];
+  const visit = (value) => {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (!value || typeof value !== 'object') return;
+    rows.push(value);
+    keys.forEach((key) => {
+      if (value[key] && value[key] !== value) visit(value[key]);
+    });
+  };
+  visit(records);
+  return rows;
+}
+
+function normalizedStatus(record) {
+  return normalizedText(firstValue(record, [
+    'status',
+    'availability',
+    'availabilityStatus',
+    'readiness',
+    'state',
+    'situacao',
+  ])).toLowerCase();
+}
+
+function blockedStatus(status) {
+  return /(unavailable|blocked|pending|rejected|incomplete|not.?ready|insufficient|indispon|bloque|pendente|rejeitad|incomplet)/i
+    .test(status);
+}
+
+function officialWeight(record, averageBunchKg) {
+  if (!(averageBunchKg > 0)) return false;
+  const status = normalizedStatus(record);
+  if (blockedStatus(status)) return false;
+
+  const flags = [
+    firstBoolean(record, ['available']),
+    firstBoolean(record, ['official', 'isOfficial']),
+    firstBoolean(record, ['homologated', 'isHomologated']),
+    firstBoolean(record, ['approved', 'isApproved']),
+    firstBoolean(record, ['complete', 'isComplete']),
+  ].filter((value) => value !== null);
+
+  if (flags.some((value) => value === false)) return false;
+  if (flags.some((value) => value === true)) return true;
+  if (/(available|ready|official|homologated|approved|dispon|pronto|homologad|aprovad)/i.test(status)) {
+    return true;
+  }
+
+  // This endpoint only publishes official candidates. A positive value without
+  // an explicit blocking state is therefore valid, but no value is invented.
+  return !status;
+}
+
+function weightReason(record) {
+  const direct = firstValue(record, [
+    'reason',
+    'message',
+    'justification',
+    'motivo',
+    'detail',
+  ]);
+  if (direct) return normalizedText(direct);
+  const reasons = firstValue(record, ['reasons', 'blockers', 'issues']);
+  if (Array.isArray(reasons)) {
+    return reasons
+      .map((item) => normalizedText(item?.message || item?.reason || item))
+      .filter(Boolean)
+      .join(' ');
+  }
+  return '';
+}
+
+export function normalizeMonthlyBunchWeights(records = []) {
+  const rows = nestedRows(records, [
+    'items',
+    'rows',
+    'months',
+    'competencies',
+    'competencias',
+    'monthlyBunchWeights',
+    'byMonth',
+  ]);
+  const competencies = [];
+  const byMonth = new Map();
+
+  rows.forEach((record) => {
+    const key = normalizeAgroMonthKey(firstValue(record, [
+      'monthKey',
+      'month',
+      'competence',
+      'competencia',
+      'referenceMonth',
+      'periodMonth',
+      'mes',
+      'data',
+    ]));
+    if (!key) return;
+
+    const pesoLiquidoKg = firstNumber(record, [
+      'netWeightKg',
+      'totalNetWeightKg',
+      'officialNetWeightKg',
+      'pesoLiquidoKg',
+      'peso_liquido_kg',
+    ]);
+    const cachos = firstNumber(record, [
+      'officialBunchCount',
+      'bunchCount',
+      'totalBunches',
+      'cachos',
+      'quantidadeCachos',
+      'quantidade_cachos',
+    ]);
+    const averageBunchKg = firstNumber(record, [
+      'averageBunchKg',
+      'averageBunchWeightKg',
+      'officialBunchWeightKg',
+      'officialAverageBunchKg',
+      'officialAverageBunchWeightKg',
+      'officialAverageKg',
+      'pesoMedioCachoKg',
+      'peso_medio_cacho_kg',
+      'pesoMedioKg',
+    ]) || (pesoLiquidoKg > 0 && cachos > 0 ? pesoLiquidoKg / cachos : 0);
+    const available = officialWeight(record, averageBunchKg);
+    const normalized = {
+      monthKey: key,
+      averageBunchKg,
+      pesoLiquidoKg,
+      cachos,
+      available,
+      status: normalizedStatus(record) || (available ? 'available' : 'unavailable'),
+      reason: weightReason(record),
+    };
+    competencies.push(normalized);
+    if (available) byMonth.set(key, normalized);
+  });
+
+  return {
+    byMonth: Array.from(byMonth.values()).sort((a, b) => a.monthKey.localeCompare(b.monthKey)),
+    competencies: competencies.sort((a, b) => a.monthKey.localeCompare(b.monthKey)),
+  };
+}
+
+function productionWeightKg(record) {
+  const kg = firstNumber(record, [
+    'netWeightKg',
+    'totalNetWeightKg',
+    'productionNetWeightKg',
+    'allocatedNetWeightKg',
+    'allocatedWeightKg',
+    'weightKg',
+    'productionKg',
+    'pesoLiquidoKg',
+    'peso_liquido_kg',
+    'pesoKg',
+  ]);
+  if (kg > 0) return kg;
+  const tons = firstNumber(record, [
+    'netWeightT',
+    'productionTon',
+    'productionT',
+    'productionTons',
+    'pesoT',
+    'pesoTon',
+    'producao_t',
+  ]);
+  return tons > 0 ? tons * 1000 : 0;
+}
+
+function productionDimensions(record) {
+  return {
+    monthKey: normalizeAgroMonthKey(firstValue(record, [
+      'monthKey',
+      'month',
+      'competence',
+      'competencia',
+      'referenceMonth',
+      'periodMonth',
+      'mes',
+      'data',
+    ])),
+    fazenda: normalizedText(firstValue(record, [
+      'farmName',
+      'farm',
+      'fazenda',
+      'nomeFazenda',
+      'nome_fazenda',
+      'farmCode',
+    ])).replace(/^FAZENDA\s+/i, ''),
+    parcela: normalizedText(firstValue(record, [
+      'parcelName',
+      'parcel',
+      'parcela',
+      'parcelCode',
+      'codigoParcela',
+    ])),
+  };
+}
+
+function aggregateProduction(rows, keyForRow, mapRow) {
+  const map = new Map();
+  rows.forEach((record) => {
+    const dimensions = productionDimensions(record);
+    const key = keyForRow(dimensions);
+    const pesoLiquidoKg = productionWeightKg(record);
+    if (!key || !(pesoLiquidoKg > 0)) return;
+    const current = map.get(key) || { pesoLiquidoKg: 0 };
+    current.pesoLiquidoKg += pesoLiquidoKg;
+    map.set(key, { ...current, ...mapRow(dimensions) });
+  });
+  return Array.from(map.values(), (row) => ({
+    ...row,
+    pesoT: row.pesoLiquidoKg / 1000,
+  }));
+}
+
+export function normalizeProductionSummary(records = []) {
+  const rows = nestedRows(records, [
+    'items',
+    'rows',
+    'summary',
+    'summaries',
+    'months',
+    'farms',
+    'parcels',
+    'allocations',
+    'byMonth',
+    'byFarm',
+    'byFarmMonth',
+    'byFarmParcelMonth',
+  ]).filter((record) => productionWeightKg(record) > 0);
+
+  const monthRows = rows.filter((record) => {
+    const { monthKey: key, fazenda, parcela } = productionDimensions(record);
+    return key && !fazenda && !parcela;
+  });
+  const farmRows = rows.filter((record) => {
+    const { monthKey: key, fazenda, parcela } = productionDimensions(record);
+    return fazenda && !key && !parcela;
+  });
+  const farmMonthRows = rows.filter((record) => {
+    const { monthKey: key, fazenda, parcela } = productionDimensions(record);
+    return key && fazenda && !parcela;
+  });
+  const parcelMonthRows = rows.filter((record) => {
+    const { monthKey: key, fazenda, parcela } = productionDimensions(record);
+    return key && fazenda && parcela;
+  });
+  const selectedFarmMonthRows = farmMonthRows.length ? farmMonthRows : parcelMonthRows;
+
+  const byFarmMonth = aggregateProduction(
+    selectedFarmMonthRows,
+    ({ monthKey: key, fazenda }) => `${fazenda}|${key}`,
+    ({ monthKey: key, fazenda }) => ({ monthKey: key, fazenda })
+  );
+  const byMonth = monthRows.length
+    ? aggregateProduction(
+        monthRows,
+        ({ monthKey: key }) => key,
+        ({ monthKey: key }) => ({ monthKey: key })
+      )
+    : aggregateProduction(
+        byFarmMonth,
+        ({ monthKey: key }) => key,
+        ({ monthKey: key }) => ({ monthKey: key })
+      );
+  const byFarm = farmRows.length
+    ? aggregateProduction(
+        farmRows,
+        ({ fazenda }) => fazenda,
+        ({ fazenda }) => ({ fazenda })
+      )
+    : aggregateProduction(
+        byFarmMonth,
+        ({ fazenda }) => fazenda,
+        ({ fazenda }) => ({ fazenda })
+      );
+  const byFarmParcelMonth = aggregateProduction(
+    parcelMonthRows,
+    ({ monthKey: key, fazenda, parcela }) => `${fazenda}|${parcela}|${key}`,
+    ({ monthKey: key, fazenda, parcela }) => ({ monthKey: key, fazenda, parcela })
+  );
+
+  return {
+    byMonth: byMonth.sort((a, b) => a.monthKey.localeCompare(b.monthKey)),
+    byFarm: byFarm.sort((a, b) => a.fazenda.localeCompare(b.fazenda)),
+    byFarmMonth: byFarmMonth.sort((a, b) => `${a.monthKey}|${a.fazenda}`.localeCompare(`${b.monthKey}|${b.fazenda}`)),
+    byFarmParcelMonth,
+  };
+}
+
+export function normalizeLossesReadiness(records = [], meta = {}) {
+  const rows = nestedRows(records, [
+    'items',
+    'rows',
+    'months',
+    'competencies',
+    'competencias',
+    'checks',
+  ]);
+  const primary = rows.find((record) => blockedStatus(normalizedStatus(record)))
+    || rows.find((record) => normalizedStatus(record))
+    || rows[0]
+    || {};
+  const status = normalizedStatus(primary)
+    || normalizedText(meta?.status || meta?.readiness).toLowerCase()
+    || 'unknown';
+  const reason = weightReason(primary) || weightReason(meta);
+  const reasons = rows
+    .map((record) => weightReason(record))
+    .filter(Boolean)
+    .filter((value, index, values) => values.indexOf(value) === index);
+
+  return {
+    status,
+    available: !blockedStatus(status)
+      && /(available|ready|official|homologated|approved|dispon|pronto|homologad|aprovad)/i.test(status),
+    reason,
+    reasons,
+    generatedAt: meta?.generatedAt || null,
+  };
+}
+
 export function buildAgroBalanceSnapshot({
   qualityScaleTickets = [],
   qualityLosses = [],
+  monthlyBunchWeights = [],
+  productionSummary = [],
+  lossesReadiness = [],
+  monthlyWeightsMeta = {},
+  productionSummaryMeta = {},
+  readinessMeta = {},
+  monthlyWeightsAuthoritative = false,
+  productionSummaryAuthoritative = false,
+  readinessAuthoritative = false,
   generatedAt = null,
 } = {}) {
   const qualityByTicket = new Map();
@@ -242,7 +629,7 @@ export function buildAgroBalanceSnapshot({
 
   uniqueTickets.forEach((ticket) => {
     const pesoLiquidoKg = Number(ticket?.netWeightKg || 0);
-    const key = monthKey(ticket?.enteredAt);
+    const key = normalizeAgroMonthKey(ticket?.enteredAt);
     if (!key || !Number.isFinite(pesoLiquidoKg) || pesoLiquidoKg <= 0) return;
     const farm = farmNameFromRecord(ticket, qualityByTicket);
     addWeight(byMonth, key, pesoLiquidoKg);
@@ -250,17 +637,17 @@ export function buildAgroBalanceSnapshot({
     addWeight(byFarmMonth, farm ? `${farm}|${key}` : '', pesoLiquidoKg);
   });
 
-  const productionByMonth = Array.from(byMonth, ([key, pesoLiquidoKg]) => ({
+  const legacyProductionByMonth = Array.from(byMonth, ([key, pesoLiquidoKg]) => ({
     monthKey: key,
     pesoLiquidoKg,
     pesoT: pesoLiquidoKg / 1000,
   })).sort((a, b) => a.monthKey.localeCompare(b.monthKey));
-  const productionByFarm = Array.from(byFarm, ([fazenda, pesoLiquidoKg]) => ({
+  const legacyProductionByFarm = Array.from(byFarm, ([fazenda, pesoLiquidoKg]) => ({
     fazenda,
     pesoLiquidoKg,
     pesoT: pesoLiquidoKg / 1000,
   })).sort((a, b) => a.fazenda.localeCompare(b.fazenda));
-  const productionByFarmMonth = Array.from(byFarmMonth, ([compoundKey, pesoLiquidoKg]) => {
+  const legacyProductionByFarmMonth = Array.from(byFarmMonth, ([compoundKey, pesoLiquidoKg]) => {
     const separator = compoundKey.lastIndexOf('|');
     return {
       fazenda: compoundKey.slice(0, separator),
@@ -270,8 +657,24 @@ export function buildAgroBalanceSnapshot({
     };
   }).sort((a, b) => `${a.monthKey}|${a.fazenda}`.localeCompare(`${b.monthKey}|${b.fazenda}`));
 
+  const officialWeights = normalizeMonthlyBunchWeights(monthlyBunchWeights);
+  const officialProduction = normalizeProductionSummary(productionSummary);
+  const readiness = normalizeLossesReadiness(lossesReadiness, readinessMeta);
+  const production = productionSummaryAuthoritative
+    ? officialProduction
+    : {
+        byMonth: legacyProductionByMonth,
+        byFarm: legacyProductionByFarm,
+        byFarmMonth: legacyProductionByFarmMonth,
+        byFarmParcelMonth: [],
+      };
+  const hasProduction = production.byMonth.length > 0
+    || production.byFarm.length > 0
+    || production.byFarmMonth.length > 0;
+  const hasOfficialWeights = officialWeights.byMonth.length > 0;
+
   return {
-    available: productionByMonth.length > 0,
+    available: hasProduction || hasOfficialWeights || readinessAuthoritative,
     online: true,
     source: 'SQL AGRO via Cloudflare',
     sourceLabel: 'SQL AGRO',
@@ -280,37 +683,79 @@ export function buildAgroBalanceSnapshot({
     sourceKind: 'balanca-agro-api',
     importedAt: generatedAt,
     snapshotUpdatedAt: generatedAt,
-    pesoMedioCacho: { byMonth: [] },
-    producao: {
-      byMonth: productionByMonth,
-      byFarm: productionByFarm,
-      byFarmMonth: productionByFarmMonth,
+    pesoMedioCacho: {
+      byMonth: officialWeights.byMonth,
+      competencies: officialWeights.competencies,
+      status: readiness.status,
     },
-    entradaDeCff: { byMonth: productionByMonth },
+    producao: production,
+    entradaDeCff: { byMonth: production.byMonth },
     cqoRampa: {
-      byFarm: productionByFarm,
-      byFarmMonth: productionByFarmMonth,
+      byFarm: production.byFarm,
+      byFarmMonth: production.byFarmMonth,
     },
+    readiness,
     metadata: {
       ticketCount: uniqueTickets.size,
       qualityCount: qualityLosses.length,
       generatedAt,
+      monthlyWeightsGeneratedAt: monthlyWeightsMeta?.generatedAt || null,
+      productionGeneratedAt: productionSummaryMeta?.generatedAt || null,
+      monthlyWeightsAuthoritative,
+      productionSummaryAuthoritative,
+      readinessAuthoritative,
+      monthlyWeightCompetencyCount: officialWeights.competencies.length,
+      officialWeightCount: officialWeights.byMonth.length,
     },
   };
 }
 
 export function mergeAgroBalanceData(sqlData, fallbackData) {
-  if (!sqlData?.available) return fallbackData || null;
+  const hasAuthoritativeContract = Boolean(
+    sqlData?.metadata?.monthlyWeightsAuthoritative
+    || sqlData?.metadata?.productionSummaryAuthoritative
+    || sqlData?.metadata?.readinessAuthoritative
+  );
+  if (!sqlData?.available && !hasAuthoritativeContract) return fallbackData || null;
+  const useOfficialWeights = Boolean(
+    sqlData?.metadata?.monthlyWeightsAuthoritative
+    || sqlData?.metadata?.readinessAuthoritative
+  );
+  const useOfficialProduction = Boolean(sqlData?.metadata?.productionSummaryAuthoritative);
+  const fallbackWeights = fallbackData?.pesoMedioCacho || { byMonth: [] };
+  const fallbackProduction = fallbackData?.producao || { byMonth: [], byFarm: [], byFarmMonth: [] };
+
   return {
     ...(fallbackData || {}),
     ...sqlData,
-    pesoMedioCacho: fallbackData?.pesoMedioCacho || sqlData.pesoMedioCacho,
+    pesoMedioCacho: useOfficialWeights ? sqlData.pesoMedioCacho : fallbackWeights,
+    producao: useOfficialProduction ? sqlData.producao : (sqlData.producao?.byMonth?.length
+      ? sqlData.producao
+      : fallbackProduction),
+    entradaDeCff: useOfficialProduction
+      ? sqlData.entradaDeCff
+      : (sqlData.producao?.byMonth?.length
+        ? sqlData.entradaDeCff
+        : (fallbackData?.entradaDeCff || { byMonth: fallbackProduction.byMonth || [] })),
+    cqoRampa: useOfficialProduction
+      ? sqlData.cqoRampa
+      : (sqlData.producao?.byMonth?.length
+        ? sqlData.cqoRampa
+        : (fallbackData?.cqoRampa || {
+            byFarm: fallbackProduction.byFarm || [],
+            byFarmMonth: fallbackProduction.byFarmMonth || [],
+          })),
     metadata: {
       ...(fallbackData?.metadata || {}),
       ...(sqlData.metadata || {}),
-      weightSource: fallbackData?.pesoMedioCacho?.byMonth?.length
-        ? fallbackData.sourceLabel || fallbackData.source || 'snapshot'
-        : 'indisponível',
+      weightSource: useOfficialWeights
+        ? (sqlData.pesoMedioCacho?.byMonth?.length ? 'API AGRO oficial' : 'API AGRO: indisponível')
+        : (fallbackWeights?.byMonth?.length
+          ? fallbackData?.sourceLabel || fallbackData?.source || 'snapshot histórico'
+          : 'indisponível'),
+      productionSource: useOfficialProduction
+        ? 'API AGRO oficial'
+        : (sqlData.producao?.byMonth?.length ? 'API AGRO legado' : 'snapshot histórico'),
     },
   };
 }

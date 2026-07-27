@@ -5,6 +5,7 @@ import {
   buildAgroBalanceSnapshot,
   fetchAgroDataset,
   mergeAgroBalanceData,
+  previousMonthStart,
 } from './agroApiData';
 
 function parseJson(value) {
@@ -123,6 +124,9 @@ export function useBalancaData({ dateFrom = '', dateTo = '' } = {}) {
     qualityScaleTickets: [],
     agroIntegrationError: '',
     usingSqlProduction: false,
+    usingOfficialProduction: false,
+    usingOfficialMonthlyWeights: false,
+    lossesReadiness: null,
   });
 
   useEffect(() => {
@@ -136,31 +140,52 @@ export function useBalancaData({ dateFrom = '', dateTo = '' } = {}) {
       dateTo,
       signal: controller.signal,
     };
-    const requests = [
-      fetchBalancaSnapshot(),
-      fetchAgroDataset('/api/agro/scale-tickets', {
-        ...common,
-        limit: 100,
-        maxPages: 1,
-        latestWindowOnly: true,
-        keyForRecord: scaleTicketKey,
-      }),
-      fetchAgroDataset('/api/agro/quality-losses', {
-        ...common,
-        keyForRecord: qualityLossKey,
-      }),
-      fetchAgroDataset('/api/agro/quality-scale-tickets', {
-        ...common,
-        keyForRecord: qualityScaleKey,
-      }),
-    ];
+    const weightDateFrom = previousMonthStart(dateFrom || dateTo) || dateFrom;
 
-    Promise.allSettled(requests).then(([
-      snapshotResult,
-      ticketsResult,
-      qualityLossesResult,
-      qualityScaleResult,
-    ]) => {
+    const load = async () => {
+      const [
+        snapshotResult,
+        ticketsResult,
+        monthlyWeightsResult,
+        productionSummaryResult,
+        readinessResult,
+      ] = await Promise.allSettled([
+        fetchBalancaSnapshot(),
+        fetchAgroDataset('/api/agro/scale-tickets', {
+          ...common,
+          limit: 100,
+          maxPages: 1,
+          latestWindowOnly: true,
+          keyForRecord: scaleTicketKey,
+        }),
+        fetchAgroDataset('/api/agro/monthly-bunch-weights', {
+          ...common,
+          dateFrom: weightDateFrom,
+        }),
+        fetchAgroDataset('/api/agro/production-summary', {
+          ...common,
+        }),
+        fetchAgroDataset('/api/agro/losses-readiness', {
+          ...common,
+          dateFrom: weightDateFrom,
+        }),
+      ]);
+
+      let qualityLossesResult = { status: 'fulfilled', value: { records: [] } };
+      let qualityScaleResult = { status: 'fulfilled', value: { records: [] } };
+      if (productionSummaryResult.status === 'rejected') {
+        [qualityLossesResult, qualityScaleResult] = await Promise.allSettled([
+          fetchAgroDataset('/api/agro/quality-losses', {
+            ...common,
+            keyForRecord: qualityLossKey,
+          }),
+          fetchAgroDataset('/api/agro/quality-scale-tickets', {
+            ...common,
+            keyForRecord: qualityScaleKey,
+          }),
+        ]);
+      }
+
       if (!mounted) return;
 
       const snapshotData = snapshotResult.status === 'fulfilled' ? snapshotResult.value : null;
@@ -173,12 +198,42 @@ export function useBalancaData({ dateFrom = '', dateTo = '' } = {}) {
       const sqlData = buildAgroBalanceSnapshot({
         qualityScaleTickets,
         qualityLosses,
-        generatedAt: qualityScaleResult.status === 'fulfilled'
-          ? qualityScaleResult.value.generatedAt
-          : null,
+        monthlyBunchWeights: monthlyWeightsResult.status === 'fulfilled'
+          ? monthlyWeightsResult.value.records
+          : [],
+        productionSummary: productionSummaryResult.status === 'fulfilled'
+          ? productionSummaryResult.value.records
+          : [],
+        lossesReadiness: readinessResult.status === 'fulfilled'
+          ? readinessResult.value.records
+          : [],
+        monthlyWeightsMeta: monthlyWeightsResult.status === 'fulfilled'
+          ? { ...monthlyWeightsResult.value.meta, generatedAt: monthlyWeightsResult.value.generatedAt }
+          : {},
+        productionSummaryMeta: productionSummaryResult.status === 'fulfilled'
+          ? { ...productionSummaryResult.value.meta, generatedAt: productionSummaryResult.value.generatedAt }
+          : {},
+        readinessMeta: readinessResult.status === 'fulfilled'
+          ? { ...readinessResult.value.meta, generatedAt: readinessResult.value.generatedAt }
+          : {},
+        monthlyWeightsAuthoritative: monthlyWeightsResult.status === 'fulfilled',
+        productionSummaryAuthoritative: productionSummaryResult.status === 'fulfilled',
+        readinessAuthoritative: readinessResult.status === 'fulfilled',
+        generatedAt: productionSummaryResult.status === 'fulfilled'
+          ? productionSummaryResult.value.generatedAt
+          : (qualityScaleResult.status === 'fulfilled' ? qualityScaleResult.value.generatedAt : null),
       });
       const data = mergeAgroBalanceData(sqlData, snapshotData);
       const integrationErrors = [
+        monthlyWeightsResult.status === 'rejected'
+          ? errorMessage(monthlyWeightsResult.reason, 'Pesos médios mensais indisponíveis.')
+          : '',
+        productionSummaryResult.status === 'rejected'
+          ? errorMessage(productionSummaryResult.reason, 'Resumo oficial de produção indisponível.')
+          : '',
+        readinessResult.status === 'rejected'
+          ? errorMessage(readinessResult.reason, 'Prontidão das perdas indisponível.')
+          : '',
         qualityLossesResult.status === 'rejected'
           ? errorMessage(qualityLossesResult.reason, 'Análises de qualidade indisponíveis.')
           : '',
@@ -205,8 +260,21 @@ export function useBalancaData({ dateFrom = '', dateTo = '' } = {}) {
         qualityLosses,
         qualityScaleTickets,
         agroIntegrationError: integrationErrors.join(' '),
-        usingSqlProduction: sqlData.available,
+        usingSqlProduction: sqlData.producao?.byMonth?.length > 0,
+        usingOfficialProduction: productionSummaryResult.status === 'fulfilled',
+        usingOfficialMonthlyWeights: monthlyWeightsResult.status === 'fulfilled',
+        lossesReadiness: sqlData.readiness,
       });
+    };
+
+    load().catch((loadError) => {
+      if (!mounted || loadError?.name === 'AbortError') return;
+      setState((current) => ({
+        ...current,
+        requestKey,
+        loading: false,
+        error: errorMessage(loadError, 'Base da balança indisponível.'),
+      }));
     });
 
     return () => {
@@ -226,6 +294,9 @@ export function useBalancaData({ dateFrom = '', dateTo = '' } = {}) {
     qualityScaleTickets: state.qualityScaleTickets,
     agroIntegrationError: state.agroIntegrationError,
     usingSqlProduction: state.usingSqlProduction,
+    usingOfficialProduction: state.usingOfficialProduction,
+    usingOfficialMonthlyWeights: state.usingOfficialMonthlyWeights,
+    lossesReadiness: state.lossesReadiness,
     usingLegacyFallback: !state.data,
   };
 }

@@ -2907,8 +2907,10 @@ export default function Analytics({
             <MetricCard
               variant="kpi"
               title="Massa de Frutos Perdida"
-              value={`${fmt(totalsGeral.lostFrutosTon, 2)} Toneladas`}
-              footer="Estimativa física acumulada (20kg/cacho)"
+              value={Number.isFinite(totalsGeral.lostFrutosTon)
+                ? `${fmt(totalsGeral.lostFrutosTon, 2)} Toneladas`
+                : 'N/D'}
+              footer="Depende do peso mensal oficial da balança"
               icon={Weight}
               tone="danger"
               loading={loading}
@@ -2916,8 +2918,10 @@ export default function Analytics({
             <MetricCard
               variant="kpi"
               title="Óleo de Palma (CPO) Perdido"
-              value={`${fmt(totalsGeral.lostOilTon, 2)} Ton. de Óleo`}
-              footer="Rendimento médio estimado de 20%"
+              value={Number.isFinite(totalsGeral.lostOilTon)
+                ? `${fmt(totalsGeral.lostOilTon, 2)} Ton. de Óleo`
+                : 'N/D'}
+              footer="Indisponível sem massa oficial de frutos"
               icon={Leaf}
               tone="danger"
               loading={loading}

@@ -789,6 +789,13 @@ export function buildQualidadeOperacional(records, balanceData = null) {
       averageWeightKg: weightTotals.weight ? weightTotals.weightedKg / weightTotals.weight : 0,
       usesPreviousMonthWeight: weightTotals.usesPreviousMonthWeight,
       weightMonthKeys: Array.from(weightTotals.months).sort(),
+      readiness: balanceData?.readiness || null,
+      weightAvailability: balanceData?.pesoMedioCacho?.status || 'unknown',
+      weightCompetencies: Array.isArray(balanceData?.pesoMedioCacho?.competencies)
+        ? balanceData.pesoMedioCacho.competencies
+        : [],
+      weightSource: balanceData?.metadata?.weightSource || '',
+      productionSource: balanceData?.metadata?.productionSource || '',
     },
     charts: {
       qualidade: [

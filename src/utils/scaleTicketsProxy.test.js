@@ -2,6 +2,10 @@ import { Buffer } from 'node:buffer';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import scaleTicketsHandler, { sanitizeScaleTicketQuery } from '../../api/agro/scale-tickets';
 import { sanitizeQualityQuery } from '../../api/agro/quality-losses';
+import {
+  monthlyBunchWeightTicketsPath,
+  sanitizeMonthlyDetailQuery,
+} from '../../server/agroApiProxy';
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -107,6 +111,45 @@ describe('scaleTicketsHandler', () => {
     expect(response.headers.get('cache-control')).toContain('no-store');
     expect(JSON.parse(response.body).data[0].ticketCode).toBe('123');
   });
+
+  it('preserva indisponibilidade temporária de SQL ou VPN', async () => {
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co');
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
+    vi.stubEnv('AGRO_API_BASE_URL', 'https://api-agro.example');
+    vi.stubEnv('AGRO_API_CLIENT_ID', 'dashboard-client');
+    vi.stubEnv('AGRO_API_CLIENT_SECRET', Buffer.from('hmac-secret').toString('base64url'));
+    vi.stubEnv('AGRO_CF_ACCESS_CLIENT_ID', 'cloudflare-id');
+    vi.stubEnv('AGRO_CF_ACCESS_CLIENT_SECRET', 'cloudflare-secret');
+
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ matricula: '2170' }],
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: async () => ({
+          error: {
+            code: 'dependency_unavailable',
+            message: 'SQL temporariamente indisponível.',
+          },
+        }),
+      }));
+    const response = responseMock();
+
+    await scaleTicketsHandler({
+      method: 'GET',
+      url: '/api/agro/scale-tickets?limit=1',
+      headers: { authorization: `Bearer ${'a'.repeat(32)}` },
+    }, response);
+
+    expect(response.statusCode).toBe(503);
+    expect(JSON.parse(response.body).error).toEqual(expect.objectContaining({
+      code: 'dependency_unavailable',
+      message: 'SQL temporariamente indisponível.',
+    }));
+  });
 });
 
 describe('sanitizeQualityQuery', () => {
@@ -126,6 +169,30 @@ describe('sanitizeQualityQuery', () => {
     )).toThrow('Parâmetro não permitido');
     expect(() => sanitizeQualityQuery(
       '/api/agro/quality-losses?products=CFF'
+    )).toThrow('Parâmetro não permitido');
+  });
+});
+
+describe('monthlyBunchWeightTicketsPath', () => {
+  it('aceita somente uma competência mensal canônica', () => {
+    expect(monthlyBunchWeightTicketsPath({
+      query: { monthKey: '2026-06' },
+    })).toBe('/v1/monthly-bunch-weights/2026-06/tickets');
+
+    expect(() => monthlyBunchWeightTicketsPath({
+      query: { monthKey: '../secrets' },
+    })).toThrow('Competência mensal inválida');
+  });
+
+  it('limita a consulta detalhada a paginação opaca', () => {
+    const result = sanitizeMonthlyDetailQuery(
+      '/api/agro/monthly-bunch-weights/2026-06/tickets?limit=200&cursor=opaque_123'
+    );
+
+    expect(result.get('limit')).toBe('200');
+    expect(result.get('cursor')).toBe('opaque_123');
+    expect(() => sanitizeMonthlyDetailQuery(
+      '/api/agro/monthly-bunch-weights/2026-06/tickets?from=2026-06-01'
     )).toThrow('Parâmetro não permitido');
   });
 });
