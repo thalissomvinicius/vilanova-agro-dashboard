@@ -201,12 +201,45 @@ describe('dashboard response mutations', () => {
       ...Array(4).fill('https://example.supabase.co/rest/v1/rpc/dashboard_cqo_dataset_part'),
     ]);
     expect(fetchMock.mock.calls.map(([, options]) => JSON.parse(options.body))).toEqual([
-      { p_session_token: 'session-token', p_offset: 0, p_limit: 100 },
+      { p_session_token: 'session-token', p_offset: 0, p_limit: 50 },
       { p_session_token: 'session-token', p_part: 'metadata' },
       { p_session_token: 'session-token', p_part: 'cqo_import' },
       { p_session_token: 'session-token', p_part: 'cqo_poda_import' },
       { p_session_token: 'session-token', p_part: 'gps' },
     ]);
+    expect(data.source).toBe('Banco online');
+  });
+
+  it('repete uma leitura CQO quando o banco falha temporariamente', async () => {
+    let responsePageAttempts = 0;
+    const fetchMock = vi.fn().mockImplementation(async (url) => {
+      if (String(url).includes('dashboard_cqo_response_page')) {
+        responsePageAttempts += 1;
+        if (responsePageAttempts === 1) {
+          return errorJson(500, {
+            message: 'canceling statement due to statement timeout',
+          });
+        }
+      }
+
+      return okJson({
+        response_table: 'mobile_respostas',
+        mobile_respostas: [],
+        mobile_gps: [],
+        mobile_anexos: [],
+        mobile_formularios: [],
+        headcount_import_snapshots: [],
+        cqo_import_snapshots: [],
+        cqo_poda_import_snapshots: [],
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { refreshCqoData, setCqoSessionToken } = await loadAuthModule();
+    setCqoSessionToken('session-token');
+    const data = await refreshCqoData();
+
+    expect(responsePageAttempts).toBe(2);
     expect(data.source).toBe('Banco online');
   });
 

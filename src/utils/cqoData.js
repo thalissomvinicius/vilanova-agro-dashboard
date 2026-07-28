@@ -10,6 +10,9 @@ const CQO_CACHE_DB_NAME = 'vilanova-dashboard-cache';
 const CQO_CACHE_STORE_NAME = 'cqo-data';
 const CQO_CACHE_VERSION = 1;
 const CQO_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const CQO_READ_TIMEOUT_MS = 20_000;
+const CQO_READ_RETRY_DELAYS_MS = [400, 1_200];
+const CQO_READ_CONCURRENCY = 2;
 
 export const SUPABASE_CONFIG = {
   url: SUPABASE_URL,
@@ -1167,15 +1170,78 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
   };
 }
 
-async function postSupabaseRpc(functionName, body, context) {
-  const { url } = requireSupabaseConfig();
-  const response = await fetch(`${url}/rest/v1/rpc/${functionName}`, {
-    method: 'POST',
-    headers: supabaseHeaders({
-      'Content-Type': 'application/json',
-    }),
-    body: JSON.stringify(body),
+function waitForDashboardRetry(delayMs) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, delayMs);
   });
+}
+
+async function runWithConcurrency(tasks, concurrency) {
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  if (safeTasks.length === 0) return [];
+
+  const results = new Array(safeTasks.length);
+  const errors = new Array(safeTasks.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(
+    Math.max(Number(concurrency) || 1, 1),
+    safeTasks.length
+  );
+
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (nextIndex < safeTasks.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      try {
+        results[currentIndex] = await safeTasks[currentIndex]();
+      } catch (error) {
+        errors[currentIndex] = error;
+      }
+    }
+  });
+
+  await Promise.all(workers);
+  const firstError = errors.find(Boolean);
+  if (firstError) throw firstError;
+
+  return results;
+}
+
+function isRetriableDashboardReadError(error) {
+  const status = Number(error?.status || 0);
+  const message = String(error?.message || error || '').toLowerCase();
+
+  if (isDashboardSessionExpiredError(error)) return false;
+  if (status === 408 || status === 425 || status === 429 || status >= 500) return true;
+
+  return error?.name === 'AbortError'
+    || message.includes('failed to fetch')
+    || message.includes('networkerror')
+    || message.includes('network error')
+    || message.includes('statement timeout')
+    || message.includes('tempo limite');
+}
+
+async function postSupabaseRpcAttempt(functionName, body, context, timeoutMs) {
+  const { url } = requireSupabaseConfig();
+  const controller = timeoutMs > 0 ? new AbortController() : null;
+  const timeoutId = controller
+    ? setTimeout(() => controller.abort(), timeoutMs)
+    : null;
+
+  let response;
+  try {
+    response = await fetch(`${url}/rest/v1/rpc/${functionName}`, {
+      method: 'POST',
+      headers: supabaseHeaders({
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(body),
+      signal: controller?.signal,
+    });
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const error = new Error(await supabaseResponseError(response, context));
@@ -1186,6 +1252,25 @@ async function postSupabaseRpc(functionName, body, context) {
 
   if (response.status === 204) return null;
   return response.json();
+}
+
+async function postSupabaseRpc(functionName, body, context, options = {}) {
+  const retryDelays = options.retry ? CQO_READ_RETRY_DELAYS_MS : [];
+  const timeoutMs = Number(options.timeoutMs || 0);
+
+  for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
+    try {
+      return await postSupabaseRpcAttempt(functionName, body, context, timeoutMs);
+    } catch (error) {
+      const retryDelay = retryDelays[attempt];
+      if (retryDelay === undefined || !isRetriableDashboardReadError(error)) {
+        throw error;
+      }
+      await waitForDashboardRetry(retryDelay);
+    }
+  }
+
+  return null;
 }
 
 export async function callDashboardRpc(functionName, body, context) {
@@ -1873,9 +1958,9 @@ const CQO_CORE_DATASET_PARTS = [
   'cqo_import',
   'cqo_poda_import',
 ];
-// The database endpoint already caps pages at 100. Using that limit avoids
-// dozens of round trips while preserving the same bounded payload contract.
-const CQO_RESPONSE_PAGE_SIZE = 100;
+// Smaller pages remain comfortably below PostgREST's statement timeout even
+// when the database is warming up. Concurrency stays bounded below.
+const CQO_RESPONSE_PAGE_SIZE = 50;
 
 function isMissingDatasetPartRpc(error) {
   const message = String(error?.message || error || '').toLowerCase();
@@ -1893,25 +1978,28 @@ async function loadSupabaseDatasetParts(sessionToken, onCoreDataset) {
         p_offset: offset,
         p_limit: CQO_RESPONSE_PAGE_SIZE,
       },
-      `Leitura do dashboard (respostas ${offset + 1}-${offset + CQO_RESPONSE_PAGE_SIZE})`
+      `Leitura do dashboard (respostas ${offset + 1}-${offset + CQO_RESPONSE_PAGE_SIZE})`,
+      { retry: true, timeoutMs: CQO_READ_TIMEOUT_MS }
     );
     return rpcScalarPayload(payload, 'dashboard_cqo_response_page');
   };
 
-  const firstResponsePagePromise = loadResponsePage(0);
-  const partPayloadsPromise = Promise.all(CQO_CORE_DATASET_PARTS.map((part) => postSupabaseRpc(
-    'dashboard_cqo_dataset_part',
-    {
-      p_session_token: sessionToken,
-      p_part: part,
-    },
-    `Leitura do dashboard (${part})`
-  )));
-
-  const [firstResponsePage, payloads] = await Promise.all([
-    firstResponsePagePromise,
-    partPayloadsPromise,
-  ]);
+  const initialTasks = [
+    () => loadResponsePage(0),
+    ...CQO_CORE_DATASET_PARTS.map((part) => () => postSupabaseRpc(
+      'dashboard_cqo_dataset_part',
+      {
+        p_session_token: sessionToken,
+        p_part: part,
+      },
+      `Leitura do dashboard (${part})`,
+      { retry: true, timeoutMs: CQO_READ_TIMEOUT_MS }
+    )),
+  ];
+  const [firstResponsePage, ...payloads] = await runWithConcurrency(
+    initialTasks,
+    CQO_READ_CONCURRENCY
+  );
 
   const firstRows = datasetRows(firstResponsePage, 'mobile_respostas');
   const totalRows = Math.min(
@@ -1922,7 +2010,10 @@ async function loadSupabaseDatasetParts(sessionToken, onCoreDataset) {
   for (let offset = CQO_RESPONSE_PAGE_SIZE; offset < totalRows; offset += CQO_RESPONSE_PAGE_SIZE) {
     remainingOffsets.push(offset);
   }
-  const remainingPages = await Promise.all(remainingOffsets.map(loadResponsePage));
+  const remainingPages = await runWithConcurrency(
+    remainingOffsets.map((offset) => () => loadResponsePage(offset)),
+    CQO_READ_CONCURRENCY
+  );
   const responseRows = [firstResponsePage, ...remainingPages]
     .flatMap((page) => datasetRows(page, 'mobile_respostas'));
 
@@ -1944,7 +2035,8 @@ async function loadSupabaseDatasetParts(sessionToken, onCoreDataset) {
         p_session_token: sessionToken,
         p_part: 'gps',
       },
-      'Leitura do dashboard (gps)'
+      'Leitura do dashboard (gps)',
+      { retry: true, timeoutMs: CQO_READ_TIMEOUT_MS }
     );
 
     return {
