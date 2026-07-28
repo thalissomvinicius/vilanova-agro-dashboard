@@ -1,0 +1,135 @@
+import { describe, expect, it } from 'vitest';
+import {
+  buildFieldBunchWeightSummary,
+  buildRampBunchWeightSummary,
+  parseBunchWeight,
+  previousCompleteMonthKey,
+} from './bunchWeightData';
+
+function corteRecord(overrides = {}) {
+  return {
+    id: 'res-1',
+    type: 'corte',
+    source: 'app',
+    status: 'Aprovado',
+    date: '02/07/2026',
+    time: '10:30',
+    farm: 'VILA NOVA',
+    parcel: 'D-09',
+    evaluator: 'ROBERTO',
+    evaluatorMatricula: '3102',
+    lines: [],
+    ...overrides,
+  };
+}
+
+describe('pesos médios de cachos', () => {
+  it('normaliza pesos decimais sem aceitar valores vazios ou negativos', () => {
+    expect(parseBunchWeight('19,75 kg')).toBe(19.75);
+    expect(parseBunchWeight('20.5')).toBe(20.5);
+    expect(parseBunchWeight('')).toBe(0);
+    expect(parseBunchWeight('-4')).toBe(0);
+  });
+
+  it('calcula o campo somente com pesos individuais de cacho maduro aprovados', () => {
+    const result = buildFieldBunchWeightSummary([
+      corteRecord({
+        id: 'res-a',
+        lines: [
+          {
+            _pesagens_cachos: {
+              cacho_maduro: ['10', '20'],
+              cacho_avermelhado: ['99'],
+              cacho_infermo: ['88'],
+            },
+          },
+        ],
+      }),
+      corteRecord({
+        id: 'res-b',
+        parcel: 'D-10',
+        lines: [{ _pesagens_cachos: { cacho_maduro: ['30'] } }],
+      }),
+      corteRecord({
+        id: 'res-pendente',
+        status: 'Pendente validação',
+        lines: [{ _pesagens_cachos: { cacho_maduro: ['100'] } }],
+      }),
+      corteRecord({
+        id: 'res-excel',
+        source: 'excel',
+        lines: [{ _pesagens_cachos: { cacho_maduro: ['100'] } }],
+      }),
+    ]);
+
+    expect(result.collectionCount).toBe(2);
+    expect(result.weightCount).toBe(3);
+    expect(result.totalWeightKg).toBe(60);
+    expect(result.averageKg).toBe(20);
+    expect(result.medianKg).toBe(20);
+    expect(result.minKg).toBe(10);
+    expect(result.maxKg).toBe(30);
+  });
+
+  it('usa o mês anterior completo relativo ao período operacional', () => {
+    const now = new Date('2026-07-28T12:00:00Z');
+
+    expect(previousCompleteMonthKey({
+      dateFrom: '2026-07-01',
+      dateTo: '2026-07-31',
+      now,
+    })).toBe('2026-06');
+    expect(previousCompleteMonthKey({
+      dateFrom: '2026-05-01',
+      dateTo: '2026-05-31',
+      now,
+    })).toBe('2026-04');
+    expect(previousCompleteMonthKey({
+      dateFrom: '2026-01-01',
+      dateTo: '2026-12-31',
+      now,
+    })).toBe('2026-06');
+  });
+
+  it('expõe a média oficial da rampa e mantém competência não homologada indisponível', () => {
+    const available = buildRampBunchWeightSummary({
+      pesoMedioCacho: {
+        byMonth: [{
+          monthKey: '2026-06',
+          averageBunchKg: 18.5,
+          pesoLiquidoKg: 185_000,
+          cachos: 10_000,
+          status: 'available',
+        }],
+        competencies: [],
+      },
+    }, {
+      dateFrom: '2026-07-01',
+      dateTo: '2026-07-31',
+      now: new Date('2026-07-28T12:00:00Z'),
+    });
+
+    expect(available.available).toBe(true);
+    expect(available.monthKey).toBe('2026-06');
+    expect(available.averageKg).toBe(18.5);
+    expect(available.bunchCount).toBe(10_000);
+
+    const unavailable = buildRampBunchWeightSummary({
+      pesoMedioCacho: {
+        byMonth: [],
+        competencies: [{
+          monthKey: '2026-06',
+          status: 'unavailable',
+          reason: 'Fechamento mensal pendente.',
+        }],
+      },
+    }, {
+      dateFrom: '2026-07-01',
+      dateTo: '2026-07-31',
+      now: new Date('2026-07-28T12:00:00Z'),
+    });
+
+    expect(unavailable.available).toBe(false);
+    expect(unavailable.reason).toBe('Fechamento mensal pendente.');
+  });
+});

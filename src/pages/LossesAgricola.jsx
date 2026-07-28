@@ -1,11 +1,25 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, CalendarDays, Maximize2, MonitorPlay, RefreshCw, Scale, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  CalendarDays,
+  Database,
+  Maximize2,
+  MonitorPlay,
+  RefreshCw,
+  Scale,
+  Sprout,
+  X,
+} from 'lucide-react';
 import ActiveFilterSummary from '../components/ui/ActiveFilterSummary';
 import PresentationDataFilters from '../components/ui/PresentationDataFilters';
 import StatusBanner from '../components/ui/StatusBanner';
 import { filterRecords, useCqoData } from '../utils/cqoData';
 import { useBalancaData } from '../utils/balancaData';
+import {
+  buildFieldBunchWeightSummary,
+  buildRampBunchWeightSummary,
+} from '../utils/bunchWeightData';
 import { buildQualidadeOperacional, QUALITY_LOSS_LIMITS } from '../utils/qualidadeOperacionalData';
 
 function fmt(value, digits = 0) {
@@ -51,10 +65,159 @@ function updateLabel(lastSyncTime) {
   }).format(new Date());
 }
 
+function formatMonthKey(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})$/);
+  if (!match) return value || '--';
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
+  const month = new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(date);
+  return `${month.charAt(0).toUpperCase()}${month.slice(1)}/${match[1]}`;
+}
+
 function readinessExplanation(readiness) {
   if (!readiness) return '';
   const reasons = Array.isArray(readiness.reasons) ? readiness.reasons.filter(Boolean) : [];
   return reasons[0] || readiness.reason || '';
+}
+
+function BunchWeightComparisonPanel({
+  fieldSummary,
+  rampSummary,
+  loading = false,
+}) {
+  const comparable = fieldSummary.available && rampSummary.available;
+  const differenceKg = comparable ? fieldSummary.averageKg - rampSummary.averageKg : 0;
+  const differencePct = comparable && rampSummary.averageKg > 0
+    ? (differenceKg / rampSummary.averageKg) * 100
+    : 0;
+  const visibleCollections = fieldSummary.collections.slice(0, 6);
+
+  return (
+    <section className="bunch-weight-panel" aria-label="Comparativo do peso médio do cacho maduro">
+      <div className="bunch-weight-heading">
+        <div>
+          <span className="bunch-weight-eyebrow">BASE PARA ESTIMATIVA DE PERDAS</span>
+          <h3>Peso médio do cacho maduro</h3>
+          <p>Campo e rampa em frentes separadas, com origem e período rastreáveis.</p>
+        </div>
+        <span className="bunch-weight-rule">Somente cacho maduro</span>
+      </div>
+
+      <div className="bunch-weight-sources">
+        <article className="bunch-weight-source bunch-weight-source-field">
+          <div className="bunch-weight-source-title">
+            <span><Sprout size={18} /></span>
+            <div>
+              <strong>Peso médio do campo</strong>
+              <small>CQO Corte aprovado no filtro atual</small>
+            </div>
+          </div>
+          <div className="bunch-weight-primary">
+            <strong className={loading ? 'skeleton-text' : ''}>
+              {loading ? '\u00A0' : fieldSummary.available ? `${fmt(fieldSummary.averageKg, 2)} kg` : 'N/D'}
+            </strong>
+            <span>{fieldSummary.weightCount} cacho(s) pesado(s)</span>
+          </div>
+          <dl className="bunch-weight-facts">
+            <div><dt>Coletas</dt><dd>{fieldSummary.collectionCount}</dd></div>
+            <div><dt>Peso somado</dt><dd>{fmt(fieldSummary.totalWeightKg, 1)} kg</dd></div>
+            <div><dt>Mediana</dt><dd>{fieldSummary.available ? `${fmt(fieldSummary.medianKg, 2)} kg` : '--'}</dd></div>
+            <div><dt>Faixa</dt><dd>{fieldSummary.available ? `${fmt(fieldSummary.minKg, 1)}–${fmt(fieldSummary.maxKg, 1)} kg` : '--'}</dd></div>
+          </dl>
+          <p className="bunch-weight-formula">
+            Soma dos pesos individuais de cachos maduros ÷ quantidade de pesos válidos.
+          </p>
+        </article>
+
+        <div className={`bunch-weight-comparison ${comparable ? '' : 'is-pending'}`}>
+          <Scale size={20} />
+          <strong>
+            {comparable
+              ? `${differenceKg >= 0 ? '+' : ''}${fmt(differenceKg, 2)} kg`
+              : 'Comparação pendente'}
+          </strong>
+          <span>
+            {comparable
+              ? `${differencePct >= 0 ? '+' : ''}${fmt(differencePct, 1)}% campo vs. rampa`
+              : 'Uma das bases ainda não está disponível'}
+          </span>
+        </div>
+
+        <article className="bunch-weight-source bunch-weight-source-ramp">
+          <div className="bunch-weight-source-title">
+            <span><Database size={18} /></span>
+            <div>
+              <strong>Peso médio da rampa</strong>
+              <small>API AGRO · mês anterior completo</small>
+            </div>
+          </div>
+          <div className="bunch-weight-primary">
+            <strong className={loading ? 'skeleton-text' : ''}>
+              {loading ? '\u00A0' : rampSummary.available ? `${fmt(rampSummary.averageKg, 2)} kg` : 'N/D'}
+            </strong>
+            <span>Competência {formatMonthKey(rampSummary.monthKey)}</span>
+          </div>
+          <dl className="bunch-weight-facts">
+            <div><dt>Cachos oficiais</dt><dd>{rampSummary.bunchCount ? fmt(rampSummary.bunchCount, 0) : '--'}</dd></div>
+            <div><dt>Peso líquido</dt><dd>{rampSummary.totalWeightKg ? `${fmt(rampSummary.totalWeightKg / 1000, 1)} t` : '--'}</dd></div>
+            <div><dt>Situação</dt><dd>{rampSummary.available ? 'Homologado' : 'Indisponível'}</dd></div>
+            <div><dt>Fonte</dt><dd>SQL / balança</dd></div>
+          </dl>
+          <p className="bunch-weight-formula">
+            {rampSummary.available
+              ? 'Peso líquido oficial ÷ quantidade oficial de cachos maduros.'
+              : rampSummary.reason}
+          </p>
+        </article>
+      </div>
+
+      <div className="bunch-weight-collections">
+        <div className="bunch-weight-collections-title">
+          <div>
+            <strong>Coletas que formam a média de campo</strong>
+            <span>Somente fichas de Corte aprovadas com pesagem de cacho maduro.</span>
+          </div>
+          <span>{fieldSummary.collectionCount} coleta(s)</span>
+        </div>
+        {visibleCollections.length ? (
+          <div className="bunch-weight-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Fazenda / parcela</th>
+                  <th>Avaliador</th>
+                  <th>Pesos</th>
+                  <th>Total</th>
+                  <th>Média</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleCollections.map((collection) => (
+                  <tr key={collection.id}>
+                    <td>{formatDateBr(collection.date) || '--'}</td>
+                    <td><strong>{collection.farm}</strong><span>{collection.parcel}</span></td>
+                    <td><strong>{collection.evaluator}</strong><span>{collection.evaluatorMatricula ? `Mat. ${collection.evaluatorMatricula}` : ''}</span></td>
+                    <td>{collection.weightCount}</td>
+                    <td>{fmt(collection.totalWeightKg, 1)} kg</td>
+                    <td><strong>{fmt(collection.averageKg, 2)} kg</strong></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="bunch-weight-empty">
+            Nenhuma coleta aprovada com pesagem de cacho maduro no filtro atual.
+          </div>
+        )}
+        {fieldSummary.collections.length > visibleCollections.length ? (
+          <div className="bunch-weight-more">
+            Mais {fieldSummary.collections.length - visibleCollections.length} coleta(s) consideradas no cálculo.
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
 }
 
 function LossMetric({ label, value, meta, tone = 'neutral', loading = false }) {
@@ -146,10 +309,6 @@ function LossesMetricRail({ model, loading }) {
   const potentialYtd = pesoYtd + perdasYtd;
   const perdasPctYtd = potentialYtd > 0 ? (perdasYtd / potentialYtd) * 100 : null;
   const hasBase = model.hasProductionBase;
-  const weightMonths = model.balance?.weightMonthKeys?.length
-    ? model.balance.weightMonthKeys.join(', ')
-    : '';
-
   return (
     <aside className="losses-bi-rail">
       <LossMetric
@@ -157,13 +316,6 @@ function LossesMetricRail({ model, loading }) {
         label="Peso t YTD"
         value={fmt(pesoYtd, 1)}
         meta={model.balance?.hasProductionBase ? 'base de balança' : ''}
-      />
-      <LossMetric
-        loading={loading}
-        label="Peso médio cacho"
-        value={model.balance?.averageWeightKg ? `${fmt(model.balance.averageWeightKg, 1)} kg` : 'N/D'}
-        meta={weightMonths ? `mês ant.: ${weightMonths}` : 'aguardando balança'}
-        tone={model.balance?.usesPreviousMonthWeight ? 'success' : 'neutral'}
       />
       <LossMetric loading={loading} label="Perdas % YTD" value={pesoYtd ? pct(perdasPctYtd, 2) : 'N/D'} />
       <LossMetric loading={loading} label="Perdas t YTD" value={fmt(perdasYtd, 2)} />
@@ -354,6 +506,8 @@ function LossesBoard({
   dateTo,
   setDateFrom,
   setDateTo,
+  fieldWeightSummary,
+  rampWeightSummary,
 }) {
   return (
     <div className={`losses-bi-board ${presentationMode ? 'is-presentation' : ''}`}>
@@ -389,6 +543,12 @@ function LossesBoard({
           setDateTo={setDateTo}
         />
       ) : null}
+
+      <BunchWeightComparisonPanel
+        fieldSummary={fieldWeightSummary}
+        rampSummary={rampWeightSummary}
+        loading={loading}
+      />
 
       <div className="losses-bi-content">
         <LossesMetricRail model={model} loading={loading} />
@@ -460,6 +620,14 @@ export default function LossesAgricola({
     approvedOnly: true,
   }), [allRecords, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo, searchTerm]);
   const model = useMemo(() => buildQualidadeOperacional(filtered, balanceData), [filtered, balanceData]);
+  const fieldWeightSummary = useMemo(
+    () => buildFieldBunchWeightSummary(filtered),
+    [filtered]
+  );
+  const rampWeightSummary = useMemo(
+    () => buildRampBunchWeightSummary(balanceData, { dateFrom, dateTo }),
+    [balanceData, dateFrom, dateTo]
+  );
   const readinessDetail = readinessExplanation(model.balance?.readiness);
   const periodText = periodLabel(dateFrom, dateTo);
   const filterState = useMemo(() => ({
@@ -516,6 +684,8 @@ export default function LossesAgricola({
           dateTo={dateTo}
           setDateFrom={setDateFrom}
           setDateTo={setDateTo}
+          fieldWeightSummary={fieldWeightSummary}
+          rampWeightSummary={rampWeightSummary}
           onClose={closePresentation}
         />
       ) : null}
@@ -580,6 +750,8 @@ export default function LossesAgricola({
         dateTo={dateTo}
         setDateFrom={setDateFrom}
         setDateTo={setDateTo}
+        fieldWeightSummary={fieldWeightSummary}
+        rampWeightSummary={rampWeightSummary}
       />
     </div>
   );

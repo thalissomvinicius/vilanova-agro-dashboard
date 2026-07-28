@@ -1,0 +1,194 @@
+function normalizedText(value) {
+  return String(value ?? '').replace(/\s+/g, ' ').trim();
+}
+
+function parseDateOnly(value) {
+  const text = normalizedText(value);
+  const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const date = new Date(Date.UTC(
+      Number(isoMatch[1]),
+      Number(isoMatch[2]) - 1,
+      Number(isoMatch[3])
+    ));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const brMatch = text.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (!brMatch) return null;
+  const date = new Date(Date.UTC(
+    Number(brMatch[3]),
+    Number(brMatch[2]) - 1,
+    Number(brMatch[1])
+  ));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function dateKey(value) {
+  const date = parseDateOnly(value);
+  return date ? date.toISOString().slice(0, 10) : '';
+}
+
+function monthStart(date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}
+
+function monthKey(date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+function firstPositiveNumber(record, keys) {
+  for (const key of keys) {
+    const value = Number(record?.[key]);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  return 0;
+}
+
+export function parseBunchWeight(value) {
+  const normalized = normalizedText(value)
+    .replace(/\s/g, '')
+    .replace(',', '.')
+    .replace(/[^0-9.-]/g, '');
+  const weight = Number(normalized);
+  return Number.isFinite(weight) && weight > 0 ? weight : 0;
+}
+
+function recordMatureWeights(record) {
+  if (record?.type !== 'corte' || record?.source !== 'app') return [];
+  if (!/^aprov/i.test(normalizedText(record?.status))) return [];
+
+  return (Array.isArray(record?.lines) ? record.lines : []).flatMap((line) => {
+    const values = line?._pesagens_cachos?.cacho_maduro;
+    if (!Array.isArray(values)) return [];
+    return values.map(parseBunchWeight).filter((weight) => weight > 0);
+  });
+}
+
+function median(values) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2
+    ? sorted[middle]
+    : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+export function buildFieldBunchWeightSummary(records = []) {
+  const collections = records
+    .map((record) => {
+      const weights = recordMatureWeights(record);
+      if (!weights.length) return null;
+      const totalWeightKg = weights.reduce((sum, weight) => sum + weight, 0);
+      return {
+        id: normalizedText(record.id),
+        date: dateKey(record.date || record.raw?.data_avaliacao),
+        time: normalizedText(record.time),
+        farm: normalizedText(record.farm) || 'Sem fazenda',
+        parcel: normalizedText(record.parcel) || '--',
+        evaluator: normalizedText(record.evaluator) || normalizedText(record.evaluatorMatricula) || '--',
+        evaluatorMatricula: normalizedText(record.evaluatorMatricula),
+        weightCount: weights.length,
+        totalWeightKg,
+        averageKg: totalWeightKg / weights.length,
+        minKg: Math.min(...weights),
+        maxKg: Math.max(...weights),
+        weights,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      const dateOrder = b.date.localeCompare(a.date);
+      if (dateOrder) return dateOrder;
+      return b.time.localeCompare(a.time);
+    });
+
+  const weights = collections.flatMap((collection) => collection.weights);
+  const totalWeightKg = weights.reduce((sum, weight) => sum + weight, 0);
+
+  return {
+    available: weights.length > 0,
+    source: 'CQO Corte aprovado',
+    fieldId: 'cacho_maduro',
+    collectionCount: collections.length,
+    weightCount: weights.length,
+    totalWeightKg,
+    averageKg: weights.length ? totalWeightKg / weights.length : 0,
+    medianKg: median(weights),
+    minKg: weights.length ? Math.min(...weights) : 0,
+    maxKg: weights.length ? Math.max(...weights) : 0,
+    latestDate: collections[0]?.date || '',
+    collections,
+  };
+}
+
+export function previousCompleteMonthKey({
+  dateFrom = '',
+  dateTo = '',
+  now = new Date(),
+} = {}) {
+  const currentMonth = monthStart(now);
+  const fromMonth = parseDateOnly(dateFrom);
+  const toMonth = parseDateOnly(dateTo);
+  let referenceMonth = currentMonth;
+
+  if (toMonth && monthStart(toMonth) < currentMonth) {
+    referenceMonth = monthStart(toMonth);
+  } else if (fromMonth && monthStart(fromMonth) > currentMonth) {
+    referenceMonth = monthStart(fromMonth);
+  }
+
+  return monthKey(new Date(Date.UTC(
+    referenceMonth.getUTCFullYear(),
+    referenceMonth.getUTCMonth() - 1,
+    1
+  )));
+}
+
+export function buildRampBunchWeightSummary(
+  balanceData,
+  { dateFrom = '', dateTo = '', now = new Date() } = {}
+) {
+  const targetMonthKey = previousCompleteMonthKey({ dateFrom, dateTo, now });
+  const officialRows = Array.isArray(balanceData?.pesoMedioCacho?.byMonth)
+    ? balanceData.pesoMedioCacho.byMonth
+    : [];
+  const competencyRows = Array.isArray(balanceData?.pesoMedioCacho?.competencies)
+    ? balanceData.pesoMedioCacho.competencies
+    : [];
+  const official = officialRows.find((row) => row?.monthKey === targetMonthKey);
+  const competency = competencyRows.find((row) => row?.monthKey === targetMonthKey);
+  const row = official || competency || {};
+  const averageKg = firstPositiveNumber(row, [
+    'averageBunchKg',
+    'averageBunchWeightKg',
+    'pesoMedioCachoKg',
+  ]);
+  const totalWeightKg = firstPositiveNumber(row, [
+    'pesoLiquidoKg',
+    'netWeightKg',
+    'totalNetWeightKg',
+  ]);
+  const bunchCount = firstPositiveNumber(row, [
+    'cachos',
+    'officialBunchCount',
+    'bunchCount',
+  ]);
+  const computedAverageKg = totalWeightKg > 0 && bunchCount > 0
+    ? totalWeightKg / bunchCount
+    : 0;
+  const available = Boolean(official && (averageKg > 0 || computedAverageKg > 0));
+
+  return {
+    available,
+    source: 'API AGRO / balança',
+    monthKey: targetMonthKey,
+    averageKg: averageKg || computedAverageKg,
+    totalWeightKg,
+    bunchCount,
+    status: normalizedText(row.status) || (available ? 'available' : 'unavailable'),
+    reason: normalizedText(row.reason)
+      || normalizedText(balanceData?.readiness?.reason)
+      || 'Competência anterior ainda não homologada pela balança.',
+  };
+}
