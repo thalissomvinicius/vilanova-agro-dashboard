@@ -147,14 +147,19 @@ export function previousCompleteMonthKey({
 
 export function buildRampBunchWeightSummary(
   balanceData,
-  { dateFrom = '', dateTo = '', now = new Date() } = {}
+  { dateFrom = '', dateTo = '', now = new Date(), scope = 'own' } = {}
 ) {
   const targetMonthKey = previousCompleteMonthKey({ dateFrom, dateTo, now });
-  const officialRows = Array.isArray(balanceData?.pesoMedioCacho?.byMonth)
-    ? balanceData.pesoMedioCacho.byMonth
-    : [];
+  const scopedRows = balanceData?.pesoMedioCacho?.byScope?.[scope];
+  const officialRows = Array.isArray(scopedRows)
+    ? scopedRows
+    : (scope === 'own' && Array.isArray(balanceData?.pesoMedioCacho?.byMonth)
+      ? balanceData.pesoMedioCacho.byMonth
+      : []);
   const competencyRows = Array.isArray(balanceData?.pesoMedioCacho?.competencies)
-    ? balanceData.pesoMedioCacho.competencies
+    ? balanceData.pesoMedioCacho.competencies.filter(
+        (row) => (row?.scope || 'own') === scope
+      )
     : [];
   const official = officialRows.find((row) => row?.monthKey === targetMonthKey);
   const competency = competencyRows.find((row) => row?.monthKey === targetMonthKey);
@@ -179,9 +184,10 @@ export function buildRampBunchWeightSummary(
     : 0;
   const available = Boolean(official && (averageKg > 0 || computedAverageKg > 0));
 
-  return {
+  const summary = {
     available,
     source: 'API AGRO / balança',
+    scope,
     monthKey: targetMonthKey,
     averageKg: averageKg || computedAverageKg,
     totalWeightKg,
@@ -190,5 +196,40 @@ export function buildRampBunchWeightSummary(
     reason: normalizedText(row.reason)
       || normalizedText(balanceData?.readiness?.reason)
       || 'Competência anterior ainda não homologada pela balança.',
+    totalTickets: firstPositiveNumber(row, ['totalTickets', 'ticketCount']),
+    includedTickets: firstPositiveNumber(row, ['includedTickets', 'validTickets']),
+    excludedTickets: firstPositiveNumber(row, ['excludedTickets', 'invalidTickets']),
+    excludedNetWeightKg: firstPositiveNumber(row, [
+      'excludedNetWeightKg',
+      'excludedWeightKg',
+    ]),
+    coveragePercent: firstPositiveNumber(row, [
+      'coveragePercent',
+      'ticketCoveragePercent',
+      'coveragePct',
+    ]),
+    exclusionReasons: Array.isArray(row?.exclusionReasons) ? row.exclusionReasons : [],
+    calculationMethod: normalizedText(row?.calculationMethod),
+  };
+
+  if (scope !== 'own') return summary;
+
+  return {
+    ...summary,
+    scopes: {
+      own: summary,
+      third_party: buildRampBunchWeightSummary(balanceData, {
+        dateFrom,
+        dateTo,
+        now,
+        scope: 'third_party',
+      }),
+      combined: buildRampBunchWeightSummary(balanceData, {
+        dateFrom,
+        dateTo,
+        now,
+        scope: 'combined',
+      }),
+    },
   };
 }

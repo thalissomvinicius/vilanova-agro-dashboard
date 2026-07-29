@@ -132,4 +132,51 @@ describe('pesos médios de cachos', () => {
     expect(unavailable.available).toBe(false);
     expect(unavailable.reason).toBe('Fechamento mensal pendente.');
   });
+
+  it('expõe próprio, terceiros e consolidado sem misturar a base oficial das perdas', () => {
+    const result = buildRampBunchWeightSummary({
+      pesoMedioCacho: {
+        byMonth: [],
+        byScope: {
+          own: [{
+            monthKey: '2026-06',
+            averageBunchKg: 11.44,
+            pesoLiquidoKg: 1_519_040,
+            cachos: 132_775,
+            totalTickets: 988,
+            includedTickets: 108,
+            excludedTickets: 880,
+            excludedNetWeightKg: 16_686_221,
+            coveragePercent: 10.93,
+          }],
+          third_party: [],
+          combined: [{
+            monthKey: '2026-06',
+            averageBunchKg: 11.44,
+            pesoLiquidoKg: 1_519_040,
+            cachos: 132_775,
+          }],
+        },
+        competencies: [{
+          monthKey: '2026-06',
+          scope: 'third_party',
+          status: 'unavailable',
+          reason: 'Sem tickets de terceiros.',
+        }],
+      },
+    }, {
+      dateFrom: '2026-07-01',
+      dateTo: '2026-07-31',
+      now: new Date('2026-07-29T12:00:00Z'),
+    });
+
+    expect(result.averageKg).toBe(11.44);
+    expect(result.scope).toBe('own');
+    expect(result.totalTickets).toBe(988);
+    expect(result.includedTickets).toBe(108);
+    expect(result.coveragePercent).toBe(10.93);
+    expect(result.scopes.combined.averageKg).toBe(11.44);
+    expect(result.scopes.third_party.available).toBe(false);
+    expect(result.scopes.third_party.reason).toBe('Sem tickets de terceiros.');
+  });
 });

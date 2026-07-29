@@ -5607,6 +5607,65 @@ body.field-map-active {
   color: var(--status-info);
 }
 
+.bunch-weight-ramp-scopes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.bunch-weight-ramp-scope {
+  min-width: 0;
+  padding: 6px 7px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+}
+
+.bunch-weight-ramp-scope.is-official {
+  border-color: color-mix(in srgb, var(--green-institutional) 38%, var(--border-color));
+  background: color-mix(in srgb, var(--status-success-bg) 50%, var(--bg-card));
+}
+
+.bunch-weight-ramp-scope.is-unavailable {
+  color: var(--text-secondary);
+}
+
+.bunch-weight-ramp-scope span,
+.bunch-weight-ramp-scope strong,
+.bunch-weight-ramp-scope small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bunch-weight-ramp-scope span,
+.bunch-weight-ramp-scope strong {
+  white-space: nowrap;
+}
+
+.bunch-weight-ramp-scope span {
+  color: var(--text-secondary);
+  font-size: 0.56rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.bunch-weight-ramp-scope strong {
+  margin-top: 2px;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.bunch-weight-ramp-scope small {
+  min-height: 22px;
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 0.56rem;
+  line-height: 1.15;
+}
+
 .bunch-weight-primary span {
   min-width: 0;
   color: var(--text-secondary);
@@ -5648,6 +5707,41 @@ body.field-map-active {
   color: var(--text-primary);
   font-size: 0.7rem;
   font-weight: 850;
+}
+
+.bunch-weight-audit {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 2px 8px;
+  margin-top: 7px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--status-info) 28%, var(--border-color));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--status-info-bg) 45%, var(--bg-card));
+  font-size: 0.62rem;
+}
+
+.bunch-weight-audit strong {
+  color: var(--text-primary);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.bunch-weight-audit span,
+.bunch-weight-audit small {
+  min-width: 0;
+  color: var(--text-secondary);
+}
+
+.bunch-weight-audit small {
+  grid-column: 1 / -1;
+  line-height: 1.2;
+}
+
+.bunch-weight-audit.is-warning {
+  border-color: color-mix(in srgb, var(--status-warning) 42%, var(--border-color));
+  background: color-mix(in srgb, var(--status-warning-bg) 52%, var(--bg-card));
 }
 
 .bunch-weight-formula {
@@ -15452,6 +15546,10 @@ body.field-map-active {
 
   .bunch-weight-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bunch-weight-ramp-scopes {
+    grid-template-columns: 1fr;
   }
 
   .losses-bi-rail {

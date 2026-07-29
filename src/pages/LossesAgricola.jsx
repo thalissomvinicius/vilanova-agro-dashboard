@@ -79,6 +79,12 @@ function readinessExplanation(readiness) {
   return reasons[0] || readiness.reason || '';
 }
 
+const RAMP_SCOPE_LABELS = {
+  own: 'CFF próprio',
+  third_party: 'CFF terceiros',
+  combined: 'Consolidado',
+};
+
 function BunchWeightComparisonPanel({
   fieldSummary,
   rampSummary,
@@ -90,6 +96,13 @@ function BunchWeightComparisonPanel({
     ? (differenceKg / rampSummary.averageKg) * 100
     : 0;
   const visibleCollections = fieldSummary.collections.slice(0, 6);
+  const rampScopes = rampSummary.scopes || { own: rampSummary };
+  const rampScopeItems = ['own', 'third_party', 'combined'].map((scope) => ({
+    scope,
+    label: RAMP_SCOPE_LABELS[scope],
+    ...(rampScopes[scope] || { available: false, averageKg: 0 }),
+  }));
+  const hasCoverageAudit = rampSummary.totalTickets > 0;
 
   return (
     <section className="bunch-weight-panel" aria-label="Comparativo do peso médio do cacho maduro">
@@ -147,7 +160,7 @@ function BunchWeightComparisonPanel({
             <span><Database size={18} /></span>
             <div>
               <strong>Peso médio da rampa</strong>
-              <small>API AGRO · mês anterior completo</small>
+              <small>API AGRO · CFF próprio · mês anterior completo</small>
             </div>
           </div>
           <div className="bunch-weight-primary">
@@ -156,15 +169,47 @@ function BunchWeightComparisonPanel({
             </strong>
             <span>Competência {formatMonthKey(rampSummary.monthKey)}</span>
           </div>
+          <div className="bunch-weight-ramp-scopes" aria-label="Pesos médios por origem do CFF">
+            {rampScopeItems.map((item) => (
+              <div
+                key={item.scope}
+                className={`bunch-weight-ramp-scope ${item.available ? 'is-available' : 'is-unavailable'} ${item.scope === 'own' ? 'is-official' : ''}`}
+              >
+                <span>{item.label}</span>
+                <strong>{item.available ? `${fmt(item.averageKg, 2)} kg` : 'N/D'}</strong>
+                <small>
+                  {item.available
+                    ? `${fmt(item.bunchCount, 0)} cachos`
+                    : item.reason || 'Sem base no período'}
+                </small>
+              </div>
+            ))}
+          </div>
           <dl className="bunch-weight-facts">
             <div><dt>Cachos oficiais</dt><dd>{rampSummary.bunchCount ? fmt(rampSummary.bunchCount, 0) : '--'}</dd></div>
             <div><dt>Peso líquido</dt><dd>{rampSummary.totalWeightKg ? `${fmt(rampSummary.totalWeightKg / 1000, 1)} t` : '--'}</dd></div>
-            <div><dt>Situação</dt><dd>{rampSummary.available ? 'Homologado' : 'Indisponível'}</dd></div>
+            <div><dt>Situação</dt><dd>{rampSummary.available ? 'Oficial' : 'Indisponível'}</dd></div>
             <div><dt>Fonte</dt><dd>SQL / balança</dd></div>
           </dl>
+          {hasCoverageAudit ? (
+            <div className={`bunch-weight-audit ${rampSummary.coveragePercent < 50 ? 'is-warning' : ''}`}>
+              <strong>Cobertura {fmt(rampSummary.coveragePercent, 2)}%</strong>
+              <span>
+                {fmt(rampSummary.includedTickets, 0)} de {fmt(rampSummary.totalTickets, 0)} tickets incluídos
+                {rampSummary.excludedTickets
+                  ? ` · ${fmt(rampSummary.excludedTickets, 0)} excluídos`
+                  : ''}
+              </span>
+              {rampSummary.excludedNetWeightKg > 0 ? (
+                <small>
+                  {fmt(rampSummary.excludedNetWeightKg / 1000, 1)} t auditadas fora da média por ausência de cachos válidos.
+                </small>
+              ) : null}
+            </div>
+          ) : null}
           <p className="bunch-weight-formula">
             {rampSummary.available
-              ? 'Peso líquido oficial ÷ quantidade oficial de cachos maduros.'
+              ? 'CFF próprio: peso líquido oficial ÷ quantidade oficial de cachos. Terceiros e consolidado são comparativos.'
               : rampSummary.reason}
           </p>
         </article>
@@ -629,6 +674,9 @@ export default function LossesAgricola({
     [balanceData, dateFrom, dateTo]
   );
   const readinessDetail = readinessExplanation(model.balance?.readiness);
+  const rampCoverageWarning = rampWeightSummary.available
+    && rampWeightSummary.totalTickets > 0
+    && rampWeightSummary.coveragePercent < 50;
   const periodText = periodLabel(dateFrom, dateTo);
   const filterState = useMemo(() => ({
     farmFilter,
@@ -727,6 +775,14 @@ export default function LossesAgricola({
           Base oficial de produção carregada, mas o peso médio do mês anterior está indisponível ou não homologado.
           {readinessDetail ? ` ${readinessDetail}` : ''}
           {' '}As estimativas por cacho permanecem N/D; nenhum peso padrão foi aplicado.
+        </StatusBanner>
+      ) : null}
+
+      {rampCoverageWarning && !loading ? (
+        <StatusBanner icon={AlertTriangle}>
+          Peso médio oficial disponível para {formatMonthKey(rampWeightSummary.monthKey)}, porém com cobertura parcial:
+          {' '}{fmt(rampWeightSummary.includedTickets, 0)} de {fmt(rampWeightSummary.totalTickets, 0)} tickets
+          ({fmt(rampWeightSummary.coveragePercent, 2)}%). Os tickets sem quantidade válida de cachos foram excluídos do cálculo.
         </StatusBanner>
       ) : null}
 

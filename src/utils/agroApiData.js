@@ -340,6 +340,41 @@ function weightReason(record) {
   return '';
 }
 
+function normalizeWeightScope(value) {
+  const scope = normalizedText(value).toLowerCase().replace(/[\s-]+/g, '_');
+  if (['third_party', 'thirdparty', 'terceiros', 'terceiro'].includes(scope)) return 'third_party';
+  if (['combined', 'consolidated', 'all', 'todos', 'consolidado'].includes(scope)) return 'combined';
+  return 'own';
+}
+
+function normalizeExclusionReasons(record) {
+  const reasons = firstValue(record, [
+    'exclusionReasons',
+    'excludedReasons',
+    'reasonCounts',
+    'motivosExclusao',
+  ]);
+  if (Array.isArray(reasons)) {
+    return reasons.map((item) => ({
+      code: normalizedText(item?.code || item?.reason || item?.name || item),
+      count: firstNumber(item, ['count', 'tickets', 'quantity', 'quantidade']),
+      netWeightKg: firstNumber(item, ['netWeightKg', 'excludedNetWeightKg', 'pesoLiquidoKg']),
+    })).filter((item) => item.code);
+  }
+  if (reasons && typeof reasons === 'object') {
+    return Object.entries(reasons).map(([code, detail]) => ({
+      code,
+      count: typeof detail === 'object'
+        ? firstNumber(detail, ['count', 'tickets', 'quantity', 'quantidade'])
+        : Number(detail) || 0,
+      netWeightKg: typeof detail === 'object'
+        ? firstNumber(detail, ['netWeightKg', 'excludedNetWeightKg', 'pesoLiquidoKg'])
+        : 0,
+    }));
+  }
+  return [];
+}
+
 export function normalizeMonthlyBunchWeights(records = []) {
   const rows = nestedRows(records, [
     'items',
@@ -349,9 +384,17 @@ export function normalizeMonthlyBunchWeights(records = []) {
     'competencias',
     'monthlyBunchWeights',
     'byMonth',
+    'own',
+    'thirdParty',
+    'third_party',
+    'combined',
   ]);
   const competencies = [];
-  const byMonth = new Map();
+  const availableByScope = {
+    own: new Map(),
+    third_party: new Map(),
+    combined: new Map(),
+  };
 
   rows.forEach((record) => {
     const key = normalizeAgroMonthKey(firstValue(record, [
@@ -366,6 +409,12 @@ export function normalizeMonthlyBunchWeights(records = []) {
     ]));
     if (!key) return;
 
+    const scope = normalizeWeightScope(firstValue(record, [
+      'scope',
+      'originScope',
+      'weightScope',
+      'escopo',
+    ]));
     const pesoLiquidoKg = firstNumber(record, [
       'netWeightKg',
       'totalNetWeightKg',
@@ -393,22 +442,75 @@ export function normalizeMonthlyBunchWeights(records = []) {
       'pesoMedioKg',
     ]) || (pesoLiquidoKg > 0 && cachos > 0 ? pesoLiquidoKg / cachos : 0);
     const available = officialWeight(record, averageBunchKg);
+    const totalTickets = firstNumber(record, [
+      'totalTickets',
+      'ticketCount',
+      'ticketsTotal',
+      'total_tickets',
+    ]);
+    const includedTickets = firstNumber(record, [
+      'includedTickets',
+      'validTickets',
+      'ticketsIncluded',
+      'included_tickets',
+    ]);
+    const excludedTickets = firstNumber(record, [
+      'excludedTickets',
+      'invalidTickets',
+      'ticketsExcluded',
+      'excluded_tickets',
+    ]) || Math.max(0, totalTickets - includedTickets);
+    const coveragePercent = firstNumber(record, [
+      'coveragePercent',
+      'ticketCoveragePercent',
+      'coveragePct',
+      'coberturaPercentual',
+    ]) || (totalTickets > 0 ? (includedTickets / totalTickets) * 100 : 0);
     const normalized = {
       monthKey: key,
+      scope,
       averageBunchKg,
       pesoLiquidoKg,
       cachos,
       available,
       status: normalizedStatus(record) || (available ? 'available' : 'unavailable'),
       reason: weightReason(record),
+      totalTickets,
+      includedTickets,
+      excludedTickets,
+      excludedNetWeightKg: firstNumber(record, [
+        'excludedNetWeightKg',
+        'excludedWeightKg',
+        'pesoLiquidoExcluidoKg',
+      ]),
+      coveragePercent,
+      calculationMethod: normalizedText(firstValue(record, [
+        'calculationMethod',
+        'method',
+        'metodoCalculo',
+      ])),
+      periodStart: firstValue(record, ['periodStart', 'from', 'inicioPeriodo']),
+      periodEndExclusive: firstValue(record, ['periodEndExclusive', 'to', 'fimPeriodoExclusivo']),
+      exclusionReasons: normalizeExclusionReasons(record),
     };
     competencies.push(normalized);
-    if (available) byMonth.set(key, normalized);
+    if (available) availableByScope[scope].set(key, normalized);
   });
 
+  const sortedScope = (scope) => Array.from(availableByScope[scope].values())
+    .sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+
   return {
-    byMonth: Array.from(byMonth.values()).sort((a, b) => a.monthKey.localeCompare(b.monthKey)),
-    competencies: competencies.sort((a, b) => a.monthKey.localeCompare(b.monthKey)),
+    // Perdas das fazendas próprias usam somente CFF próprio.
+    byMonth: sortedScope('own'),
+    byScope: {
+      own: sortedScope('own'),
+      third_party: sortedScope('third_party'),
+      combined: sortedScope('combined'),
+    },
+    competencies: competencies.sort((a, b) => (
+      `${a.monthKey}|${a.scope}`.localeCompare(`${b.monthKey}|${b.scope}`)
+    )),
   };
 }
 
@@ -685,6 +787,7 @@ export function buildAgroBalanceSnapshot({
     snapshotUpdatedAt: generatedAt,
     pesoMedioCacho: {
       byMonth: officialWeights.byMonth,
+      byScope: officialWeights.byScope,
       competencies: officialWeights.competencies,
       status: readiness.status,
     },

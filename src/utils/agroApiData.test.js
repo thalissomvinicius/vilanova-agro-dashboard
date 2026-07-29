@@ -129,6 +129,60 @@ describe('contratos oficiais de perdas', () => {
     ]));
   });
 
+  it('separa os pesos por origem e preserva a auditoria de cobertura da API 1.3', () => {
+    const result = normalizeMonthlyBunchWeights([
+      {
+        monthKey: '2026-06',
+        scope: 'own',
+        status: 'available',
+        netWeightKg: 1_519_040,
+        bunchCount: 132_775,
+        averageBunchWeightKg: 11.44,
+        totalTickets: 988,
+        includedTickets: 108,
+        excludedTickets: 880,
+        coveragePercent: 10.93,
+        excludedNetWeightKg: 16_686_221,
+      },
+      {
+        monthKey: '2026-06',
+        scope: 'third_party',
+        status: 'unavailable',
+        reason: 'Sem tickets de terceiros.',
+      },
+      {
+        monthKey: '2026-06',
+        scope: 'combined',
+        status: 'available',
+        netWeightKg: 1_519_040,
+        bunchCount: 132_775,
+        averageBunchWeightKg: 11.44,
+      },
+    ]);
+
+    expect(result.byMonth).toEqual([
+      expect.objectContaining({
+        scope: 'own',
+        averageBunchKg: 11.44,
+        totalTickets: 988,
+        includedTickets: 108,
+        excludedTickets: 880,
+        coveragePercent: 10.93,
+      }),
+    ]);
+    expect(result.byScope.combined).toEqual([
+      expect.objectContaining({ scope: 'combined', averageBunchKg: 11.44 }),
+    ]);
+    expect(result.byScope.third_party).toEqual([]);
+    expect(result.competencies).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        scope: 'third_party',
+        available: false,
+        reason: 'Sem tickets de terceiros.',
+      }),
+    ]));
+  });
+
   it('normaliza produção por mês e fazenda sem somar resumo e parcelas duas vezes', () => {
     const result = normalizeProductionSummary([
       { monthKey: '2026-06', netWeightKg: 35_000 },

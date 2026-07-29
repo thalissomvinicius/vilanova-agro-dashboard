@@ -109,6 +109,56 @@ function qualityScaleKey(record) {
   return record?.ticketCode || `${record?.enteredAt || ''}|${record?.origin || ''}`;
 }
 
+const MONTHLY_WEIGHT_SCOPES = ['own', 'third_party', 'combined'];
+
+async function fetchMonthlyWeightScopes(common, weightDateFrom) {
+  const settled = await Promise.allSettled(MONTHLY_WEIGHT_SCOPES.map(async (scope) => {
+    const result = await fetchAgroDataset('/api/agro/monthly-bunch-weights', {
+      ...common,
+      dateFrom: weightDateFrom,
+      params: { scope },
+    });
+    return {
+      ...result,
+      records: result.records.map((record) => ({ ...record, scope: record?.scope || scope })),
+      scope,
+    };
+  }));
+  const fulfilled = settled
+    .filter((result) => result.status === 'fulfilled')
+    .map((result) => result.value);
+  if (!fulfilled.length) {
+    const firstFailure = settled.find((result) => result.status === 'rejected');
+    throw firstFailure?.reason || new Error('Pesos médios mensais indisponíveis.');
+  }
+
+  const generatedAt = fulfilled
+    .map((result) => result.generatedAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1) || null;
+  const failedScopes = settled.flatMap((result, index) => (
+    result.status === 'rejected'
+      ? [{
+          scope: MONTHLY_WEIGHT_SCOPES[index],
+          message: errorMessage(result.reason, 'Escopo indisponível.'),
+        }]
+      : []
+  ));
+
+  return {
+    records: fulfilled.flatMap((result) => result.records),
+    generatedAt,
+    source: fulfilled[0]?.source || 'AGRO',
+    meta: {
+      generatedAt,
+      requestedScopes: MONTHLY_WEIGHT_SCOPES,
+      loadedScopes: fulfilled.map((result) => result.scope),
+      failedScopes,
+    },
+  };
+}
+
 export function useBalancaData({ dateFrom = '', dateTo = '' } = {}) {
   const legacyData = useBonificacaoData();
   const requestKey = `${dateFrom}|${dateTo}`;
@@ -158,16 +208,15 @@ export function useBalancaData({ dateFrom = '', dateTo = '' } = {}) {
           latestWindowOnly: true,
           keyForRecord: scaleTicketKey,
         }),
-        fetchAgroDataset('/api/agro/monthly-bunch-weights', {
-          ...common,
-          dateFrom: weightDateFrom,
-        }),
+        fetchMonthlyWeightScopes(common, weightDateFrom),
         fetchAgroDataset('/api/agro/production-summary', {
           ...common,
         }),
         fetchAgroDataset('/api/agro/losses-readiness', {
           ...common,
-          dateFrom: weightDateFrom,
+          dateFrom: '',
+          dateTo: '',
+          params: weightDateFrom ? { monthKey: weightDateFrom.slice(0, 7) } : {},
         }),
       ]);
 
@@ -228,6 +277,11 @@ export function useBalancaData({ dateFrom = '', dateTo = '' } = {}) {
         monthlyWeightsResult.status === 'rejected'
           ? errorMessage(monthlyWeightsResult.reason, 'Pesos médios mensais indisponíveis.')
           : '',
+        ...(monthlyWeightsResult.status === 'fulfilled'
+          ? (monthlyWeightsResult.value.meta?.failedScopes || []).map(
+              (failure) => `Peso ${failure.scope}: ${failure.message}`
+            )
+          : []),
         productionSummaryResult.status === 'rejected'
           ? errorMessage(productionSummaryResult.reason, 'Resumo oficial de produção indisponível.')
           : '',

@@ -6,6 +6,7 @@ const MAX_LIMIT = 200;
 const MAX_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
 const UPSTREAM_TIMEOUT_MS = 15_000;
 const ALLOWED_STATUS = new Set(['open', 'closed']);
+const ALLOWED_WEIGHT_SCOPES = new Set(['own', 'third_party', 'combined']);
 const COMMON_QUERY_KEYS = ['from', 'to', 'ticket', 'limit', 'cursor'];
 const MONTH_KEY_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -53,12 +54,16 @@ function assertUniqueParams(searchParams) {
 export function sanitizeAgroQuery(requestUrl = '', {
   allowStatus = false,
   allowProducts = false,
+  allowScope = false,
+  allowMonthKey = false,
 } = {}) {
   const input = new URL(requestUrl, 'https://dashboard.local');
   const allowedKeys = new Set([
     ...COMMON_QUERY_KEYS,
     ...(allowStatus ? ['status'] : []),
     ...(allowProducts ? ['products'] : []),
+    ...(allowScope ? ['scope'] : []),
+    ...(allowMonthKey ? ['monthKey'] : []),
   ]);
   const output = new URLSearchParams();
 
@@ -117,6 +122,26 @@ export function sanitizeAgroQuery(requestUrl = '', {
     }
   }
 
+  if (allowScope) {
+    const scope = String(input.searchParams.get('scope') || '').trim().toLowerCase();
+    if (scope) {
+      if (!ALLOWED_WEIGHT_SCOPES.has(scope)) {
+        throw new AgroProxyError(400, 'Escopo de peso inválido.');
+      }
+      output.set('scope', scope);
+    }
+  }
+
+  if (allowMonthKey) {
+    const monthKey = String(input.searchParams.get('monthKey') || '').trim();
+    if (monthKey) {
+      if (!MONTH_KEY_PATTERN.test(monthKey)) {
+        throw new AgroProxyError(400, 'Competência mensal inválida.');
+      }
+      output.set('monthKey', monthKey);
+    }
+  }
+
   const limitInput = String(input.searchParams.get('limit') || '100').trim();
   if (!/^\d{1,3}$/.test(limitInput)) throw new AgroProxyError(400, 'Limite inválido.');
   const limit = Number(limitInput);
@@ -142,15 +167,31 @@ export function sanitizeQualityQuery(requestUrl = '') {
   return sanitizeAgroQuery(requestUrl);
 }
 
+export function sanitizeMonthlyBunchWeightQuery(requestUrl = '') {
+  return sanitizeAgroQuery(requestUrl, { allowScope: true });
+}
+
+export function sanitizeLossesReadinessQuery(requestUrl = '') {
+  return sanitizeAgroQuery(requestUrl, { allowScope: true, allowMonthKey: true });
+}
+
 export function sanitizeMonthlyDetailQuery(requestUrl = '') {
   const input = new URL(requestUrl, 'https://dashboard.local');
   const output = new URLSearchParams();
 
   assertUniqueParams(input.searchParams);
   for (const key of input.searchParams.keys()) {
-    if (!['limit', 'cursor'].includes(key)) {
+    if (!['limit', 'cursor', 'scope'].includes(key)) {
       throw new AgroProxyError(400, `Parâmetro não permitido: ${key}.`);
     }
+  }
+
+  const scope = String(input.searchParams.get('scope') || '').trim().toLowerCase();
+  if (scope) {
+    if (!ALLOWED_WEIGHT_SCOPES.has(scope)) {
+      throw new AgroProxyError(400, 'Escopo de peso inválido.');
+    }
+    output.set('scope', scope);
   }
 
   const limitInput = String(input.searchParams.get('limit') || '100').trim();

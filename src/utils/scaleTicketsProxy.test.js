@@ -4,6 +4,8 @@ import scaleTicketsHandler, { sanitizeScaleTicketQuery } from '../../api/agro/sc
 import { sanitizeQualityQuery } from '../../api/agro/quality-losses';
 import {
   monthlyBunchWeightTicketsPath,
+  sanitizeLossesReadinessQuery,
+  sanitizeMonthlyBunchWeightQuery,
   sanitizeMonthlyDetailQuery,
 } from '../../server/agroApiProxy';
 
@@ -186,13 +188,34 @@ describe('monthlyBunchWeightTicketsPath', () => {
 
   it('limita a consulta detalhada a paginação opaca', () => {
     const result = sanitizeMonthlyDetailQuery(
-      '/api/agro/monthly-bunch-weights/2026-06/tickets?limit=200&cursor=opaque_123'
+      '/api/agro/monthly-bunch-weights/2026-06/tickets?scope=own&limit=200&cursor=opaque_123'
     );
 
     expect(result.get('limit')).toBe('200');
     expect(result.get('cursor')).toBe('opaque_123');
+    expect(result.get('scope')).toBe('own');
     expect(() => sanitizeMonthlyDetailQuery(
       '/api/agro/monthly-bunch-weights/2026-06/tickets?from=2026-06-01'
     )).toThrow('Parâmetro não permitido');
+  });
+});
+
+describe('filtros da API AGRO 1.3', () => {
+  it('aceita somente os escopos oficiais de peso', () => {
+    expect(sanitizeMonthlyBunchWeightQuery(
+      '/api/agro/monthly-bunch-weights?scope=third_party'
+    ).get('scope')).toBe('third_party');
+    expect(() => sanitizeMonthlyBunchWeightQuery(
+      '/api/agro/monthly-bunch-weights?scope=unknown'
+    )).toThrow('Escopo de peso inválido');
+  });
+
+  it('aceita competência canônica na prontidão de perdas', () => {
+    expect(sanitizeLossesReadinessQuery(
+      '/api/agro/losses-readiness?monthKey=2026-06&scope=combined'
+    ).get('monthKey')).toBe('2026-06');
+    expect(() => sanitizeLossesReadinessQuery(
+      '/api/agro/losses-readiness?monthKey=06-2026'
+    )).toThrow('Competência mensal inválida');
   });
 });
