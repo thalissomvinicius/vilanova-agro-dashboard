@@ -235,7 +235,9 @@ export async function fetchAgroResource(endpoint, {
 }
 
 export function normalizeAgroMonthKey(value) {
-  const direct = String(value || '').trim().match(/^(\d{4})-(0[1-9]|1[0-2])$/);
+  if (value === null || value === undefined || value === '') return '';
+  if (typeof value === 'object') return '';
+  const direct = String(value).trim().match(/^(\d{4})-(0[1-9]|1[0-2])$/);
   if (direct) return direct[0];
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
@@ -273,9 +275,8 @@ function firstValue(record, keys) {
   return null;
 }
 
-function firstNumber(record, keys) {
-  const value = firstValue(record, keys);
-  if (value === null) return 0;
+function numericValue(value) {
+  if (value === null || value === undefined || value === '') return 0;
   const normalized = typeof value === 'string'
     ? value.replace(/\s/g, '').replace(/\.(?=\d{3}(?:\D|$))/g, '').replace(',', '.')
     : value;
@@ -283,8 +284,91 @@ function firstNumber(record, keys) {
   return Number.isFinite(number) ? number : 0;
 }
 
+function firstNumber(record, keys) {
+  const value = firstValue(record, keys);
+  return numericValue(value);
+}
+
 function firstBoolean(record, keys) {
   const value = firstValue(record, keys);
+  if (value === null) return null;
+  if (typeof value === 'boolean') return value;
+  const normalized = String(value).trim().toLowerCase();
+  if (['true', '1', 'yes', 'sim'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'não', 'nao'].includes(normalized)) return false;
+  return null;
+}
+
+function normalizedFieldName(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function deepCandidates(record, keys, {
+  excludePathTerms = [],
+  preferPathTerms = [],
+  requirePathTerms = [],
+  maxDepth = 6,
+} = {}) {
+  const aliases = new Set(keys.map(normalizedFieldName));
+  const excluded = excludePathTerms.map(normalizedFieldName);
+  const preferred = preferPathTerms.map(normalizedFieldName);
+  const required = requirePathTerms.map(normalizedFieldName);
+  const candidates = [];
+  const visited = new WeakSet();
+
+  const visit = (value, path = [], depth = 0) => {
+    if (!value || typeof value !== 'object' || depth > maxDepth) return;
+    if (visited.has(value)) return;
+    visited.add(value);
+
+    Object.entries(value).forEach(([key, child]) => {
+      const nextPath = [...path, normalizedFieldName(key)];
+      const pathText = nextPath.join('.');
+      if (excluded.some((term) => term && pathText.includes(term))) return;
+
+      if (aliases.has(normalizedFieldName(key))
+        && child !== null
+        && child !== undefined
+        && child !== ''
+        && (!required.length || required.some((term) => term && pathText.includes(term)))) {
+        candidates.push({
+          value: child,
+          depth,
+          preference: preferred.reduce(
+            (score, term) => score + (term && pathText.includes(term) ? 1 : 0),
+            0
+          ),
+        });
+      }
+
+      if (child && typeof child === 'object') {
+        visit(child, nextPath, depth + 1);
+      }
+    });
+  };
+
+  visit(record);
+  return candidates.sort((a, b) => (
+    b.preference - a.preference || a.depth - b.depth
+  ));
+}
+
+function deepFirstValue(record, keys, options) {
+  const direct = firstValue(record, keys);
+  if (direct !== null) return direct;
+  return deepCandidates(record, keys, options)[0]?.value ?? null;
+}
+
+function deepFirstNumber(record, keys, options) {
+  return numericValue(deepFirstValue(record, keys, options));
+}
+
+function nestedFirstNumber(record, keys, options) {
+  return numericValue(deepCandidates(record, keys, options)[0]?.value);
+}
+
+function deepFirstBoolean(record, keys, options) {
+  const value = deepFirstValue(record, keys, options);
   if (value === null) return null;
   if (typeof value === 'boolean') return value;
   const normalized = String(value).trim().toLowerCase();
@@ -306,6 +390,82 @@ function nestedRows(records, keys) {
       if (value[key] && value[key] !== value) visit(value[key]);
     });
   };
+  visit(records);
+  return rows;
+}
+
+function monthlyRows(records) {
+  const rows = [];
+  const containerKeys = [
+    'data',
+    'result',
+    'items',
+    'rows',
+    'summary',
+    'summaries',
+    'months',
+    'competencies',
+    'competencias',
+    'monthlyBunchWeights',
+    'byMonth',
+    'own',
+    'thirdParty',
+    'third_party',
+    'combined',
+  ];
+  const scopeByContainer = {
+    own: 'own',
+    thirdParty: 'third_party',
+    third_party: 'third_party',
+    combined: 'combined',
+  };
+  const visited = new WeakSet();
+
+  const visit = (value, context = {}) => {
+    if (Array.isArray(value)) {
+      value.forEach((item) => visit(item, context));
+      return;
+    }
+    if (!value || typeof value !== 'object' || visited.has(value)) return;
+    visited.add(value);
+
+    const directMonthKey = normalizeAgroMonthKey(firstValue(value, [
+      'monthKey',
+      'month',
+      'competence',
+      'competencia',
+      'referenceMonth',
+      'periodMonth',
+      'mes',
+      'data',
+    ]));
+    const directScope = firstValue(value, [
+      'scope',
+      'originScope',
+      'weightScope',
+      'escopo',
+    ]);
+    const inherited = {
+      monthKey: directMonthKey || context.monthKey || '',
+      scope: directScope || context.scope || '',
+    };
+    rows.push({
+      ...value,
+      ...(firstValue(value, ['monthKey', 'month', 'competence', 'competencia']) === null
+        && inherited.monthKey ? { monthKey: inherited.monthKey } : {}),
+      ...(firstValue(value, ['scope', 'originScope', 'weightScope', 'escopo']) === null
+        && inherited.scope ? { scope: inherited.scope } : {}),
+    });
+
+    containerKeys.forEach((key) => {
+      if (!value[key] || value[key] === value) return;
+      visit(value[key], {
+        ...inherited,
+        scope: scopeByContainer[key] || inherited.scope,
+      });
+    });
+  };
+
   visit(records);
   return rows;
 }
@@ -377,12 +537,15 @@ function normalizeWeightScope(value) {
 }
 
 function normalizeExclusionReasons(record) {
-  const reasons = firstValue(record, [
+  const reasons = deepFirstValue(record, [
     'exclusionReasons',
     'excludedReasons',
     'reasonCounts',
     'motivosExclusao',
-  ]);
+    'reasons',
+  ], {
+    preferPathTerms: ['excluded', 'exclusion'],
+  });
   if (Array.isArray(reasons)) {
     return reasons.map((item) => ({
       code: normalizedText(item?.code || item?.reason || item?.name || item),
@@ -405,28 +568,24 @@ function normalizeExclusionReasons(record) {
 }
 
 export function normalizeMonthlyBunchWeights(records = []) {
-  const rows = nestedRows(records, [
-    'items',
-    'rows',
-    'months',
-    'competencies',
-    'competencias',
-    'monthlyBunchWeights',
-    'byMonth',
-    'own',
-    'thirdParty',
-    'third_party',
-    'combined',
-  ]);
-  const competencies = [];
+  const rows = monthlyRows(records);
+  const competenciesByKey = new Map();
   const availableByScope = {
     own: new Map(),
     third_party: new Map(),
     combined: new Map(),
   };
+  const qualityScore = (row) => (
+    (row.available ? 100 : 0)
+    + (row.averageBunchKg > 0 ? 30 : 0)
+    + (row.pesoLiquidoKg > 0 ? 20 : 0)
+    + (row.cachos > 0 ? 20 : 0)
+    + (row.totalTickets > 0 ? 5 : 0)
+    + (row.reason ? 1 : 0)
+  );
 
   rows.forEach((record) => {
-    const key = normalizeAgroMonthKey(firstValue(record, [
+    const key = normalizeAgroMonthKey(deepFirstValue(record, [
       'monthKey',
       'month',
       'competence',
@@ -438,30 +597,47 @@ export function normalizeMonthlyBunchWeights(records = []) {
     ]));
     if (!key) return;
 
-    const scope = normalizeWeightScope(firstValue(record, [
+    const scope = normalizeWeightScope(deepFirstValue(record, [
       'scope',
       'originScope',
       'weightScope',
       'escopo',
     ]));
-    const pesoLiquidoKg = firstNumber(record, [
+    const pesoLiquidoKg = deepFirstNumber(record, [
       'netWeightKg',
       'totalNetWeightKg',
       'officialNetWeightKg',
+      'includedNetWeightKg',
+      'includedWeightKg',
+      'totalIncludedNetWeightKg',
+      'pesoIncluidoKg',
       'pesoLiquidoKg',
       'peso_liquido_kg',
-    ]);
-    const cachos = firstNumber(record, [
+    ], {
+      excludePathTerms: ['excluded', 'rejected', 'invalid'],
+      preferPathTerms: ['included', 'official', 'totals', 'summary'],
+    });
+    const cachos = deepFirstNumber(record, [
       'officialBunchCount',
       'bunchCount',
       'totalBunches',
+      'includedBunchCount',
+      'includedBunches',
+      'validBunchCount',
+      'officialBunches',
       'cachos',
       'quantidadeCachos',
       'quantidade_cachos',
-    ]);
-    const averageBunchKg = firstNumber(record, [
+    ], {
+      excludePathTerms: ['excluded', 'rejected', 'invalid'],
+      preferPathTerms: ['included', 'official', 'totals', 'summary'],
+    });
+    const averageBunchKg = deepFirstNumber(record, [
       'averageBunchKg',
       'averageBunchWeightKg',
+      'averageWeightKg',
+      'calculatedAverageKg',
+      'meanBunchWeightKg',
       'officialBunchWeightKg',
       'officialAverageBunchKg',
       'officialAverageBunchWeightKg',
@@ -469,32 +645,105 @@ export function normalizeMonthlyBunchWeights(records = []) {
       'pesoMedioCachoKg',
       'peso_medio_cacho_kg',
       'pesoMedioKg',
-    ]) || (pesoLiquidoKg > 0 && cachos > 0 ? pesoLiquidoKg / cachos : 0);
-    const available = officialWeight(record, averageBunchKg);
-    const totalTickets = firstNumber(record, [
-      'totalTickets',
-      'ticketCount',
-      'ticketsTotal',
-      'total_tickets',
-    ]);
+      'mediaPesoCachoKg',
+      'mediaKg',
+    ], {
+      excludePathTerms: ['excluded', 'rejected', 'invalid'],
+      preferPathTerms: ['calculation', 'included', 'official', 'summary'],
+    }) || (pesoLiquidoKg > 0 && cachos > 0 ? pesoLiquidoKg / cachos : 0);
+    const statusRecord = {
+      ...record,
+      status: deepFirstValue(record, [
+        'status',
+        'availability',
+        'availabilityStatus',
+        'readiness',
+        'state',
+        'situacao',
+      ], {
+        excludePathTerms: ['excluded', 'rejected', 'invalid'],
+        preferPathTerms: ['readiness', 'availability', 'summary'],
+      }),
+      available: deepFirstBoolean(record, ['available'], {
+        excludePathTerms: ['excluded', 'rejected', 'invalid'],
+      }),
+      official: deepFirstBoolean(record, ['official', 'isOfficial'], {
+        excludePathTerms: ['excluded', 'rejected', 'invalid'],
+      }),
+      homologated: deepFirstBoolean(record, ['homologated', 'isHomologated'], {
+        excludePathTerms: ['excluded', 'rejected', 'invalid'],
+      }),
+      approved: deepFirstBoolean(record, ['approved', 'isApproved'], {
+        excludePathTerms: ['excluded', 'rejected', 'invalid'],
+      }),
+      complete: deepFirstBoolean(record, ['complete', 'isComplete'], {
+        excludePathTerms: ['excluded', 'rejected', 'invalid'],
+      }),
+    };
+    const available = officialWeight(statusRecord, averageBunchKg);
     const includedTickets = firstNumber(record, [
       'includedTickets',
       'validTickets',
       'ticketsIncluded',
       'included_tickets',
-    ]);
-    const excludedTickets = firstNumber(record, [
+      'includedTicketCount',
+    ]) || nestedFirstNumber(record, [
+      'includedTickets',
+      'ticketCount',
+      'tickets',
+      'count',
+    ], {
+      requirePathTerms: ['included'],
+      excludePathTerms: ['excluded'],
+    });
+    const explicitExcludedTickets = firstNumber(record, [
       'excludedTickets',
       'invalidTickets',
       'ticketsExcluded',
       'excluded_tickets',
-    ]) || Math.max(0, totalTickets - includedTickets);
-    const coveragePercent = firstNumber(record, [
+      'excludedTicketCount',
+    ]) || nestedFirstNumber(record, [
+      'excludedTickets',
+      'ticketCount',
+      'tickets',
+      'count',
+    ], {
+      requirePathTerms: ['excluded'],
+    });
+    const explicitTotalTickets = deepFirstNumber(record, [
+      'totalTickets',
+      'ticketsTotal',
+      'total_tickets',
+    ], {
+      preferPathTerms: ['coverage', 'audit', 'totals'],
+    }) || nestedFirstNumber(record, ['ticketCount'], {
+      requirePathTerms: ['coverage', 'audit', 'totals'],
+    });
+    const totalTickets = explicitTotalTickets
+      || includedTickets + explicitExcludedTickets;
+    const excludedTickets = explicitExcludedTickets
+      || Math.max(0, totalTickets - includedTickets);
+    const coveragePercent = deepFirstNumber(record, [
       'coveragePercent',
       'ticketCoveragePercent',
       'coveragePct',
       'coberturaPercentual',
-    ]) || (totalTickets > 0 ? (includedTickets / totalTickets) * 100 : 0);
+    ], {
+      preferPathTerms: ['coverage', 'audit'],
+    }) || nestedFirstNumber(record, ['percent', 'percentage', 'pct'], {
+      requirePathTerms: ['coverage'],
+    }) || (totalTickets > 0 ? (includedTickets / totalTickets) * 100 : 0);
+    const status = normalizedStatus(statusRecord) || (available ? 'available' : 'unavailable');
+    const reason = weightReason(record) || normalizedText(deepFirstValue(record, [
+      'reason',
+      'message',
+      'justification',
+      'motivo',
+      'detail',
+    ], {
+      excludePathTerms: ['excluded', 'exclusion'],
+      preferPathTerms: ['readiness', 'availability', 'summary'],
+    }));
     const normalized = {
       monthKey: key,
       scope,
@@ -502,28 +751,46 @@ export function normalizeMonthlyBunchWeights(records = []) {
       pesoLiquidoKg,
       cachos,
       available,
-      status: normalizedStatus(record) || (available ? 'available' : 'unavailable'),
-      reason: weightReason(record),
+      status,
+      reason,
       totalTickets,
       includedTickets,
       excludedTickets,
-      excludedNetWeightKg: firstNumber(record, [
+      excludedNetWeightKg: deepFirstNumber(record, [
         'excludedNetWeightKg',
         'excludedWeightKg',
         'pesoLiquidoExcluidoKg',
-      ]),
+      ], {
+        preferPathTerms: ['excluded'],
+      }) || nestedFirstNumber(record, [
+        'netWeightKg',
+        'weightKg',
+        'pesoLiquidoKg',
+      ], {
+        requirePathTerms: ['excluded'],
+      }),
       coveragePercent,
-      calculationMethod: normalizedText(firstValue(record, [
+      calculationMethod: normalizedText(deepFirstValue(record, [
         'calculationMethod',
         'method',
         'metodoCalculo',
-      ])),
-      periodStart: firstValue(record, ['periodStart', 'from', 'inicioPeriodo']),
-      periodEndExclusive: firstValue(record, ['periodEndExclusive', 'to', 'fimPeriodoExclusivo']),
+      ], {
+        preferPathTerms: ['calculation', 'summary'],
+      })),
+      periodStart: deepFirstValue(record, ['periodStart', 'from', 'inicioPeriodo']),
+      periodEndExclusive: deepFirstValue(record, ['periodEndExclusive', 'to', 'fimPeriodoExclusivo']),
       exclusionReasons: normalizeExclusionReasons(record),
     };
-    competencies.push(normalized);
-    if (available) availableByScope[scope].set(key, normalized);
+    const mapKey = `${key}|${scope}`;
+    const current = competenciesByKey.get(mapKey);
+    if (!current || qualityScore(normalized) > qualityScore(current)) {
+      competenciesByKey.set(mapKey, normalized);
+    }
+  });
+
+  const competencies = Array.from(competenciesByKey.values());
+  competencies.forEach((record) => {
+    if (record.available) availableByScope[record.scope].set(record.monthKey, record);
   });
 
   const sortedScope = (scope) => Array.from(availableByScope[scope].values())

@@ -221,6 +221,95 @@ describe('contratos oficiais de perdas', () => {
     ]));
   });
 
+  it('interpreta o contrato aninhado da API 1.3 sem usar pesos excluídos', () => {
+    const result = normalizeMonthlyBunchWeights([
+      {
+        scope: 'own',
+        data: {
+          months: [{
+            monthKey: '2026-06',
+            status: 'available',
+            official: true,
+            included: {
+              netWeightKg: 1_519_040,
+              bunchCount: 132_775,
+              ticketCount: 108,
+            },
+            excluded: {
+              netWeightKg: 16_686_221,
+              ticketCount: 880,
+              reasons: [{ code: 'zero_bunches', count: 880 }],
+            },
+            coverage: {
+              totalTickets: 988,
+              includedTickets: 108,
+              excludedTickets: 880,
+              percent: 10.93,
+            },
+            calculation: {
+              method: 'SUM(VL_PESO_LIQUIDO) / SUM(CACHOS)',
+              averageBunchWeightKg: 11.44,
+            },
+          }],
+        },
+      },
+      {
+        scope: 'third_party',
+        data: {
+          months: [{
+            monthKey: '2026-06',
+            status: 'unavailable',
+            reason: 'Sem tickets de terceiros.',
+          }],
+        },
+      },
+      {
+        scope: 'combined',
+        data: {
+          months: [{
+            monthKey: '2026-06',
+            availability: 'available',
+            included: {
+              netWeightKg: 1_519_040,
+              bunchCount: 132_775,
+            },
+          }],
+        },
+      },
+    ]);
+
+    expect(result.byScope.own).toEqual([
+      expect.objectContaining({
+        monthKey: '2026-06',
+        scope: 'own',
+        averageBunchKg: 11.44,
+        pesoLiquidoKg: 1_519_040,
+        cachos: 132_775,
+        totalTickets: 988,
+        includedTickets: 108,
+        excludedTickets: 880,
+        excludedNetWeightKg: 16_686_221,
+        coveragePercent: 10.93,
+      }),
+    ]);
+    expect(result.byScope.own[0].pesoLiquidoKg).not.toBe(16_686_221);
+    expect(result.byScope.combined).toEqual([
+      expect.objectContaining({
+        monthKey: '2026-06',
+        scope: 'combined',
+        averageBunchKg: expect.closeTo(11.44, 2),
+      }),
+    ]);
+    expect(result.competencies).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        monthKey: '2026-06',
+        scope: 'third_party',
+        available: false,
+        reason: 'Sem tickets de terceiros.',
+      }),
+    ]));
+  });
+
   it('normaliza produção por mês e fazenda sem somar resumo e parcelas duas vezes', () => {
     const result = normalizeProductionSummary([
       { monthKey: '2026-06', netWeightKg: 35_000 },
