@@ -206,14 +206,20 @@ describe('filtros da API AGRO 1.3', () => {
       '/api/agro/monthly-bunch-weights?scope=third_party'
     ).get('scope')).toBe('third_party');
     expect(() => sanitizeMonthlyBunchWeightQuery(
+      '/api/agro/monthly-bunch-weights?scope=own&limit=100'
+    )).toThrow('Parâmetro não permitido');
+    expect(() => sanitizeMonthlyBunchWeightQuery(
       '/api/agro/monthly-bunch-weights?scope=unknown'
     )).toThrow('Escopo de peso inválido');
   });
 
   it('aceita competência canônica na prontidão de perdas', () => {
     expect(sanitizeLossesReadinessQuery(
-      '/api/agro/losses-readiness?monthKey=2026-06&scope=combined'
+      '/api/agro/losses-readiness?monthKey=2026-06'
     ).get('monthKey')).toBe('2026-06');
+    expect(() => sanitizeLossesReadinessQuery(
+      '/api/agro/losses-readiness?monthKey=2026-06&scope=combined'
+    )).toThrow('Parâmetro não permitido');
     expect(() => sanitizeLossesReadinessQuery(
       '/api/agro/losses-readiness?monthKey=06-2026'
     )).toThrow('Competência mensal inválida');

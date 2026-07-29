@@ -167,12 +167,53 @@ export function sanitizeQualityQuery(requestUrl = '') {
   return sanitizeAgroQuery(requestUrl);
 }
 
+function sanitizeMonthlyResourceQuery(requestUrl = '', {
+  allowScope = false,
+  allowMonthKey = false,
+} = {}) {
+  const input = new URL(requestUrl, 'https://dashboard.local');
+  const allowedKeys = new Set([
+    ...(allowScope ? ['scope'] : []),
+    ...(allowMonthKey ? ['monthKey'] : []),
+  ]);
+  const output = new URLSearchParams();
+
+  assertUniqueParams(input.searchParams);
+  for (const key of input.searchParams.keys()) {
+    if (!allowedKeys.has(key)) {
+      throw new AgroProxyError(400, `Parâmetro não permitido: ${key}.`);
+    }
+  }
+
+  if (allowScope) {
+    const scope = String(input.searchParams.get('scope') || '').trim().toLowerCase();
+    if (scope) {
+      if (!ALLOWED_WEIGHT_SCOPES.has(scope)) {
+        throw new AgroProxyError(400, 'Escopo de peso inválido.');
+      }
+      output.set('scope', scope);
+    }
+  }
+
+  if (allowMonthKey) {
+    const monthKey = String(input.searchParams.get('monthKey') || '').trim();
+    if (monthKey) {
+      if (!MONTH_KEY_PATTERN.test(monthKey)) {
+        throw new AgroProxyError(400, 'Competência mensal inválida.');
+      }
+      output.set('monthKey', monthKey);
+    }
+  }
+
+  return output;
+}
+
 export function sanitizeMonthlyBunchWeightQuery(requestUrl = '') {
-  return sanitizeAgroQuery(requestUrl, { allowScope: true });
+  return sanitizeMonthlyResourceQuery(requestUrl, { allowScope: true });
 }
 
 export function sanitizeLossesReadinessQuery(requestUrl = '') {
-  return sanitizeAgroQuery(requestUrl, { allowScope: true, allowMonthKey: true });
+  return sanitizeMonthlyResourceQuery(requestUrl, { allowMonthKey: true });
 }
 
 export function sanitizeMonthlyDetailQuery(requestUrl = '') {

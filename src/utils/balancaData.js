@@ -4,6 +4,7 @@ import { useBonificacaoData } from './bonificacaoData';
 import {
   buildAgroBalanceSnapshot,
   fetchAgroDataset,
+  fetchAgroResource,
   mergeAgroBalanceData,
   previousMonthStart,
 } from './agroApiData';
@@ -111,11 +112,11 @@ function qualityScaleKey(record) {
 
 const MONTHLY_WEIGHT_SCOPES = ['own', 'third_party', 'combined'];
 
-async function fetchMonthlyWeightScopes(common, weightDateFrom) {
+async function fetchMonthlyWeightScopes({ sessionToken, signal }) {
   const settled = await Promise.allSettled(MONTHLY_WEIGHT_SCOPES.map(async (scope) => {
-    const result = await fetchAgroDataset('/api/agro/monthly-bunch-weights', {
-      ...common,
-      dateFrom: weightDateFrom,
+    const result = await fetchAgroResource('/api/agro/monthly-bunch-weights', {
+      sessionToken,
+      signal,
       params: { scope },
     });
     return {
@@ -208,14 +209,13 @@ export function useBalancaData({ dateFrom = '', dateTo = '' } = {}) {
           latestWindowOnly: true,
           keyForRecord: scaleTicketKey,
         }),
-        fetchMonthlyWeightScopes(common, weightDateFrom),
+        fetchMonthlyWeightScopes(common),
         fetchAgroDataset('/api/agro/production-summary', {
           ...common,
         }),
-        fetchAgroDataset('/api/agro/losses-readiness', {
-          ...common,
-          dateFrom: '',
-          dateTo: '',
+        fetchAgroResource('/api/agro/losses-readiness', {
+          sessionToken,
+          signal: controller.signal,
           params: weightDateFrom ? { monthKey: weightDateFrom.slice(0, 7) } : {},
         }),
       ]);

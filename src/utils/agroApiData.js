@@ -205,6 +205,35 @@ export async function fetchAgroDataset(endpoint, {
   };
 }
 
+export async function fetchAgroResource(endpoint, {
+  sessionToken,
+  params = {},
+  signal,
+} = {}) {
+  if (!sessionToken) throw new Error('Sessão do dashboard não configurada para a API AGRO.');
+
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && String(value).trim() !== '') {
+      query.set(key, String(value));
+    }
+  });
+
+  const payload = await requestAgroPage(endpoint, query, sessionToken, signal);
+  const records = Array.isArray(payload?.data)
+    ? payload.data
+    : (payload?.data && typeof payload.data === 'object' ? [payload.data] : []);
+
+  return {
+    records,
+    generatedAt: payload?.meta?.generatedAt || null,
+    source: payload?.meta?.source || 'AGRO',
+    meta: payload?.meta || {},
+    pageCount: 1,
+    windowCount: 1,
+  };
+}
+
 export function normalizeAgroMonthKey(value) {
   const direct = String(value || '').trim().match(/^(\d{4})-(0[1-9]|1[0-2])$/);
   if (direct) return direct[0];

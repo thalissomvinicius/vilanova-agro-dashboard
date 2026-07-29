@@ -3,6 +3,7 @@ import {
   buildAgroBalanceSnapshot,
   buildAgroDateWindows,
   fetchAgroDataset,
+  fetchAgroResource,
   mergeAgroBalanceData,
   normalizeMonthlyBunchWeights,
   normalizeProductionSummary,
@@ -97,6 +98,43 @@ describe('fetchAgroDataset', () => {
       expect.objectContaining({ status: 'unavailable' }),
     ]);
     expect(result.meta.version).toBe('1.1.0');
+  });
+});
+
+describe('fetchAgroResource', () => {
+  it('consulta recursos mensais sem injetar período, limite ou paginação', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: {
+          monthKey: '2026-06',
+          scope: 'own',
+          status: 'available',
+          averageBunchWeightKg: 11.44,
+        },
+        meta: {
+          source: 'AGRO_API_CLOUDFLARE',
+          generatedAt: '2026-07-29T10:00:00.000Z',
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await fetchAgroResource('/api/agro/monthly-bunch-weights', {
+      sessionToken: 'a'.repeat(32),
+      params: { scope: 'own' },
+    });
+
+    const requestUrl = new URL(String(fetchMock.mock.calls[0][0]), 'https://dashboard.local');
+    expect(requestUrl.searchParams.get('scope')).toBe('own');
+    expect(requestUrl.searchParams.has('from')).toBe(false);
+    expect(requestUrl.searchParams.has('to')).toBe(false);
+    expect(requestUrl.searchParams.has('limit')).toBe(false);
+    expect(result.records).toEqual([
+      expect.objectContaining({ monthKey: '2026-06', averageBunchWeightKg: 11.44 }),
+    ]);
+    expect(result.source).toBe('AGRO_API_CLOUDFLARE');
   });
 });
 
