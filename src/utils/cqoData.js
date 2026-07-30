@@ -944,6 +944,9 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
         if (newLine.cacho_talo_comprido === undefined) newLine.cacho_talo_comprido = line.TaloComprido;
         if (newLine.folha_cortada_indevida === undefined) newLine.folha_cortada_indevida = line.FolhaCortada || line.folhaCortadaIndev || line.FolhaCortadaIndev;
         if (newLine.cacho_mal_posicionado === undefined) newLine.cacho_mal_posicionado = line.CachoMalPosicionado;
+        if (newLine.palha_mal_empilhada === undefined) {
+          newLine.palha_mal_empilhada = line.PalhaMalEmpilhada || line.cachoMalOosicionado;
+        }
         if (newLine.cacho_estrela === undefined) newLine.cacho_estrela = line.CachoEstrela || line.cachos_estrela;
         if (newLine.cacho_brocado === undefined) newLine.cacho_brocado = line.CachoBrocado || line.cachos_brocados;
         if (newLine.cacho_avermelhado === undefined) newLine.cacho_avermelhado = line.CachoAvermelhado || line.cachos_avermelhados;
@@ -1002,6 +1005,22 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
   if (fiscalResponsavelEquipeRaw) data.fiscal_resp_equipe = fiscalResponsavelEquipeRaw;
 
   const type = formType(row.formulario_id, data);
+  if (type === 'corte' && Array.isArray(data.linhas_corte)) {
+    const parsedVersion = Number(row.formulario_versao);
+    const hasSeparateFields = Number.isFinite(parsedVersion) && parsedVersion >= 9;
+    if (!hasSeparateFields) {
+      data.linhas_corte = data.linhas_corte.map((line) => {
+        const explicitPalha = line?.palha_mal_empilhada;
+        return {
+          ...line,
+          cacho_mal_posicionado: 0,
+          palha_mal_empilhada: explicitPalha !== undefined && explicitPalha !== null
+            ? explicitPalha
+            : line?.cacho_mal_posicionado ?? line?.cachoMalOosicionado ?? 0,
+        };
+      });
+    }
+  }
   const lines = type === 'poda'
     ? (Array.isArray(data.linhas_poda) ? data.linhas_poda : [])
     : type === 'carreamento'
@@ -1163,6 +1182,7 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
       taloComprido: sumRows(lines, ['cacho_talo_comprido']),
       folhaCortada: sumRows(lines, ['folha_cortada_indevida', 'folhaCortadaIndev', 'FolhaCortadaIndev']),
       cachoMalPosicionado: sumRows(lines, ['cacho_mal_posicionado']),
+      palhaMalEmpilhadaCorte: sumRows(lines, ['palha_mal_empilhada']),
       cachoEstrela: sumRows(lines, ['cacho_estrela', 'cachos_estrela']),
       cachoBrocado: sumRows(lines, ['cacho_brocado', 'cachos_brocados']),
       cachoAvermelhado: sumRows(lines, ['cacho_avermelhado', 'cachos_avermelhados']),
@@ -1557,7 +1577,8 @@ function buildCorteSnapshotLine(row, index) {
     folha_mamando: rowNumber(row, ['FolhaMamando', 'folha_mamando']),
     cacho_talo_comprido: rowNumber(row, ['TaloComprido', 'CachoTaloComprido', 'cacho_talo_comprido']),
     folha_cortada_indevida: rowNumber(row, ['FolhaCortada', 'folhaCortadaIndev', 'FolhaCortadaIndev', 'folha_cortada_indevida']),
-    cacho_mal_posicionado: rowNumber(row, ['cachoMalOosicionado', 'CachoMalPosicionado', 'cacho_mal_posicionado']),
+    cacho_mal_posicionado: rowNumber(row, ['CachoMalPosicionado', 'cacho_mal_posicionado']),
+    palha_mal_empilhada: rowNumber(row, ['cachoMalOosicionado', 'PalhaMalEmpilhada', 'palha_mal_empilhada']),
     cacho_estrela: rowNumber(row, ['CachoEstrela', 'cacho_estrela', 'cachos_estrela']),
     cacho_brocado: rowNumber(row, ['CachoBrocado', 'cacho_brocado', 'cachos_brocados']),
     cacho_avermelhado: rowNumber(row, ['CachoAvermelhado', 'cacho_avermelhado', 'cachos_avermelhados']),
@@ -2570,9 +2591,12 @@ export function aggregateRecords(records) {
     if (record.type === 'corte') {
       acc.cortePlantasObservadas += record.totals.plantasObservadas || 0;
       acc.corteCachosObservados += record.totals.cachosObservados || 0;
+      acc.corteCachoMalPosicionado += record.totals.cachoMalPosicionado || 0;
+      acc.cortePalhaMalEmpilhada += record.totals.palhaMalEmpilhadaCorte || 0;
     }
     if (record.type === 'carreamento') {
       acc.carreamentoPlantasObservadas += record.totals.plantasObservadas || 0;
+      acc.carreamentoCachoMalPosicionado += record.totals.cachoMalPosicionado || 0;
     }
     if (record.type === 'poda') {
       acc.podaPlantasObservadas += record.totals.plantasObservadas || 0;
@@ -2635,7 +2659,10 @@ export function aggregateRecords(records) {
     cachosObservados: 0,
     cortePlantasObservadas: 0,
     corteCachosObservados: 0,
+    corteCachoMalPosicionado: 0,
+    cortePalhaMalEmpilhada: 0,
     carreamentoPlantasObservadas: 0,
+    carreamentoCachoMalPosicionado: 0,
     podaPlantasObservadas: 0,
     cachoEsquecido: 0,
     cachoVerde: 0,
@@ -2697,6 +2724,12 @@ export function aggregateRecords(records) {
   totals.taloCompridoRate = totals.cortePlantasObservadas ? (totals.taloComprido / totals.cortePlantasObservadas) * 100 : 0;
   totals.folhaCortadaRate = totals.cortePlantasObservadas ? (totals.folhaCortada / totals.cortePlantasObservadas) * 100 : 0;
   totals.pragasRate = totals.corteCachosObservados ? (totals.cachoBrocado / totals.corteCachosObservados) * 100 : 0;
+  totals.corteCachoMalPosicionadoRate = totals.cortePlantasObservadas
+    ? (totals.corteCachoMalPosicionado / totals.cortePlantasObservadas) * 100
+    : 0;
+  totals.cortePalhaMalEmpilhadaRate = totals.cortePlantasObservadas
+    ? (totals.cortePalhaMalEmpilhada / totals.cortePlantasObservadas) * 100
+    : 0;
 
   // Nota de Qualidade do Corte (Score 0-100)
   const cLoss = (Number(totals.perdaCorteRate) * 12) + (totals.cachoVerdeRate * 8) + (totals.cachoPassadoRate * 4) + (totals.taloCompridoRate * 3) + (totals.folhaCortadaRate * 3);
@@ -2704,7 +2737,9 @@ export function aggregateRecords(records) {
 
   // Taxas individuais de qualidade do Carreamento
   totals.cachoNaoCarreadoRate = totals.carreamentoPlantasObservadas ? (totals.cachoNaoCarreado / totals.carreamentoPlantasObservadas) * 100 : 0;
-  totals.cachoMalPosicionadoRate = totals.carreamentoPlantasObservadas ? (totals.cachoMalPosicionado / totals.carreamentoPlantasObservadas) * 100 : 0;
+  totals.cachoMalPosicionadoRate = totals.carreamentoPlantasObservadas
+    ? (totals.carreamentoCachoMalPosicionado / totals.carreamentoPlantasObservadas) * 100
+    : 0;
 
   // Nota de Qualidade do Carreamento (Score 0-100)
   const carLoss = (totals.cachoNaoCarreadoRate * 15) + (totals.cachoMalPosicionadoRate * 6);

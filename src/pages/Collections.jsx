@@ -248,7 +248,8 @@ function lineColumns(record) {
     ['cacho_estrela', 'Estrela'],
     ['cacho_avermelhado', 'Avermelhado'],
     ['cacho_brocado', 'Brocado'],
-    ['cacho_mal_posicionado', 'Palha mal empilhada'],
+    ['cacho_mal_posicionado', 'Cacho mal posicionado'],
+    ['palha_mal_empilhada', 'Palha mal empilhada'],
   ];
 }
 
@@ -296,7 +297,8 @@ const MANUAL_LINE_FIELDS = {
     ['folha_mamando', 'F. mamando', 'number'],
     ['cacho_talo_comprido', 'Talo comp.', 'number'],
     ['folha_cortada_indevida', 'F. cortada', 'number'],
-    ['cacho_mal_posicionado', 'Palha M.E.', 'number'],
+    ['cacho_mal_posicionado', 'C. mal pos.', 'number'],
+    ['palha_mal_empilhada', 'Palha M.E.', 'number'],
     ['cacho_estrela', 'Estrela', 'number'],
     ['cacho_brocado', 'Brocado', 'number'],
     ['cacho_avermelhado', 'Avermelhado', 'number'],

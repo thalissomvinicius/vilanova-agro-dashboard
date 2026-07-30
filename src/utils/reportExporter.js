@@ -11,6 +11,7 @@ const corteColumns = [
   'cacho_talo_comprido',
   'folha_cortada_indevida',
   'cacho_mal_posicionado',
+  'palha_mal_empilhada',
   'cacho_estrela',
   'cacho_brocado',
   'cacho_avermelhado',
@@ -46,7 +47,7 @@ const columnLabels = {
 };
 
 const corteColumnLabels = {
-  cacho_mal_posicionado: 'Palha M.E.',
+  palha_mal_empilhada: 'Palha M.E.',
 };
 
 function escapeHtml(value) {

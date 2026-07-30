@@ -51,8 +51,9 @@ select
   public.to_num(row_data ->> 'CachoPassado') as cacho_passado,
   public.to_num(row_data ->> 'TaloComprido') as talo_comprido,
   public.to_num(row_data ->> 'CachoAvermelhado') as cacho_avermelhado,
-  public.to_num(row_data ->> 'cachoMalOosicionado') as cacho_mal_posicionado,
-  row_data as row_json
+  public.to_num(row_data ->> 'CachoMalPosicionado') as cacho_mal_posicionado,
+  row_data as row_json,
+  public.to_num(row_data ->> 'cachoMalOosicionado') as palha_mal_empilhada
 from public.cqo_import_snapshots s
 cross join lateral jsonb_array_elements(s.corte_rows_json) with ordinality as row_item(row_data, ordinality)
 where s.import_key = 'cqo_1_digitacao_cqo';

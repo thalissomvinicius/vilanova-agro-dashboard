@@ -563,9 +563,7 @@ function metricDisplay(metric, operation) {
   if (metric.id === 'mal_posicionado') {
     return {
       ...metric,
-      label: operation?.id === 'corte'
-        ? 'Palha mal empilhada %'
-        : 'Cacho mal posicionado %',
+      label: 'Cacho mal posicionado %',
     };
   }
   return metric;
@@ -654,7 +652,10 @@ function metricValue(metric, totals, areaHa, operation) {
     case 'mal_posicionado':
       if (operation?.id === 'corte') {
         if (!hasCortePlantBase(totals)) return null;
-        return percentOf(totals.cachoMalPosicionado, totals.cortePlantasObservadas || totals.plantasObservadas);
+        return percentOf(
+          totals.corteCachoMalPosicionado ?? totals.cachoMalPosicionado,
+          totals.cortePlantasObservadas || totals.plantasObservadas
+        );
       }
       if (!hasCarreamentoBase(totals)) return null;
       return Number(totals.cachoMalPosicionadoRate || 0);
@@ -1099,8 +1100,11 @@ function compactParcelSummaryHtml({
   });
   const summaryScoreDetail = summaryMode.id === 'all' ? 'Corte + carreamento + poda' : summaryMode.label;
   const qualityTotal = Number(corteTotals?.cachosObservados || 0);
-  const palhaRate = corteTotals?.cortePlantasObservadas
-    ? percentOf(corteTotals.cachoMalPosicionado, corteTotals.cortePlantasObservadas)
+  const corteMalPosicionadoRate = corteTotals?.cortePlantasObservadas
+    ? percentOf(
+      corteTotals.corteCachoMalPosicionado ?? corteTotals.cachoMalPosicionado,
+      corteTotals.cortePlantasObservadas
+    )
     : null;
   const notaMetric = activeRiskMetric('nota');
   const maduroMetric = activeRiskMetric('maduro');
@@ -1109,7 +1113,7 @@ function compactParcelSummaryHtml({
   const avermelhadoMetric = activeRiskMetric('avermelhado');
   const perdaCorteMetric = activeRiskMetric('perda_corte');
   const taloMetric = activeRiskMetric('talo');
-  const palhaMetric = activeRiskMetric('mal_posicionado');
+  const corteMalPosicionadoMetric = activeRiskMetric('mal_posicionado');
   const naoCarreadoMetric = activeRiskMetric('nao_carreado');
   const malPosicionadoMetric = activeRiskMetric('mal_posicionado');
   const plantaSemPodarMetric = activeRiskMetric('poda_planta_sem_podar');
@@ -1177,13 +1181,17 @@ function compactParcelSummaryHtml({
       color: metricColor(taloMetric, Number(corteTotals.taloCompridoRate || 0), true),
     },
     {
-      label: 'Palha M.E.',
-      value: palhaRate,
-      valueDisplay: palhaRate === null ? 'N/D' : compactPercent(palhaRate, 1),
-      ringValue: palhaRate,
-      detail: `${formatInteger(corteTotals.cachoMalPosicionado || 0)} ocorrência(s)`,
-      meta: compactMetaText(palhaMetric),
-      color: metricColor(palhaMetric, palhaRate, palhaRate !== null),
+      label: 'Mal pos.',
+      value: corteMalPosicionadoRate,
+      valueDisplay: corteMalPosicionadoRate === null ? 'N/D' : compactPercent(corteMalPosicionadoRate, 1),
+      ringValue: corteMalPosicionadoRate,
+      detail: `${formatInteger(corteTotals.corteCachoMalPosicionado ?? corteTotals.cachoMalPosicionado ?? 0)} ocorrência(s)`,
+      meta: compactMetaText(corteMalPosicionadoMetric),
+      color: metricColor(
+        corteMalPosicionadoMetric,
+        corteMalPosicionadoRate,
+        corteMalPosicionadoRate !== null
+      ),
     },
   ] : [];
 

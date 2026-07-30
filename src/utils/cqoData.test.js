@@ -291,7 +291,35 @@ describe('normalizeResponse', () => {
     });
 
     expect(normalized.totals.cachosObservados).toBe(3);
+    expect(normalized.totals.cachoMalPosicionado).toBe(0);
+    expect(normalized.totals.palhaMalEmpilhadaCorte).toBe(4);
+  });
+
+  it('separa cacho mal posicionado de palha no corte v9', () => {
+    const normalized = normalizeResponse({
+      id: 'res-corte-v9',
+      formulario_id: 'form_cqo_corte',
+      formulario_versao: 9,
+      usuario_id: '2170',
+      criado_em: '2026-07-30T12:00:00.000Z',
+      status: 'aprovado',
+      dados_json: {
+        nome_fazenda: 'Vila Nova',
+        data_avaliacao: '2026-07-30',
+        linhas_corte: [
+          {
+            cacho_maduro: 2,
+            cacho_passado: 1,
+            cacho_mal_posicionado: 4,
+            palha_mal_empilhada: 5,
+          },
+        ],
+      },
+    });
+
+    expect(normalized.totals.cachosObservados).toBe(3);
     expect(normalized.totals.cachoMalPosicionado).toBe(4);
+    expect(normalized.totals.palhaMalEmpilhadaCorte).toBe(5);
   });
 });
 

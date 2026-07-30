@@ -3092,7 +3092,8 @@ export default function Analytics({
                 </div>
               </div>
               <div style={{ padding: '4px 0' }}>
-                <StatusBadgeRow label="Palha mal empilhada" value={totalsCorte.cachoMalPosicionado || 0} total={totalsCorte.plantasObservadas} color="var(--status-warning)" loading={loading} />
+                <StatusBadgeRow label="Cacho mal posicionado" value={totalsCorte.corteCachoMalPosicionado || 0} total={totalsCorte.plantasObservadas} color="var(--status-warning)" loading={loading} />
+                <StatusBadgeRow label="Palha mal empilhada" value={totalsCorte.cortePalhaMalEmpilhada || 0} total={totalsCorte.plantasObservadas} color="var(--status-warning)" loading={loading} />
                 <StatusBadgeRow label="Folha cortada indevida" value={totalsCorte.folhaCortada || 0} total={totalsCorte.plantasObservadas} color="var(--status-warning)" loading={loading} />
                 <StatusBadgeRow label="Folha mamando" value={totalsCorte.folhaMamando || 0} total={totalsCorte.plantasObservadas} color="#8B5CF6" loading={loading} />
                 <StatusBadgeRow label="Talo comprido" value={totalsCorte.taloComprido || 0} total={totalsCorte.plantasObservadas} color="var(--orange-institutional)" loading={loading} />

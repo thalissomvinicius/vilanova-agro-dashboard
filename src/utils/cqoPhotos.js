@@ -195,7 +195,7 @@ export function photoImageCandidates(photo, recoveryUrl = '') {
 const EVIDENCE_LABELS = {
   cacho_avermelhado: 'Cacho avermelhado',
   cacho_esquecido_ciclo: 'Cacho esquecido',
-  cacho_mal_posicionado: 'Palha mal empilhada',
+  cacho_mal_posicionado: 'Cacho mal posicionado',
   cacho_nao_carreado: 'Cacho não carreado',
   cacho_podre_planta: 'Cacho podre na planta',
   cacho_verde: 'Cacho verde',

@@ -67,7 +67,11 @@ select
   public.to_num(row_item.row_json ->> 'folha_mamando') as folha_mamando,
   public.to_num(row_item.row_json ->> 'cacho_talo_comprido') as cacho_talo_comprido,
   public.to_num(row_item.row_json ->> 'folha_cortada_indevida') as folha_cortada_indevida,
-  public.to_num(row_item.row_json ->> 'cacho_mal_posicionado') as cacho_mal_posicionado,
+  case
+    when coalesce(r.formulario_versao, 0) >= 9
+      then public.to_num(row_item.row_json ->> 'cacho_mal_posicionado')
+    else 0
+  end as cacho_mal_posicionado,
   public.to_num(row_item.row_json ->> 'cacho_estrela') as cacho_estrela,
   public.to_num(row_item.row_json ->> 'cacho_brocado') as cacho_brocado,
   public.to_num(row_item.row_json ->> 'cacho_avermelhado') as cacho_avermelhado,
@@ -79,12 +83,16 @@ select
     public.to_num(row_item.row_json ->> 'cacho_infermo') +
     public.to_num(row_item.row_json ->> 'bucha') +
     public.to_num(row_item.row_json ->> 'cacho_talo_comprido') +
-    public.to_num(row_item.row_json ->> 'cacho_mal_posicionado') +
     public.to_num(row_item.row_json ->> 'cacho_estrela') +
     public.to_num(row_item.row_json ->> 'cacho_avermelhado')
   ) as total_cachos_observados,
   row_item.row_json -> '_plantas_cacho_esquecido' as plantas_cacho_esquecido_json,
-  row_item.row_json as linha_json
+  row_item.row_json as linha_json,
+  case
+    when coalesce(r.formulario_versao, 0) >= 9
+      then public.to_num(row_item.row_json ->> 'palha_mal_empilhada')
+    else public.to_num(row_item.row_json ->> 'cacho_mal_posicionado')
+  end as palha_mal_empilhada
 from public.mobile_respostas r
 cross join lateral jsonb_array_elements(r.dados_json -> 'linhas_corte')
   with ordinality as row_item(row_json, ordinality)
