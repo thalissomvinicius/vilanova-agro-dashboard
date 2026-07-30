@@ -69,6 +69,55 @@ describe('pesos médios de cachos', () => {
     expect(result.medianKg).toBe(20);
     expect(result.minKg).toBe(10);
     expect(result.maxKg).toBe(30);
+    expect(result.recordCount).toBe(2);
+    expect(result.farmCount).toBe(1);
+    expect(result.parcelCount).toBe(2);
+  });
+
+  it('separa a fila pendente e calcula cobertura sem contaminar a base oficial', () => {
+    const records = [
+      corteRecord({
+        id: 'res-aprovado',
+        lines: [{
+          cacho_maduro: '4',
+          _pesagens_cachos: { cacho_maduro: ['10', '20'] },
+        }],
+      }),
+      corteRecord({
+        id: 'res-pendente',
+        status: 'Pendente validação',
+        farm: 'FÉ EM DEUS',
+        parcel: 'F-18',
+        lines: [{
+          cacho_maduro: '5',
+          _pesagens_cachos: { cacho_maduro: ['18', '22', '20'] },
+        }],
+      }),
+      corteRecord({
+        id: 'res-pendente-sem-peso',
+        status: 'pendente_validacao',
+        farm: 'FÉ EM DEUS',
+        parcel: 'F-19',
+        lines: [{ cacho_maduro: '2' }],
+      }),
+    ];
+
+    const approved = buildFieldBunchWeightSummary(records);
+    const pending = buildFieldBunchWeightSummary(records, {
+      approvalStatus: 'pending',
+    });
+
+    expect(approved.weightCount).toBe(2);
+    expect(approved.averageKg).toBe(15);
+    expect(approved.coveragePercent).toBe(50);
+    expect(pending.recordCount).toBe(2);
+    expect(pending.collectionCount).toBe(1);
+    expect(pending.withoutWeightsCount).toBe(1);
+    expect(pending.weightCount).toBe(3);
+    expect(pending.totalWeightKg).toBe(60);
+    expect(pending.averageKg).toBe(20);
+    expect(pending.declaredMatureCount).toBe(7);
+    expect(pending.coveragePercent).toBeCloseTo(42.857, 2);
   });
 
   it('usa o mês anterior completo relativo ao período operacional', () => {

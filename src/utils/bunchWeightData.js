@@ -54,9 +54,36 @@ export function parseBunchWeight(value) {
   return Number.isFinite(weight) && weight > 0 ? weight : 0;
 }
 
-function recordMatureWeights(record) {
+function normalizedStatus(value) {
+  return normalizedText(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function matchesApprovalStatus(record, approvalStatus) {
+  const status = normalizedStatus(record?.status);
+  if (approvalStatus === 'all') return !status.startsWith('exclu');
+  if (approvalStatus === 'pending') return status.startsWith('pendente');
+  return status.startsWith('aprov');
+}
+
+function isFieldWeightRecord(record, approvalStatus) {
+  return record?.type === 'corte'
+    && record?.source === 'app'
+    && matchesApprovalStatus(record, approvalStatus);
+}
+
+function recordDeclaredMatureBunches(record) {
+  return (Array.isArray(record?.lines) ? record.lines : []).reduce(
+    (sum, line) => sum + parseBunchWeight(line?.cacho_maduro),
+    0
+  );
+}
+
+function recordMatureWeights(record, approvalStatus) {
   if (record?.type !== 'corte' || record?.source !== 'app') return [];
-  if (!/^aprov/i.test(normalizedText(record?.status))) return [];
+  if (!matchesApprovalStatus(record, approvalStatus)) return [];
 
   return (Array.isArray(record?.lines) ? record.lines : []).flatMap((line) => {
     const values = line?._pesagens_cachos?.cacho_maduro;
@@ -74,10 +101,46 @@ function median(values) {
     : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
-export function buildFieldBunchWeightSummary(records = []) {
-  const collections = records
+function buildFarmRows(collections) {
+  const grouped = new Map();
+
+  collections.forEach((collection) => {
+    const current = grouped.get(collection.farm) || {
+      farm: collection.farm,
+      collectionCount: 0,
+      parcelKeys: new Set(),
+      weightCount: 0,
+      totalWeightKg: 0,
+    };
+    current.collectionCount += 1;
+    current.parcelKeys.add(`${collection.farm}|${collection.parcel}`);
+    current.weightCount += collection.weightCount;
+    current.totalWeightKg += collection.totalWeightKg;
+    grouped.set(collection.farm, current);
+  });
+
+  return Array.from(grouped.values())
+    .map((row) => ({
+      farm: row.farm,
+      collectionCount: row.collectionCount,
+      parcelCount: row.parcelKeys.size,
+      weightCount: row.weightCount,
+      totalWeightKg: row.totalWeightKg,
+      averageKg: row.weightCount ? row.totalWeightKg / row.weightCount : 0,
+    }))
+    .sort((a, b) => b.weightCount - a.weightCount || a.farm.localeCompare(b.farm));
+}
+
+export function buildFieldBunchWeightSummary(
+  records = [],
+  { approvalStatus = 'approved' } = {}
+) {
+  const eligibleRecords = records.filter((record) => (
+    isFieldWeightRecord(record, approvalStatus)
+  ));
+  const collections = eligibleRecords
     .map((record) => {
-      const weights = recordMatureWeights(record);
+      const weights = recordMatureWeights(record, approvalStatus);
       if (!weights.length) return null;
       const totalWeightKg = weights.reduce((sum, weight) => sum + weight, 0);
       return {
@@ -105,19 +168,42 @@ export function buildFieldBunchWeightSummary(records = []) {
 
   const weights = collections.flatMap((collection) => collection.weights);
   const totalWeightKg = weights.reduce((sum, weight) => sum + weight, 0);
+  const declaredMatureCount = eligibleRecords.reduce(
+    (sum, record) => sum + recordDeclaredMatureBunches(record),
+    0
+  );
+  const farmRows = buildFarmRows(collections);
+  const parcelCount = farmRows.reduce((sum, farm) => sum + farm.parcelCount, 0);
+  const firstDate = collections
+    .map((collection) => collection.date)
+    .filter(Boolean)
+    .sort()[0] || '';
 
   return {
     available: weights.length > 0,
-    source: 'CQO Corte aprovado',
+    approvalStatus,
+    source: approvalStatus === 'pending'
+      ? 'CQO Corte aguardando validação'
+      : 'CQO Corte aprovado',
     fieldId: 'cacho_maduro',
+    recordCount: eligibleRecords.length,
     collectionCount: collections.length,
+    withoutWeightsCount: Math.max(eligibleRecords.length - collections.length, 0),
     weightCount: weights.length,
+    declaredMatureCount,
+    coveragePercent: declaredMatureCount > 0
+      ? (weights.length / declaredMatureCount) * 100
+      : 0,
     totalWeightKg,
     averageKg: weights.length ? totalWeightKg / weights.length : 0,
     medianKg: median(weights),
     minKg: weights.length ? Math.min(...weights) : 0,
     maxKg: weights.length ? Math.max(...weights) : 0,
+    farmCount: farmRows.length,
+    parcelCount,
+    firstDate,
     latestDate: collections[0]?.date || '',
+    farms: farmRows,
     collections,
   };
 }

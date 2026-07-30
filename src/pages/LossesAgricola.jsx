@@ -87,6 +87,7 @@ const RAMP_SCOPE_LABELS = {
 
 function BunchWeightComparisonPanel({
   fieldSummary,
+  pendingFieldSummary,
   rampSummary,
   loading = false,
 }) {
@@ -113,6 +114,41 @@ function BunchWeightComparisonPanel({
           <p>Campo e rampa em frentes separadas, com origem e período rastreáveis.</p>
         </div>
         <span className="bunch-weight-rule">Somente cacho maduro</span>
+      </div>
+
+      <div className="bunch-weight-sample-status" aria-label="Situação das pesagens de campo">
+        <div className="is-official">
+          <span>Base oficial aprovada</span>
+          <strong>{fmt(fieldSummary.weightCount, 0)} cachos pesados</strong>
+          <small>
+            {fmt(fieldSummary.collectionCount, 0)} de {fmt(fieldSummary.recordCount, 0)} ficha(s) com peso
+            {' · '}{fmt(fieldSummary.totalWeightKg, 1)} kg
+          </small>
+        </div>
+        <div className="is-pending">
+          <span>Aguardando validação</span>
+          <strong>{fmt(pendingFieldSummary.weightCount, 0)} cachos pesados</strong>
+          <small>
+            {fmt(pendingFieldSummary.collectionCount, 0)} de {fmt(pendingFieldSummary.recordCount, 0)} ficha(s) com peso
+            {' · '}não entram na média oficial
+          </small>
+        </div>
+        <div>
+          <span>Cobertura oficial da pesagem</span>
+          <strong>{pct(fieldSummary.coveragePercent, 1)}</strong>
+          <small>
+            {fmt(fieldSummary.weightCount, 0)} pesos para {fmt(fieldSummary.declaredMatureCount, 0)} cachos maduros registrados
+          </small>
+        </div>
+        <div>
+          <span>Abrangência oficial</span>
+          <strong>{fmt(fieldSummary.farmCount, 0)} fazenda(s) · {fmt(fieldSummary.parcelCount, 0)} parcela(s)</strong>
+          <small>
+            {fieldSummary.firstDate && fieldSummary.latestDate
+              ? `${formatDateBr(fieldSummary.firstDate)} a ${formatDateBr(fieldSummary.latestDate)}`
+              : 'Sem período com pesagem no filtro'}
+          </small>
+        </div>
       </div>
 
       <div className="bunch-weight-sources">
@@ -223,6 +259,19 @@ function BunchWeightComparisonPanel({
           </div>
           <span>{fieldSummary.collectionCount} coleta(s)</span>
         </div>
+        {fieldSummary.farms.length ? (
+          <div className="bunch-weight-farm-summary" aria-label="Resumo das pesagens por fazenda">
+            {fieldSummary.farms.map((farm) => (
+              <div key={farm.farm}>
+                <span>{farm.farm}</span>
+                <strong>{fmt(farm.averageKg, 2)} kg</strong>
+                <small>
+                  {fmt(farm.weightCount, 0)} cachos · {fmt(farm.collectionCount, 0)} coleta(s) · {fmt(farm.totalWeightKg, 1)} kg
+                </small>
+              </div>
+            ))}
+          </div>
+        ) : null}
         {visibleCollections.length ? (
           <div className="bunch-weight-table-wrap">
             <table>
@@ -552,6 +601,7 @@ function LossesBoard({
   setDateFrom,
   setDateTo,
   fieldWeightSummary,
+  pendingFieldWeightSummary,
   rampWeightSummary,
 }) {
   return (
@@ -591,6 +641,7 @@ function LossesBoard({
 
       <BunchWeightComparisonPanel
         fieldSummary={fieldWeightSummary}
+        pendingFieldSummary={pendingFieldWeightSummary}
         rampSummary={rampWeightSummary}
         loading={loading}
       />
@@ -652,7 +703,7 @@ export default function LossesAgricola({
     usingLegacyFallback,
   } = useBalancaData({ dateFrom, dateTo });
   const loading = cqoLoading || balanceLoading;
-  const filtered = useMemo(() => filterRecords(allRecords, {
+  const recordFilters = useMemo(() => ({
     farmFilter,
     areaFilter,
     periodFilter,
@@ -662,12 +713,25 @@ export default function LossesAgricola({
     dateFrom,
     dateTo,
     searchTerm,
-    approvedOnly: true,
-  }), [allRecords, farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo, searchTerm]);
+  }), [farmFilter, areaFilter, periodFilter, cycleFilter, evaluatorFilter, sourceFilter, dateFrom, dateTo, searchTerm]);
+  const scopedRecords = useMemo(
+    () => filterRecords(allRecords, recordFilters),
+    [allRecords, recordFilters]
+  );
+  const filtered = useMemo(
+    () => filterRecords(allRecords, { ...recordFilters, approvedOnly: true }),
+    [allRecords, recordFilters]
+  );
   const model = useMemo(() => buildQualidadeOperacional(filtered, balanceData), [filtered, balanceData]);
   const fieldWeightSummary = useMemo(
     () => buildFieldBunchWeightSummary(filtered),
     [filtered]
+  );
+  const pendingFieldWeightSummary = useMemo(
+    () => buildFieldBunchWeightSummary(scopedRecords, {
+      approvalStatus: 'pending',
+    }),
+    [scopedRecords]
   );
   const rampWeightSummary = useMemo(
     () => buildRampBunchWeightSummary(balanceData, { dateFrom, dateTo }),
@@ -733,6 +797,7 @@ export default function LossesAgricola({
           setDateFrom={setDateFrom}
           setDateTo={setDateTo}
           fieldWeightSummary={fieldWeightSummary}
+          pendingFieldWeightSummary={pendingFieldWeightSummary}
           rampWeightSummary={rampWeightSummary}
           onClose={closePresentation}
         />
@@ -807,6 +872,7 @@ export default function LossesAgricola({
         setDateFrom={setDateFrom}
         setDateTo={setDateTo}
         fieldWeightSummary={fieldWeightSummary}
+        pendingFieldWeightSummary={pendingFieldWeightSummary}
         rampWeightSummary={rampWeightSummary}
       />
     </div>
