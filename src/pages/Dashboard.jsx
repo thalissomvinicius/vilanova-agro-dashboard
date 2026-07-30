@@ -11,13 +11,20 @@ import {
   MonitorPlay,
   RefreshCw,
   RotateCcw,
+  Scale,
   SlidersHorizontal,
   X,
 } from 'lucide-react';
 import ActiveFilterSummary from '../components/ui/ActiveFilterSummary';
 import PresentationDataFilters from '../components/ui/PresentationDataFilters';
 import StatusBanner from '../components/ui/StatusBanner';
-import { normalizeCqoFarmId, parseRecordDateValue, useCqoDashboard } from '../utils/cqoData';
+import {
+  filterRecords,
+  normalizeCqoFarmId,
+  parseRecordDateValue,
+  useCqoDashboard,
+} from '../utils/cqoData';
+import { buildFieldBunchWeightSummary } from '../utils/bunchWeightData';
 import { buildQualidadeOperacional } from '../utils/qualidadeOperacionalData';
 
 const LeafletMap = lazy(() => import('../components/LeafletMap'));
@@ -1224,11 +1231,87 @@ function FieldTotalDataPanel({ model, selectedSection, loading = false }) {
   );
 }
 
+function FieldBunchWeightPanel({ summary, loading = false }) {
+  const farmRows = summary?.farms?.slice(0, 3) || [];
+  const dateRange = summary?.firstDate
+    ? `${formatDateBr(summary.firstDate)}${summary.latestDate && summary.latestDate !== summary.firstDate
+      ? ` a ${formatDateBr(summary.latestDate)}`
+      : ''}`
+    : 'Sem pesagens no período';
+
+  return (
+    <section className={`field-bunch-weight-panel ${summary?.available ? '' : 'is-empty'}`} aria-label="Peso médio dos cachos maduros">
+      <div className="field-bunch-weight-heading">
+        <span className="field-bunch-weight-icon" aria-hidden="true">
+          <Scale size={18} />
+        </span>
+        <div>
+          <span>Pesagem de campo · aprovadas + pendentes</span>
+          <strong>Peso médio do cacho maduro</strong>
+          <small>{loading ? 'Carregando pesagens...' : dateRange}</small>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="field-bunch-weight-loading" aria-live="polite">
+          <i />
+          Consolidando pesagens
+        </div>
+      ) : summary?.available ? (
+        <>
+          <div className="field-bunch-weight-stat is-primary">
+            <span>Média consolidada</span>
+            <strong>{formatNumber(summary.averageKg, 2)} kg</strong>
+            <small>Mediana {formatNumber(summary.medianKg, 2)} kg</small>
+          </div>
+          <div className="field-bunch-weight-stat">
+            <span>Volume pesado</span>
+            <strong>{formatNumber(summary.weightCount)} cachos</strong>
+            <small>{formatNumber(summary.totalWeightKg, 1)} kg somados</small>
+          </div>
+          <div className="field-bunch-weight-stat">
+            <span>Cobertura da amostra</span>
+            <strong>{formatPercent(summary.coveragePercent, 2)}</strong>
+            <small>{formatNumber(summary.weightCount)} de {formatNumber(summary.declaredMatureCount)} maduros</small>
+          </div>
+          <div className="field-bunch-weight-farms">
+            <div className="field-bunch-weight-farms-head">
+              <span>Comparativo por fazenda</span>
+              <small>{formatNumber(summary.collectionCount)} coleta(s)</small>
+            </div>
+            <div className="field-bunch-weight-farm-list">
+              {farmRows.map((farm) => (
+                <div key={farm.farm} title={`${farm.farm}: ${farm.weightCount} cacho(s) pesado(s)`}>
+                  <span>{farm.farm}</span>
+                  <strong>{formatNumber(farm.averageKg, 2)} kg</strong>
+                  <small>{formatNumber(farm.weightCount)} peso(s)</small>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="field-bunch-weight-empty">
+          <strong>Sem pesagens no filtro atual</strong>
+          <span>As pesagens vêm das fichas de Corte do app com status aprovado ou pendente.</span>
+        </div>
+      )}
+
+      {!loading ? (
+        <span className="field-bunch-weight-scope" title="Fichas reprovadas ou excluídas não entram no cálculo">
+          APP · aprovadas + pendentes
+        </span>
+      ) : null}
+    </section>
+  );
+}
+
 function FieldBiBoard({
   loading,
   model,
   quality,
   dailyBunchRows,
+  fieldWeightRecords = [],
   periodText,
   filterState,
   updateText,
@@ -1279,6 +1362,14 @@ function FieldBiBoard({
     return displayDailyBunchRows.filter((row) => row[periodRowKey] === selectedPeriodKey);
   }, [displayDailyBunchRows, periodRowKey, selectedPeriodKey]);
   const displayQuality = selectedFarmLabel ? displayModel.quality : quality;
+  const displayFieldWeightRecords = useMemo(() => {
+    if (!selectedFarmLabel) return fieldWeightRecords;
+    return fieldWeightRecords.filter((record) => record.farm === selectedFarmLabel);
+  }, [fieldWeightRecords, selectedFarmLabel]);
+  const fieldWeightSummary = useMemo(
+    () => buildFieldBunchWeightSummary(displayFieldWeightRecords, { approvalStatus: 'all' }),
+    [displayFieldWeightRecords]
+  );
   const selectedFarmId = selectedFarmLabel ? normalizeCqoFarmId(selectedFarmLabel) : '';
   const displayMapProps = selectedFarmLabel
     ? { ...mapProps, farmFilter: selectedFarmId }
@@ -1442,6 +1533,8 @@ function FieldBiBoard({
             ))}
           </div>
 
+          <FieldBunchWeightPanel summary={fieldWeightSummary} loading={loading} />
+
           <div className="field-bi-main-grid">
             <FieldBiFarmChart
               rows={displayModel.farmRows}
@@ -1577,6 +1670,29 @@ export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter,
 
   const model = useMemo(() => buildQualidadeOperacional(records), [records]);
   const dailyBunchRows = useMemo(() => buildDailyBunchRows(records), [records]);
+  const fieldWeightRecords = useMemo(() => filterRecords(allRecords, {
+    farmFilter,
+    areaFilter,
+    periodFilter,
+    cycleFilter,
+    evaluatorFilter,
+    sourceFilter,
+    dateFrom,
+    dateTo,
+    searchTerm,
+    approvedOnly: false,
+  }), [
+    allRecords,
+    farmFilter,
+    areaFilter,
+    periodFilter,
+    cycleFilter,
+    evaluatorFilter,
+    sourceFilter,
+    dateFrom,
+    dateTo,
+    searchTerm,
+  ]);
   const quality = model.quality;
   const periodText = periodLabel(dateFrom, dateTo);
   const filterState = useMemo(() => ({
@@ -1619,6 +1735,7 @@ export default function Dashboard({ theme, farmFilter, areaFilter, periodFilter,
     model,
     quality,
     dailyBunchRows,
+    fieldWeightRecords,
     periodText,
     filterState,
     updateText,
