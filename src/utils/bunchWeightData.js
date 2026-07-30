@@ -63,7 +63,9 @@ function normalizedStatus(value) {
 
 function matchesApprovalStatus(record, approvalStatus) {
   const status = normalizedStatus(record?.status);
-  if (approvalStatus === 'all') return !status.startsWith('exclu');
+  if (approvalStatus === 'all') {
+    return status.startsWith('aprov') || status.startsWith('pendente');
+  }
   if (approvalStatus === 'pending') return status.startsWith('pendente');
   return status.startsWith('aprov');
 }
@@ -182,9 +184,11 @@ export function buildFieldBunchWeightSummary(
   return {
     available: weights.length > 0,
     approvalStatus,
-    source: approvalStatus === 'pending'
-      ? 'CQO Corte aguardando validação'
-      : 'CQO Corte aprovado',
+    source: approvalStatus === 'all'
+      ? 'CQO Corte · todas as coletas'
+      : approvalStatus === 'pending'
+        ? 'CQO Corte aguardando validação'
+        : 'CQO Corte aprovado',
     fieldId: 'cacho_maduro',
     recordCount: eligibleRecords.length,
     collectionCount: collections.length,

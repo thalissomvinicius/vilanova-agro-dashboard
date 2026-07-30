@@ -100,11 +100,22 @@ describe('pesos médios de cachos', () => {
         parcel: 'F-19',
         lines: [{ cacho_maduro: '2' }],
       }),
+      corteRecord({
+        id: 'res-reprovado',
+        status: 'Reprovado',
+        lines: [{
+          cacho_maduro: '1',
+          _pesagens_cachos: { cacho_maduro: ['99'] },
+        }],
+      }),
     ];
 
     const approved = buildFieldBunchWeightSummary(records);
     const pending = buildFieldBunchWeightSummary(records, {
       approvalStatus: 'pending',
+    });
+    const combined = buildFieldBunchWeightSummary(records, {
+      approvalStatus: 'all',
     });
 
     expect(approved.weightCount).toBe(2);
@@ -118,6 +129,13 @@ describe('pesos médios de cachos', () => {
     expect(pending.averageKg).toBe(20);
     expect(pending.declaredMatureCount).toBe(7);
     expect(pending.coveragePercent).toBeCloseTo(42.857, 2);
+    expect(combined.recordCount).toBe(3);
+    expect(combined.collectionCount).toBe(2);
+    expect(combined.weightCount).toBe(5);
+    expect(combined.totalWeightKg).toBe(90);
+    expect(combined.averageKg).toBe(18);
+    expect(combined.declaredMatureCount).toBe(11);
+    expect(combined.coveragePercent).toBeCloseTo(45.454, 2);
   });
 
   it('usa o mês anterior completo relativo ao período operacional', () => {

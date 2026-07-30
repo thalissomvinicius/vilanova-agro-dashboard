@@ -5569,20 +5569,12 @@ body.field-map-active {
   white-space: nowrap;
 }
 
-.bunch-weight-sample-status .is-official {
+.bunch-weight-sample-status .is-combined {
   box-shadow: inset 3px 0 0 var(--status-success);
 }
 
-.bunch-weight-sample-status .is-official strong {
+.bunch-weight-sample-status .is-combined strong {
   color: var(--green-institutional);
-}
-
-.bunch-weight-sample-status .is-pending {
-  box-shadow: inset 3px 0 0 var(--status-warning);
-}
-
-.bunch-weight-sample-status .is-pending strong {
-  color: var(--status-warning);
 }
 
 .bunch-weight-sources {

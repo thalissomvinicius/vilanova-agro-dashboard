@@ -87,7 +87,6 @@ const RAMP_SCOPE_LABELS = {
 
 function BunchWeightComparisonPanel({
   fieldSummary,
-  pendingFieldSummary,
   rampSummary,
   loading = false,
 }) {
@@ -116,32 +115,31 @@ function BunchWeightComparisonPanel({
         <span className="bunch-weight-rule">Somente cacho maduro</span>
       </div>
 
-      <div className="bunch-weight-sample-status" aria-label="Situação das pesagens de campo">
-        <div className="is-official">
-          <span>Base oficial aprovada</span>
+      <div className="bunch-weight-sample-status" aria-label="Resumo das pesagens de campo">
+        <div className="is-combined">
+          <span>Base completa de campo</span>
           <strong>{fmt(fieldSummary.weightCount, 0)} cachos pesados</strong>
           <small>
             {fmt(fieldSummary.collectionCount, 0)} de {fmt(fieldSummary.recordCount, 0)} ficha(s) com peso
             {' · '}{fmt(fieldSummary.totalWeightKg, 1)} kg
           </small>
         </div>
-        <div className="is-pending">
-          <span>Aguardando validação</span>
-          <strong>{fmt(pendingFieldSummary.weightCount, 0)} cachos pesados</strong>
+        <div>
+          <span>Peso médio consolidado</span>
+          <strong>{fieldSummary.available ? `${fmt(fieldSummary.averageKg, 2)} kg` : 'N/D'}</strong>
           <small>
-            {fmt(pendingFieldSummary.collectionCount, 0)} de {fmt(pendingFieldSummary.recordCount, 0)} ficha(s) com peso
-            {' · '}não entram na média oficial
+            Mediana {fmt(fieldSummary.medianKg, 2)} kg · faixa {fmt(fieldSummary.minKg, 1)}–{fmt(fieldSummary.maxKg, 1)} kg
           </small>
         </div>
         <div>
-          <span>Cobertura oficial da pesagem</span>
+          <span>Cobertura da pesagem</span>
           <strong>{pct(fieldSummary.coveragePercent, 1)}</strong>
           <small>
             {fmt(fieldSummary.weightCount, 0)} pesos para {fmt(fieldSummary.declaredMatureCount, 0)} cachos maduros registrados
           </small>
         </div>
         <div>
-          <span>Abrangência oficial</span>
+          <span>Abrangência da coleta</span>
           <strong>{fmt(fieldSummary.farmCount, 0)} fazenda(s) · {fmt(fieldSummary.parcelCount, 0)} parcela(s)</strong>
           <small>
             {fieldSummary.firstDate && fieldSummary.latestDate
@@ -601,7 +599,6 @@ function LossesBoard({
   setDateFrom,
   setDateTo,
   fieldWeightSummary,
-  pendingFieldWeightSummary,
   rampWeightSummary,
 }) {
   return (
@@ -641,7 +638,6 @@ function LossesBoard({
 
       <BunchWeightComparisonPanel
         fieldSummary={fieldWeightSummary}
-        pendingFieldSummary={pendingFieldWeightSummary}
         rampSummary={rampWeightSummary}
         loading={loading}
       />
@@ -724,12 +720,8 @@ export default function LossesAgricola({
   );
   const model = useMemo(() => buildQualidadeOperacional(filtered, balanceData), [filtered, balanceData]);
   const fieldWeightSummary = useMemo(
-    () => buildFieldBunchWeightSummary(filtered),
-    [filtered]
-  );
-  const pendingFieldWeightSummary = useMemo(
     () => buildFieldBunchWeightSummary(scopedRecords, {
-      approvalStatus: 'pending',
+      approvalStatus: 'all',
     }),
     [scopedRecords]
   );
@@ -797,7 +789,6 @@ export default function LossesAgricola({
           setDateFrom={setDateFrom}
           setDateTo={setDateTo}
           fieldWeightSummary={fieldWeightSummary}
-          pendingFieldWeightSummary={pendingFieldWeightSummary}
           rampWeightSummary={rampWeightSummary}
           onClose={closePresentation}
         />
@@ -872,7 +863,6 @@ export default function LossesAgricola({
         setDateFrom={setDateFrom}
         setDateTo={setDateTo}
         fieldWeightSummary={fieldWeightSummary}
-        pendingFieldWeightSummary={pendingFieldWeightSummary}
         rampWeightSummary={rampWeightSummary}
       />
     </div>
