@@ -103,34 +103,113 @@ function median(values) {
     : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
-function buildFarmRows(collections) {
+function aggregateWeightRows(rows, identity) {
   const grouped = new Map();
 
-  collections.forEach((collection) => {
-    const current = grouped.get(collection.farm) || {
-      farm: collection.farm,
+  rows.forEach((row) => {
+    const group = identity(row);
+    const current = grouped.get(group.key) || {
+      ...group,
+      recordCount: 0,
       collectionCount: 0,
       parcelKeys: new Set(),
-      weightCount: 0,
-      totalWeightKg: 0,
+      declaredMatureCount: 0,
+      weights: [],
+      dates: [],
+      evaluatorKeys: new Set(),
     };
-    current.collectionCount += 1;
-    current.parcelKeys.add(`${collection.farm}|${collection.parcel}`);
-    current.weightCount += collection.weightCount;
-    current.totalWeightKg += collection.totalWeightKg;
-    grouped.set(collection.farm, current);
+    current.recordCount += 1;
+    current.declaredMatureCount += row.declaredMatureCount;
+    current.parcelKeys.add(`${row.farmId}|${row.parcel}`);
+    current.evaluatorKeys.add(row.evaluatorMatricula || row.evaluator);
+    if (row.date) current.dates.push(row.date);
+    if (row.weights.length) {
+      current.collectionCount += 1;
+      current.weights.push(...row.weights);
+    }
+    grouped.set(group.key, current);
   });
 
   return Array.from(grouped.values())
-    .map((row) => ({
-      farm: row.farm,
-      collectionCount: row.collectionCount,
-      parcelCount: row.parcelKeys.size,
-      weightCount: row.weightCount,
-      totalWeightKg: row.totalWeightKg,
-      averageKg: row.weightCount ? row.totalWeightKg / row.weightCount : 0,
-    }))
+    .map((row) => {
+      const totalWeightKg = row.weights.reduce((sum, weight) => sum + weight, 0);
+      const sortedDates = [...row.dates].sort();
+      return {
+        ...row,
+        parcelCount: row.parcelKeys.size,
+        evaluatorCount: row.evaluatorKeys.size,
+        withoutWeightsCount: Math.max(row.recordCount - row.collectionCount, 0),
+        weightCount: row.weights.length,
+        totalWeightKg,
+        averageKg: row.weights.length ? totalWeightKg / row.weights.length : 0,
+        medianKg: median(row.weights),
+        minKg: row.weights.length ? Math.min(...row.weights) : 0,
+        maxKg: row.weights.length ? Math.max(...row.weights) : 0,
+        coveragePercent: row.declaredMatureCount > 0
+          ? (row.weights.length / row.declaredMatureCount) * 100
+          : 0,
+        firstDate: sortedDates[0] || '',
+        latestDate: sortedDates.at(-1) || '',
+      };
+    })
+    .map((row) => {
+      const publicRow = { ...row };
+      delete publicRow.parcelKeys;
+      delete publicRow.evaluatorKeys;
+      delete publicRow.weights;
+      delete publicRow.dates;
+      return publicRow;
+    });
+}
+
+function buildFarmRows(recordRows) {
+  return aggregateWeightRows(recordRows, (row) => ({
+    key: row.farmId || row.farm,
+    farmId: row.farmId,
+    farm: row.farm,
+  }))
     .sort((a, b) => b.weightCount - a.weightCount || a.farm.localeCompare(b.farm));
+}
+
+function buildParcelRows(recordRows) {
+  return aggregateWeightRows(recordRows, (row) => ({
+    key: `${row.farmId}|${row.parcelKey}`,
+    farmId: row.farmId,
+    farm: row.farm,
+    parcelKey: row.parcelKey,
+    parcel: row.parcel,
+  }))
+    .sort((a, b) => b.weightCount - a.weightCount
+      || a.farm.localeCompare(b.farm)
+      || a.parcel.localeCompare(b.parcel));
+}
+
+function buildEvaluatorRows(recordRows) {
+  return aggregateWeightRows(recordRows, (row) => ({
+    key: row.evaluatorMatricula || row.evaluator,
+    evaluator: row.evaluator,
+    evaluatorMatricula: row.evaluatorMatricula,
+  }))
+    .sort((a, b) => b.weightCount - a.weightCount
+      || a.evaluator.localeCompare(b.evaluator));
+}
+
+function buildDailyRows(recordRows) {
+  return aggregateWeightRows(
+    recordRows.filter((row) => row.date),
+    (row) => ({ key: row.date, date: row.date })
+  ).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export function normalizeBunchWeightParcel(value) {
+  const compact = normalizedText(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+  const parsed = compact.match(/^([a-z]*)(0*\d+)([a-z]*)$/);
+  if (!parsed) return compact;
+  return `${parsed[1]}${Number(parsed[2])}${parsed[3]}`;
 }
 
 export function buildFieldBunchWeightSummary(
@@ -140,28 +219,41 @@ export function buildFieldBunchWeightSummary(
   const eligibleRecords = records.filter((record) => (
     isFieldWeightRecord(record, approvalStatus)
   ));
-  const collections = eligibleRecords
-    .map((record) => {
-      const weights = recordMatureWeights(record, approvalStatus);
-      if (!weights.length) return null;
-      const totalWeightKg = weights.reduce((sum, weight) => sum + weight, 0);
+  const recordRows = eligibleRecords.map((record) => {
+    const weights = recordMatureWeights(record, approvalStatus);
+    const totalWeightKg = weights.reduce((sum, weight) => sum + weight, 0);
+    const farm = normalizedText(record.farm) || 'Sem fazenda';
+    const parcel = normalizedText(record.parcel) || '--';
+    return {
+      id: normalizedText(record.id),
+      date: dateKey(record.date || record.raw?.data_avaliacao),
+      time: normalizedText(record.time),
+      farmId: normalizedText(record.farmId) || normalizedStatus(farm).replace(/\s+/g, '-'),
+      farm,
+      parcel,
+      parcelKey: normalizeBunchWeightParcel(parcel),
+      evaluator: normalizedText(record.evaluator) || normalizedText(record.evaluatorMatricula) || '--',
+      evaluatorMatricula: normalizedText(record.evaluatorMatricula),
+      declaredMatureCount: recordDeclaredMatureBunches(record),
+      weightCount: weights.length,
+      totalWeightKg,
+      averageKg: weights.length ? totalWeightKg / weights.length : 0,
+      minKg: weights.length ? Math.min(...weights) : 0,
+      maxKg: weights.length ? Math.max(...weights) : 0,
+      weights,
+    };
+  });
+  const collections = recordRows
+    .filter((row) => row.weights.length)
+    .map((row) => {
+      const { declaredMatureCount, parcelKey, farmId, ...collection } = row;
       return {
-        id: normalizedText(record.id),
-        date: dateKey(record.date || record.raw?.data_avaliacao),
-        time: normalizedText(record.time),
-        farm: normalizedText(record.farm) || 'Sem fazenda',
-        parcel: normalizedText(record.parcel) || '--',
-        evaluator: normalizedText(record.evaluator) || normalizedText(record.evaluatorMatricula) || '--',
-        evaluatorMatricula: normalizedText(record.evaluatorMatricula),
-        weightCount: weights.length,
-        totalWeightKg,
-        averageKg: totalWeightKg / weights.length,
-        minKg: Math.min(...weights),
-        maxKg: Math.max(...weights),
-        weights,
+        ...collection,
+        farmId,
+        parcelKey,
+        declaredMatureCount,
       };
     })
-    .filter(Boolean)
     .sort((a, b) => {
       const dateOrder = b.date.localeCompare(a.date);
       if (dateOrder) return dateOrder;
@@ -174,8 +266,8 @@ export function buildFieldBunchWeightSummary(
     (sum, record) => sum + recordDeclaredMatureBunches(record),
     0
   );
-  const farmRows = buildFarmRows(collections);
-  const parcelCount = farmRows.reduce((sum, farm) => sum + farm.parcelCount, 0);
+  const farmRows = buildFarmRows(recordRows);
+  const parcelRows = buildParcelRows(recordRows);
   const firstDate = collections
     .map((collection) => collection.date)
     .filter(Boolean)
@@ -204,10 +296,13 @@ export function buildFieldBunchWeightSummary(
     minKg: weights.length ? Math.min(...weights) : 0,
     maxKg: weights.length ? Math.max(...weights) : 0,
     farmCount: farmRows.length,
-    parcelCount,
+    parcelCount: parcelRows.length,
     firstDate,
     latestDate: collections[0]?.date || '',
     farms: farmRows,
+    parcels: parcelRows,
+    evaluators: buildEvaluatorRows(recordRows),
+    daily: buildDailyRows(recordRows),
     collections,
   };
 }

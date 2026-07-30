@@ -138,6 +138,52 @@ describe('pesos médios de cachos', () => {
     expect(combined.coveragePercent).toBeCloseTo(45.454, 2);
   });
 
+  it('entrega agrupamentos por fazenda, parcela, avaliador e dia para a tela analítica', () => {
+    const summary = buildFieldBunchWeightSummary([
+      corteRecord({
+        id: 'res-vn-d09-a',
+        date: '01/07/2026',
+        lines: [{
+          cacho_maduro: '4',
+          _pesagens_cachos: { cacho_maduro: ['18', '22'] },
+        }],
+      }),
+      corteRecord({
+        id: 'res-vn-d09-b',
+        date: '02/07/2026',
+        lines: [{
+          cacho_maduro: '3',
+          _pesagens_cachos: { cacho_maduro: ['20'] },
+        }],
+      }),
+      corteRecord({
+        id: 'res-fe-f18',
+        status: 'Pendente validação',
+        date: '02/07/2026',
+        farm: 'FÉ EM DEUS',
+        farmId: 'fe-em-deus',
+        parcel: 'F-18',
+        evaluator: 'LUAN',
+        evaluatorMatricula: '2170',
+        lines: [{
+          cacho_maduro: '5',
+          _pesagens_cachos: { cacho_maduro: ['24', '26'] },
+        }],
+      }),
+    ], { approvalStatus: 'all' });
+
+    expect(summary.farms).toHaveLength(2);
+    expect(summary.parcels).toHaveLength(2);
+    expect(summary.evaluators).toHaveLength(2);
+    expect(summary.daily).toHaveLength(2);
+    expect(summary.parcels[0].collectionCount).toBe(2);
+    expect(summary.parcels[0].weightCount).toBe(3);
+    expect(summary.parcels[0].averageKg).toBe(20);
+    expect(summary.parcels[0].coveragePercent).toBeCloseTo(42.857, 2);
+    expect(summary.daily[1].weightCount).toBe(3);
+    expect(summary.daily[1].averageKg).toBeCloseTo(23.333, 2);
+  });
+
   it('usa o mês anterior completo relativo ao período operacional', () => {
     const now = new Date('2026-07-28T12:00:00Z');
 

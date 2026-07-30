@@ -24,6 +24,7 @@ import {
 } from './utils/cqoData';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const BunchWeightDashboard = lazy(() => import('./pages/BunchWeightDashboard'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const PodaDashboard = lazy(() => import('./pages/PodaDashboard'));
 const CqoRampa = lazy(() => import('./pages/CqoRampa'));
@@ -786,6 +787,19 @@ export default function App() {
             setSourceFilter={setSourceFilter}
             setDateFrom={applyDateFrom}
             setDateTo={applyDateTo}
+          />
+        );
+      case 'peso-medio-campo':
+        return (
+          <BunchWeightDashboard
+            theme={theme}
+            farmFilter={farmFilter}
+            periodFilter={periodFilter}
+            cycleFilter={cycleFilter}
+            evaluatorFilter={evaluatorFilter}
+            dateFrom={activeFilters.dateFrom}
+            dateTo={activeFilters.dateTo}
+            lastSyncTime={lastSyncTime}
           />
         );
       case 'cqo-carreamento':

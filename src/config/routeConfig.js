@@ -27,6 +27,14 @@ export const ROUTE_DEFINITIONS = [
     filterPreset: 'field',
   },
   {
+    id: 'peso-medio-campo',
+    path: '/peso-medio',
+    label: 'Peso médio',
+    icon: Scale,
+    navGroup: 'campo',
+    filterPreset: 'weight',
+  },
+  {
     id: 'cqo-carreamento',
     path: '/carreamento',
     label: 'Carreamento',
@@ -140,7 +148,7 @@ export const SIDEBAR_GROUPS = [
     id: 'campo',
     label: 'CQO Campo',
     icon: LayoutDashboard,
-    itemIds: ['dashboard', 'cqo-carreamento', 'cqo-poda', 'perdas-agricola'],
+    itemIds: ['dashboard', 'peso-medio-campo', 'cqo-carreamento', 'cqo-poda', 'perdas-agricola'],
   },
   {
     id: 'fitossanidade',
@@ -166,6 +174,7 @@ export const SIDEBAR_GROUPS = [
 export const FILTER_PRESETS = {
   none: [],
   field: ['search', 'farm', 'cycle', 'evaluator', 'source', 'year', 'month', 'dateRange'],
+  weight: ['farm', 'cycle', 'evaluator', 'year', 'month', 'dateRange'],
   rampa: ['farm', 'source', 'year', 'month', 'dateRange'],
   inventory: ['search', 'farm'],
 };
