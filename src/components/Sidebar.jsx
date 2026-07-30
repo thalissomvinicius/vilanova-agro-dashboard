@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { SIDEBAR_GROUPS, getRouteById } from '../config/routeConfig';
 
 function userInitials(name = '') {
@@ -11,7 +11,17 @@ function userInitials(name = '') {
   return `${parts[0]?.[0] || ''}${parts.length > 1 ? parts[parts.length - 1]?.[0] || '' : ''}`.toUpperCase();
 }
 
-export default function Sidebar({ activePage, setActivePage, collapsed, setCollapsed, width, visiblePageIds, user }) {
+export default function Sidebar({
+  activePage,
+  setActivePage,
+  collapsed,
+  setCollapsed,
+  width,
+  visiblePageIds,
+  user,
+  mobileOpen = false,
+  onMobileClose,
+}) {
   const isVisible = (pageId) => !visiblePageIds || visiblePageIds.has(pageId);
   const visibleGroups = SIDEBAR_GROUPS
     .map((group) => ({
@@ -22,14 +32,24 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
 
   const handleItemClick = (item) => {
     setActivePage(item.id);
+    onMobileClose?.();
   };
   const userName = user?.nome || 'Usuário CQO';
   const userMeta = user?.matricula ? `Mat. ${user.matricula}` : 'Sessão ativa';
   const userRole = user?.cargo || user?.departamento || user?.role || 'Qualidade agrícola';
 
   return (
+    <>
+      <button
+        type="button"
+        className={`sidebar-mobile-backdrop ${mobileOpen ? 'is-visible' : ''}`}
+        onClick={onMobileClose}
+        aria-label="Fechar navegação"
+        tabIndex={mobileOpen ? 0 : -1}
+      />
     <aside
-      className={`app-sidebar ${collapsed ? 'collapsed' : ''}`}
+      id="app-sidebar"
+      className={`app-sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}
       style={{ width }}
     >
       <div className="sidebar-brand">
@@ -49,6 +69,15 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
         >
           {collapsed ? <ChevronRight /> : <ChevronLeft />}
         </button>
+        <button
+          type="button"
+          className="sidebar-mobile-close-btn"
+          onClick={onMobileClose}
+          title="Fechar navegação"
+          aria-label="Fechar navegação"
+        >
+          <X />
+        </button>
       </div>
 
       <nav className="sidebar-menu">
@@ -65,6 +94,7 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
                   className={`sidebar-menu-item ${isActive ? 'active' : ''}`}
                   title={item.label}
                   aria-label={item.label}
+                  aria-current={isActive ? 'page' : undefined}
                 >
                   <Icon />
                   <span>{item.label}</span>
@@ -93,6 +123,7 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
                       className={`sidebar-submenu-item ${isActive ? 'active' : ''}`}
                       title={item.label}
                       aria-label={item.label}
+                      aria-current={isActive ? 'page' : undefined}
                     >
                       <Icon />
                       <span>{item.label}</span>
@@ -114,5 +145,6 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
         </div>
       </div>
     </aside>
+    </>
   );
 }

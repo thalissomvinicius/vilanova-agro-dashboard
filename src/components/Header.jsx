@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Bell, LogOut, MonitorPlay, Moon, RefreshCw, RotateCcw, Search, Sun } from 'lucide-react';
+import { Bell, LogOut, Menu, MonitorPlay, Moon, RefreshCw, RotateCcw, Search, Sun } from 'lucide-react';
 import { ACTIVE_CQO_FARM_IDS, CQO_FARMS, parseRecordDateValue, useCqoData } from '../utils/cqoData';
 import { useBonificacaoData } from '../utils/bonificacaoData';
+import { getRouteById } from '../config/routeConfig';
 
 function addYearFromValue(years, value) {
   if (!value) return;
@@ -56,6 +57,7 @@ export default function Header({
   onResetFilters,
   activePage,
   visibleFilters = [],
+  onOpenMobileMenu,
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const { records } = useCqoData();
@@ -135,6 +137,7 @@ export default function Header({
         { value: 'excel', label: 'Só Excel' },
       ];
   const visibleSourceFilter = isRampaPage && sourceFilter === 'app' ? 'all' : sourceFilter === 'sql' && !isRampaPage ? 'all' : sourceFilter;
+  const activeRoute = getRouteById(activePage);
 
   const notifications = [
     { id: 1, text: 'Dashboard preparado para ler coletas CQO do Supabase.', time: 'Agora' },
@@ -145,6 +148,20 @@ export default function Header({
   return (
     <header className="app-header">
       <div className="header-left">
+        <button
+          type="button"
+          className="header-btn header-mobile-menu-btn"
+          onClick={onOpenMobileMenu}
+          title="Abrir navegação"
+          aria-label="Abrir navegação"
+          aria-controls="app-sidebar"
+        >
+          <Menu size={20} />
+        </button>
+        <div className="header-mobile-context">
+          <span>Vila Nova</span>
+          <strong>{activeRoute.label}</strong>
+        </div>
         <img src="/logo.png" alt="Vila Nova Agroindustrial" className="header-brand-logo" />
 
         {showSearch ? (

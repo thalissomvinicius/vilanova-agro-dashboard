@@ -418,6 +418,7 @@ export default function App() {
   const [activePage, setActivePage] = useState(() => pageFromPath(window.location.pathname));
   const [theme, setTheme] = useState(() => localStorage.getItem('vilanova_dashboard_theme') || 'light');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('vilanova_sidebar_collapsed') === 'true');
+  const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const savedWidth = Number(localStorage.getItem('vilanova_sidebar_width') || 280);
     return Number.isFinite(savedWidth) ? Math.min(340, Math.max(220, savedWidth)) : 280;
@@ -541,6 +542,21 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('vilanova_sidebar_width', String(sidebarWidth));
   }, [sidebarWidth]);
+
+  useEffect(() => {
+    if (!sidebarMobileOpen) return undefined;
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') setSidebarMobileOpen(false);
+    };
+
+    document.body.classList.add('sidebar-mobile-active');
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      document.body.classList.remove('sidebar-mobile-active');
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [sidebarMobileOpen]);
 
   useEffect(() => {
     localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify({
@@ -931,7 +947,7 @@ export default function App() {
   }
 
   return (
-    <div className={`app-container ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''}`}>
+    <div className={`app-container ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''} ${sidebarMobileOpen ? 'sidebar-mobile-is-open' : ''}`}>
       <Sidebar
         activePage={effectiveActivePage}
         setActivePage={setActivePage}
@@ -940,6 +956,8 @@ export default function App() {
         width={sidebarCollapsed ? 76 : sidebarWidth}
         visiblePageIds={accessiblePages}
         user={user}
+        mobileOpen={sidebarMobileOpen}
+        onMobileClose={() => setSidebarMobileOpen(false)}
       />
       <button
         type="button"
@@ -980,6 +998,7 @@ export default function App() {
           onLogout={handleLogout}
           onOpenTvMode={openCurrentPresentation}
           onResetFilters={resetFieldFilters}
+          onOpenMobileMenu={() => setSidebarMobileOpen(true)}
         />
         <main className="app-content">
           <Suspense fallback={<PageFallback />}>

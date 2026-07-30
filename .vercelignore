@@ -1,0 +1,23 @@
+# Credenciais e metadados locais
+.env
+.env.*
+.vercel
+.git
+
+# Dependências e saídas reconstruídas pela Vercel
+node_modules
+dist
+dist-ssr
+
+# Materiais operacionais que não pertencem ao artefato web
+docs
+scripts
+scratch
+push-worktree
+supabase
+excel_dump*.txt
+vite-*.log
+vite-*.err.log
+*.log
+*.pbix
+*.sql
