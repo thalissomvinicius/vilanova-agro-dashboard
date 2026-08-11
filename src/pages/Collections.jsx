@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Download,
   Eye,
+  LoaderCircle,
   MapPin,
   Pencil,
   PlusCircle,
@@ -25,6 +26,7 @@ import StatusBanner from '../components/ui/StatusBanner';
 import { canUseDashboardAction, createManualResponse, dashboardErrorMessage, filterRecords, getAttachmentStorageSignedUrl, updateResponseMetadata, updateResponseReviewStatus, deleteResponseRecord, refreshAttachmentStorageSignedUrl, refreshCqoData, useCqoData } from '../utils/cqoData';
 import { devWarn } from '../utils/devLog';
 import { exportDashboardRecord } from '../utils/reportExporter';
+import { runBatchWithConcurrency } from '../utils/batchOperations';
 import {
   evidencePhotoLabel,
   extractRawPhotos,
@@ -734,6 +736,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSavingRecordEdit, setIsSavingRecordEdit] = useState(false);
   const [isBulkWorking, setIsBulkWorking] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(null);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [bulkDeleteCandidate, setBulkDeleteCandidate] = useState(null);
   const [feedback, setFeedback] = useState(null);
@@ -1178,53 +1181,89 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
       return;
     }
 
+    const recordsToReview = [...selectedRecords];
     const label = status === 'aprovado' ? 'Aprovado' : 'Reprovado';
+    const actionLabel = status === 'aprovado' ? 'Aprovando' : 'Reprovando';
     setIsBulkWorking(true);
     setIsReviewing(true);
+    setBulkProgress({
+      actionLabel,
+      completed: 0,
+      failed: 0,
+      phase: 'processing',
+      succeeded: 0,
+      total: recordsToReview.length,
+    });
 
-    const results = await Promise.allSettled(
-      selectedRecords.map((record) => updateResponseReviewStatus(record.id, status, user))
-    );
-    const successIds = selectedRecords
-      .filter((_, index) => results[index]?.status === 'fulfilled')
-      .map((record) => record.id);
-    const failedCount = results.length - successIds.length;
+    try {
+      const batch = await runBatchWithConcurrency(
+        recordsToReview,
+        (record) => updateResponseReviewStatus(record.id, status, user),
+        {
+          concurrency: 3,
+          onProgress: (progress) => {
+            setBulkProgress((current) => ({
+              ...current,
+              ...progress,
+              actionLabel,
+              phase: 'processing',
+            }));
+          },
+        }
+      );
+      const successIds = recordsToReview
+        .filter((_, index) => batch.results[index]?.status === 'fulfilled')
+        .map((record) => record.id);
+      const firstFailure = batch.results.find((result) => result?.status === 'rejected');
 
-    if (successIds.length) {
-      setReviewOverrides((prev) => {
-        const next = { ...prev };
-        successIds.forEach((id) => {
-          next[id] = label;
+      if (successIds.length) {
+        setReviewOverrides((prev) => {
+          const next = { ...prev };
+          successIds.forEach((id) => {
+            next[id] = label;
+          });
+          return next;
         });
-        return next;
-      });
-      setSelectedRecord((prev) => (prev && successIds.includes(prev.id) ? { ...prev, status: label } : prev));
-      setSelectedRecordIds((prev) => {
-        const next = new Set(prev);
-        successIds.forEach((id) => next.delete(id));
-        return next;
-      });
-      await refreshCqoData().catch((syncError) => {
-        devWarn('Nao foi possivel atualizar o cache global apos validacao em lote:', syncError);
-      });
-    }
+        setSelectedRecord((prev) => (prev && successIds.includes(prev.id) ? { ...prev, status: label } : prev));
+        setSelectedRecordIds((prev) => {
+          const next = new Set(prev);
+          successIds.forEach((id) => next.delete(id));
+          return next;
+        });
+        setBulkProgress((current) => ({ ...current, phase: 'refreshing' }));
+        await refreshCqoData().catch((syncError) => {
+          devWarn('Nao foi possivel atualizar o cache global apos validacao em lote:', syncError);
+        });
+      }
 
-    if (failedCount) {
+      if (batch.failed) {
+        const failureMessage = dashboardErrorMessage(
+          firstFailure?.reason,
+          'Confira sua permissão e tente novamente nas fichas que permaneceram selecionadas.'
+        );
+        showFeedback(
+          successIds.length ? 'Processo parcialmente concluído' : 'Não foi possível validar as fichas',
+          `${formatNumber(successIds.length)} ficha(s) atualizada(s) e ${formatNumber(batch.failed)} com erro. ${failureMessage}`,
+          'danger'
+        );
+      } else {
+        showFeedback(
+          'Validação concluída',
+          `${formatNumber(successIds.length)} ficha(s) marcadas como ${label.toLowerCase()}.`,
+          'success'
+        );
+      }
+    } catch (bulkError) {
       showFeedback(
-        'Processo parcialmente concluído',
-        `${formatNumber(successIds.length)} ficha(s) atualizada(s) e ${formatNumber(failedCount)} com erro.`,
+        'Não foi possível concluir a validação em lote',
+        dashboardErrorMessage(bulkError, 'As fichas não concluídas continuam selecionadas para uma nova tentativa.'),
         'danger'
       );
-    } else {
-      showFeedback(
-        'Validação concluída',
-        `${formatNumber(successIds.length)} ficha(s) marcadas como ${label.toLowerCase()}.`,
-        'success'
-      );
+    } finally {
+      setIsReviewing(false);
+      setIsBulkWorking(false);
+      setBulkProgress(null);
     }
-
-    setIsReviewing(false);
-    setIsBulkWorking(false);
   };
 
   const handleDelete = () => {
@@ -1458,29 +1497,57 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
       <div className="card page-card data-surface-card">
         <div className="collection-bulk-actions">
           <div className="collection-bulk-copy">
-            <strong>{formatNumber(selectedRecords.length)} selecionada(s)</strong>
-            <span>Selecione fichas do app para validar ou excluir em lote.</span>
+            {bulkProgress ? (
+              <div className="collection-bulk-progress" role="status" aria-live="polite">
+                <LoaderCircle className="collection-bulk-spinner" size={20} aria-hidden="true" />
+                <div className="collection-bulk-progress-copy">
+                  <strong>
+                    {bulkProgress.phase === 'refreshing'
+                      ? 'Atualizando a lista'
+                      : `${bulkProgress.actionLabel} fichas`}
+                  </strong>
+                  <span>
+                    {formatNumber(bulkProgress.completed)} de {formatNumber(bulkProgress.total)} concluída(s)
+                    {bulkProgress.failed ? ` · ${formatNumber(bulkProgress.failed)} com erro` : ''}
+                  </span>
+                  <progress value={bulkProgress.completed} max={bulkProgress.total} />
+                </div>
+              </div>
+            ) : (
+              <>
+                <strong>{formatNumber(selectedRecords.length)} selecionada(s)</strong>
+                <span>Selecione fichas do app para validar ou excluir em lote.</span>
+              </>
+            )}
           </div>
           <div className="collection-bulk-buttons">
             <button
               type="button"
               className="btn btn-primary"
               onClick={() => handleBulkReview('aprovado')}
-              disabled={bulkActionsDisabled || !canReviewResponses}
-              title={canReviewResponses ? 'Aprovar fichas selecionadas' : 'Permissão necessária'}
+              disabled={bulkActionsDisabled}
+              title={canReviewResponses ? 'Aprovar fichas selecionadas' : 'Seu perfil não possui permissão para aprovar fichas'}
             >
-              <ThumbsUp size={14} />
-              Aprovar
+              {isBulkWorking && bulkProgress?.actionLabel === 'Aprovando'
+                ? <LoaderCircle className="collection-bulk-spinner" size={14} />
+                : <ThumbsUp size={14} />}
+              {isBulkWorking && bulkProgress?.actionLabel === 'Aprovando'
+                ? `${formatNumber(bulkProgress.completed)}/${formatNumber(bulkProgress.total)}`
+                : 'Aprovar'}
             </button>
             <button
               type="button"
               className="btn btn-danger"
               onClick={() => handleBulkReview('reprovado')}
-              disabled={bulkActionsDisabled || !canReviewResponses}
-              title={canReviewResponses ? 'Reprovar fichas selecionadas' : 'Permissão necessária'}
+              disabled={bulkActionsDisabled}
+              title={canReviewResponses ? 'Reprovar fichas selecionadas' : 'Seu perfil não possui permissão para reprovar fichas'}
             >
-              <ThumbsDown size={14} />
-              Reprovar
+              {isBulkWorking && bulkProgress?.actionLabel === 'Reprovando'
+                ? <LoaderCircle className="collection-bulk-spinner" size={14} />
+                : <ThumbsDown size={14} />}
+              {isBulkWorking && bulkProgress?.actionLabel === 'Reprovando'
+                ? `${formatNumber(bulkProgress.completed)}/${formatNumber(bulkProgress.total)}`
+                : 'Reprovar'}
             </button>
             <button
               type="button"
