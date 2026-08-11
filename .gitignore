@@ -36,3 +36,8 @@ excel_dump*.txt
 vite-*.log
 vite-*.err.log
 *.pbix
+
+# Fontes internas de BI e dados reais. O repositorio remoto e publico.
+Qualidade e Projecao - Fontes BI/*.xlsx
+Qualidade e Projecao - Fontes BI/*.xls
+Qualidade e Projecao - Fontes BI/*.pbix

@@ -382,6 +382,13 @@ export const CQO_AREAS = [
   { id: 'poda', name: 'CQO Poda' },
 ];
 
+const SUBPRODUCT_FORM_IDS = new Set([
+  'form-subprodutos-despejo',
+  'form-subprodutos-transporte-despejo',
+  'subprodutos-transporte-despejo',
+  'subprodutos-despejo',
+]);
+
 function parseJson(value) {
   if (!value) return {};
   if (typeof value === 'object') return value;
@@ -763,6 +770,29 @@ function formType(formularioId, data) {
     return 'carreamento';
   }
   return 'corte';
+}
+
+export function isSubproductResponseRow(row) {
+  const data = parseJson(row?.dados_json);
+  const formId = normalizeText(row?.formulario_id || data.formulario_id || data.formId || data.form_id);
+
+  if (SUBPRODUCT_FORM_IDS.has(formId)) return true;
+
+  const payloadSignal = normalizeText([
+    data.tipo_formulario,
+    data.formulario,
+    data.form_slug,
+    data.titulo,
+    data.modulo,
+    data.area,
+    data.sistema,
+    data.origem_formulario,
+    data.subproduto,
+    data.tipo_subproduto,
+  ].filter(Boolean).join(' '));
+
+  return payloadSignal.includes('subproduto')
+    && (payloadSignal.includes('despejo') || payloadSignal.includes('transporte'));
 }
 
 function statusLabel(status) {
@@ -1916,6 +1946,7 @@ function buildSupabaseData({
   cqoImport,
   source,
 }) {
+  const safeResponseRows = Array.isArray(responseRows) ? responseRows : [];
   const safeGpsRows = Array.isArray(gpsRows) ? gpsRows : [];
   const safeAttachmentRows = Array.isArray(attachmentRows) ? attachmentRows : [];
   const safeFormRows = Array.isArray(formRows) ? formRows : [];
@@ -1938,7 +1969,8 @@ function buildSupabaseData({
       return acc;
     }, {});
 
-  const mobileRecordsRaw = responseRows.map((row) => normalizeResponse(
+  const cqoResponseRows = safeResponseRows.filter((row) => !isSubproductResponseRow(row));
+  const mobileRecordsRaw = cqoResponseRows.map((row) => normalizeResponse(
       row,
       headcount,
       gpsByResponse[row.id] || [],

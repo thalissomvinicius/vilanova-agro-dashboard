@@ -5,6 +5,7 @@ import {
   attachmentStoragePathCandidates,
   filterRecords,
   isApprovedAnalyticsRecord,
+  isSubproductResponseRow,
   normalizeResponse,
   normalizeAttachmentStoragePath,
   normalizeCqoFarmId,
@@ -203,6 +204,27 @@ describe('filterRecords', () => {
 });
 
 describe('normalizeResponse', () => {
+  it('identifica fichas de subprodutos para nao contaminar coletas CQO', () => {
+    expect(isSubproductResponseRow({
+      id: 'sub-1',
+      formulario_id: 'form_subprodutos_despejo',
+      dados_json: {
+        nome_fazenda: 'Vila Nova',
+        subproduto: 'Borra',
+        ticket_balanca: 'TK81929',
+      },
+    })).toBe(true);
+
+    expect(isSubproductResponseRow({
+      id: 'cqo-1',
+      formulario_id: 'form_cqo_corte',
+      dados_json: {
+        nome_fazenda: 'Vila Nova',
+        linhas_corte: [],
+      },
+    })).toBe(false);
+  });
+
   it('usa o fiscal responsavel da equipe como fiscal principal do dashboard', () => {
     const normalized = normalizeResponse({
       id: 'res-fiscal-equipe',

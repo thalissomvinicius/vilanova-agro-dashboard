@@ -1,0 +1,17 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+node_modules
+dist
+scratch
+push-worktree
+docs
+*.log
+*.pbix
+*.xlsx
+*.xls
+excel_dump*.txt
+vite-*.log
+vite-*.err.log

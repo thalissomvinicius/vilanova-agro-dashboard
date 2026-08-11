@@ -2,6 +2,8 @@
 
 Painel operacional React/Vite para acompanhamento de CQO, coletas, inventario, rampa, colaboradores e mapa georreferenciado.
 
+Para continuar o projeto em outro computador, siga [docs/HANDOFF_NOVO_COMPUTADOR.md](docs/HANDOFF_NOVO_COMPUTADOR.md). O estado consolidado desta entrega esta em [docs/ESTADO_PROJETO_2026-08-11.md](docs/ESTADO_PROJETO_2026-08-11.md).
+
 ## Requisitos
 
 - Node.js compativel com Vite 8
@@ -96,7 +98,7 @@ Antes de publicar:
 5. Revise e aplique `supabase/production_hardening.sql` em staging antes de producao.
 6. Revise headers em `vercel.json`.
 7. Rode `npm run verify`.
-8. Remova artefatos locais e temporarios do pacote de entrega. A `.vercelignore` ja exclui `scratch/`, logs, dumps, PBIX e scripts operacionais do deploy.
+8. Remova artefatos locais e temporarios do pacote de entrega. A `.vercelignore` exclui documentacao, dependencias, logs, planilhas, PBIX e arquivos operacionais do deploy.
 
 ## Scripts auxiliares
 
