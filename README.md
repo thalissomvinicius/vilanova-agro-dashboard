@@ -100,6 +100,10 @@ Antes de publicar:
 7. Rode `npm run verify`.
 8. Remova artefatos locais e temporarios do pacote de entrega. A `.vercelignore` exclui documentacao, dependencias, logs, planilhas, PBIX e arquivos operacionais do deploy.
 
+## Integração com o ERP Vila Nova
+
+O dashboard é publicado como uma aplicação independente e aparece como o módulo **Dashboard Agrícola** na Central Vila Nova. Essa separação preserva as rotas, o login e os proxies seguros desta aplicação. O acesso **Todos os módulos** na barra lateral retorna para a central configurada por `VITE_ERP_HOME_URL`.
+
 ## Scripts auxiliares
 
 Scripts em `scripts/` e `scratch/` sao operacionais. Qualquer script que envie dados ao Supabase deve receber credenciais por variaveis de ambiente, nunca por valores fixos no arquivo.

@@ -240,6 +240,21 @@ body.sidebar-resizing {
   transform: scale(1.1);
 }
 
+.sidebar-hub-link {
+  flex: 0 0 auto;
+  padding: 10px 4px;
+  border-top: 1px solid var(--border-sidebar);
+}
+
+.sidebar-hub-link .sidebar-menu-item {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sidebar-hub-link .sidebar-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .sidebar-module-group {
   margin: 0 8px 8px;
   padding: 8px;

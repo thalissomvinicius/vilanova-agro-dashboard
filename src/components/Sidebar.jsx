@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, House } from 'lucide-react';
 import { SIDEBAR_GROUPS, getRouteById } from '../config/routeConfig';
 
 function userInitials(name = '') {
@@ -12,6 +12,7 @@ function userInitials(name = '') {
 }
 
 export default function Sidebar({ activePage, setActivePage, collapsed, setCollapsed, width, visiblePageIds, user }) {
+  const erpHomeUrl = import.meta.env.VITE_ERP_HOME_URL || 'https://controle-cotas-cff.vercel.app';
   const isVisible = (pageId) => !visiblePageIds || visiblePageIds.has(pageId);
   const visibleGroups = SIDEBAR_GROUPS
     .map((group) => ({
@@ -104,6 +105,13 @@ export default function Sidebar({ activePage, setActivePage, collapsed, setColla
           );
         })}
       </nav>
+
+      <div className="sidebar-hub-link">
+        <a className="sidebar-menu-item" href={erpHomeUrl} title="Voltar para todos os módulos">
+          <House />
+          <span>Todos os módulos</span>
+        </a>
+      </div>
 
       <div className="sidebar-footer" title={`${userName} - ${userMeta}`}>
         <div className="sidebar-footer-avatar">{userInitials(userName)}</div>
