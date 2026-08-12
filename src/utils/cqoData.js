@@ -670,6 +670,94 @@ function normalizeAttachment(row, index) {
   };
 }
 
+export const PRESENCE_PROOF_FIELD_IDS = Object.freeze([
+  'prova_presenca_frontal',
+  'prova_presenca_movimento',
+]);
+
+const PRESENCE_PROOF_FIELD_ID_SET = new Set(PRESENCE_PROOF_FIELD_IDS.map(normalizeText));
+
+export function isPresenceProofAttachment(attachment) {
+  const fieldId = attachment?.fieldId || attachment?.campo_id || attachment?.field_id || '';
+  return PRESENCE_PROOF_FIELD_ID_SET.has(normalizeText(fieldId));
+}
+
+function presenceBoolean(value) {
+  if (typeof value === 'boolean') return value;
+  if (value === 1) return true;
+  if (value === 0) return false;
+  const normalized = normalizeText(value);
+  if (['true', 'sim', 'ok', 'passou', 'passed', 'sucesso'].includes(normalized)) return true;
+  if (['false', 'nao', 'falhou', 'failed', 'erro'].includes(normalized)) return false;
+  return null;
+}
+
+function presenceStatusLabel(status) {
+  const normalized = normalizeText(status);
+  if (['reprovada', 'reprovado', 'failed', 'falhou'].includes(normalized)) return 'Falhou';
+  if (['aprovada', 'aprovado', 'passed', 'passou'].includes(normalized)) return 'Passou';
+  if (normalized) return 'Revisao visual obrigatoria';
+  return 'Nao informada';
+}
+
+export function normalizePresenceAudit(rawAudit, attachments = []) {
+  const audit = parseJson(rawAudit);
+  const proofAttachments = (Array.isArray(attachments) ? attachments : [])
+    .filter(isPresenceProofAttachment);
+  const auditPhotos = Array.isArray(audit?.photos) ? audit.photos : [];
+  const hasAudit = rawAudit !== null
+    && rawAudit !== undefined
+    && rawAudit !== ''
+    && Object.keys(audit || {}).length > 0;
+
+  if (!hasAudit && !proofAttachments.length) return null;
+
+  const photos = proofAttachments.map((photo) => {
+    const metadata = auditPhotos.find((item) => normalizeText(item?.fieldId) === normalizeText(photo.fieldId)) || {};
+    const movement = normalizeText(photo.fieldId).endsWith('movimento');
+    return {
+      ...photo,
+      proofType: movement ? 'movement' : 'frontal',
+      label: movement ? 'Movimento orientado' : 'Foto frontal',
+      sha256: metadata.sha256 || '',
+      sizeBytes: photo.sizeBytes || metadata.sizeBytes || null,
+      width: metadata.width || null,
+      height: metadata.height || null,
+      capturedAt: photo.capturedAt || metadata.capturedAt || null,
+    };
+  });
+  const biometricPassed = presenceBoolean(audit?.biometric?.passed ?? audit?.biometricPassed);
+  const sync = audit?.sync && typeof audit.sync === 'object' ? audit.sync : {};
+  const challenge = audit?.challenge && typeof audit.challenge === 'object' ? audit.challenge : {};
+  const gps = parseGps(audit?.gps || audit?.location || null);
+
+  return {
+    status: audit?.status || (photos.length ? 'registrada' : ''),
+    statusLabel: presenceStatusLabel(audit?.status),
+    requiresVisualReview: audit?.requiresVisualReview !== false,
+    completedAt: audit?.completedAt || audit?.capturedAt || null,
+    challenge: {
+      label: challenge.label || challenge.instruction || 'Movimento orientado',
+      instruction: challenge.instruction || '',
+      direction: challenge.direction || '',
+    },
+    biometricPassed,
+    biometricLabel: biometricPassed === true ? 'Passou' : biometricPassed === false ? 'Falhou' : 'Nao informada',
+    gps,
+    syncIp: String(sync.ip || audit?.syncIp || '').trim(),
+    serverTimestamp: sync.serverTimestamp || audit?.serverTimestamp || null,
+    appSyncedAt: sync.appSyncedAt || audit?.appSyncedAt || null,
+    requestId: String(sync.requestId || audit?.requestId || '').trim(),
+    photos,
+    hashes: auditPhotos
+      .filter((photo) => photo?.sha256)
+      .map((photo) => ({
+        label: normalizeText(photo.fieldId).endsWith('movimento') ? 'Movimento SHA-256' : 'Frontal SHA-256',
+        value: String(photo.sha256),
+      })),
+  };
+}
+
 function parseOccurrenceArray(value) {
   return parseTrackArray(value)
     .map((point, index) => normalizeOccurrencePoint(point, index))
@@ -1082,6 +1170,7 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
 
   const fiscalResponsavel = formatPersonName(data.fiscal_resp) || '--';
   const fiscalResponsavelEquipe = formatPersonName(data.fiscal_resp_equipe) || '--';
+  const presenceAudit = normalizePresenceAudit(data._auditoria_presenca, attachmentRows);
   const base = {
     id: row.id,
     type,
@@ -1118,6 +1207,7 @@ export function normalizeResponse(row, headcount = [], gpsRows = [], attachmentR
         ? 'Lancamento manual sem GPS.'
         : '',
     attachments: attachmentRows,
+    presenceAudit,
     raw: data,
     lines,
     plantingYear: data.ano_plantio || '',

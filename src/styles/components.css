@@ -18406,3 +18406,121 @@ body.field-map-active {
   color: var(--orange-institutional);
   box-shadow: var(--shadow-sm);
 }
+
+/* Collection presence proof */
+.presence-proof-section {
+  padding: 14px;
+  border: 1px solid #bad8c7;
+  border-left: 4px solid var(--green-institutional);
+  border-radius: 8px;
+  background: #f7fbf8;
+}
+
+.presence-proof-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.presence-proof-heading h3 {
+  margin: 2px 0 3px;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.presence-proof-heading p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.presence-proof-eyebrow {
+  color: var(--green-institutional);
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.presence-proof-status {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid #a9cbb7;
+  border-radius: 999px;
+  background: #eaf5ee;
+  color: var(--green-institutional);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.presence-proof-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.presence-proof-metrics > div,
+.presence-proof-hashes > div {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.presence-proof-metrics span,
+.presence-proof-hashes span {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text-muted);
+  font-size: 0.63rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.presence-proof-metrics strong {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: 0.76rem;
+}
+
+.presence-proof-hashes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.presence-proof-hashes code {
+  display: block;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .presence-proof-heading {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .presence-proof-metrics,
+  .presence-proof-hashes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 430px) {
+  .presence-proof-section {
+    padding: 10px;
+  }
+
+  .presence-proof-metrics {
+    grid-template-columns: 1fr;
+  }
+}

@@ -102,7 +102,57 @@ function totals(lines, columns) {
   }).join('');
 }
 
-function htmlFor(record) {
+function formatDateTime(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('pt-BR');
+}
+
+function safeImageSource(photo) {
+  const source = photo?.url
+    || photo?.thumbnailUrl
+    || (photo?.base64 ? `data:${photo.mimeType || 'image/jpeg'};base64,${photo.base64}` : '');
+  return /^(?:https?:|data:image\/)/i.test(String(source || '')) ? source : '';
+}
+
+function presenceProofHtml(record) {
+  const audit = record?.presenceAudit;
+  if (!audit) return '';
+  const photos = (audit.photos || []).map((photo) => {
+    const source = safeImageSource(photo);
+    return `
+      <div class="presence-photo">
+        ${source ? `<img src="${escapeHtml(source)}" alt="${escapeHtml(photo.label || 'Prova de presença')}" />` : '<div class="presence-photo-empty">Imagem indisponível</div>'}
+        <strong>${escapeHtml(photo.label || 'Evidência')}</strong>
+        <span>${escapeHtml(formatDateTime(photo.capturedAt))}</span>
+        <span>${photo.sizeBytes ? `${formatTotal(numberValue(photo.sizeBytes) / 1024)} KB` : '-'}</span>
+      </div>
+    `;
+  }).join('');
+  const gpsLabel = audit.gps?.label
+    || (Number.isFinite(Number(audit.gps?.lat)) && Number.isFinite(Number(audit.gps?.lng))
+      ? `${Number(audit.gps.lat).toFixed(6)}, ${Number(audit.gps.lng).toFixed(6)}`
+      : '-');
+
+  return `
+    <section class="presence-report">
+      <h2>Prova de presença da coleta</h2>
+      <p class="presence-note">Registro guiado para revisão visual; não constitui biometria facial certificada.</p>
+      <div class="presence-info">
+        <div><span>Desafio</span><strong>${escapeHtml(audit.challenge?.label || 'Movimento orientado')}</strong></div>
+        <div><span>Autenticação local</span><strong>${escapeHtml(audit.biometricLabel || 'Não informada')}</strong></div>
+        <div><span>Concluída em</span><strong>${escapeHtml(formatDateTime(audit.completedAt))}</strong></div>
+        <div><span>GPS final</span><strong>${escapeHtml(gpsLabel)}</strong></div>
+        <div><span>IP da sincronização</span><strong>${escapeHtml(audit.syncIp || '-')}</strong></div>
+        <div><span>Recebido pelo servidor</span><strong>${escapeHtml(formatDateTime(audit.serverTimestamp || audit.appSyncedAt))}</strong></div>
+      </div>
+      <div class="presence-photos">${photos || '<div class="presence-photo-empty">Fotos não localizadas</div>'}</div>
+      ${(audit.hashes || []).length ? `<div class="presence-hashes">${audit.hashes.map((hash) => `<div><span>${escapeHtml(hash.label)}</span><code>${escapeHtml(hash.value)}</code></div>`).join('')}</div>` : ''}
+    </section>
+  `;
+}
+
+function htmlFor(record, { includePresenceProof = true } = {}) {
   const isCarreamento = record.type === 'carreamento';
   const columns = isCarreamento ? carreamentoColumns : corteColumns;
   const labels = isCarreamento ? columnLabels : { ...columnLabels, ...corteColumnLabels };
@@ -137,6 +187,20 @@ function htmlFor(record) {
           .total { text-align: right; font-weight: 800; background: #f3f4f6; color: #111827; padding-right: 3px; text-transform: uppercase; font-size: 6px; }
           .total-val { font-weight: 800; background: #f3f4f6; color: #111827; }
           .footer td { text-align: left; padding: 3px 5px; background: #f9fafb; border: 1px solid #e5e7eb; color: #374151; font-size: 6.5px; }
+          .presence-report { page-break-before: always; padding: 5mm; }
+          .presence-report h2 { margin: 0 0 2mm; padding: 3mm; background: #234f2a; color: #fff; font-size: 15px; }
+          .presence-note { margin: 0 0 3mm; color: #5f6b7c; font-size: 8px; }
+          .presence-info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; margin-bottom: 3mm; }
+          .presence-info div, .presence-hashes div { padding: 2mm; border: 1px solid #d8e0e8; background: #f8faf9; }
+          .presence-info span, .presence-hashes span { display: block; margin-bottom: 1mm; color: #6b7280; font-size: 6px; font-weight: 700; text-transform: uppercase; }
+          .presence-info strong { display: block; font-size: 8px; overflow-wrap: anywhere; }
+          .presence-photos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3mm; }
+          .presence-photo { padding: 2mm; border: 1px solid #d8e0e8; break-inside: avoid; }
+          .presence-photo img { display: block; width: 100%; height: 88mm; object-fit: contain; background: #f3f4f6; }
+          .presence-photo strong, .presence-photo span { display: block; margin-top: 1mm; font-size: 7px; }
+          .presence-photo-empty { display: grid; min-height: 35mm; place-items: center; color: #6b7280; background: #f3f4f6; }
+          .presence-hashes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2mm; margin-top: 3mm; }
+          .presence-hashes code { display: block; overflow-wrap: anywhere; font-size: 6px; }
         </style>
       </head>
       <body>
@@ -206,13 +270,14 @@ function htmlFor(record) {
             </tbody>
           </table>
         </div>
+        ${includePresenceProof ? presenceProofHtml(record) : ''}
       </body>
     </html>
   `;
 }
 
-export function buildDashboardRecordReportHtml(record) {
-  return htmlFor(record);
+export function buildDashboardRecordReportHtml(record, options = {}) {
+  return htmlFor(record, options);
 }
 
 function downloadWebFile(content, filename, mimeType) {
@@ -227,8 +292,22 @@ function downloadWebFile(content, filename, mimeType) {
   URL.revokeObjectURL(url);
 }
 
-export function exportDashboardRecord(record, format) {
-  const html = buildDashboardRecordReportHtml(record);
+async function hydratePresencePhotoUrls(record) {
+  if (!record?.presenceAudit?.photos?.length) return record;
+  const photos = await Promise.all(record.presenceAudit.photos.map(async (photo) => {
+    if (safeImageSource(photo) || !photo.storagePath) return photo;
+    try {
+      return { ...photo, url: await getAttachmentStorageSignedUrl(photo.storagePath) || '' };
+    } catch {
+      return photo;
+    }
+  }));
+  return { ...record, presenceAudit: { ...record.presenceAudit, photos } };
+}
+
+export async function exportDashboardRecord(record, format) {
+  const reportRecord = format === 'pdf' ? await hydratePresencePhotoUrls(record) : record;
+  const html = buildDashboardRecordReportHtml(reportRecord, { includePresenceProof: format === 'pdf' });
   const name = `${record.type}-${record.id}`;
 
   if (format === 'excel') {
@@ -248,3 +327,4 @@ export function exportDashboardRecord(record, format) {
   printWindow.focus();
   setTimeout(() => printWindow.print(), 250);
 }
+import { getAttachmentStorageSignedUrl } from './cqoData';

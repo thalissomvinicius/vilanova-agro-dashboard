@@ -5,7 +5,9 @@ import {
   attachmentStoragePathCandidates,
   filterRecords,
   isApprovedAnalyticsRecord,
+  isPresenceProofAttachment,
   isSubproductResponseRow,
+  normalizePresenceAudit,
   normalizeResponse,
   normalizeAttachmentStoragePath,
   normalizeCqoFarmId,
@@ -13,6 +15,31 @@ import {
   parseRecordDateValue,
   resolveSupabaseStorageSignedUrl,
 } from './cqoData';
+
+describe('prova de presença', () => {
+  it('normaliza a auditoria sem expor modalidade biométrica', () => {
+    const audit = normalizePresenceAudit({
+      status: 'capturada_revisao_visual',
+      completedAt: '2026-08-12T12:00:00.000Z',
+      challenge: { label: 'Vire o rosto para a esquerda' },
+      biometric: { passed: true, method: 'face' },
+      gps: { lat: -2.8, lng: -48.2, accuracy: 8 },
+      sync: { ip: '203.0.113.7', serverTimestamp: '2026-08-12T12:01:00.000Z' },
+      photos: [{ fieldId: 'prova_presenca_frontal', sha256: 'abc123', sizeBytes: 120000 }],
+    }, [{
+      fieldId: 'prova_presenca_frontal',
+      storagePath: '2704/res-1/frontal.jpg',
+      sizeBytes: 120000,
+    }]);
+
+    expect(audit.statusLabel).toBe('Revisao visual obrigatoria');
+    expect(audit.biometricLabel).toBe('Passou');
+    expect(audit).not.toHaveProperty('biometricMethod');
+    expect(audit.photos[0]).toMatchObject({ label: 'Foto frontal', sha256: 'abc123' });
+    expect(audit.syncIp).toBe('203.0.113.7');
+    expect(isPresenceProofAttachment(audit.photos[0])).toBe(true);
+  });
+});
 import { buildQualidadeOperacional } from './qualidadeOperacionalData';
 import { buildPodaDemoRecords } from './podaDemoData';
 

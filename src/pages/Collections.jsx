@@ -23,7 +23,7 @@ import {
 import EmptyTableRow from '../components/ui/EmptyTableRow';
 import PageHeader from '../components/ui/PageHeader';
 import StatusBanner from '../components/ui/StatusBanner';
-import { canUseDashboardAction, createManualResponse, dashboardErrorMessage, filterRecords, getAttachmentStorageSignedUrl, updateResponseMetadata, updateResponseReviewStatus, deleteResponseRecord, refreshAttachmentStorageSignedUrl, refreshCqoData, useCqoData } from '../utils/cqoData';
+import { canUseDashboardAction, createManualResponse, dashboardErrorMessage, filterRecords, getAttachmentStorageSignedUrl, isPresenceProofAttachment, updateResponseMetadata, updateResponseReviewStatus, deleteResponseRecord, refreshAttachmentStorageSignedUrl, refreshCqoData, useCqoData } from '../utils/cqoData';
 import { devWarn } from '../utils/devLog';
 import { exportDashboardRecord } from '../utils/reportExporter';
 import { runBatchWithConcurrency } from '../utils/batchOperations';
@@ -207,6 +207,73 @@ function EvidencePhotoGrid({ photos }) {
         </button>
       ) : null}
     </>
+  );
+}
+
+function formatPresenceDate(value) {
+  if (!value) return '--';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('pt-BR');
+}
+
+function PresenceProofSection({ audit }) {
+  if (!audit) return null;
+  const gpsLabel = audit.gps?.label
+    || (Number.isFinite(Number(audit.gps?.lat)) && Number.isFinite(Number(audit.gps?.lng))
+      ? `${Number(audit.gps.lat).toFixed(6)}, ${Number(audit.gps.lng).toFixed(6)}`
+      : '--');
+
+  return (
+    <section className="presence-proof-section" aria-label="Prova de presenca da coleta">
+      <div className="presence-proof-heading">
+        <div>
+          <span className="presence-proof-eyebrow">Auditoria de campo</span>
+          <h3>Prova de presença da coleta</h3>
+          <p>Registro guiado com revisão visual obrigatória. Não constitui biometria facial certificada.</p>
+        </div>
+        <span className="presence-proof-status">{audit.statusLabel}</span>
+      </div>
+
+      <div className="presence-proof-metrics">
+        <div>
+          <span>Desafio</span>
+          <strong>{audit.challenge?.label || 'Movimento orientado'}</strong>
+        </div>
+        <div>
+          <span>Autenticação local</span>
+          <strong>{audit.biometricLabel}</strong>
+        </div>
+        <div>
+          <span>Concluída em</span>
+          <strong>{formatPresenceDate(audit.completedAt)}</strong>
+        </div>
+        <div>
+          <span>GPS final</span>
+          <strong>{gpsLabel}</strong>
+        </div>
+        <div>
+          <span>IP da sincronização</span>
+          <strong>{audit.syncIp || '--'}</strong>
+        </div>
+        <div>
+          <span>Recebido pelo servidor</span>
+          <strong>{formatPresenceDate(audit.serverTimestamp || audit.appSyncedAt)}</strong>
+        </div>
+      </div>
+
+      {audit.photos?.length ? <EvidencePhotoGrid photos={audit.photos} /> : null}
+
+      {audit.hashes?.length ? (
+        <div className="presence-proof-hashes">
+          {audit.hashes.map((hash) => (
+            <div key={`${hash.label}_${hash.value}`} title={hash.value}>
+              <span>{hash.label}</span>
+              <code>{hash.value}</code>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -891,7 +958,7 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
     ? uniquePhotos([
       ...(selectedRecord.attachments || []),
       ...extractRawPhotos(selectedRecord.raw || {}),
-    ])
+    ]).filter((photo) => !isPresenceProofAttachment(photo))
     : [];
 
   const showFeedback = (title, message, tone = 'warning') => {
@@ -1999,6 +2066,10 @@ export default function Collections({ farmFilter, areaFilter, periodFilter, cycl
                   <strong>{selectedRecord.observation || 'Sem observação'}</strong>
                 </div>
               </div>
+
+              {selectedRecord.presenceAudit ? (
+                <PresenceProofSection audit={selectedRecord.presenceAudit} />
+              ) : null}
 
               {selectedRecord.source !== 'excel' && selectedRecord.gpsOccurrences?.length ? (
                 <div className="card modal-embedded-card">

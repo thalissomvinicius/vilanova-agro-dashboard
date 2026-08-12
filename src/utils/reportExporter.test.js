@@ -41,4 +41,31 @@ describe('buildDashboardRecordReportHtml', () => {
     expect(html).toContain('<tbody class="report-summary">');
     expect(html).not.toContain('<tfoot>');
   });
+
+  it('inclui a prova de presença no PDF e omite no Excel', () => {
+    const record = {
+      id: 'res-presenca',
+      type: 'corte',
+      lines: [],
+      presenceAudit: {
+        statusLabel: 'Revisao visual obrigatoria',
+        completedAt: '2026-08-12T12:00:00.000Z',
+        challenge: { label: 'Vire o rosto para a direita' },
+        biometricLabel: 'Passou',
+        gps: { label: '-2.800000, -48.200000' },
+        syncIp: '203.0.113.7',
+        photos: [{ label: 'Foto frontal', url: 'https://example.com/frontal.jpg', sizeBytes: 122880 }],
+        hashes: [{ label: 'Frontal SHA-256', value: 'abc123' }],
+      },
+    };
+
+    const pdfHtml = buildDashboardRecordReportHtml(record);
+    const excelHtml = buildDashboardRecordReportHtml(record, { includePresenceProof: false });
+
+    expect(pdfHtml).toContain('Prova de presença da coleta');
+    expect(pdfHtml).toContain('não constitui biometria facial certificada');
+    expect(pdfHtml).toContain('203.0.113.7');
+    expect(pdfHtml).toContain('abc123');
+    expect(excelHtml).not.toContain('Prova de presença da coleta');
+  });
 });
