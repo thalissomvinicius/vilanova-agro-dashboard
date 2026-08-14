@@ -67,6 +67,14 @@ export const ROUTE_DEFINITIONS = [
     filterPreset: 'rampa',
   },
   {
+    id: 'frota-paf',
+    path: '/frota-paf',
+    label: 'Análise Frota PAF',
+    icon: Truck,
+    navGroup: 'main',
+    filterPreset: 'none',
+  },
+  {
     id: 'coletas',
     path: '/coletas',
     label: 'Coletas recebidas',
@@ -160,6 +168,7 @@ export const SIDEBAR_GROUPS = [
     id: 'main',
     itemIds: [
       'cqo-rampa',
+      'frota-paf',
       'coletas',
       'inventario',
       'mapa',

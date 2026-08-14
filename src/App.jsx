@@ -28,6 +28,7 @@ const BunchWeightDashboard = lazy(() => import('./pages/BunchWeightDashboard'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const PodaDashboard = lazy(() => import('./pages/PodaDashboard'));
 const CqoRampa = lazy(() => import('./pages/CqoRampa'));
+const FleetCapacityPaf = lazy(() => import('./pages/FleetCapacityPaf'));
 const LossesAgricola = lazy(() => import('./pages/LossesAgricola'));
 const Collections = lazy(() => import('./pages/Collections'));
 const SyncCenter = lazy(() => import('./pages/SyncCenter'));
@@ -860,6 +861,8 @@ export default function App() {
             sourceFilter={sourceFilter === 'app' ? 'all' : sourceFilter}
           />
         );
+      case 'frota-paf':
+        return <FleetCapacityPaf />;
       case 'coletas':
         return (
           <Collections
